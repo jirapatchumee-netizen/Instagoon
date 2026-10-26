@@ -1,0 +1,25 @@
+{
+  "id": "bg_cg_noey_catmaid_playful_083",
+  "kind": "cg",
+  "cast": [],
+  "location": "bg_server_room_dark",
+  "camera": "vertical Korean manhwa visual novel photo composition",
+  "beat": "Noey playfully tiptoes toward the camera, holds both cat ears and gives the lens a mischievous, shy look.",
+  "mode": "t2i",
+  "preset": "zit-t2i-544x960-v1",
+  "seed": 86081083,
+  "status": "approved",
+  "approved": 1,
+  "versions": [
+    {
+      "v": 1,
+      "seed": 86081083,
+      "promptHash": "48f4965b005eaa8d74201ee3e7c341a22fb48131",
+      "qa": null,
+      "owner": null,
+      "created": "2026-10-26T15:48:23Z"
+    }
+  ],
+  "feedback": [],
+  "asset": "bg_cg_noey_catmaid_playful_083"
+}

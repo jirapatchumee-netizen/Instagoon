@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "seed": 86081086,
+  "preset": "zit-t2i-544x960-v1",
+  "mode": "t2i",
+  "prompt": "Vertical 9:16 Korean manhwa visual novel image, look sexy, tasteful and fully clothed adult fashion photo of Noey, age 21, Thai woman with caramel-brown side ponytail and magenta eyes, wearing black cat ears, gold bell choker and her black-and-white frilly cat-maid dress. She kneels upright on a padded office chair, body turned away, glancing back over her shoulder with a confident shy smile. Her costume has an opaque black knee-length A-line skirt, broad white apron and fully opaque black dance shorts underneath; all clothing stays in place and covers her seat and hips. Frame from head to knees, clear over-the-shoulder pose, graceful posture, flirtatious eye contact and soft blush create the sexy mood. Fully clothed, no underwear, no exposed buttocks, no nudity. Soft pink and cyan server-room lighting, glossy Korean manhwa linework, polished visual novel composition, shallow depth of field, no text.",
+  "promptHash": "ac0ddf964d94499826082403f9a9427893b36a27",
+  "render": {
+    "width": 544,
+    "height": 960,
+    "sha256": "27bdf72d3df47755e7e335494175bb1c43fe569ce36986626eac2d80f6809deb"
+  },
+  "created": "2026-10-26T15:48:23Z"
+}

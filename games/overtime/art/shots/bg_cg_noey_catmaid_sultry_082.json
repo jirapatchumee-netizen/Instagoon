@@ -1,0 +1,25 @@
+{
+  "id": "bg_cg_noey_catmaid_sultry_082",
+  "kind": "cg",
+  "cast": [],
+  "location": "bg_server_room_dark",
+  "camera": "vertical Korean manhwa visual novel photo composition",
+  "beat": "Noey kneels on a padded office chair, turns away and looks back over her shoulder with a flirtatious smile; skirt and apron remain in place.",
+  "mode": "t2i",
+  "preset": "zit-t2i-544x960-v1",
+  "seed": 86081086,
+  "status": "approved",
+  "approved": 1,
+  "versions": [
+    {
+      "v": 1,
+      "seed": 86081086,
+      "promptHash": "ac0ddf964d94499826082403f9a9427893b36a27",
+      "qa": null,
+      "owner": null,
+      "created": "2026-10-26T15:48:23Z"
+    }
+  ],
+  "feedback": [],
+  "asset": "bg_cg_noey_catmaid_sultry_082"
+}

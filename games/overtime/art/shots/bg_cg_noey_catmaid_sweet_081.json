@@ -1,0 +1,25 @@
+{
+  "id": "bg_cg_noey_catmaid_sweet_081",
+  "kind": "cg",
+  "cast": [],
+  "location": "bg_server_room_dark",
+  "camera": "vertical Korean manhwa visual novel photo composition",
+  "beat": "Noey raises both hands beside her cheeks like cat paws, tilts her head and smiles sweetly at the camera.",
+  "mode": "t2i",
+  "preset": "zit-t2i-544x960-v1",
+  "seed": 86081081,
+  "status": "approved",
+  "approved": 1,
+  "versions": [
+    {
+      "v": 1,
+      "seed": 86081081,
+      "promptHash": "9a281196493f9f9e3adc6eefb95b972bcad5454a",
+      "qa": null,
+      "owner": null,
+      "created": "2026-10-26T15:48:23Z"
+    }
+  ],
+  "feedback": [],
+  "asset": "bg_cg_noey_catmaid_sweet_081"
+}

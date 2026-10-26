@@ -118,13 +118,25 @@ export const OVERTIME_BACKGROUNDS: Record<string, BackgroundDef> = {
   bg_cg_noey_catmaid: {
     id: 'bg_cg_noey_catmaid',
     name: 'SPECIAL PHOTO #01: น้องเนยชุดคอสเพลย์แมวเหมียว (Cat-Maid)',
-    src: '/art/stage1/Storyboard_S1_03_CatMaid_00001_.webp'
+    src: '/art/stage1/Cutscene_S1_03_CatMaid_Soft_00001_.webp'
+  },
+
+  bg_cg_noey_bunny: {
+    id: 'bg_cg_noey_bunny',
+    name: 'SPECIAL PHOTO: น้องเนยชุดบันนี่เกิร์ลสุดเย้ายวน (Velvet Bunny)',
+    src: '/art/stage1/Cutscene_S1_03_Bunny_Soft_00001_.webp'
+  },
+
+  bg_cg_noey_midnightsilk: {
+    id: 'bg_cg_noey_midnightsilk',
+    name: 'SPECIAL PHOTO #02: น้องเนยเสื้อเชิ้ตขาว & ผ้าลูกไม้ดำ (Midnight Silk)',
+    src: '/art/stage1/Cutscene_S1_03_MidnightSilk_Soft_00001_.webp'
   },
 
   bg_cg_noey_lingerie: {
     id: 'bg_cg_noey_lingerie',
     name: 'SPECIAL PHOTO #02: น้องเนยเสื้อเชิ้ตขาว & ผ้าลูกไม้ดำ (Midnight Silk)',
-    src: '/art/stage1/Storyboard_S1_05_MidnightSilkKeycard_00001_.webp'
+    src: '/art/stage1/Cutscene_S1_03_MidnightSilk_Soft_00001_.webp'
   },
 
   bg_noey_screen_fixed_072: {
@@ -137,6 +149,30 @@ export const OVERTIME_BACKGROUNDS: Record<string, BackgroundDef> = {
     id: 'bg_echomind_noey_upload_010',
     name: 'อาร์มเสียบสายส่งภาพบัตรประชาชนของเนยเข้าสู่ Echo Mind Terminal (S1_03/010)',
     src: '/art/stage1/Cutscene_S1_03_EchoMind_Noey_Upload_00001_.webp'
+  },
+
+  bg_echomind_command_typing_041: {
+    id: 'bg_echomind_command_typing_041',
+    name: 'อาร์มนั่งพิมพ์คำสั่งแทรกแซงจิตใต้สำนึกน้องเนย หน้าจอ CRT เดี่ยว (S1_03/041–043)',
+    src: '/art/stage1/Cutscene_S1_03_Arm_Typing_Command_00001_.webp'
+  },
+
+  bg_door_shadow_noey_060: {
+    id: 'bg_door_shadow_noey_060',
+    name: 'บานประตูห้องเซิร์ฟเวอร์เปิดออก แสงส่องเข้ามาพร้อมเงาของเนยทอดยาวบนพื้น (S1_03/060)',
+    src: '/art/stage1/Cutscene_S1_03_Door_Shadow_Noey_00001_.webp'
+  },
+
+  bg_pim_scolding_noey_010: {
+    id: 'bg_pim_scolding_noey_010',
+    name: 'คุณพิมพ์ตวาดดุด่าเนยและเหยียดหยามอาร์มหน้าฝ่ายบุคคล (S1_04/010–030)',
+    src: '/art/stage1/Cutscene_S1_04_Pim_Scolding_Noey_00001_.webp'
+  },
+
+  bg_arm_comforting_noey_040: {
+    id: 'bg_arm_comforting_noey_040',
+    name: 'อาร์มใช้ทิชชู่ซับน้ำตาปลอบโยนเนยริมหน้าต่างทางเดิน (S1_04/040–070)',
+    src: '/art/stage1/Cutscene_S1_04_Arm_Comforting_Noey_00001_.webp'
   },
 
 

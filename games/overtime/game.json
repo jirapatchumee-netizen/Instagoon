@@ -2,7 +2,7 @@
   "id": "overtime_secrets",
   "title": "Overtime Secrets (แฟ้มลับกะดึก)",
   "author": "FrostNova Studios",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "description": "เกม Visual Novel แนวสืบสวนจิตวิทยา & Ecchi Romance ในออฟฟิศยามค่ำคืน",
   "startScene": "S1_01_server_room",
   "startNode": "010",
@@ -64,7 +64,16 @@
     "bg_noey_welcome_020": "เนยยิ้มดีใจที่อาร์มมาช่วยซ่อมคอม มุมระดับสายตา (S1_02/020)",
     "bg_noey_wallet_discovery_040": "กระเป๋าสตางค์สีชมพูและบัตรสมมติข้างรางปลั๊ก มุมด้านข้างโต๊ะ (S1_02/040–050)",
     "bg_noey_screen_fixed_072": "เนยดีใจที่จอคอมเปิดติดพร้อมส่งสายตาออดอ้อนขอบคุณพี่อาร์ม (S1_02/072)",
-    "bg_echomind_noey_upload_010": "อาร์มเสียบสายส่งภาพบัตรประชาชนของเนยเข้าสู่ Echo Mind Terminal (S1_03/010)"
+    "bg_echomind_noey_upload_010": "อาร์มเสียบสายส่งภาพบัตรประชาชนของเนยเข้าสู่ Echo Mind Terminal (S1_03/010)",
+    "bg_echomind_command_typing_041": "อาร์มนั่งพิมพ์คำสั่งแทรกแซงจิตใต้สำนึกน้องเนย หน้าจอ CRT เดี่ยว (S1_03/041–043)",
+    "bg_door_shadow_noey_060": "บานประตูห้องเซิร์ฟเวอร์เปิดออก แสงส่องเข้ามาพร้อมเงาของเนยทอดยาวบนพื้น (S1_03/060)",
+    "bg_cg_noey_bunny": "SPECIAL PHOTO: น้องเนยชุดบันนี่เกิร์ลสุดเย้ายวน (Velvet Bunny)",
+    "bg_cg_noey_midnightsilk": "SPECIAL PHOTO: น้องเนยชุดนอนผ้าไหมลูกไม้ดำซีทรู (Midnight Silk)",
+    "bg_pim_scolding_noey_010": "คุณพิมพ์ตวาดดุด่าเนยและเหยียดหยามอาร์มหน้าฝ่ายบุคคล (S1_04/010–030)",
+    "bg_arm_comforting_noey_040": "อาร์มใช้ทิชชู่ซับน้ำตาปลอบโยนเนยริมหน้าต่างทางเดิน (S1_04/040–070)",
+    "bg_cg_noey_catmaid_sweet_081": "ภาพแมวเหมียวท่าอุ้งเท้าหวาน (S1_03/081)",
+    "bg_cg_noey_catmaid_sultry_082": "ภาพแมวเหมียวท่าคุกเข่ามองข้ามไหล่ (S1_03/082)",
+    "bg_cg_noey_catmaid_playful_083": "ภาพแมวเหมียวท่าย่องเข้าหาเลนส์ (S1_03/083)"
   },
   "variables": {
     "suspicion": 0,

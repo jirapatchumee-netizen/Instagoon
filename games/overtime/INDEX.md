@@ -1,7 +1,7 @@
 # 📑 Overtime Secrets — Scene Index (สารบัญฉาก)
 
 > **Generated automatically by `pnpm vn:index`. DO NOT EDIT MANUALLY.**
-> Last updated: 2026-10-26T15:10:57.286Z
+> Last updated: 2026-10-26T16:21:31.168Z
 > Total Scenes: **5** | Total Nodes: **62**
 
 | Scene ID | Title | Nodes | Entry | Exits / Branches | Variables Set |

@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "seed": 86081083,
+  "preset": "zit-t2i-544x960-v1",
+  "mode": "t2i",
+  "prompt": "Vertical 9:16 polished Korean manhwa visual novel illustration, look sexy, playful adult flirtation, 21-year-old Thai woman Noey with warm caramel-brown side ponytail tied by a fluffy pink scrunchie, large magenta eyes and blush, wearing her black-and-white frilly cat-maid cosplay dress, black cat-ear headband and gold bell choker, fully clothed with opaque black tights, no nudity or underwear visible. Candid photo pose: she playfully crouches and tiptoes close toward the camera lens as if sneaking up, both hands gently holding the cat ears on her head, shoulders tilted, giving the lens a mischievous shy smile. Dynamic forced perspective with her expressive face and cat paws closer to camera, full outfit still readable, flirty and alluring while cute, tasteful. Server-room night setting with softly blurred racks and magenta-cyan bokeh, glossy painted gradients, expressive Korean manhwa ink linework, cinematic shallow depth of field, professional visual novel CG, no text.",
+  "promptHash": "48f4965b005eaa8d74201ee3e7c341a22fb48131",
+  "render": {
+    "width": 544,
+    "height": 960,
+    "sha256": "7c5065a8af214273ee8d4294c67ffaf13a1439da7be2e32d905cf00941f545eb"
+  },
+  "created": "2026-10-26T15:48:23Z"
+}

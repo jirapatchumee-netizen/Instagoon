@@ -79,15 +79,27 @@
     },
     "bg_cg_noey_catmaid": {
       "kind": "cg",
-      "status": "legacy",
-      "file": "/art/stage1/Storyboard_S1_03_CatMaid_00001_.webp",
-      "note": "old storyboard render; contains characters, replace with a clean asset"
+      "status": "active",
+      "file": "/art/stage1/Cutscene_S1_03_CatMaid_Soft_00001_.webp",
+      "note": "Noey in sultry cat-maid cosplay with soft romantic studio backlight"
+    },
+    "bg_cg_noey_bunny": {
+      "kind": "cg",
+      "status": "active",
+      "file": "/art/stage1/Cutscene_S1_03_Bunny_Soft_00001_.webp",
+      "note": "Noey in glamorous black satin bunny girl outfit with soft pink bokeh"
+    },
+    "bg_cg_noey_midnightsilk": {
+      "kind": "cg",
+      "status": "active",
+      "file": "/art/stage1/Cutscene_S1_03_MidnightSilk_Soft_00001_.webp",
+      "note": "Noey in sheer white silk shirt and black lace with intimate warm glow"
     },
     "bg_cg_noey_lingerie": {
       "kind": "cg",
-      "status": "legacy",
-      "file": "/art/stage1/Storyboard_S1_05_MidnightSilkKeycard_00001_.webp",
-      "note": "old storyboard render; contains characters, replace with a clean asset"
+      "status": "active",
+      "file": "/art/stage1/Cutscene_S1_03_MidnightSilk_Soft_00001_.webp",
+      "note": "Noey in sheer white silk shirt and black lace"
     },
     "bg_noey_screen_fixed_072": {
       "kind": "cg",
@@ -100,6 +112,30 @@
       "status": "active",
       "file": "/art/stage1/Cutscene_S1_03_EchoMind_Noey_Upload_00001_.webp",
       "note": "Arm plugging phone to upload Noey's ID card into Echo Mind terminal console at late night (Cutscene_S1_03_EchoMind_Noey_Upload)"
+    },
+    "bg_echomind_command_typing_041": {
+      "kind": "cg",
+      "status": "active",
+      "file": "/art/stage1/Cutscene_S1_03_Arm_Typing_Command_00001_.webp",
+      "note": "Arm sitting at desk typing subconscious override command on single CRT monitor (Cutscene_S1_03_Arm_Typing_Command)"
+    },
+    "bg_door_shadow_noey_060": {
+      "kind": "cg",
+      "status": "active",
+      "file": "/art/stage1/Cutscene_S1_03_Door_Shadow_Noey_00001_.webp",
+      "note": "Server room door cracked open with long mysterious silhouette shadow of Noey cast across floor (Cutscene_S1_03_Door_Shadow_Noey)"
+    },
+    "bg_pim_scolding_noey_010": {
+      "kind": "cg",
+      "status": "active",
+      "file": "/art/stage1/Cutscene_S1_04_Pim_Scolding_Noey_00001_.webp",
+      "note": "Strict HR manager Pim scolding tearful Noey and disdainful towards Arm in 4th floor corridor (Cutscene_S1_04_Pim_Scolding_Noey)"
+    },
+    "bg_arm_comforting_noey_040": {
+      "kind": "cg",
+      "status": "active",
+      "file": "/art/stage1/Cutscene_S1_04_Arm_Comforting_Noey_00001_.webp",
+      "note": "First-person POV of Arm gently using tissue to wipe tears from crying Noey's cheek (Cutscene_S1_04_Arm_Comforting_Noey)"
     },
     "bg_day_transition": {
       "kind": "card",
@@ -147,6 +183,27 @@
       "status": "draft",
       "file": "/art/stage1/Cutscene_S1_02_Noey_Ticket_Verified_00001_.webp",
       "note": "Noey, adult marketing intern, at the office desk with a dark monitor. Bound only to S1_02_noey_desk/015; render prompt and verification receipts in workspace validation-completion-20261026."
+    },
+    "bg_cg_noey_catmaid_sweet_081": {
+      "kind": "cg",
+      "status": "approved",
+      "shot": "bg_cg_noey_catmaid_sweet_081",
+      "version": 1,
+      "file": "/art/cg/bg_cg_noey_catmaid_sweet_081.v1.webp"
+    },
+    "bg_cg_noey_catmaid_sultry_082": {
+      "kind": "cg",
+      "status": "approved",
+      "shot": "bg_cg_noey_catmaid_sultry_082",
+      "version": 1,
+      "file": "/art/cg/bg_cg_noey_catmaid_sultry_082.v1.webp"
+    },
+    "bg_cg_noey_catmaid_playful_083": {
+      "kind": "cg",
+      "status": "approved",
+      "shot": "bg_cg_noey_catmaid_playful_083",
+      "version": 1,
+      "file": "/art/cg/bg_cg_noey_catmaid_playful_083.v1.webp"
     }
   }
 }
