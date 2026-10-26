@@ -1,0 +1,23 @@
+{
+  "id": "bg_cg_noey_catmaid",
+  "kind": "cg",
+  "asset": "bg_cg_noey_catmaid",
+  "cast": [
+    {
+      "id": "noey",
+      "outfit": "catmaid",
+      "expression": "blush",
+      "pose": "making a cat-paw gesture with one hand raised and leaning slightly toward the viewer, as if posing for a photograph"
+    }
+  ],
+  "location": "bg_cg_noey_catmaid",
+  "camera": "medium shot, framed like a camera viewfinder portrait",
+  "beat": "First cosplay photo. Noey is shy but enjoying it.",
+  "mode": "t2i",
+  "preset": "zit-t2i-544x960-v1",
+  "seed": 96088805,
+  "status": "todo",
+  "approved": null,
+  "versions": [],
+  "feedback": []
+}

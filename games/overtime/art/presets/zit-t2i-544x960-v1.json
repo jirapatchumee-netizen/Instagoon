@@ -1,0 +1,44 @@
+{
+  "id": "zit-t2i-544x960-v1",
+  "mode": "t2i",
+  "status": "in-use: produced the stage1 storyboard renders",
+  "canvas": [
+    544,
+    960
+  ],
+  "output_node": "11",
+  "negative_supported": false,
+  "inject": {
+    "prompt": [
+      "5",
+      "text"
+    ],
+    "seed": [
+      "9",
+      "seed"
+    ],
+    "prefix": [
+      "11",
+      "filename_prefix"
+    ],
+    "steps": [
+      "9",
+      "steps"
+    ],
+    "lora_strength": [
+      "2",
+      "strength_model"
+    ]
+  },
+  "defaults": {
+    "steps": 8,
+    "lora_strength": 1.0
+  },
+  "models": {
+    "unet": "z_image_turbo_bf16.safetensors",
+    "lora": "AnimeLora3.safetensors",
+    "clip": "qwen_3_4b.safetensors",
+    "vae": "ae.safetensors"
+  },
+  "workflow": "zit-t2i-544x960-v1.workflow.json"
+}

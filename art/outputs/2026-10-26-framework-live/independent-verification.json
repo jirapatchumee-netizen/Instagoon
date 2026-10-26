@@ -1,0 +1,58 @@
+{
+  "path": "/Users/macminim4pro/FrostNova/FrostNovaWorkspace/projects/Visual Novel/art/outputs/2026-10-26-framework-live/render-11862a9ed72e44de85cbeafc31445733/images/render-11862a9ed72e44de85cbeafc31445733_00001_.png",
+  "dimensions": [
+    544,
+    960
+  ],
+  "sha256": "ef66f32374145becd56b8506efc9ea88bc3d7c9945e21ed8bf99d930de50abf6",
+  "pixel_sha256": "9b50dd317a1f95e7d58f314a80db32bb2b6efd8fbdcab94d09963566873ca178",
+  "pixels_identical_to_prior_same_seed": true,
+  "comparison_path": "/Users/macminim4pro/FrostNova/FrostNovaWorkspace/projects/Visual Novel/art/outputs/2026-10-26-qwen21-t2i-544x960-v1/images/noey_qwen21_t2i_544x960_00001_.png",
+  "claim": "This fixed prompt, seed and workflow reproduced identical RGB pixels in this environment; this does not establish character/style consistency across other prompts.",
+  "8190": {
+    "unavailable": "URLError"
+  },
+  "8188": {
+    "version": "0.33.0"
+  },
+  "11434": {
+    "models": [
+      {
+        "name": "embeddinggemma-2:740m-mxfp8",
+        "model": "embeddinggemma-2:740m-mxfp8",
+        "size": 1332329060,
+        "digest": "a4efd357164f4bb30a45b0f0e7bc45e8dfa5be181de738c3227426624b3f8189",
+        "details": {
+          "parent_model": "",
+          "format": "safetensors",
+          "family": "",
+          "families": null,
+          "parameter_size": "",
+          "quantization_level": "mxfp8"
+        },
+        "expires_at": "2026-10-26T10:13:17.655437+07:00",
+        "size_vram": 1332329060,
+        "context_length": 8192,
+        "runner": "mlx"
+      },
+      {
+        "name": "nemotron-3.5-lightning:30b-a3b-mlx",
+        "model": "nemotron-3.5-lightning:30b-a3b-mlx",
+        "size": 19308409396,
+        "digest": "d1e17d7dabacb401dec6440b4ec987ea053b9568b01f89fb3d54f8b2e71397be",
+        "details": {
+          "parent_model": "",
+          "format": "safetensors",
+          "family": "",
+          "families": null,
+          "parameter_size": "",
+          "quantization_level": ""
+        },
+        "expires_at": "2026-10-26T10:13:15.733068+07:00",
+        "size_vram": 19308409396,
+        "context_length": 65536,
+        "runner": "mlx"
+      }
+    ]
+  }
+}

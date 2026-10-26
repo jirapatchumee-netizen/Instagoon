@@ -1,0 +1,18 @@
+{
+  "generator": "scripts/render_zimage_turbo.py",
+  "prompt_id": "83f53f2a-570b-4584-8ceb-4e4c1ffc803c",
+  "prompt": "Anime visual novel mystery illustration, vertical composition 544x960. Daylit modern office, floor level side view beside a wooden computer desk. Main subject in the central foreground: a cute open pastel pink wallet with a small peach-shaped charm lying on the floor next to a white electrical power strip and a loose computer power cable. In its transparent card pocket a fictional character identity card is partially exposed, showing an anime portrait of Noey with brown hair and pink eyes, simple decorative lines and the short name NOEY, no real personal data or realistic identification numbers. The wallet and card are large, clearly visible and in sharp focus in the middle half of the picture, keep bottom quarter visually simple for game dialogue overlay. Background on the right: the normally posed legs from knees down of an adult 23-year-old office woman Noey sitting at her desk, elegant slim calves and navy office flats, feet resting naturally on the floor, navy knee-length office skirt fully covering thighs and lap. Camera aimed horizontally at wallet and cables, side-on neutral framing, no view inside clothing, no exposed underwear, no nudity, no sexual posing. Desk supports and office chair establish the space. Warm soft window daylight, polished clean anime lineart, detailed props, natural anatomy, soft cel shading, story discovery atmosphere, no watermark, no speech bubbles.",
+  "seed": 42040,
+  "size": [
+    544,
+    960
+  ],
+  "file": "public/art/stage1/Cutscene_S1_02_Noey_Wallet_Discovery_00001_.png",
+  "sha256": "ea013d60179088aa87ef9c08d6edb79968b22dd73e9d0898d18c3aa36ed8840b",
+  "nodes": [
+    "S1_02_noey_desk/040",
+    "S1_02_noey_desk/050"
+  ],
+  "asset": "bg_noey_wallet_discovery_040",
+  "served_bytes_match": true
+}

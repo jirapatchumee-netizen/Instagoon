@@ -1,0 +1,82 @@
+{
+  "schema": 1,
+  "date": "2026-10-26",
+  "reason": "Owner requested Qwen 2.1 T2I cleanup for disk space and reported commercial licensing as the reason for retirement; no independent legal determination made.",
+  "status": "removed",
+  "models": [
+    {
+      "path": "/Users/macminim4pro/ComfyUI/models/diffusion_models/qwen_image_2.1_bf16.safetensors",
+      "logical_bytes": 14230280616,
+      "allocated_bytes": 14244384768,
+      "inode": 289613564
+    },
+    {
+      "path": "/Users/macminim4pro/ComfyUI/models/text_encoders/qwen3vl_8b_bf16.safetensors",
+      "logical_bytes": 17534334616,
+      "allocated_bytes": 17534337024,
+      "inode": 289613670
+    },
+    {
+      "path": "/Users/macminim4pro/ComfyUI/models/vae/qwen_image_2.1_vae_bf16.safetensors",
+      "logical_bytes": 675509688,
+      "allocated_bytes": 675512320,
+      "inode": 289613798
+    }
+  ],
+  "model_logical_bytes": 32440124920,
+  "model_allocated_bytes": 32454234112,
+  "scratch_path": "/Users/macminim4pro/FrostNova/FrostNovaWorkspace/scratch/comfy-qwen21-validation",
+  "scratch_regular_allocated_bytes": 248696832,
+  "disk_free_before_bytes": 135021121536,
+  "actions": [
+    {
+      "action": "disable_qwen_profile",
+      "archived_at": "/Users/macminim4pro/FrostNova/FrostNovaWorkspace/projects/Visual Novel/art/archive/qwen21-retired-2026-10-26/retired-render-profile.json"
+    },
+    {
+      "action": "archive_downloader",
+      "from": "/Users/macminim4pro/FrostNova/FrostNovaWorkspace/projects/Visual Novel/scripts/download-qwen21-t2i-models.sh",
+      "to": "/Users/macminim4pro/FrostNova/FrostNovaWorkspace/projects/Visual Novel/art/archive/qwen21-retired-2026-10-26/download-qwen21-t2i-models.sh"
+    },
+    {
+      "action": "archive_downloader",
+      "from": "/Users/macminim4pro/FrostNova/FrostNovaWorkspace/projects/Visual Novel/scripts/test_download_qwen21_models.py",
+      "to": "/Users/macminim4pro/FrostNova/FrostNovaWorkspace/projects/Visual Novel/art/archive/qwen21-retired-2026-10-26/test_download_qwen21_models.py"
+    },
+    {
+      "action": "remove_redownloadable_weight",
+      "path": "/Users/macminim4pro/ComfyUI/models/diffusion_models/qwen_image_2.1_bf16.safetensors"
+    },
+    {
+      "action": "remove_redownloadable_weight",
+      "path": "/Users/macminim4pro/ComfyUI/models/text_encoders/qwen3vl_8b_bf16.safetensors"
+    },
+    {
+      "action": "remove_redownloadable_weight",
+      "path": "/Users/macminim4pro/ComfyUI/models/vae/qwen_image_2.1_vae_bf16.safetensors"
+    },
+    {
+      "action": "remove_duplicate_validation_worktree",
+      "path": "/Users/macminim4pro/FrostNova/FrostNovaWorkspace/scratch/comfy-qwen21-validation",
+      "dependency_content_comparison": "17049 non-bytecode files matched retained managed core"
+    }
+  ],
+  "preserved": [
+    "Generated images and reports",
+    "FrostNova runtime/framework and task history",
+    "Primary ComfyUI and Python environment",
+    "Managed reusable Comfy core and runtime dependencies",
+    "Unrelated models including future Z-Image assets"
+  ],
+  "disk_free_immediately_after_bytes": 167724777472,
+  "completed_utc": "2026-10-26T03:05:51.702671+00:00",
+  "verification": {
+    "qwen_weights_absent": true,
+    "duplicate_scratch_absent": true,
+    "render_image_not_advertised": true,
+    "primary_python_preserved": true,
+    "managed_core_preserved": true
+  },
+  "disk_free_verified_after_bytes": 167722635264,
+  "observed_disk_free_increase_bytes": 32701513728
+}

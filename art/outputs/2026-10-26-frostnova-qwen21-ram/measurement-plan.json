@@ -1,0 +1,12 @@
+{
+  "claim": "Single observed FrostNova Desktop initiated Qwen 2.1 normal T2I run: sampled RAM footprint and system pressure by phase, not a benchmark comparison or guaranteed minimum RAM.",
+  "interval_seconds": 5,
+  "metrics": "Process physical footprint and RSS; system available RAM, compression, swap and pressure. Unified CPU/GPU RAM must not be added twice.",
+  "logical_cpus": 14,
+  "initial_load_average": [
+    3.52734375,
+    3.7177734375,
+    3.84375
+  ],
+  "started_at": 1792978820.00206
+}

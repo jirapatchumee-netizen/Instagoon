@@ -1,0 +1,55 @@
+{
+  "claim": "One observed installed-app foreground render; no controlled before/after performance or savings claim.",
+  "sample_interval_seconds": 5,
+  "samples_in_task_window": 60,
+  "first_sample": {
+    "seconds": -16.547582864761353,
+    "phase": "before_frostnova_task",
+    "available_GiB": 44.97093200683594,
+    "swap_GiB": 4.104736328125,
+    "pressure_level": 1,
+    "compressed_GiB": 0.6673736572265625,
+    "frostnova_ui_rss_GiB": 0.0,
+    "frostnova_ui_physical_footprint_GiB": 0.0,
+    "frostnova_runtime_rss_GiB": 0.0,
+    "frostnova_runtime_physical_footprint_GiB": 0.0,
+    "ollama_rss_GiB": 1.6498565673828125,
+    "ollama_physical_footprint_GiB": 1.409549966454506,
+    "comfy_qwen21_rss_GiB": 0.0,
+    "comfy_qwen21_physical_footprint_GiB": 0.0,
+    "loaded_models": "embeddinggemma-2:740m-mxfp8"
+  },
+  "last_sample": {
+    "seconds": 285.7118978500366,
+    "phase": "complete",
+    "available_GiB": 29.94671630859375,
+    "swap_GiB": 5.55645751953125,
+    "pressure_level": 1,
+    "compressed_GiB": 3.234710693359375,
+    "frostnova_ui_rss_GiB": 0.0897369384765625,
+    "frostnova_ui_physical_footprint_GiB": 0.08868524432182312,
+    "frostnova_runtime_rss_GiB": 0.0829925537109375,
+    "frostnova_runtime_physical_footprint_GiB": 0.0860450267791748,
+    "ollama_rss_GiB": 3.28643798828125,
+    "ollama_physical_footprint_GiB": 19.623728543519974,
+    "comfy_qwen21_rss_GiB": 0.0,
+    "comfy_qwen21_physical_footprint_GiB": 0.0,
+    "loaded_models": "embeddinggemma-2:740m-mxfp8;nemotron-3.5-lightning:30b-a3b-mlx"
+  },
+  "minimum_available_GiB": 14.63006591796875,
+  "peak_swap_GiB": 5.58770751953125,
+  "peak_compressed_GiB": 28.670623779296875,
+  "pressure_levels": [
+    1,
+    2
+  ],
+  "comfy_samples": 37,
+  "comfy_samples_with_resident_ollama_models": 0,
+  "process_peak_physical_footprint_GiB": {
+    "frostnova_ui": 0.08868524432182312,
+    "frostnova_runtime": 0.09819153696298599,
+    "ollama": 32.996310129761696,
+    "comfy_qwen21": 37.88329415768385
+  },
+  "caveat": "Independent process peaks are not additive. Five-second sampling can miss shorter transitions; app receipt records admission and cleanup. Unified CPU/MPS memory is one pool."
+}

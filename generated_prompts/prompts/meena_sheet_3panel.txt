@@ -1,0 +1,15 @@
+# คุณมีนา (Meena) - 3-Panel Reference Sheet (Front Neck-to-toe / Back / Face)
+# Resolution: 1536x864 (16:9 Landscape)
+# Recommended Model: SDXL / Illustrious / FLUX
+
+masterpiece, best quality, ultra-detailed, professional character reference sheet, three tall vertical panels arranged left-to-right in a single row, 1girl, meena_secretary, 26 years old.
+
+[LEFT PANEL - FRONT OUTFIT & BODY VIEW, FACE EXCLUDED]: Front-facing character view framed intentionally from the base of the neck to the soles of the shoes. Show the character completely from neck to toe, with the full shoulders, torso, arms, hands, waist, legs, and shoes fully visible inside the frame without any cropping below the neck. The upper frame boundary starts strictly at the base of the neck immediately above the collar and shoulder line. Completely exclude the face, chin, mouth, nose, eyes, eyebrows, ears, hair, hairline, scalp, and all parts of the head. The missing head is an intentional framing choice for costume inspection and must not be replaced with a mannequin, blank head, silhouette, mask, blur, or shadow. Exhibiting complete outfit details: beige tailored double-breasted suit, silk camisole, holding leather folder, precise garment tailoring, crisp seams, fabric texture, uncropped hands at sides, legs, and complete footwear.
+
+[MIDDLE PANEL - COMPLETE FULL-BODY BACK VIEW]: Full-body shot showing the character completely from head to toe, with the top of the head and shoes fully visible inside the frame without any cropping. Straight neutral back-facing pose showing complete rear hairstyle, head shape, back collar, shoulder construction, rear seams of beige tailored double-breasted suit, silk camisole, holding leather folder, rear waistband, skirt/trousers drape, legs, heels, and soles of shoes. Scale, height, and body proportions strictly identical to the left panel.
+
+[RIGHT PANEL - CLOSE-UP FACE PORTRAIT]: Detailed close-up beauty portrait showing the complete head, face, neck, and upper collar of the exact same character. gorgeous executive secretary, wavy chocolate brown long hair, calm hazel eyes, seductive elegance, refined facial features, accurate eye color and shape, clear eyelashes, natural skin texture, serene neutral expression, front-facing eye contact with camera, sharp focus on eyes, hairline, and hair accessories.
+
+[PRESENTATION & LIGHTING]: Neutral light grey studio background in all three panels. Soft studio product photography lighting, subtle grounded contact shadows under feet. Even white balance, crisp garment edges, seamless studio reference look, no dramatic perspective distortion.
+
+[PRESERVATION & CONSTRAINTS]: Strictly maintain identical proportions, identity, and clothing across all panels. The left panel represents the exact same character with identical body, skin tone, and costume. Negative: lowres, bad anatomy, bad hands, text, error, extra limbs, cropped shoes, mannequin head, face on left panel, measurement lines, watermark, logo, ui elements, background scenery, furniture.

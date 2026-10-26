@@ -1,0 +1,22 @@
+{
+  "id": "rhea",
+  "display": "คุณหนู เร-อา (Rhea)",
+  "age": 26,
+  "render": true,
+  "identity": {
+    "summary": "Rhea, a 26-year-old Thai woman with snow-pale flawless skin, cold icy blue eyes and a haughty queenly gaze. Her hair is long, silky and black with a silver sheen. She wears a simple elegant diamond necklace."
+  },
+  "default_outfit": "office",
+  "outfits": {
+    "office": "a bespoke black tailored suit over a black silk blouse"
+  },
+  "expressions": {
+    "normal": {
+      "used": false,
+      "text": "a cool detached expression looking down at the viewer"
+    }
+  },
+  "inferred": [
+    "age: canon says future CEO only"
+  ]
+}

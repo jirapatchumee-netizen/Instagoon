@@ -1,0 +1,68 @@
+{
+  "bg_server_room_dark": {
+    "kind": "bg",
+    "text": "a dim basement server room with tall black server racks full of blinking cyan and green LEDs, bundles of network cables on the floor and an old CRT monitor glowing phosphor green in the corner",
+    "light": "low-key lighting with a green screen glow and cyan LED accents",
+    "time": "night"
+  },
+  "bg_marketing_office": {
+    "kind": "bg",
+    "text": "a bright modern open-plan marketing office on the second floor with wooden desks, computer monitors, a large window and a potted plant",
+    "light": "soft warm morning sunlight through the window",
+    "time": "morning"
+  },
+  "bg_under_desk": {
+    "kind": "bg",
+    "text": "the narrow space underneath a wooden office desk seen from floor level, with a power strip, tangled cables, a PC tower and a small pink wallet lying on the floor",
+    "light": "dim, soft ambient daylight from the side",
+    "time": "morning"
+  },
+  "bg_hr_corridor": {
+    "kind": "bg",
+    "text": "a modern corporate corridor on the fourth floor with tall glass partitions and a polished floor",
+    "light": "cool lighting with a violet ambient tone",
+    "time": "day"
+  },
+  "bg_day_transition": {
+    "kind": "card",
+    "render": false,
+    "note": "Procedural title card (SVG)."
+  },
+  "bg_bad_end_pdpa": {
+    "kind": "card",
+    "render": false,
+    "note": "Procedural end card (SVG)."
+  },
+  "bg_cg_noey_catmaid": {
+    "kind": "cg",
+    "cast": [
+      {
+        "id": "noey",
+        "outfit": "catmaid",
+        "expression": "blush",
+        "pose": "making a cat-paw gesture with one hand raised and leaning slightly toward the viewer, as if posing for a photograph"
+      }
+    ],
+    "text": "a dim server room softly blurred in the background with pink and magenta bokeh",
+    "light": "soft romantic studio backlight",
+    "camera": "medium shot, framed like a camera viewfinder portrait",
+    "time": "night",
+    "beat": "First cosplay photo. Noey is shy but enjoying it."
+  },
+  "bg_cg_noey_lingerie": {
+    "kind": "cg",
+    "cast": [
+      {
+        "id": "noey",
+        "outfit": "midnight",
+        "expression": "blush",
+        "pose": "holding out a glowing golden electronic keycard toward the viewer with a trusting look"
+      }
+    ],
+    "text": "a late-night server room softly blurred in the background",
+    "light": "warm romantic backlight with deep burgundy and lavender tones",
+    "camera": "close-up portrait",
+    "time": "night",
+    "beat": "Noey hands over the HR master keycard. Sweet and trusting, R-15, nothing explicit."
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "claim": "Single observed installed FrostNova render_image foreground operation: sampled RAM footprint and system pressure by phase, not a benchmark comparison or guaranteed minimum RAM.",
+  "interval_seconds": 5,
+  "metrics": "Process physical footprint and RSS; system available RAM, compression, swap and pressure. Unified CPU/GPU RAM must not be added twice.",
+  "logical_cpus": 14,
+  "initial_load_average": [
+    3.9677734375,
+    3.833984375,
+    4.06396484375
+  ],
+  "started_at": 1792981890.88397
+}

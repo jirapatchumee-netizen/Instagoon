@@ -1,0 +1,23 @@
+{
+  "id": "sp_pim_strict",
+  "kind": "sprite",
+  "asset": "pim:strict",
+  "cast": [
+    {
+      "id": "pim",
+      "outfit": "office",
+      "expression": "strict",
+      "pose": "standing relaxed, hands resting naturally in front"
+    }
+  ],
+  "mode": "i2i",
+  "source": "sp_pim_normal",
+  "denoise": 0.45,
+  "beat": "",
+  "preset": "zit-i2i-544x960-v1",
+  "seed": 124966671,
+  "status": "todo",
+  "approved": null,
+  "versions": [],
+  "feedback": []
+}

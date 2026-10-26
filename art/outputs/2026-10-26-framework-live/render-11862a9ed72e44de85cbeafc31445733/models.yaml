@@ -1,0 +1,5 @@
+local_models:
+  base_path: "/Users/macminim4pro/ComfyUI/models"
+  diffusion_models: diffusion_models
+  text_encoders: text_encoders
+  vae: vae

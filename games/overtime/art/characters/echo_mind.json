@@ -1,0 +1,6 @@
+{
+  "id": "echo_mind",
+  "display": "Echo Mind",
+  "render": false,
+  "note": "AI terminal. Keep as a UI/terminal graphic, not a rendered character."
+}

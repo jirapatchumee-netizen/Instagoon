@@ -1,0 +1,15 @@
+{
+  "id": "bg_hr_corridor",
+  "kind": "bg",
+  "asset": "bg_hr_corridor",
+  "cast": [],
+  "location": "bg_hr_corridor",
+  "beat": "",
+  "mode": "t2i",
+  "preset": "zit-t2i-544x960-v1",
+  "seed": 136912146,
+  "status": "todo",
+  "approved": null,
+  "versions": [],
+  "feedback": []
+}

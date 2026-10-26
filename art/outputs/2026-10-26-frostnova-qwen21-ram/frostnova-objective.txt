@@ -1,0 +1,14 @@
+ทดสอบเรนเดอร์ Qwen Image 2.1 T2I รุ่นปกติผ่าน FrostNova Desktop เพื่อวัด RAM หนึ่งรอบ ได้รับอนุญาตให้รันแล้ว เป้าหมายคือสร้างภาพเนย 544x960 ด้วย workflow ที่ทดสอบผ่าน โดยไม่เปลี่ยนโมเดลหรือการตั้งค่าแอป และไม่ unload โมเดลภาษาที่ใช้งานอยู่ เพราะต้องวัดการใช้ร่วมกันตามจริง
+
+ให้ใช้ shell หรือ terminal_session รันคำสั่งนี้เพียงครั้งเดียว แล้ว poll session จนจบ:
+"/Users/macminim4pro/ComfyUI/venv/bin/python" -u "/Users/macminim4pro/FrostNova/FrostNovaWorkspace/projects/Visual Novel/art/outputs/2026-10-26-frostnova-qwen21-ram/run_pipeline.py"
+
+สคริปต์เตรียมไว้แล้ว จะเปิด ComfyUI รุ่นรองรับใน scratch บนพอร์ต 8190 ใช้โมเดล BF16 ที่โหลดครบแล้ว สร้าง 1 ภาพ เก็บผล และปิด server ทดสอบเอง ห้ามแก้หรือเขียนสคริปต์ทับ ห้ามใช้ comfy_generate ที่เลิกใช้ ห้ามรันคำสั่งโหลดโมเดลอื่นเพิ่ม ห้ามแตะบริการ 8188 หรือข้อมูลลับ ห้ามเริ่ม render ซ้ำ สคริปต์จะค้างประมาณหลายนาทีเพราะโหลดโมเดลและเรนเดอร์ ให้รอ ไม่ต้องถามยืนยันซ้ำ
+
+Input paths ที่อนุญาต:
+/Users/macminim4pro/FrostNova/FrostNovaWorkspace/projects/Visual Novel/art/outputs/2026-10-26-frostnova-qwen21-ram/run_pipeline.py
+/Users/macminim4pro/FrostNova/FrostNovaWorkspace/projects/Visual Novel/art/outputs/2026-10-26-qwen21-t2i-544x960-v1/workflow-api.json
+Output directory:
+/Users/macminim4pro/FrostNova/FrostNovaWorkspace/projects/Visual Novel/art/outputs/2026-10-26-frostnova-qwen21-ram
+
+หลัง process exit ให้ตรวจอ่าน /Users/macminim4pro/FrostNova/FrostNovaWorkspace/projects/Visual Novel/art/outputs/2026-10-26-frostnova-qwen21-ram/receipt.json และ /Users/macminim4pro/FrostNova/FrostNovaWorkspace/projects/Visual Novel/art/outputs/2026-10-26-frostnova-qwen21-ram/history.json ยืนยัน success และบอก output image path หาก error ให้รายงาน error.json และ server.log ห้ามอ้างว่าสำเร็จหากยังไม่ได้ไฟล์ ไม่มีงานแก้โค้ดหรือติดตั้งโมเดลในงานนี้ ตัว monitor RAM ถูกเปิดจากภายนอกไว้แล้ว ไม่ต้องสร้าง monitor อีก

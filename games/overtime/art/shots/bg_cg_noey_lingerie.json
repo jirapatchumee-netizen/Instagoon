@@ -1,0 +1,23 @@
+{
+  "id": "bg_cg_noey_lingerie",
+  "kind": "cg",
+  "asset": "bg_cg_noey_lingerie",
+  "cast": [
+    {
+      "id": "noey",
+      "outfit": "midnight",
+      "expression": "blush",
+      "pose": "holding out a glowing golden electronic keycard toward the viewer with a trusting look"
+    }
+  ],
+  "location": "bg_cg_noey_lingerie",
+  "camera": "close-up portrait",
+  "beat": "Noey hands over the HR master keycard. Sweet and trusting, R-15, nothing explicit.",
+  "mode": "t2i",
+  "preset": "zit-t2i-544x960-v1",
+  "seed": 240568307,
+  "status": "todo",
+  "approved": null,
+  "versions": [],
+  "feedback": []
+}

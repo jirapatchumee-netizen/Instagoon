@@ -1,0 +1,15 @@
+{
+  "id": "bg_marketing_office",
+  "kind": "bg",
+  "asset": "bg_marketing_office",
+  "cast": [],
+  "location": "bg_marketing_office",
+  "beat": "",
+  "mode": "t2i",
+  "preset": "zit-t2i-544x960-v1",
+  "seed": 7722643,
+  "status": "todo",
+  "approved": null,
+  "versions": [],
+  "feedback": []
+}

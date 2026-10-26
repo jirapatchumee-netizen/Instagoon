@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "seed": 131205586,
+  "preset": "zit-t2i-544x960-v1",
+  "mode": "t2i",
+  "prompt": "Vertical 9:16 soft glossy romance manhwa visual novel background illustration, no text overlay, no people faces, intimate first-person POV from floor level crawling under a modern office desk, dramatic low-angle camera close to the floor as if checking computer cables. In crisp sharp foreground focus: a black power strip with several plugs and neatly visible cables beside a small pastel pink wallet, an anonymous fictional ID card partly protruding from the wallet slot, card has a generic blurred portrait silhouette and abstract unreadable lines with no legible personal information. In the softly blurred background with shallow depth of field: black legs and wheels of an office chair, lower legs of an adult office worker wearing a modest navy blue pencil skirt and dark tights, fully clothed, no exposed skin emphasis, wooden desk underside above, bright modern marketing office softly lit by morning daylight from the side. Suspenseful but tasteful visual novel composition, detailed anime illustration, restrained cinematic lighting, power strip and pink wallet dominate center lower foreground, background bokeh, believable perspective, clean coherent anatomy and objects.",
+  "promptHash": "fcd779e2d7b1cb1bc016b30971ded75b1908b2c0",
+  "render": {
+    "width": 544,
+    "height": 960,
+    "sha256": "84266856dcf213e8f0a10d1e6e762591c0e21d2ff4a60fba3fd51254d9fdd03d"
+  },
+  "created": "2026-10-26T14:24:45Z"
+}

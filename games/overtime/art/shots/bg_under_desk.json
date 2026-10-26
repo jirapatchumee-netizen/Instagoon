@@ -1,0 +1,31 @@
+{
+  "id": "bg_under_desk",
+  "kind": "cg",
+  "asset": "bg_under_desk",
+  "cast": [],
+  "location": "bg_under_desk",
+  "camera": "first-person floor-level POV under narrow wooden office desk, anime hand aiming smartphone downward at floor",
+  "beat": "Arm holding smartphone photographing Noey's polite ID card beside pink wallet on floor, while Noey stands by desk reaching for power button.",
+  "mode": "t2i",
+  "preset": "zit-t2i-544x960-v1",
+  "seed": 131205590,
+  "status": "approved",
+  "approved": 2,
+  "versions": [
+    {
+      "v": 1,
+      "seed": 20261070,
+      "prompt": "first-person POV holding modern smartphone taking photo of cute girl's ID card...",
+      "file": "/art/stage1/Cutscene_S1_02_Phone_Snap_ID_00001_.png",
+      "created": "2026-10-26T21:39:25+07:00"
+    },
+    {
+      "v": 2,
+      "seed": 131205590,
+      "prompt": "Vertical 9:16 soft glossy anime manhwa visual novel illustration, clean anime line art, cel-shaded 2D anime aesthetic, first-person floor-level POV from under narrow wooden office desk. Anime hand holding sleek smartphone aiming camera downward at the floor. On the light-colored floor, a cute pastel pink leather wallet is lying beside black power cables, with a fictional employee ID card partly sticking out. The smartphone screen shows a camera viewfinder app capturing the pink wallet and ID card on the floor with autofocus reticle. On the ID card is a modest, polite, official standard ID photo of cute 21-year-old anime girl Noey with caramel brown side ponytail and magenta eyes, wearing a neat buttoned white collared office shirt, sweet innocent smile, not sexy, completely professional and modest ID photo. In the soft blurry background under the desk: the office floor, desk leg, and the blurred silhouette of Noey in navy skirt reaching up to the desk above. Warm peach-tinted ambient morning office lighting, coherent visual novel anime CG, sharp clean lines, masterpiece quality",
+      "file": "/art/stage1/Cutscene_S1_02_Phone_Snap_UnderDesk_00001_.png",
+      "created": "2026-10-26T21:52:20+07:00"
+    }
+  ],
+  "feedback": []
+}

@@ -1,0 +1,23 @@
+{
+  "id": "rinda",
+  "display": "คุณรินดา (Rinda)",
+  "age": 28,
+  "render": true,
+  "identity": {
+    "summary": "Rinda, a 28-year-old Thai woman with a chic intelligent look, sharp amber-gold eyes and a confident half smile. Her hair is dark brown in a chin-to-shoulder-length bob cut, and she wears a thin silver necklace."
+  },
+  "default_outfit": "office",
+  "outfits": {
+    "office": "a formal charcoal-grey waistcoat over a white collared shirt with the sleeves rolled up"
+  },
+  "expressions": {
+    "smirk": {
+      "used": false,
+      "text": "a calculating confident smirk, head tilted slightly"
+    },
+    "normal": {
+      "used": false,
+      "text": "a composed analytical expression looking at the viewer"
+    }
+  }
+}

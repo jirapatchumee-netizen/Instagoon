@@ -1,0 +1,10 @@
+{
+  "profile_id": "qwen21-normal-managed-v1",
+  "core_path": "/Users/macminim4pro/FrostNova/FrostNovaWorkspace/tools/comfyui-render",
+  "core_revision": "fe298e4e20f1ff26d30e8639267bbd0b57811390",
+  "runtime_dependencies_path": "/Users/macminim4pro/FrostNova/FrostNovaWorkspace/tools/comfyui-render/.runtime-deps",
+  "python": "/Users/macminim4pro/ComfyUI/venv/bin/python",
+  "models_path": "/Users/macminim4pro/ComfyUI/models",
+  "port": 8190,
+  "lifecycle": "start per render; stop owned process after result; preserve primary port 8188"
+}

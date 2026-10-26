@@ -1,0 +1,12 @@
+{
+  "id": "noey-soft-romance-v1",
+  "canvas": [
+    544,
+    960
+  ],
+  "short": "Soft glossy romance manhwa illustration, vertical 9:16 portrait",
+  "detail_file": "../../../art/styles/noey-soft-romance-v1/style-prompt.txt",
+  "reference_file": "../../../art/styles/noey-soft-romance-v1/reference.png",
+  "negative_file": "../../../art/styles/noey-soft-romance-v1/negative-prompt.txt",
+  "note": "Z-Image-Turbo runs at CFG 1 and the workflow zeroes the negative conditioning, so negative text has no effect. State every constraint positively inside the prompt."
+}

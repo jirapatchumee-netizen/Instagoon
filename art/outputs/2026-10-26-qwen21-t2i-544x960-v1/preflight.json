@@ -1,0 +1,14 @@
+{
+  "core_revision": "fe298e4e",
+  "server_port": 8190,
+  "original_service_port": 8188,
+  "requested_size": [
+    544,
+    960
+  ],
+  "mode": "normal T2I, prompt only, no image reference conditioning",
+  "style_id": "noey-soft-romance-v1",
+  "steps": 25,
+  "cfg": 1,
+  "seed": 20261026
+}

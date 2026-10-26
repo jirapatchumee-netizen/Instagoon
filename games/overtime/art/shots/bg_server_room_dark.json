@@ -1,0 +1,15 @@
+{
+  "id": "bg_server_room_dark",
+  "kind": "bg",
+  "asset": "bg_server_room_dark",
+  "cast": [],
+  "location": "bg_server_room_dark",
+  "beat": "",
+  "mode": "t2i",
+  "preset": "zit-t2i-544x960-v1",
+  "seed": 239706419,
+  "status": "todo",
+  "approved": null,
+  "versions": [],
+  "feedback": []
+}

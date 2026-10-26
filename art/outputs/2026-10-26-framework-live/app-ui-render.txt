@@ -1,0 +1,6 @@
+The following is a diff from the previous accessibility tree for Window: "FrostNova Desktop" with ~ and + representing changed and added elements, respectively. Removed elements are summarized by ID range.
+~			55 text Rendering image
++					65 button Description: Step 2, Render Image, running, Help: render_image
+~			61 text Value: Run status: Running render_image, step 1, unlimited, Help: Last inference: reported prompt tokens, cache reuse, and time to first response. An em dash means the server did not report a value.
+~			37 text Help: Prompt tokens are reported by the model server. The app budget is UTF-8 bytes used to prepare history, with space reserved for tools and output. Server token capacity is not reported here., Value: 11464 prompt tokens. App UTF-8 byte budget 65,536 bytes. 0 older turns omitted. Server token capacity unknown.
+The focused UI element is 8 text field (settable) Description: Search task titles, Placeholder: Search tasks

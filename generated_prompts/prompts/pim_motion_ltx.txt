@@ -1,0 +1,7 @@
+# คุณพิมพ์ (Pim) - Motion CG: Pim HR Archive Confrontation (5s)
+# Resolution: 1280x720 (16:9 Video @ 24fps)
+# Recommended Model: LTX-Video 2.5 Distilled GGUF
+
+0.0s - 2.0s: Low-angle tracking shot along archive filing cabinets towards Pim, shadows slicing across her stern face from window blinds.
+2.0s - 3.5s: Hand reaches up in slow motion to adjust red glasses, eyes widening as secret folder slips from fingers.
+3.5s - 5.0s: Fast camera push-in on her face, sudden vulnerability shattering her strict composure, rapid shallow breathing, dramatic cinematic lighting shift.

@@ -1,0 +1,104 @@
+{
+  "1": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "qwen_image_2.1_bf16.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "2": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "qwen3vl_8b_bf16.safetensors",
+      "type": "qwen_image",
+      "device": "cpu"
+    }
+  },
+  "3": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "qwen_image_2.1_vae_bf16.safetensors"
+    }
+  },
+  "4": {
+    "class_type": "TextEncodeQwenImage21",
+    "inputs": {
+      "clip": [
+        "2",
+        0
+      ],
+      "prompt": "A single adult Thai woman, Noey, age 21, caramel brown hair in a long side ponytail with a pink scrunchie, magenta eyes, friendly warm smile. She stands in an office doorway, head gently tilted, one hand at her hip and the other arm resting against the doorframe. Neatly buttoned opaque white short-sleeved office blouse with a high collar and pink ribbon tie, navy blue pleated skirt just above the knees. Natural adult proportions. Eye-level portrait framed from head to knees. Fine clean brown-purple line art with restrained contour weight, soft glossy romance manhwa illustration, simple expressive adult character design, cel shadow shapes blended with gentle airbrush gradients, smooth peach-pink skin shading, controlled broad hair highlights, subtle fabric sheen, soft blooming backlight from upper left, lavender-violet ambient shadows, uncluttered simplified background, sparse floating dust sparkles, polished two-dimensional illustration. Soft peach and lavender office doorway background. Clean illustration without lettering.",
+      "negative_prompt": "",
+      "resolution": 1024
+    }
+  },
+  "5": {
+    "class_type": "EmptyLatentImage",
+    "inputs": {
+      "width": 544,
+      "height": 960,
+      "batch_size": 1
+    }
+  },
+  "6": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "9",
+        0
+      ],
+      "positive": [
+        "4",
+        0
+      ],
+      "negative": [
+        "4",
+        1
+      ],
+      "latent_image": [
+        "5",
+        0
+      ],
+      "seed": 20261026,
+      "steps": 25,
+      "cfg": 1.0,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 1.0
+    }
+  },
+  "7": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "6",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ]
+    }
+  },
+  "8": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "7",
+        0
+      ],
+      "filename_prefix": "noey_qwen21_t2i_544x960"
+    }
+  },
+  "9": {
+    "class_type": "QwenImage21Cache",
+    "inputs": {
+      "model": [
+        "1",
+        0
+      ],
+      "device": "auto",
+      "dtype": "default"
+    }
+  }
+}

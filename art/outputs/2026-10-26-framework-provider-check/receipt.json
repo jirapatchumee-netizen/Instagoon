@@ -1,0 +1,40 @@
+{
+  "probe_model": "embeddinggemma-2:740m-mxfp8",
+  "before": {
+    "models": []
+  },
+  "loaded": {
+    "models": [
+      {
+        "name": "embeddinggemma-2:740m-mxfp8",
+        "model": "embeddinggemma-2:740m-mxfp8",
+        "size": 1332329060,
+        "digest": "a4efd357164f4bb30a45b0f0e7bc45e8dfa5be181de738c3227426624b3f8189",
+        "details": {
+          "parent_model": "",
+          "format": "safetensors",
+          "family": "",
+          "families": null,
+          "parameter_size": "",
+          "quantization_level": "mxfp8"
+        },
+        "expires_at": "2026-10-26T09:18:08.212126+07:00",
+        "size_vram": 1332329060,
+        "context_length": 8192,
+        "runner": "mlx"
+      }
+    ]
+  },
+  "release_response": {
+    "model": "embeddinggemma-2:740m-mxfp8",
+    "created_at": "2026-10-26T02:17:38.214182Z",
+    "response": "",
+    "done": true,
+    "done_reason": "unload"
+  },
+  "after": {
+    "models": []
+  },
+  "verified": true,
+  "note": "Only the model loaded by this probe was released; no render was started."
+}

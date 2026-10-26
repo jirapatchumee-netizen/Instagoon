@@ -1,0 +1,377 @@
+[
+  {
+    "seq": 3518,
+    "type": "resource_waiting",
+    "role": "embedding",
+    "task": "5436a0dc4a5a4378aad4e7e425f25260",
+    "at": 1792982342.3335
+  },
+  {
+    "seq": 3519,
+    "type": "resource_admission",
+    "role": "embedding",
+    "wait_ms": 4180.95,
+    "task": "5436a0dc4a5a4378aad4e7e425f25260",
+    "at": 1792982346.5144691
+  },
+  {
+    "seq": 3525,
+    "type": "resource_admission",
+    "role": "reasoning",
+    "wait_ms": 0.01,
+    "task": "5436a0dc4a5a4378aad4e7e425f25260",
+    "at": 1792982346.677305
+  },
+  {
+    "seq": 3528,
+    "type": "resource_admission",
+    "role": "render_image",
+    "wait_ms": 0.01,
+    "task": "5436a0dc4a5a4378aad4e7e425f25260",
+    "at": 1792982373.703987
+  },
+  {
+    "seq": 3529,
+    "type": "render_progress",
+    "operation_id": "11862a9ed72e44de85cbeafc31445733",
+    "phase": "release_models",
+    "message": "Releasing local models for image rendering",
+    "task": "5436a0dc4a5a4378aad4e7e425f25260",
+    "at": 1792982373.706729
+  },
+  {
+    "seq": 3530,
+    "type": "render_residency",
+    "phase": "snapshot",
+    "roles": [
+      {
+        "role": "agent",
+        "model": "nemotron-3.5-lightning:30b-a3b-mlx",
+        "enabled": true,
+        "installed": true,
+        "loaded": true,
+        "size": 19301747692
+      },
+      {
+        "role": "vision",
+        "model": "nemotron-3.5-bolt:e4b-mlx-bf16",
+        "enabled": true,
+        "installed": true,
+        "loaded": false,
+        "size": 0
+      },
+      {
+        "role": "embedding",
+        "model": "embeddinggemma-2:740m-mxfp8",
+        "enabled": true,
+        "installed": true,
+        "loaded": true,
+        "size": 1332329060
+      }
+    ],
+    "task": "5436a0dc4a5a4378aad4e7e425f25260",
+    "at": 1792982373.7853298
+  },
+  {
+    "seq": 3531,
+    "type": "render_residency",
+    "phase": "released",
+    "roles": [
+      {
+        "role": "agent",
+        "model": "nemotron-3.5-lightning:30b-a3b-mlx",
+        "enabled": true,
+        "installed": true,
+        "loaded": false,
+        "size": 0
+      },
+      {
+        "role": "vision",
+        "model": "nemotron-3.5-bolt:e4b-mlx-bf16",
+        "enabled": true,
+        "installed": true,
+        "loaded": false,
+        "size": 0
+      },
+      {
+        "role": "embedding",
+        "model": "embeddinggemma-2:740m-mxfp8",
+        "enabled": true,
+        "installed": true,
+        "loaded": false,
+        "size": 0
+      }
+    ],
+    "task": "5436a0dc4a5a4378aad4e7e425f25260",
+    "at": 1792982374.1407628
+  },
+  {
+    "seq": 3532,
+    "type": "render_progress",
+    "operation_id": "11862a9ed72e44de85cbeafc31445733",
+    "phase": "start_backend",
+    "message": "Starting image renderer",
+    "task": "5436a0dc4a5a4378aad4e7e425f25260",
+    "at": 1792982374.160578
+  },
+  {
+    "seq": 3533,
+    "type": "render_progress",
+    "operation_id": "11862a9ed72e44de85cbeafc31445733",
+    "phase": "submit",
+    "message": "Submitting image render",
+    "task": "5436a0dc4a5a4378aad4e7e425f25260",
+    "at": 1792982379.516351
+  },
+  {
+    "seq": 3534,
+    "type": "render_progress",
+    "operation_id": "11862a9ed72e44de85cbeafc31445733",
+    "phase": "render",
+    "message": "Rendering image; Stop cancels this job",
+    "task": "5436a0dc4a5a4378aad4e7e425f25260",
+    "at": 1792982379.5205078
+  },
+  {
+    "seq": 3535,
+    "type": "render_progress",
+    "operation_id": "11862a9ed72e44de85cbeafc31445733",
+    "phase": "render",
+    "message": "Rendering image",
+    "elapsed_seconds": 6,
+    "task": "5436a0dc4a5a4378aad4e7e425f25260",
+    "at": 1792982379.527812
+  },
+  {
+    "seq": 3536,
+    "type": "render_progress",
+    "operation_id": "11862a9ed72e44de85cbeafc31445733",
+    "phase": "render",
+    "message": "Rendering image",
+    "elapsed_seconds": 16,
+    "task": "5436a0dc4a5a4378aad4e7e425f25260",
+    "at": 1792982389.58773
+  },
+  {
+    "seq": 3537,
+    "type": "render_progress",
+    "operation_id": "11862a9ed72e44de85cbeafc31445733",
+    "phase": "render",
+    "message": "Rendering image",
+    "elapsed_seconds": 26,
+    "task": "5436a0dc4a5a4378aad4e7e425f25260",
+    "at": 1792982399.653036
+  },
+  {
+    "seq": 3538,
+    "type": "render_progress",
+    "operation_id": "11862a9ed72e44de85cbeafc31445733",
+    "phase": "render",
+    "message": "Rendering image",
+    "elapsed_seconds": 36,
+    "task": "5436a0dc4a5a4378aad4e7e425f25260",
+    "at": 1792982409.7218401
+  },
+  {
+    "seq": 3539,
+    "type": "render_progress",
+    "operation_id": "11862a9ed72e44de85cbeafc31445733",
+    "phase": "render",
+    "message": "Rendering image",
+    "elapsed_seconds": 46,
+    "task": "5436a0dc4a5a4378aad4e7e425f25260",
+    "at": 1792982419.78444
+  },
+  {
+    "seq": 3540,
+    "type": "render_progress",
+    "operation_id": "11862a9ed72e44de85cbeafc31445733",
+    "phase": "render",
+    "message": "Rendering image",
+    "elapsed_seconds": 56,
+    "task": "5436a0dc4a5a4378aad4e7e425f25260",
+    "at": 1792982429.842985
+  },
+  {
+    "seq": 3541,
+    "type": "render_progress",
+    "operation_id": "11862a9ed72e44de85cbeafc31445733",
+    "phase": "render",
+    "message": "Rendering image",
+    "elapsed_seconds": 66,
+    "task": "5436a0dc4a5a4378aad4e7e425f25260",
+    "at": 1792982439.9062788
+  },
+  {
+    "seq": 3542,
+    "type": "render_progress",
+    "operation_id": "11862a9ed72e44de85cbeafc31445733",
+    "phase": "render",
+    "message": "Rendering image",
+    "elapsed_seconds": 76,
+    "task": "5436a0dc4a5a4378aad4e7e425f25260",
+    "at": 1792982449.9660769
+  },
+  {
+    "seq": 3543,
+    "type": "render_progress",
+    "operation_id": "11862a9ed72e44de85cbeafc31445733",
+    "phase": "render",
+    "message": "Rendering image",
+    "elapsed_seconds": 86,
+    "task": "5436a0dc4a5a4378aad4e7e425f25260",
+    "at": 1792982460.026727
+  },
+  {
+    "seq": 3544,
+    "type": "render_progress",
+    "operation_id": "11862a9ed72e44de85cbeafc31445733",
+    "phase": "render",
+    "message": "Rendering image",
+    "elapsed_seconds": 96,
+    "task": "5436a0dc4a5a4378aad4e7e425f25260",
+    "at": 1792982470.086754
+  },
+  {
+    "seq": 3545,
+    "type": "render_progress",
+    "operation_id": "11862a9ed72e44de85cbeafc31445733",
+    "phase": "render",
+    "message": "Rendering image",
+    "elapsed_seconds": 106,
+    "task": "5436a0dc4a5a4378aad4e7e425f25260",
+    "at": 1792982480.144685
+  },
+  {
+    "seq": 3546,
+    "type": "render_progress",
+    "operation_id": "11862a9ed72e44de85cbeafc31445733",
+    "phase": "render",
+    "message": "Rendering image",
+    "elapsed_seconds": 117,
+    "task": "5436a0dc4a5a4378aad4e7e425f25260",
+    "at": 1792982490.208676
+  },
+  {
+    "seq": 3547,
+    "type": "render_progress",
+    "operation_id": "11862a9ed72e44de85cbeafc31445733",
+    "phase": "render",
+    "message": "Rendering image",
+    "elapsed_seconds": 127,
+    "task": "5436a0dc4a5a4378aad4e7e425f25260",
+    "at": 1792982500.267953
+  },
+  {
+    "seq": 3548,
+    "type": "render_progress",
+    "operation_id": "11862a9ed72e44de85cbeafc31445733",
+    "phase": "render",
+    "message": "Rendering image",
+    "elapsed_seconds": 137,
+    "task": "5436a0dc4a5a4378aad4e7e425f25260",
+    "at": 1792982510.332054
+  },
+  {
+    "seq": 3549,
+    "type": "render_progress",
+    "operation_id": "11862a9ed72e44de85cbeafc31445733",
+    "phase": "render",
+    "message": "Rendering image",
+    "elapsed_seconds": 147,
+    "task": "5436a0dc4a5a4378aad4e7e425f25260",
+    "at": 1792982520.388899
+  },
+  {
+    "seq": 3550,
+    "type": "render_progress",
+    "operation_id": "11862a9ed72e44de85cbeafc31445733",
+    "phase": "render",
+    "message": "Rendering image",
+    "elapsed_seconds": 157,
+    "task": "5436a0dc4a5a4378aad4e7e425f25260",
+    "at": 1792982530.4484842
+  },
+  {
+    "seq": 3551,
+    "type": "render_progress",
+    "operation_id": "11862a9ed72e44de85cbeafc31445733",
+    "phase": "render",
+    "message": "Rendering image",
+    "elapsed_seconds": 167,
+    "task": "5436a0dc4a5a4378aad4e7e425f25260",
+    "at": 1792982540.5022788
+  },
+  {
+    "seq": 3552,
+    "type": "render_progress",
+    "operation_id": "11862a9ed72e44de85cbeafc31445733",
+    "phase": "render",
+    "message": "Rendering image",
+    "elapsed_seconds": 177,
+    "task": "5436a0dc4a5a4378aad4e7e425f25260",
+    "at": 1792982550.553779
+  },
+  {
+    "seq": 3553,
+    "type": "render_progress",
+    "operation_id": "11862a9ed72e44de85cbeafc31445733",
+    "phase": "render",
+    "message": "Rendering image",
+    "elapsed_seconds": 187,
+    "task": "5436a0dc4a5a4378aad4e7e425f25260",
+    "at": 1792982560.609043
+  },
+  {
+    "seq": 3554,
+    "type": "artifact",
+    "path": "/Users/macminim4pro/FrostNova/FrostNovaWorkspace/projects/Visual Novel/art/outputs/2026-10-26-framework-live/render-11862a9ed72e44de85cbeafc31445733/images/render-11862a9ed72e44de85cbeafc31445733_00001_.png",
+    "label": "Rendered image",
+    "task": "5436a0dc4a5a4378aad4e7e425f25260",
+    "at": 1792982563.156466
+  },
+  {
+    "seq": 3555,
+    "type": "render_progress",
+    "operation_id": "11862a9ed72e44de85cbeafc31445733",
+    "phase": "cleanup",
+    "message": "Releasing image renderer memory",
+    "task": "5436a0dc4a5a4378aad4e7e425f25260",
+    "at": 1792982563.1570282
+  },
+  {
+    "seq": 3556,
+    "type": "render_progress",
+    "operation_id": "11862a9ed72e44de85cbeafc31445733",
+    "phase": "restore_agent",
+    "message": "Restoring conversation model",
+    "task": "5436a0dc4a5a4378aad4e7e425f25260",
+    "at": 1792982564.249537
+  },
+  {
+    "seq": 3557,
+    "type": "render_residency",
+    "phase": "agent_restored",
+    "restored": true,
+    "model": "nemotron-3.5-lightning:30b-a3b-mlx",
+    "seconds": 6.43,
+    "task": "5436a0dc4a5a4378aad4e7e425f25260",
+    "at": 1792982570.835521
+  },
+  {
+    "seq": 3560,
+    "type": "resource_admission",
+    "role": "reasoning",
+    "wait_ms": 0.01,
+    "task": "5436a0dc4a5a4378aad4e7e425f25260",
+    "at": 1792982570.85042
+  },
+  {
+    "seq": 3564,
+    "type": "resource_admission",
+    "role": "embedding",
+    "wait_ms": 0.0,
+    "task": "5436a0dc4a5a4378aad4e7e425f25260",
+    "at": 1792982595.73922
+  }
+]

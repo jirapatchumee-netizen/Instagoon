@@ -1,0 +1,23 @@
+{
+  "id": "sp_noey_blush",
+  "kind": "sprite",
+  "asset": "noey:blush",
+  "cast": [
+    {
+      "id": "noey",
+      "outfit": "office",
+      "expression": "blush",
+      "pose": "standing relaxed, hands resting naturally in front"
+    }
+  ],
+  "mode": "i2i",
+  "source": "sp_noey_normal",
+  "denoise": 0.45,
+  "beat": "",
+  "preset": "zit-i2i-544x960-v1",
+  "seed": 9474224,
+  "status": "todo",
+  "approved": null,
+  "versions": [],
+  "feedback": []
+}

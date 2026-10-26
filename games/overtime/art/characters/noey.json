@@ -1,0 +1,35 @@
+{
+  "id": "noey",
+  "display": "น้องเนย (Noey)",
+  "age": 21,
+  "render": true,
+  "identity": {
+    "summary": "Noey, a 21-year-old Thai woman with a soft round youthful face, large bright magenta-pink eyes with gently drooping upper lids, a small straight nose, and naturally flushed cheeks. Her hair is warm caramel brown, a light chestnut-caramel that is clearly lighter than dark brown and never black, long and slightly wavy, gathered into a high side ponytail on her left side with a fluffy pink scrunchie, with straight wispy bangs and a few loose strands framing her face. Slim adult figure with soft curves."
+  },
+  "default_outfit": "office",
+  "outfits": {
+    "office": "a fitted white short-sleeve collared blouse with a pink satin ribbon bow at the collar and a navy blue high-waisted pleated skirt",
+    "catmaid": "a frilly black-and-white maid dress with a white ruffled apron, a black cat-ear headband with white lace trim, and a black choker with a small gold bell",
+    "midnight": "an oversized white silk shirt with the top buttons undone and black lace trim visible at the neckline"
+  },
+  "expressions": {
+    "normal": {
+      "used": true,
+      "text": "a gentle warm smile, eyes open and looking at the viewer"
+    },
+    "blush": {
+      "used": true,
+      "text": "visibly blushing cheeks, a shy embarrassed smile, eyes slightly averted and glistening, lips slightly parted"
+    },
+    "panicked": {
+      "used": false,
+      "text": "worried raised eyebrows, teary eyes, lips slightly parted, looking down nervously"
+    },
+    "pout": {
+      "used": false,
+      "text": "puffed cheeks, a small pout, eyebrows slightly furrowed, looking at the viewer"
+    }
+  },
+  "palette_note": "Measure hair, scrunchie and skirt colors from the approved anchor sheet and store hex values in identity.palette before QA relies on them.",
+  "voice": "ดู games/overtime/CANON.md §4"
+}

@@ -1,0 +1,7 @@
+# คุณรินดา (Rinda) - Motion CG: Rinda Audit Interrogation Motion (5s)
+# Resolution: 1280x720 (16:9 Video @ 24fps)
+# Recommended Model: LTX-Video 2.5 Distilled GGUF
+
+0.0s - 2.0s: Macro shot of fountain pen tapping rhythmically on confidential audit ledger, golden amber desk lamp casting long harsh shadows.
+2.0s - 3.5s: Smooth upward pan to Rinda's smirking face leaning forward, amber eyes gleaming with predator-like satisfaction.
+3.5s - 5.0s: Slow camera push-in as she leans into whisper range, subtle wisp of breath visible in chilly AC air, cinematic suspense focus.

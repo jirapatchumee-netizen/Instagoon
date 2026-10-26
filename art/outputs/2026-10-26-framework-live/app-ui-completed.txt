@@ -1,0 +1,133 @@
+Window: "FrostNova Desktop", App: FrostNova Desktop.
+0 standard window FrostNova Desktop, Secondary Actions: Raise, ID: SwiftUI.ModifiedContent<FrostNovaDesktop.ContentView, SwiftUI._AppearanceActionModifier>-1-AppWindow-1
+	1 split group SwiftUI.ModifiedContent<FrostNovaDesktop.ContentView, SwiftUI._AppearanceActionModifier>-1-AppWindow-1, SidebarNavigationSplitView
+		2 container
+			3 image Description: Snow Flurry, ID: snowflake
+			4 text FrostNova
+			5 button Description: Hide sidebar, ID: sidebar.left
+			6 button Description: New Task, Help: New task (Command N)
+			7 image Description: Search task titles, ID: magnifyingglass
+			8 text field (settable) Description: Search task titles, Placeholder: Search tasks
+			9 button Skills
+			10 button Apps
+			11 button Library
+			12 button Services
+			13 scroll area
+				14 list Secondary Actions: AXScrollToTop, AXScrollToBottom
+					15 disclosure triangle Description: Projects, Value: off, Secondary Actions: Refresh projects
+					16 text Recents
+					17 button (selected) ทดสอบ framework สร้างภาพผ่าน FrostNova Desktop ที่อนุมัติแล้ว: สร้างภา, Completed
+					18 button ทดสอบเรนเดอร์ Qwen Image 2.1 T2I รุ่นปกติผ่าน FrostNova Desktop เพื่อว, Failed
+					19 button ภารกิจ: สกัดข้อความ OCR ทั้งหมดและสร้างคลังเอกสารวิเคราะห์บทสำหรับโปรเ, Idle
+			20 text Value: FULL AUTONOMY, Help: Background commands run without asking. Requested desktop tools use macOS permissions. Press Command Period to stop.
+			21 button Open runtime status
+			22 button Description: Open runtime and access settings, ID: gearshape
+			23 text Help: Installed app version and source commit, Value: Version 0.3.0 (255) · e8e144c420c9
+		24 splitter (disabled, settable, float) 250
+		25 container
+			26 scroll area Secondary Actions: Scroll Up, Scroll Down
+				27 list Secondary Actions: AXScrollToTop, AXScrollToBottom
+					28 unknown Secondary Actions: show menu, Description: You said: ทดสอบ framework สร้างภาพผ่าน FrostNova Desktop ที่อนุมัติแล้ว: สร้างภาพ Noey แนวตั้งหนึ่งภาพ โดยเรียก render_image เพียงครั้งเดียวด้วยค่าต่อไปนี้ ห้ามเปลี่ยน prompt และห้ามสร้างงานอื่น
+preset_id: qwen21-normal-t2i-544x960-v1
+seed: 20261026
+output_directory: /Users/macminim4pro/FrostNova/FrostNovaWorkspace/projects/Visual Novel/art/outputs/2026-10-26-framework-live
+prompt: A single adult Thai woman, Noey, age 21, caramel brown hair in a long side ponytail with a pink scrunchie, magenta eyes, friend
+					29 button Description: Step 1, Loaded skill, recorded, Help: use_skill
+					30 button (selected) Description: Step 2, Render Image, verified, Help: render_image
+					31 text Check passed Rendered image /Users/macminim4pro/FrostNova/FrostNovaWorkspace/projects/Visual Novel/art/outputs/2026-10-26-framework-live/render-11862a9ed72e44de85cbeafc31445733/images/render-11862a9ed72e44de85cbeafc31445733_00001_.png
+					32 link Reveal in Finder
+					33 text ⚡ [poteto-mode / pstack: media + model-the-domain] Render Image Result (direct evidence):
+					34 scroll area Secondary Actions: Scroll Left, Scroll Right
+						35 text Field Value path /Users/macminim4pro/FrostNova/FrostNovaWorkspace/projects/Visual Novel/art/outputs/2026-10-26-framework-live/render-11862a9ed72e44de85cbeafc31445733/images/render-11862a9ed72e44de85cbeafc31445733_00001_.png dimensions 544 × 960 (width × height) seed 20261026 cleanup_result released restore_result restored=true, model=nemotron-3.5-lightning:30b-a3b-mlx, seconds=6.43
+						36 scroll bar (settable, float) 0
+							37 value indicator (settable, float) 0
+							38 increment arrow button
+							39 decrement arrow button
+							40 increment page button
+							41 decrement page button
+					42 text All values sourced directly from the render_image tool receipt (event_id 3558). No terminal/shell pipeline was used; the tool executed the image generation and returned the artifact.
+					43 button Description: Copy this reply, ID: doc.on.doc
+					44 button (selected) Description: Run finished — 2 of 2 tools returned success, 255.3s, Help: Click to view run metrics and file modifications
+				45 scroll bar (settable, float) 0
+					46 value indicator (settable, float) 0
+					47 increment arrow button
+					48 decrement arrow button
+					49 increment page button
+					50 decrement page button
+			51 image Description: Sparkle, ID: sparkles
+			52 text Playbook: Short Film (short-film)
+			53 text field (settable) Description: Instruction for FrostNova, Placeholder: Ask FrostNova, or type / for a playbook
+			54 button Description: Attach local files, Help: Attach local files or images, ID: plus
+			55 button Description: Advisor, Help: Advisor co-pilot: ask Gemini first in the background, then answer or act locally
+			56 button Browse connected apps
+			57 pop up button Playbooks, Help: Select a deterministic domain playbook or let runtime auto-route, ID: book.pages
+			58 button Description: Full autonomy, Help: Run authorized tools and commands automatically. File scope is configured separately in settings.
+			59 pop up button S2 · Nemotron, Help: System 2 agent model — plans and calls tools. System 1 Qwen handles vision reviews.
+			60 button (disabled) Description: Run task, Help: Run the task (Enter or Command Return), ID: arrow.up
+			61 text On this Mac
+			62 button Description: Workspace folder Visual Novel, Help: Workspace folder — /Users/macminim4pro/FrostNova/FrostNovaWorkspace/projects/Visual Novel. Click to change it.
+			63 text Help: Prompt tokens are reported by the model server. The app budget is UTF-8 bytes used to prepare history, with space reserved for tools and output. Server token capacity is not reported here., Value: 12406 prompt tokens. App UTF-8 byte budget 65,536 bytes. 0 older turns omitted. Server token capacity unknown.
+			64 unknown Description: Workspace pane width, Details: 540 points, Secondary Actions: Increment, Decrement
+			65 button (selected) Description: Files, 1, Help: Files
+			66 button Description: 6, Help: Diffs
+			67 button Description: Globe, Help: Browser, ID: globe
+			68 button Description: sparkles.rectangle.stack, Help: Advisor
+			69 button Description: 3/4, Help: Services
+			70 button Description: Refresh, Help: Refresh files and backups, ID: arrow.clockwise
+			71 button Description: Maximize workspace pane, Help: Maximize workspace pane (Command Shift Backslash), ID: arrow.up.left.and.arrow.down.right
+			72 button Description: Hide workspace pane, Help: Hide workspace pane (Command Backslash), ID: sidebar.right
+			73 text Your work
+			74 switch By turn, Description: Group outputs by turn, Value: on
+			75 text 1 outputs · linked to the work that made them
+			76 scroll area
+				77 button (selected) All
+				78 button Docs
+				79 button Code
+				80 button Media
+				81 button Receipts
+			82 split group
+				83 scroll area
+					84 list
+						85 row (selectable) Turn 1
+						86 row (selected) render-11862a9ed72e44de85cbeafc31445733_00001_.png, /Users/macminim4pro/FrostNova/FrostNovaWorkspace/projects/Visual Novel/art/outputs/2026-10-26-framework-live/render-11862a9ed72e44de85cbeafc31445733/images/render-11862a9ed72e44de85cbeafc31445733_00001_.png, Recorded
+				87 splitter (disabled, settable, float) 660
+				88 container
+					89 text render-11862a9ed72e44de85cbeafc31445733_00001_.png
+					90 image Description: Photo, ID: photo.fill
+					91 link Open
+					92 link Copy path
+					93 link Reveal
+					94 text Turn 1 · Media · verified
+					95 image (selected) checkmark.shield
+					96 text Digest matches
+					97 button Description: Refresh file readback, ID: arrow.clockwise
+					98 text Current bytes match this output’s recorded digest. Task acceptance is separate. SHA256 ef66f32374145bec…
+					99 scroll area Secondary Actions: Scroll Left, Scroll Right, Scroll Up, Scroll Down
+						100 image
+						101 scroll bar (settable, float) 0
+							102 value indicator (settable, float) 0
+							103 increment arrow button
+							104 decrement arrow button
+							105 increment page button
+							106 decrement page button
+						107 scroll bar (settable, float) 0
+							108 value indicator (settable, float) 0
+							109 increment arrow button
+							110 decrement arrow button
+							111 increment page button
+							112 decrement page button
+	113 toolbar
+		114 button Description: Hide Sidebar, Secondary Actions: Increment, Decrement, Delete, Cancel
+			115 button Hide Sidebar
+	116 close button
+	117 full screen button Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+	118 minimize button
+119 menu bar
+	120 FrostNova Desktop
+	121 File
+	122 Edit
+	123 View
+	124 Window
+	125 Help
+
+The focused UI element is 8 text field (settable) Description: Search task titles, Placeholder: Search tasks

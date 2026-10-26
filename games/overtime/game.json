@@ -1,0 +1,80 @@
+{
+  "id": "overtime_secrets",
+  "title": "Overtime Secrets (แฟ้มลับกะดึก)",
+  "author": "FrostNova Studios",
+  "version": "1.1.0",
+  "description": "เกม Visual Novel แนวสืบสวนจิตวิทยา & Ecchi Romance ในออฟฟิศยามค่ำคืน",
+  "startScene": "S1_01_server_room",
+  "startNode": "010",
+  "characters": {
+    "arm": {
+      "name": "อาร์ม (Arm)",
+      "color": "#38bdf8",
+      "role": "IT Support Staff"
+    },
+    "echo_mind": {
+      "name": "Echo Mind (AI Terminal)",
+      "color": "#10b981",
+      "role": "Autonomous Neural Override AI"
+    },
+    "noey": {
+      "name": "น้องเนย (Noey)",
+      "color": "#ec4899",
+      "role": "Marketing Intern (Stage 1 Heroine)"
+    },
+    "pim": {
+      "name": "คุณพิมพ์ (Pim)",
+      "color": "#8b5cf6",
+      "role": "HR Manager (Stage 2 Heroine)"
+    },
+    "rinda": {
+      "name": "คุณรินดา (Rinda)",
+      "color": "#f59e0b",
+      "role": "Internal Audit Chief (Stage 3 Heroine)"
+    },
+    "meena": {
+      "name": "คุณมีนา (Meena)",
+      "color": "#6366f1",
+      "role": "Executive Secretary (Stage 4 Heroine)"
+    },
+    "rhea": {
+      "name": "คุณหนู เร-อา (Rhea)",
+      "color": "#06b6d4",
+      "role": "Future CEO / Cool Beauty (Final Boss)"
+    }
+  },
+  "backgrounds": {
+    "bg_server_room_dark": "ห้องเซิร์ฟเวอร์ชั้นใต้ดิน (กะดึก)",
+    "bg_crt_awakens": "หน้าจอมอนิเตอร์ CRT สว่างวาบ (Echo Mind Awakens)",
+    "bg_arm_shocked": "อาร์มตกใจปนสงสัยหน้าจอเรืองแสง (Reaction Manhwa Cutscene)",
+    "bg_id_card_template": "ต้นแบบสแกนบัตรประชาชนเรืองแสง (Biometric ID Template UI)",
+    "bg_intervention_recovery": "อาร์มฟื้นฟูร่างกายพร้อมโฮโลแกรม RECOVERY_ENERGY (Manhwa Cutscene)",
+    "bg_intervention_focus": "อาร์มเร่งสมาธิพร้อมโฮโลแกรม HYPER_FOCUS (Manhwa Cutscene)",
+    "bg_intervention_confidence": "อาร์มเปี่ยมความมั่นใจพร้อมโฮโลแกรม CONFIDENCE_BOOST (Manhwa Cutscene)",
+    "bg_arm_scheming_exit": "อาร์มยิ้มเจ้าเล่ห์เตรียมตัวกลับบ้าน (Scheming Mastermind Cutscene)",
+    "bg_corporate_hq_yg": "ตึกสำนักงานใหญ่สไตล์ YG ยามเช้า (Corporate HQ Establishing Shot)",
+    "bg_day_transition": "ฉากคั่นเริ่มวันใหม่: แผนกการตลาด ชั้น 2 (08:30 AM)",
+    "bg_marketing_office": "แผนกการตลาด ชั้น 2 (กลางวัน)",
+    "bg_under_desk": "มือถือกำลังถ่ายภาพบัตรประชาชนของน้องเนยใต้โต๊ะ (Recon Photo POV)",
+    "bg_hr_corridor": "โถงทางเดินชั้น 4 หน้าฝ่ายบุคคล (HR)",
+    "bg_cg_noey_catmaid": "SPECIAL PHOTO #01: น้องเนยชุดคอสเพลย์แมวเหมียว (Cat-Maid)",
+    "bg_cg_noey_lingerie": "SPECIAL PHOTO #02: น้องเนยเสื้อเชิ้ตขาว & ผ้าลูกไม้ดำ (Midnight Silk)",
+    "bg_bad_end_pdpa": "BAD END: ข้อหาละเมิดข้อมูลส่วนบุคคล (PDPA)",
+    "bg_noey_ticket_015": "เนยกับ IT Ticket #0402 (S1_02/015)",
+    "bg_noey_welcome_020": "เนยยิ้มดีใจที่อาร์มมาช่วยซ่อมคอม มุมระดับสายตา (S1_02/020)",
+    "bg_noey_wallet_discovery_040": "กระเป๋าสตางค์สีชมพูและบัตรสมมติข้างรางปลั๊ก มุมด้านข้างโต๊ะ (S1_02/040–050)",
+    "bg_noey_screen_fixed_072": "เนยดีใจที่จอคอมเปิดติดพร้อมส่งสายตาออดอ้อนขอบคุณพี่อาร์ม (S1_02/072)",
+    "bg_echomind_noey_upload_010": "อาร์มเสียบสายส่งภาพบัตรประชาชนของเนยเข้าสู่ Echo Mind Terminal (S1_03/010)"
+  },
+  "variables": {
+    "suspicion": 0,
+    "clearanceLevel": "LV.1 GUEST",
+    "scannedCards": 0,
+    "noeyAffection": 0,
+    "hasNoeyID": false,
+    "hasPimID": false,
+    "unlockedKeycardHR": false,
+    "unlockedPhotos": 0,
+    "promptStyle": "none"
+  }
+}

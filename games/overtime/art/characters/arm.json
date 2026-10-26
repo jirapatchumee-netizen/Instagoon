@@ -1,0 +1,11 @@
+{
+  "id": "arm",
+  "display": "อาร์ม (Arm)",
+  "age": 27,
+  "render": true,
+  "pov": false,
+  "note": "Protagonist (Visual Novel Style Manhwa). Not restricted to 1st-person POV; Arm can appear on-screen in dialogue scenes, manhwa panels, and CGs. Identity: handsome overworked IT support specialist, messy dark slate hair, observant dark eyes, dark navy IT polo, blue lanyard with white IT staff badge.",
+  "inferred": [
+    "age"
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "style_id": "noey-soft-romance-v1",
+  "display_name": "Soft Glossy Romance Manhwa",
+  "approved_on": "2026-10-25",
+  "approval_scope": "User selected latest generated image as style reference; local ComfyUI reproduction is not yet approved or verified.",
+  "reference": {
+    "file": "reference.png",
+    "sha256": "3fc17c6302568c9715913e712ebbc82c955a8aacc4c417f912b6faef36c12597",
+    "width": 881,
+    "height": 1784,
+    "source_file": "/Users/macminim4pro/.codex/generated_images/01a1736d-a762-7ff1-8dd6-2b982b7533d5/exec-ad549b71-6ab4-44f8-b248-177133fd7dad.png",
+    "origin": "Built-in image generation in this chat; not ComfyUI"
+  },
+  "upstream_visual_reference": "/Users/macminim4pro/FrostNova/FrostNovaWorkspace/projects/Visual Novel/Source Reference/I-Am-A-Vampire/Chapter_004/001.jpg",
+  "identity": {
+    "name": "Noey",
+    "age": 21,
+    "hair": "caramel brown side ponytail",
+    "accessory": "pink scrunchie",
+    "eyes": "magenta, specified by project canon; mostly closed in approved image"
+  },
+  "style_prompt_file": "style-prompt.txt",
+  "negative_prompt_file": "negative-prompt.txt",
+  "local_workflow": {
+    "status": "planned_not_implemented",
+    "workflow_file": null,
+    "checkpoint": null,
+    "seed": null,
+    "reference_conditioning_verified": false
+  },
+  "notes": [
+    "Separate from the earlier six-panel Style 06 proposal.",
+    "Style approval does not require repeating pose, office clothing or doorway background.",
+    "Single-image character consistency across new poses has not been demonstrated."
+  ]
+}

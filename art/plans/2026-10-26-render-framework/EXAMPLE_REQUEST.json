@@ -1,0 +1,20 @@
+{
+  "status": "proposed_example_not_submitted",
+  "request": {
+    "preset_id": "qwen21-normal-t2i-544x960-v1",
+    "prompt": "An adult Noey in her white office blouse, pink ribbon and navy pleated skirt, standing in a doorway, fine brown-purple linework, soft peach-pink light and lavender shadows.",
+    "seed": 2026102603,
+    "output_directory": "<runtime-resolved task artifact directory>"
+  },
+  "runtime_resolves": [
+    "task_id",
+    "run_id",
+    "operation_id",
+    "prompt_id",
+    "backend_profile",
+    "model_ownership",
+    "release_targets",
+    "workflow_hash",
+    "model_hashes"
+  ]
+}

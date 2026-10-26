@@ -1,0 +1,23 @@
+{
+  "pid": 47442,
+  "parent_pid": 47441,
+  "runner_pid": 47441,
+  "argv": [
+    "/Users/macminim4pro/ComfyUI/venv/bin/python",
+    "-u",
+    "/Users/macminim4pro/FrostNova/FrostNovaWorkspace/scratch/comfy-qwen21-validation/main.py",
+    "--listen",
+    "127.0.0.1",
+    "--port",
+    "8190",
+    "--disable-all-custom-nodes",
+    "--offline",
+    "--bf16-unet",
+    "--cpu-vae",
+    "--use-pytorch-cross-attention",
+    "--extra-model-paths-config",
+    "/Users/macminim4pro/FrostNova/FrostNovaWorkspace/projects/Visual Novel/art/outputs/2026-10-26-frostnova-qwen21-ram/models.yaml",
+    "--output-directory",
+    "/Users/macminim4pro/FrostNova/FrostNovaWorkspace/projects/Visual Novel/art/outputs/2026-10-26-frostnova-qwen21-ram/images"
+  ]
+}

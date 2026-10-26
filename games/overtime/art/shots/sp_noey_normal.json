@@ -1,0 +1,23 @@
+{
+  "id": "sp_noey_normal",
+  "kind": "sprite",
+  "asset": "noey:normal",
+  "cast": [
+    {
+      "id": "noey",
+      "outfit": "office",
+      "expression": "normal",
+      "pose": "standing relaxed, hands resting naturally in front"
+    }
+  ],
+  "mode": "i2i",
+  "source": "sheet_noey_office_full",
+  "denoise": 0.6,
+  "beat": "",
+  "preset": "zit-i2i-544x960-v1",
+  "seed": 203539085,
+  "status": "todo",
+  "approved": null,
+  "versions": [],
+  "feedback": []
+}

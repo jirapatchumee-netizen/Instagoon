@@ -1,0 +1,14 @@
+{
+  "v": 3,
+  "seed": 131205588,
+  "preset": "zit-t2i-544x960-v1",
+  "mode": "t2i",
+  "prompt": "Vertical 9:16 soft glossy anime manhwa visual novel ecchi illustration, tasteful non-explicit adult office romance, first-person POV from floor level while crouching under a narrow wooden office desk to inspect cables. Match an intimate low-angle under-desk composition with the adult office woman kneeling nearby, her elegant bare legs naturally visible below a neat knee-length navy office pencil skirt, no stockings, no tights, no exposed intimate areas, skirt stays modestly in place. Keep the two story objects clearly separated: at the far back-left corner, the black power strip is tucked tightly against the inside corner of the wooden desk leg and wall, with cables running along the baseboard; across the floor in the right foreground near the woman’s knees, a cute pastel pink wallet has fallen by itself, with a generic fictional ID card partly protruding, abstract unreadable printing and no real personal information. Leave a clearly visible gap of empty floor between the power strip in the corner and the wallet in the foreground. Wallet and the woman’s bare legs are prominent, the corner power strip remains clearly visible but distinct and farther away, shallow depth of field with realistic distance. Warm morning office light, subtle peach-pink atmosphere and flustered ecchi tension from close proximity, polished visual novel illustration, coherent anatomy, no text overlay.",
+  "promptHash": "7d37a2a30d6c8ff5e406fb6516ee6a62eb43aa4a",
+  "render": {
+    "width": 544,
+    "height": 960,
+    "sha256": "1202d24da35c78e76bb5f237880b01ae7eecb53a4261e837ba544e93824c0a94"
+  },
+  "created": "2026-10-26T14:38:26Z"
+}

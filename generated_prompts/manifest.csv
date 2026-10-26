@@ -1,0 +1,3 @@
+id,category,heroine,title,resolution,target_model,file
+noey_sheet_3panel,character_sheet,noey,น้องเนย (Noey) - 3-Panel Reference Sheet (Front Neck-to-toe / Back / Face),1536x864 (16:9 Landscape),SDXL / Illustrious / FLUX,prompts/noey_sheet_3panel.txt
+noey_sheet_modeling_board,character_sheet,noey,น้องเนย (Noey) - Character Design Modeling Board (3-View Turnaround + 6 Insets),1792x1024 (Landscape Concept Art),FLUX / SDXL / Pony,prompts/noey_sheet_modeling_board.txt

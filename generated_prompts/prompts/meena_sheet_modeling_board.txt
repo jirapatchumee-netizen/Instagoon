@@ -1,0 +1,15 @@
+# คุณมีนา (Meena) - Character Design Modeling Board (3-View Turnaround + 6 Insets)
+# Resolution: 1792x1024 (Landscape Concept Art)
+# Recommended Model: FLUX / SDXL / Pony
+
+masterpiece, best quality, ultra-detailed, professional character design modeling board, clean minimalist landscape layout on pure white background, 1girl, meena_secretary, 26 years old.
+
+[LEFT MAIN AREA - THREE-VIEW FULL-BODY TURNAROUND]: Three full-body standing figures in a clean row from head to toe without any cropping: 1. Front full-body standing pose. 2. Exact 90-degree left-side full-body standing pose in strict profile (no 3/4 angle, no torso twist). 3. Back full-body standing pose. All three figures show complete head, face, gorgeous executive secretary, wavy chocolate brown long hair, calm hazel eyes, seductive elegance, and beige tailored double-breasted suit, silk camisole, holding leather folder. Natural standing poses with arms at sides, orthographic presentation, consistent eye-level scale.
+
+[UPPER-RIGHT AREA - ONE DOMINANT FACIAL CLOSE-UP]: One prominent large frontal face portrait of the same character. Sharp focus on eyes, lips, skin texture, hair parting, and expression matching the turnaround figures exactly.
+
+[LOWER-RIGHT AREA - SIX DETAIL CLOSE-UPS GRID]: Six clean square detail insets arranged in a balanced 2-by-3 grid: 1. Upper garment fabric weave and collar stitching detail. 2. Waistband, belt, or button construction detail. 3. Lower-body skirt or trouser textile texture. 4. Hand, cuff, or wrist accessory detail. 5. Extreme close-up of eye iris and eyelashes. 6. Full close-up pair of shoes showing complete soles, heels, and materials.
+
+[PRESENTATION & LIGHTING]: Pure white studio background, generous clean whitespace, soft grounded contact shadows under feet, uniform neutral studio illumination.
+
+[PRESERVATION & CONSTRAINTS]: Strictly maintain identical proportions, identity, and clothing across all views and detail insets. Negative: lowres, bad anatomy, text, labels, measurement arrows, blueprint grid lines, watermark, logos, ui buttons, scenery.

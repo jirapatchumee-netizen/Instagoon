@@ -1,0 +1,258 @@
+{
+  "repository_revision": "67984637eefcd4825dcf5c134e39034785be1682",
+  "workflows": [
+    {
+      "file": "image_qwen_image_2_1_t2i.json",
+      "source_url": "https://raw.githubusercontent.com/Comfy-Org/workflow_templates/67984637eefcd4825dcf5c134e39034785be1682/templates/image_qwen_image_2_1_t2i.json",
+      "sha256": "5f2b50eeaf27e56a45456681ad5319df1ae51243d9653ac3f92c7dc05d1e1503",
+      "format": "UI workflow, not executable API graph",
+      "status": "downloaded_not_run",
+      "node_types": [
+        "*",
+        "AUDIO",
+        "BOOLEAN",
+        "CLIP",
+        "CLIPLoader",
+        "COMBO",
+        "CONDITIONING",
+        "ComfySwitchNode",
+        "EmptyLatentImage",
+        "FLOAT",
+        "IMAGE",
+        "INT",
+        "KSampler",
+        "LATENT",
+        "MODEL",
+        "MarkdownNote",
+        "PreviewAny",
+        "PrimitiveStringMultiline",
+        "QwenImage21Cache",
+        "ResolutionSelector",
+        "STRING",
+        "SaveImageAdvanced",
+        "TextEncodeQwenImage21",
+        "TextGenerate",
+        "UNETLoader",
+        "VAE",
+        "VAEDecode",
+        "VAELoader",
+        "c291ceec-b98f-4751-9d0b-7bc288f27b30",
+        "qwen_image",
+        "stable_diffusion"
+      ],
+      "models": [
+        {
+          "name": "qwen_image_2.1_int8_convrot.safetensors",
+          "url": "https://huggingface.co/Comfy-Org/Qwen-Image-2.1/resolve/main/diffusion_models/qwen_image_2.1_int8_convrot.safetensors",
+          "directory": "diffusion_models"
+        },
+        {
+          "name": "qwen3vl_8b_int8_convrot.safetensors",
+          "url": "https://huggingface.co/Comfy-Org/Qwen-Image-2.1/resolve/main/text_encoders/qwen3vl_8b_int8_convrot.safetensors",
+          "directory": "text_encoders"
+        },
+        {
+          "name": "qwen_image_2.1_vae_bf16.safetensors",
+          "url": "https://huggingface.co/Comfy-Org/Qwen-Image-2.1/resolve/main/vae/qwen_image_2.1_vae_bf16.safetensors",
+          "directory": "vae"
+        },
+        {
+          "name": "qwen3.5_9b_qwen_image_2.1_pe_t2i.int8_convrot.safetensors",
+          "url": "https://huggingface.co/Comfy-Org/Qwen-Image-2.1/resolve/main/text_encoders/qwen3.5_9b_qwen_image_2.1_pe_t2i.int8_convrot.safetensors",
+          "directory": "text_encoders"
+        }
+      ]
+    },
+    {
+      "file": "image_qwen_image_2_1_turbo_t2i.json",
+      "source_url": "https://raw.githubusercontent.com/Comfy-Org/workflow_templates/67984637eefcd4825dcf5c134e39034785be1682/templates/image_qwen_image_2_1_turbo_t2i.json",
+      "sha256": "3eb9cef2866c0186fbe30172701f112b35e574cf3c6575c6e4a6b5dd1e76a403",
+      "format": "UI workflow, not executable API graph",
+      "status": "downloaded_not_run",
+      "node_types": [
+        "*",
+        "AUDIO",
+        "BOOLEAN",
+        "CFGGuider",
+        "CLIP",
+        "CLIPLoader",
+        "COMBO",
+        "CONDITIONING",
+        "ComfySwitchNode",
+        "EmptyLatentImage",
+        "GUIDER",
+        "IMAGE",
+        "INT",
+        "KSamplerSelect",
+        "LATENT",
+        "MODEL",
+        "ManualSigmas",
+        "MarkdownNote",
+        "NOISE",
+        "PreviewAny",
+        "PrimitiveStringMultiline",
+        "QwenImage21Cache",
+        "RandomNoise",
+        "ResolutionSelector",
+        "SAMPLER",
+        "SIGMAS",
+        "STRING",
+        "SamplerCustomAdvanced",
+        "SaveImageAdvanced",
+        "TextEncodeQwenImage21",
+        "TextGenerate",
+        "UNETLoader",
+        "VAE",
+        "VAEDecode",
+        "VAELoader",
+        "c291ceec-b98f-4751-9d0b-7bc288f27b30",
+        "qwen_image",
+        "stable_diffusion"
+      ],
+      "models": [
+        {
+          "name": "qwen_image_2.1_turbo_int8_convrot.safetensors",
+          "url": "https://huggingface.co/Comfy-Org/Qwen-Image-2.1/resolve/main/diffusion_models/qwen_image_2.1_turbo_int8_convrot.safetensors",
+          "directory": "diffusion_models"
+        },
+        {
+          "name": "qwen3vl_8b_int8_convrot.safetensors",
+          "url": "https://huggingface.co/Comfy-Org/Qwen-Image-2.1/resolve/main/text_encoders/qwen3vl_8b_int8_convrot.safetensors",
+          "directory": "text_encoders"
+        },
+        {
+          "name": "qwen_image_2.1_vae_bf16.safetensors",
+          "url": "https://huggingface.co/Comfy-Org/Qwen-Image-2.1/resolve/main/vae/qwen_image_2.1_vae_bf16.safetensors",
+          "directory": "vae"
+        },
+        {
+          "name": "qwen3.5_9b_qwen_image_2.1_pe_t2i.int8_convrot.safetensors",
+          "url": "https://huggingface.co/Comfy-Org/Qwen-Image-2.1/resolve/main/text_encoders/qwen3.5_9b_qwen_image_2.1_pe_t2i.int8_convrot.safetensors",
+          "directory": "text_encoders"
+        }
+      ]
+    },
+    {
+      "file": "image_qwen_image_2_1_image_edit.json",
+      "source_url": "https://raw.githubusercontent.com/Comfy-Org/workflow_templates/67984637eefcd4825dcf5c134e39034785be1682/templates/image_qwen_image_2_1_image_edit.json",
+      "sha256": "c1e6551759de131f083a040da072ac6f032c3c8401ceca202412cd912897d0fc",
+      "format": "UI workflow, not executable API graph",
+      "status": "downloaded_not_run",
+      "node_types": [
+        "*",
+        "AUDIO",
+        "BOOLEAN",
+        "BatchImagesNode",
+        "CLIP",
+        "CLIPLoader",
+        "COMBO",
+        "CONDITIONING",
+        "ComfySwitchNode",
+        "EmptyLatentImage",
+        "FLOAT",
+        "IMAGE",
+        "INT",
+        "ImageCompare",
+        "KSampler",
+        "LATENT",
+        "LoadImage",
+        "MASK",
+        "MODEL",
+        "MarkdownNote",
+        "PreviewAny",
+        "PrimitiveStringMultiline",
+        "QwenImage21Cache",
+        "STRING",
+        "SaveImageAdvanced",
+        "TextEncodeQwenImage21",
+        "TextGenerate",
+        "UNETLoader",
+        "VAE",
+        "VAEDecode",
+        "VAELoader",
+        "bc1c967a-7f6a-4be9-a372-dad16e4f28e3",
+        "qwen_image"
+      ],
+      "models": [
+        {
+          "name": "qwen_image_2.1_int8_convrot.safetensors",
+          "url": "https://huggingface.co/Comfy-Org/Qwen-Image-2.1/resolve/main/diffusion_models/qwen_image_2.1_int8_convrot.safetensors",
+          "directory": "diffusion_models"
+        },
+        {
+          "name": "qwen3vl_8b_int8_convrot.safetensors",
+          "url": "https://huggingface.co/Comfy-Org/Qwen-Image-2.1/resolve/main/text_encoders/qwen3vl_8b_int8_convrot.safetensors",
+          "directory": "text_encoders"
+        },
+        {
+          "name": "qwen_image_2.1_vae_bf16.safetensors",
+          "url": "https://huggingface.co/Comfy-Org/Qwen-Image-2.1/resolve/main/vae/qwen_image_2.1_vae_bf16.safetensors",
+          "directory": "vae"
+        },
+        {
+          "name": "qwen3.5_9b_qwen_image_2.1_pe_i2i.int8_convrot.safetensors",
+          "url": "https://huggingface.co/Comfy-Org/Qwen-Image-2.1/resolve/main/text_encoders/qwen3.5_9b_qwen_image_2.1_pe_i2i.int8_convrot.safetensors",
+          "directory": "text_encoders"
+        }
+      ]
+    },
+    {
+      "file": "image_qwen_Image_2512.json",
+      "source_url": "https://raw.githubusercontent.com/Comfy-Org/workflow_templates/67984637eefcd4825dcf5c134e39034785be1682/templates/image_qwen_Image_2512.json",
+      "sha256": "748b823a81cb2cea68f69ad9fb8e4453eb8a69e8f9749b8a0705644b3f3c4c2a",
+      "format": "UI workflow, not executable API graph",
+      "status": "downloaded_not_run",
+      "node_types": [
+        "BOOLEAN",
+        "CLIP",
+        "CLIPLoader",
+        "CLIPTextEncode",
+        "COMBO",
+        "CONDITIONING",
+        "ComfySwitchNode",
+        "EmptySD3LatentImage",
+        "FLOAT",
+        "IMAGE",
+        "INT",
+        "KSampler",
+        "LATENT",
+        "LoraLoaderModelOnly",
+        "MODEL",
+        "MarkdownNote",
+        "ModelSamplingAuraFlow",
+        "PrimitiveBoolean",
+        "PrimitiveFloat",
+        "PrimitiveInt",
+        "STRING",
+        "SaveImage",
+        "UNETLoader",
+        "VAE",
+        "VAEDecode",
+        "VAELoader",
+        "c3c58f7e-2004-43ae-8b06-a956294bf7f4"
+      ],
+      "models": [
+        {
+          "name": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+          "url": "https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors",
+          "directory": "text_encoders"
+        },
+        {
+          "name": "qwen_image_vae.safetensors",
+          "url": "https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/vae/qwen_image_vae.safetensors",
+          "directory": "vae"
+        },
+        {
+          "name": "qwen_image_2512_fp8_e4m3fn.safetensors",
+          "url": "https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/diffusion_models/qwen_image_2512_fp8_e4m3fn.safetensors",
+          "directory": "diffusion_models"
+        },
+        {
+          "name": "Qwen-Image-2512-Lightning-4steps-V1.0-fp32.safetensors",
+          "url": "https://huggingface.co/lightx2v/Qwen-Image-2512-Lightning/resolve/main/Qwen-Image-2512-Lightning-4steps-V1.0-fp32.safetensors",
+          "directory": "loras"
+        }
+      ]
+    }
+  ]
+}

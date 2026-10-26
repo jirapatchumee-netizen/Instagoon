@@ -1,0 +1,6 @@
+{
+  "server_pid": 47442,
+  "action": "SIGTERM own isolated server after render success and idle queue",
+  "time": 1792979196.447191,
+  "runner_already_terminated_by_frostnova": true
+}

@@ -1,0 +1,20 @@
+{
+  "id": "sheet_pim_office_full",
+  "kind": "sheet_full",
+  "asset": null,
+  "cast": [
+    {
+      "id": "pim",
+      "outfit": "office",
+      "expression": "normal"
+    }
+  ],
+  "mode": "t2i",
+  "beat": "",
+  "preset": "zit-t2i-544x960-v1",
+  "seed": 55473387,
+  "status": "todo",
+  "approved": null,
+  "versions": [],
+  "feedback": []
+}

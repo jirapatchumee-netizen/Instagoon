@@ -1,0 +1,18 @@
+{
+  "render_status": "success",
+  "frostnova_task_status": "failed",
+  "frostnova_failure": "Repeated identical tool batch three times; stopped to prevent an action loop",
+  "prompt_id": "cc56cd54-e4d9-4942-aa75-16c8084a6161",
+  "outputs": [
+    {
+      "path": "/Users/macminim4pro/FrostNova/FrostNovaWorkspace/projects/Visual Novel/art/outputs/2026-10-26-frostnova-qwen21-ram/images/noey_frostnova_qwen21_544x960_00001_.png",
+      "sha256": "216975000418e4ad7ad580c19635cef8c8a7119c9510d97f6c7e6d3c64c1f899"
+    }
+  ],
+  "verified_dimensions": [
+    544,
+    960
+  ],
+  "observed_by": "Codex after FrostNova runner was terminated; not an app completion receipt",
+  "time": 1792979155.929132
+}

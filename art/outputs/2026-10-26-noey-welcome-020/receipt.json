@@ -1,0 +1,14 @@
+{
+  "prompt_id": "927b8228-0a56-4609-8adb-a2bc597da946",
+  "prompt": "High quality anime visual novel illustration, vertical portrait. Bright modern marketing office in the morning, desk with a desktop computer monitor whose screen is black, keyboard and office chair in background. Noey, a cheerful cute adult Thai office worker age 23, brown hair in a side ponytail with a pink hair tie, pink magenta eyes, white long sleeved professional blouse with a pink ribbon bow at the collar, navy blue office skirt. She is standing beside her desk, facing Arm the IT technician who has just arrived to help repair her computer, looking directly at the viewer with a radiant joyful smile, sparkling eyes, relieved and delighted expression, friendly welcoming gesture with one open hand. Normal eye-level camera at her eye height, straight-on level horizon, natural perspective, medium portrait from head to hips, face clearly visible in upper half. Soft warm daylight through office windows, wholesome charming atmosphere, polished clean anime lineart and soft cel shading, accurate anatomy. Solo woman, no text, no speech bubbles, no watermark. Eye-level view, camera upright, no low angle, no view from under the desk.",
+  "seed": 42020,
+  "size": [
+    544,
+    960
+  ],
+  "file": "public/art/stage1/Cutscene_S1_02_Noey_Welcome_EyeLevel_00001_.png",
+  "sha256": "734b6e9ec7973239d1249dbbcd4bdf705a74eb321170717dd4839ad7835f2f87",
+  "node": "S1_02_noey_desk/020",
+  "asset": "bg_noey_welcome_020",
+  "generator": "scripts/render_zimage_turbo.py"
+}

@@ -1,0 +1,7 @@
+# คุณมีนา (Meena) - Motion CG: Meena Limousine Night Drive (6s)
+# Resolution: 1280x720 (16:9 Video @ 24fps)
+# Recommended Model: LTX-Video 2.5 Distilled GGUF
+
+0.0s - 2.5s: Interior limousine shot looking out tinted window, neon city lights and rain droplets streaking past in smooth kinetic motion.
+2.5s - 4.5s: Camera smoothly tracks left to Meena seated closely, ambient magenta and cyan billboard lighting illuminating her calm hazel eyes.
+4.5s - 6.0s: Slow push-in on her face, serene mask dropping as she whispers, lips moving with soft breath, cinematic anamorphic bokeh flare.

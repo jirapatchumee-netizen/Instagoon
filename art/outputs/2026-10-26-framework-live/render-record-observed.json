@@ -1,0 +1,358 @@
+{
+  "schema": 1,
+  "operation_id": "11862a9ed72e44de85cbeafc31445733",
+  "prompt_id": "5be33e4c-f4b9-46f8-8bfd-31158739b508",
+  "client_id": "210fc0a8-4a00-4e8d-9a58-997d273e1930",
+  "job_directory": "/Users/macminim4pro/FrostNova/FrostNovaWorkspace/projects/Visual Novel/art/outputs/2026-10-26-framework-live/render-11862a9ed72e44de85cbeafc31445733",
+  "preset_id": "qwen21-normal-t2i-544x960-v1",
+  "arguments": {
+    "preset_id": "qwen21-normal-t2i-544x960-v1",
+    "prompt": "A single adult Thai woman, Noey, age 21, caramel brown hair in a long side ponytail with a pink scrunchie, magenta eyes, friendly warm smile. She stands in an office doorway, head gently tilted, one hand at her hip and the other arm resting against the doorframe. Neatly buttoned opaque white short-sleeved office blouse with a high collar and pink ribbon tie, navy blue pleated skirt just above the knees. Natural adult proportions. Eye-level portrait framed from head to knees. Fine clean brown-purple line art with restrained contour weight, soft glossy romance manhwa illustration, simple expressive adult character design, cel shadow shapes blended with gentle airbrush gradients, smooth peach-pink skin shading, controlled broad hair highlights, subtle fabric sheen, soft blooming backlight from upper left, lavender-violet ambient shadows, uncluttered simplified background, sparse floating dust sparkles, polished two-dimensional illustration. Soft peach and lavender office doorway background. Clean illustration without lettering.",
+    "seed": 20261026,
+    "output_directory": "/Users/macminim4pro/FrostNova/FrostNovaWorkspace/projects/Visual Novel/art/outputs/2026-10-26-framework-live"
+  },
+  "profile": {
+    "profile_id": "qwen21-normal-managed-v1",
+    "core_path": "/Users/macminim4pro/FrostNova/FrostNovaWorkspace/tools/comfyui-render",
+    "core_revision": "fe298e4e20f1ff26d30e8639267bbd0b57811390",
+    "runtime_dependencies_path": "/Users/macminim4pro/FrostNova/FrostNovaWorkspace/tools/comfyui-render/.runtime-deps",
+    "python": "/Users/macminim4pro/ComfyUI/venv/bin/python",
+    "models_path": "/Users/macminim4pro/ComfyUI/models",
+    "port": 8190,
+    "lifecycle": "start per render; stop owned process after result; preserve primary port 8188"
+  },
+  "handoff": "released",
+  "dispatch_started": true,
+  "started_at": 1792982373.704732,
+  "updated_at": 1792982570.839284,
+  "phase": "complete",
+  "snapshot": [
+    {
+      "role": "agent",
+      "model": "nemotron-3.5-lightning:30b-a3b-mlx",
+      "enabled": true,
+      "installed": true,
+      "loaded": true,
+      "size": 19301747692
+    },
+    {
+      "role": "vision",
+      "model": "nemotron-3.5-bolt:e4b-mlx-bf16",
+      "enabled": true,
+      "installed": true,
+      "loaded": false,
+      "size": 0
+    },
+    {
+      "role": "embedding",
+      "model": "embeddinggemma-2:740m-mxfp8",
+      "enabled": true,
+      "installed": true,
+      "loaded": true,
+      "size": 1332329060
+    }
+  ],
+  "memory_admission": [
+    {
+      "pressure_level": "1",
+      "vm_stat": "Mach Virtual Memory Statistics: (page size of 16384 bytes)\nPages free:                             2357112.\nPages active:                            720796.\nPages inactive:                          692657.\nPages speculative:                        27012.\nPages throttled:                              0.\nPages wired down:                        229789.\nPages purgeable:                          32179.\n\"Translation faults\":                 700021664.\nPages copy-on-write:                   18551867.\nPages zero filled:                    530268161.\nPages reactivated:                      2414840.\nPages purged:                          10885348.\nFile-backed pages:                       661070.\nAnonymous pages:                         779395.\nPages stored in compressor:              660222.\nPages occupied by compressor:            118830.\nDecompressions:                         8335383.\nCompressions:                          14285069.\nPageins:                               18655937.\nPageouts:                                 14992.\nSwapins:                                 968247.\nSwapouts:                               2031050.",
+      "swap": "total = 5120.00M  used = 4179.25M  free = 940.75M  (encrypted)"
+    }
+  ],
+  "pid": 54164,
+  "process_identity": "Mon Oct 26 09:39:34 2026     /Users/macminim4pro/ComfyUI/venv/bin/python -u /Users/macminim4pro/FrostNova/FrostNovaWorkspace/tools/comfyui-render/main.py --listen 127.0.0.1 --port 8190 --disable-all-custom-nodes --offline --bf16-unet --cpu-vae --use-pytorch-cross-attention --extra-model-paths-config /Users/macminim4pro/FrostNova/FrostNovaWorkspace/projects/Visual Novel/art/outputs/2026-10-26-framework-live/render-11862a9ed72e44de85cbeafc31445733/models.yaml --output-directory /Users/macminim4pro/FrostNova/FrostNovaWorkspace/projects/Visual Novel/art/outputs/2026-10-26-framework-live/render-11862a9ed72e44de85cbeafc31445733/images",
+  "command": [
+    "/Users/macminim4pro/ComfyUI/venv/bin/python",
+    "-u",
+    "/Users/macminim4pro/FrostNova/FrostNovaWorkspace/tools/comfyui-render/main.py",
+    "--listen",
+    "127.0.0.1",
+    "--port",
+    "8190",
+    "--disable-all-custom-nodes",
+    "--offline",
+    "--bf16-unet",
+    "--cpu-vae",
+    "--use-pytorch-cross-attention",
+    "--extra-model-paths-config",
+    "/Users/macminim4pro/FrostNova/FrostNovaWorkspace/projects/Visual Novel/art/outputs/2026-10-26-framework-live/render-11862a9ed72e44de85cbeafc31445733/models.yaml",
+    "--output-directory",
+    "/Users/macminim4pro/FrostNova/FrostNovaWorkspace/projects/Visual Novel/art/outputs/2026-10-26-framework-live/render-11862a9ed72e44de85cbeafc31445733/images"
+  ],
+  "system_stats": {
+    "system": {
+      "os": "darwin",
+      "ram_total": 68719476736,
+      "ram_free": 50103025664,
+      "comfyui_version": "0.42.0",
+      "required_frontend_version": "1.57.1",
+      "installed_templates_version": "0.11.96",
+      "required_templates_version": "0.11.96",
+      "comfy_package_versions": [
+        {
+          "name": "comfyui-frontend-package",
+          "installed": "1.57.1",
+          "required": "1.57.1"
+        },
+        {
+          "name": "comfyui-workflow-templates",
+          "installed": "0.11.96",
+          "required": "0.11.96"
+        },
+        {
+          "name": "comfyui-embedded-docs",
+          "installed": "0.5.14",
+          "required": "0.5.14"
+        },
+        {
+          "name": "comfy-aimdo",
+          "installed": "0.6.0",
+          "required": "0.6.0"
+        },
+        {
+          "name": "comfy-kitchen",
+          "installed": "0.2.40",
+          "required": "0.2.40"
+        }
+      ],
+      "python_version": "3.11.15 (main, May  8 2026, 18:24:56) [Clang 22.1.3 ]",
+      "pytorch_version": "2.13.0",
+      "embedded_python": false,
+      "deploy_environment": "local-git",
+      "argv": [
+        "/Users/macminim4pro/FrostNova/FrostNovaWorkspace/tools/comfyui-render/main.py",
+        "--listen",
+        "127.0.0.1",
+        "--port",
+        "8190",
+        "--disable-all-custom-nodes",
+        "--offline",
+        "--bf16-unet",
+        "--cpu-vae",
+        "--use-pytorch-cross-attention",
+        "--extra-model-paths-config",
+        "/Users/macminim4pro/FrostNova/FrostNovaWorkspace/projects/Visual Novel/art/outputs/2026-10-26-framework-live/render-11862a9ed72e44de85cbeafc31445733/models.yaml",
+        "--output-directory",
+        "/Users/macminim4pro/FrostNova/FrostNovaWorkspace/projects/Visual Novel/art/outputs/2026-10-26-framework-live/render-11862a9ed72e44de85cbeafc31445733/images"
+      ]
+    },
+    "devices": [
+      {
+        "name": "mps",
+        "type": "mps",
+        "index": null,
+        "vram_total": 68719476736,
+        "vram_free": 50103025664,
+        "torch_vram_total": 68719476736,
+        "torch_vram_free": 50103025664
+      }
+    ]
+  },
+  "submission": {
+    "prompt_id": "5be33e4c-f4b9-46f8-8bfd-31158739b508",
+    "number": 0,
+    "node_errors": {}
+  },
+  "history": {
+    "prompt": [
+      0,
+      "5be33e4c-f4b9-46f8-8bfd-31158739b508",
+      {
+        "1": {
+          "class_type": "UNETLoader",
+          "inputs": {
+            "unet_name": "qwen_image_2.1_bf16.safetensors",
+            "weight_dtype": "default"
+          }
+        },
+        "2": {
+          "class_type": "CLIPLoader",
+          "inputs": {
+            "clip_name": "qwen3vl_8b_bf16.safetensors",
+            "type": "qwen_image",
+            "device": "cpu"
+          }
+        },
+        "3": {
+          "class_type": "VAELoader",
+          "inputs": {
+            "vae_name": "qwen_image_2.1_vae_bf16.safetensors"
+          }
+        },
+        "4": {
+          "class_type": "TextEncodeQwenImage21",
+          "inputs": {
+            "clip": [
+              "2",
+              0
+            ],
+            "prompt": "A single adult Thai woman, Noey, age 21, caramel brown hair in a long side ponytail with a pink scrunchie, magenta eyes, friendly warm smile. She stands in an office doorway, head gently tilted, one hand at her hip and the other arm resting against the doorframe. Neatly buttoned opaque white short-sleeved office blouse with a high collar and pink ribbon tie, navy blue pleated skirt just above the knees. Natural adult proportions. Eye-level portrait framed from head to knees. Fine clean brown-purple line art with restrained contour weight, soft glossy romance manhwa illustration, simple expressive adult character design, cel shadow shapes blended with gentle airbrush gradients, smooth peach-pink skin shading, controlled broad hair highlights, subtle fabric sheen, soft blooming backlight from upper left, lavender-violet ambient shadows, uncluttered simplified background, sparse floating dust sparkles, polished two-dimensional illustration. Soft peach and lavender office doorway background. Clean illustration without lettering.",
+            "negative_prompt": "",
+            "resolution": 1024
+          }
+        },
+        "5": {
+          "class_type": "EmptyLatentImage",
+          "inputs": {
+            "width": 544,
+            "height": 960,
+            "batch_size": 1
+          }
+        },
+        "6": {
+          "class_type": "KSampler",
+          "inputs": {
+            "model": [
+              "9",
+              0
+            ],
+            "positive": [
+              "4",
+              0
+            ],
+            "negative": [
+              "4",
+              1
+            ],
+            "latent_image": [
+              "5",
+              0
+            ],
+            "seed": 20261026,
+            "steps": 25,
+            "cfg": 1.0,
+            "sampler_name": "euler",
+            "scheduler": "simple",
+            "denoise": 1.0
+          }
+        },
+        "7": {
+          "class_type": "VAEDecode",
+          "inputs": {
+            "samples": [
+              "6",
+              0
+            ],
+            "vae": [
+              "3",
+              0
+            ]
+          }
+        },
+        "8": {
+          "class_type": "SaveImage",
+          "inputs": {
+            "images": [
+              "7",
+              0
+            ],
+            "filename_prefix": "render-11862a9ed72e44de85cbeafc31445733"
+          }
+        },
+        "9": {
+          "class_type": "QwenImage21Cache",
+          "inputs": {
+            "model": [
+              "1",
+              0
+            ],
+            "device": "auto",
+            "dtype": "default"
+          }
+        }
+      },
+      {
+        "client_id": "210fc0a8-4a00-4e8d-9a58-997d273e1930",
+        "create_time": 1792982379519
+      },
+      [
+        "8"
+      ]
+    ],
+    "outputs": {
+      "8": {
+        "images": [
+          {
+            "filename": "render-11862a9ed72e44de85cbeafc31445733_00001_.png",
+            "subfolder": "",
+            "type": "output",
+            "metadata": {
+              "kind": "image",
+              "width": 544,
+              "height": 960
+            }
+          }
+        ]
+      }
+    },
+    "status": {
+      "status_str": "success",
+      "completed": true,
+      "messages": [
+        [
+          "execution_start",
+          {
+            "prompt_id": "5be33e4c-f4b9-46f8-8bfd-31158739b508",
+            "timestamp": 1792982379519
+          }
+        ],
+        [
+          "execution_cached",
+          {
+            "nodes": [],
+            "prompt_id": "5be33e4c-f4b9-46f8-8bfd-31158739b508",
+            "timestamp": 1792982379521
+          }
+        ],
+        [
+          "execution_success",
+          {
+            "prompt_id": "5be33e4c-f4b9-46f8-8bfd-31158739b508",
+            "timestamp": 1792982562611
+          }
+        ]
+      ]
+    },
+    "meta": {
+      "8": {
+        "node_id": "8",
+        "display_node": "8",
+        "parent_node": null,
+        "real_node_id": "8"
+      }
+    }
+  },
+  "result": {
+    "ok": true,
+    "verified": true,
+    "verification": "comfy_history_png",
+    "artifact_result": "succeeded",
+    "path": "/Users/macminim4pro/FrostNova/FrostNovaWorkspace/projects/Visual Novel/art/outputs/2026-10-26-framework-live/render-11862a9ed72e44de85cbeafc31445733/images/render-11862a9ed72e44de85cbeafc31445733_00001_.png",
+    "operation_id": "11862a9ed72e44de85cbeafc31445733",
+    "preset_id": "qwen21-normal-t2i-544x960-v1",
+    "seed": 20261026,
+    "receipt_path": "/Users/macminim4pro/FrostNova/FrostNovaWorkspace/projects/Visual Novel/art/outputs/2026-10-26-framework-live/render-11862a9ed72e44de85cbeafc31445733/receipt.json",
+    "width": 544,
+    "height": 960,
+    "sha256": "ef66f32374145becd56b8506efc9ea88bc3d7c9945e21ed8bf99d930de50abf6",
+    "bytes": 580285,
+    "cleanup_result": "released",
+    "restore_result": {
+      "restored": true,
+      "model": "nemotron-3.5-lightning:30b-a3b-mlx",
+      "seconds": 6.43
+    }
+  },
+  "memory_after_render": {
+    "pressure_level": "1",
+    "vm_stat": "Mach Virtual Memory Statistics: (page size of 16384 bytes)\nPages free:                             2587776.\nPages active:                            548989.\nPages inactive:                          291820.\nPages speculative:                       255933.\nPages throttled:                              0.\nPages wired down:                        222545.\nPages purgeable:                          25007.\n\"Translation faults\":                 710467079.\nPages copy-on-write:                   18792274.\nPages zero filled:                    538536367.\nPages reactivated:                      2916005.\nPages purged:                          10994795.\nFile-backed pages:                       784836.\nAnonymous pages:                         311906.\nPages stored in compressor:             1050278.\nPages occupied by compressor:            238866.\nDecompressions:                         9539816.\nCompressions:                          17169010.\nPageins:                               20671775.\nPageouts:                                 15678.\nSwapins:                                 970123.\nSwapouts:                               2130286.",
+    "swap": "total = 6144.00M  used = 5697.81M  free = 446.19M  (encrypted)"
+  },
+  "runtime_model_evidence": [
+    "\u001b[32m[INFO]\u001b[0m Found comfy_kitchen backend eager: {'available': True, 'disabled': False, 'unavailable_reason': None, 'capabilities': ['adaln', 'apply_rope', 'apply_rope1', 'apply_rope1_', 'apply_rope_', 'apply_rope_split_half', 'apply_rope_split_half1', 'apply_rope_split_half1_', 'apply_rope_split_half_', 'convrot_w4a4_linear', 'dequantize_convrot_w4a4_weight', 'dequantize_int8_convrot_weight', 'dequantize_int8_convrot_weight_dtype', 'dequantize_int8_embedding', 'dequantize_int8_simple', 'dequantize_int8_simple_dtype', 'dequantize_mxfp8', 'dequantize_nvfp4', 'dequantize_per_tensor_fp8', 'dequantize_w4a8_int8_weight', 'fp16_conv3d', 'fp16_conv3d_out', 'fp16_linear', 'gemv_awq_w4a16', 'group_norm_silu_pad3d', 'group_norm_silu_pad3d_out', 'group_norm_stats3d', 'int8_linear', 'int8_linear_modulated', 'int8_linear_rms_modulated', 'na3d', 'prepare_int4_weight_for_int8_linear', 'quantize_and_rotate_rowwise', 'quantize_convrot_w4a4_weight', 'quantize_int8_convrot_weight', 'quantize_int8_rowwise', 'quantize_int8_tensorwise', 'quantize_mxfp8', 'quantize_nvfp4', 'quantize_per_tensor_fp8', 'quantize_svdquant_w4a4', 'quantize_w4a8_int8_weight', 'rms_adaln', 'rms_gated_residual', 'rms_rope', 'rms_rope1', 'rms_rope1_', 'rms_rope_', 'rms_rope_split_half', 'rms_rope_split_half1', 'rms_rope_split_half1_', 'rms_rope_split_half_', 'rotate_int8_convrot_weight', 'scaled_mm_mxfp8', 'scaled_mm_nvfp4', 'scaled_mm_svdquant_w4a4', 'sol_attn', 'stochastic_rounding_fp8', 'w4a8_int8_linear', 'w4a8_packed_linear']}",
+    "\u001b[32m[INFO]\u001b[0m Device: mps",
+    "\u001b[32m[INFO]\u001b[0m VAE load device: cpu, offload device: cpu, dtype: torch.float32",
+    "\u001b[32m[INFO]\u001b[0m CLIP/text encoder model load device: cpu, offload device: cpu, current: cpu, dtype: torch.float16",
+    "\u001b[32m[INFO]\u001b[0m model weight dtype torch.bfloat16, manual cast: None"
+  ]
+}

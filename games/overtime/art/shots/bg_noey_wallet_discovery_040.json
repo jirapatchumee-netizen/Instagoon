@@ -1,0 +1,41 @@
+{
+  "id": "bg_noey_wallet_discovery_040",
+  "kind": "cg",
+  "asset": "bg_noey_wallet_discovery_040",
+  "cast": [],
+  "location": "bg_under_desk",
+  "camera": "first-person floor-level POV, intimate beside Noey’s bare legs, shallow depth of field; power strip in desk corner separated from wallet in foreground",
+  "beat": "Ecchi tension under the desk; bare legs without stockings, pink wallet and fictional unreadable card in the foreground, power strip tucked against the far desk corner.",
+  "mode": "t2i",
+  "preset": "zit-t2i-544x960-v1",
+  "seed": 131205588,
+  "status": "approved",
+  "approved": 3,
+  "versions": [
+    {
+      "v": 1,
+      "seed": 131205586,
+      "promptHash": "fcd779e2d7b1cb1bc016b30971ded75b1908b2c0",
+      "qa": null,
+      "owner": null,
+      "created": "2026-10-26T14:24:45Z"
+    },
+    {
+      "v": 2,
+      "seed": 131205587,
+      "promptHash": "adcf722dd4450b31f0b21118a6f9d92b984a8274",
+      "qa": null,
+      "owner": null,
+      "created": "2026-10-26T14:35:14Z"
+    },
+    {
+      "v": 3,
+      "seed": 131205588,
+      "promptHash": "7d37a2a30d6c8ff5e406fb6516ee6a62eb43aa4a",
+      "qa": null,
+      "owner": null,
+      "created": "2026-10-26T14:38:26Z"
+    }
+  ],
+  "feedback": []
+}

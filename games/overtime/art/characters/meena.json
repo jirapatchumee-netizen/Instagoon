@@ -1,0 +1,23 @@
+{
+  "id": "meena",
+  "display": "คุณมีนา (Meena)",
+  "age": 29,
+  "render": true,
+  "identity": {
+    "summary": "Meena, a 29-year-old Thai woman with a poised, immaculate and graceful bearing and calm dark brown eyes. Her hair is long, straight and chocolate brown with softly curled ends."
+  },
+  "default_outfit": "office",
+  "outfits": {
+    "office": "a beige double-breasted suit jacket with a matching skirt over a cream blouse"
+  },
+  "expressions": {
+    "normal": {
+      "used": false,
+      "text": "a calm composed expression with a faint polite smile"
+    }
+  },
+  "inferred": [
+    "age",
+    "eyes: canon does not specify"
+  ]
+}

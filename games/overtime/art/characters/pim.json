@@ -1,0 +1,26 @@
+{
+  "id": "pim",
+  "display": "คุณพิมพ์ (Pim)",
+  "age": 32,
+  "render": true,
+  "identity": {
+    "summary": "Pim, a 32-year-old Thai woman with fair slightly yellow-toned skin, sharp deep violet eyes, a composed cold expression and a tall elegant mature build. Her hair is glossy jet black, swept into a neat elegant updo, and she wears red-framed rectangular glasses."
+  },
+  "default_outfit": "office",
+  "outfits": {
+    "office": "a tailored dark navy business blazer over a white button-up shirt and a fitted navy pencil skirt"
+  },
+  "expressions": {
+    "strict": {
+      "used": true,
+      "text": "a stern condescending gaze, lips pressed together, one hand adjusting her glasses"
+    },
+    "normal": {
+      "used": false,
+      "text": "a calm composed neutral expression looking at the viewer"
+    }
+  },
+  "inferred": [
+    "age: canon says early 30s"
+  ]
+}

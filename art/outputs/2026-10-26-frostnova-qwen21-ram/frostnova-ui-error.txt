@@ -1,0 +1,6 @@
+The following is a diff from the previous accessibility tree for Window: "FrostNova Desktop" with ~ and + representing changed and added elements, respectively. Removed elements are summarized by ID range.
+Removed element IDs: 36-37
++					71 button Try again
++					72 button View runtime log
+~			51 pop up button Playbooks, Help: Select a deterministic domain playbook or let runtime auto-route, ID: book.pages
+The focused UI element is 8 text field (settable) Description: Search task titles, Placeholder: Search tasks

@@ -1,0 +1,7 @@
+# น้องเนย (Noey) - Motion CG: Noey Desk Romance Motion (5s)
+# Resolution: 1280x720 (16:9 Video @ 24fps)
+# Recommended Model: LTX-Video 2.5 Distilled GGUF
+
+0.0s - 1.5s: Extreme close-up on Noey crouching under office desk, soft blue computer glow on her hair, subtle trembling breathing motion, eyes darting up nervously.
+1.5s - 3.5s: Slow camera push-in towards her face, heavy blush blooming on cheeks, lips parting with slight nervous exhale, loose strands of caramel brown ponytail swaying softly.
+3.5s - 5.0s: Eye contact locked with camera/viewer, subtle embarrassed swallow, dim office light shifting as footsteps pass outside, romantic intimate tension, cinematic 24fps motion blur.

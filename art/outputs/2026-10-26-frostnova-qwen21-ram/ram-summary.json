@@ -1,0 +1,43 @@
+{
+  "run_count": 1,
+  "sample_interval_seconds": 5,
+  "sample_count": 84,
+  "total_ram_GiB": 64.0,
+  "baseline_available_GiB": 46.68202209472656,
+  "minimum_available_GiB": 7.4892730712890625,
+  "after_cleanup_available_GiB": 36.03831481933594,
+  "swap_baseline_GiB": 3.99993896484375,
+  "swap_peak_GiB": 21.25244140625,
+  "swap_after_cleanup_GiB": 7.95660400390625,
+  "compressor_baseline_GiB": 3.2522430419921875,
+  "compressor_peak_GiB": 24.874038696289062,
+  "pressure_levels_seen": [
+    1,
+    2
+  ],
+  "process_group_peaks": {
+    "FrostNova app": {
+      "physical_footprint_GiB": 0.1783623769879341,
+      "rss_GiB": 0.1599884033203125
+    },
+    "Ollama models": {
+      "physical_footprint_GiB": 22.447321817278862,
+      "rss_GiB": 3.223419189453125
+    },
+    "ComfyUI Qwen": {
+      "physical_footprint_GiB": 40.57286944240332,
+      "rss_GiB": 23.602981567382812
+    }
+  },
+  "render_status": "success",
+  "frostnova_task_status": "failed",
+  "failure_reason": "Repeated identical tool batch three times; stopped to prevent an action loop",
+  "limitations": [
+    "One observed run, not a comparison benchmark",
+    "Per-process footprints include kernel-accounted memory and are not a disjoint partition of system RAM",
+    "ComfyUI CPU/GPU use unified memory; do not add vram_free as a second pool",
+    "Initial swap was already nonzero",
+    "ComfyUI continued after FrostNova terminated its managed runner; observer captured result and cleaned up",
+    "Exact suballocation between Qwen text encoder, diffusion activations and Metal allocator was not instrumented"
+  ]
+}

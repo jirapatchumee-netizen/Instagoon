@@ -1,0 +1,20 @@
+{
+  "id": "sheet_noey_office_face",
+  "kind": "sheet_face",
+  "asset": null,
+  "cast": [
+    {
+      "id": "noey",
+      "outfit": "office",
+      "expression": "normal"
+    }
+  ],
+  "mode": "t2i",
+  "beat": "",
+  "preset": "zit-t2i-544x960-v1",
+  "seed": 3928059,
+  "status": "todo",
+  "approved": null,
+  "versions": [],
+  "feedback": []
+}
