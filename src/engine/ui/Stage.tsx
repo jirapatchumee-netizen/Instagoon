@@ -68,7 +68,7 @@ export const Stage: React.FC<StageProps> = ({
       {currentBg && (
         <div
           className="absolute inset-0 bg-cover bg-center transition-all duration-700 ease-out"
-          style={{ backgroundImage: `url(${currentBg.src})` }}
+          style={{ backgroundImage: `url("${currentBg.src}")` }}
         />
       )}
 

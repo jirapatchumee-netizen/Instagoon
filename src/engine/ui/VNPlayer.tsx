@@ -117,7 +117,7 @@ export const VNPlayer: React.FC<VNPlayerProps> = ({ project }) => {
       {currentBg && (
         <div
           className="absolute inset-0 bg-cover bg-center blur-3xl opacity-35 scale-110 pointer-events-none transition-all duration-700 hidden md:block"
-          style={{ backgroundImage: `url(${currentBg.src})` }}
+          style={{ backgroundImage: `url("${currentBg.src}")` }}
         />
       )}
 

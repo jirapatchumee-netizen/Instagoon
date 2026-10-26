@@ -1,5 +1,5 @@
 import assetsJson from '../../games/overtime/assets.json';
-import { OVERTIME_BACKGROUNDS } from './overtimeSecretsAssets';
+import { OVERTIME_BACKGROUNDS, OVERTIME_CHARACTERS } from './overtimeSecretsAssets';
 
 export type AssetStatus = 'missing' | 'legacy' | 'draft' | 'approved' | 'procedural';
 
@@ -12,6 +12,17 @@ interface Entry {
 }
 
 const assets = (assetsJson as unknown as { assets: Record<string, Entry> }).assets;
+
+export function resolveAssetPath(fileOrUrl: string): string {
+  if (!fileOrUrl) return fileOrUrl;
+  if (fileOrUrl.startsWith('data:') || fileOrUrl.startsWith('http://') || fileOrUrl.startsWith('https://')) {
+    return fileOrUrl;
+  }
+  const clean = fileOrUrl.startsWith('/') ? fileOrUrl.slice(1) : fileOrUrl;
+  const base = import.meta.env.BASE_URL || './';
+  const prefix = base.endsWith('/') ? base : `${base}/`;
+  return `${prefix}${clean}`;
+}
 
 const uri = (svg: string) => `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 
@@ -40,16 +51,22 @@ export function assetInfo(key: string): { status: AssetStatus; version?: number 
 
 export function bgSrc(id: string): string {
   const e = assets[id];
-  if (e?.file) return e.file;
-  if (e?.status === 'procedural' && OVERTIME_BACKGROUNDS[id]) return OVERTIME_BACKGROUNDS[id].src;
+  if (e?.file) return resolveAssetPath(e.file);
+  const fallback = OVERTIME_BACKGROUNDS[id]?.src;
+  if (fallback) return resolveAssetPath(fallback);
   return bgPlaceholder(id);
 }
 
 export function hasRegistrySprites(characterId: string): boolean {
-  return Object.keys(assets).some((k) => k.startsWith(`${characterId}:`));
+  return Object.keys(assets).some((k) => k.startsWith(`${characterId}:`) && !!assets[k]?.file);
 }
 
 export function spriteSrc(characterId: string, expression: string): string {
   const key = `${characterId}:${expression}`;
-  return assets[key]?.file ?? spritePlaceholder(key);
+  const file = assets[key]?.file;
+  if (file) return resolveAssetPath(file);
+  const charFallback = OVERTIME_CHARACTERS[characterId]?.sprites?.[expression]
+    ?? OVERTIME_CHARACTERS[characterId]?.sprites?.normal;
+  if (charFallback) return charFallback;
+  return spritePlaceholder(key);
 }
