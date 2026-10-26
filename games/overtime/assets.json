@@ -8,97 +8,97 @@
     "bg_server_room_dark": {
       "kind": "bg",
       "status": "legacy",
-      "file": "/art/stage1/Storyboard_S1_01_ServerRoom_00001_.png",
+      "file": "/art/stage1/Storyboard_S1_01_ServerRoom_00001_.webp",
       "note": "old storyboard render; contains characters, replace with a clean asset"
     },
     "bg_crt_awakens": {
       "kind": "bg",
       "status": "active",
-      "file": "/art/stage1/POV_S1_01_CRT_Awakens_00001_.png",
+      "file": "/art/stage1/POV_S1_01_CRT_Awakens_00001_.webp",
       "note": "close-up of CRT monitor awakening with green phosphor glow (POV_S1_01_CRT_Awakens)"
     },
     "bg_arm_shocked": {
       "kind": "bg",
       "status": "active",
-      "file": "/art/stage1/Cutscene_S1_01_ArmShocked_00001_.png",
+      "file": "/art/stage1/Cutscene_S1_01_ArmShocked_00001_.webp",
       "note": "reaction shot of Arm looking shocked and suspicious illuminated by CRT phosphor glow (Cutscene_S1_01_ArmShocked)"
     },
     "bg_id_card_template": {
       "kind": "bg",
       "status": "active",
-      "file": "/art/stage1/Cutscene_S1_01_ID_Card_Template_00001_.png",
+      "file": "/art/stage1/Cutscene_S1_01_ID_Card_Template_00001_.webp",
       "note": "fictional holographic biometric ID card template UI on CRT screen without real info (Cutscene_S1_01_ID_Card_Template)"
     },
     "bg_intervention_recovery": {
       "kind": "bg",
       "status": "active",
-      "file": "/art/stage1/Cutscene_S1_01_Arm_Holo_Recovery_00001_.png",
+      "file": "/art/stage1/Cutscene_S1_01_Arm_Holo_Recovery_00001_.webp",
       "note": "Arm energized with floating green anatomical spine hologram (Cutscene_S1_01_Arm_Holo_Recovery)"
     },
     "bg_intervention_focus": {
       "kind": "bg",
       "status": "active",
-      "file": "/art/stage1/Cutscene_S1_01_Arm_Holo_Focus_00001_.png",
+      "file": "/art/stage1/Cutscene_S1_01_Arm_Holo_Focus_00001_.webp",
       "note": "Arm hyper-focused with floating brainwave synapse hologram (Cutscene_S1_01_Arm_Holo_Focus)"
     },
     "bg_intervention_confidence": {
       "kind": "bg",
       "status": "active",
-      "file": "/art/stage1/Cutscene_S1_01_Arm_Holo_Confidence_00001_.png",
+      "file": "/art/stage1/Cutscene_S1_01_Arm_Holo_Confidence_00001_.webp",
       "note": "Arm confident smirk with floating pulse surge hologram (Cutscene_S1_01_Arm_Holo_Confidence)"
     },
     "bg_arm_scheming_exit": {
       "kind": "bg",
       "status": "active",
-      "file": "/art/stage1/Cutscene_S1_01_Arm_Scheming_Exit_00001_.png",
+      "file": "/art/stage1/Cutscene_S1_01_Arm_Scheming_Exit_00001_.webp",
       "note": "Arm with cunning scheming mastermind smirk ready to leave server room (Cutscene_S1_01_Arm_Scheming_Exit)"
     },
     "bg_corporate_hq_yg": {
       "kind": "bg",
       "status": "active",
-      "file": "/art/stage1/Cutscene_S1_02_Corporate_HQ_YG_00001_.png",
+      "file": "/art/stage1/Cutscene_S1_02_Corporate_HQ_YG_00001_.webp",
       "note": "wide establishing shot of giant entertainment corporate HQ building (YG style) morning 08:30 AM (Cutscene_S1_02_Corporate_HQ_YG)"
     },
     "bg_marketing_office": {
       "kind": "bg",
       "status": "legacy",
-      "file": "/art/stage1/Storyboard_S1_02_UnderDesk_00001_.png",
+      "file": "/art/stage1/Storyboard_S1_02_UnderDesk_00001_.webp",
       "note": "old storyboard render; contains characters, replace with a clean asset"
     },
     "bg_under_desk": {
       "kind": "cg",
       "status": "active",
-      "file": "/art/stage1/Cutscene_S1_02_Phone_Snap_UnderDesk_00001_.png",
+      "file": "/art/stage1/Cutscene_S1_02_Phone_Snap_UnderDesk_00001_.webp",
       "note": "First-person floor-level POV under desk holding smartphone taking photo of Noey's polite ID card on pink wallet with Noey standing by desk (Cutscene_S1_02_Phone_Snap_UnderDesk)"
     },
     "bg_hr_corridor": {
       "kind": "bg",
       "status": "legacy",
-      "file": "/art/stage1/Storyboard_S1_04_HRConfrontation_00001_.png",
+      "file": "/art/stage1/Storyboard_S1_04_HRConfrontation_00001_.webp",
       "note": "old storyboard render; contains characters, replace with a clean asset"
     },
     "bg_cg_noey_catmaid": {
       "kind": "cg",
       "status": "legacy",
-      "file": "/art/stage1/Storyboard_S1_03_CatMaid_00001_.png",
+      "file": "/art/stage1/Storyboard_S1_03_CatMaid_00001_.webp",
       "note": "old storyboard render; contains characters, replace with a clean asset"
     },
     "bg_cg_noey_lingerie": {
       "kind": "cg",
       "status": "legacy",
-      "file": "/art/stage1/Storyboard_S1_05_MidnightSilkKeycard_00001_.png",
+      "file": "/art/stage1/Storyboard_S1_05_MidnightSilkKeycard_00001_.webp",
       "note": "old storyboard render; contains characters, replace with a clean asset"
     },
     "bg_noey_screen_fixed_072": {
       "kind": "cg",
       "status": "active",
-      "file": "/art/stage1/Cutscene_S1_02_Noey_Screen_Fixed_00001_.png",
+      "file": "/art/stage1/Cutscene_S1_02_Noey_Screen_Fixed_00001_.webp",
       "note": "Noey joyful and grateful looking up affectionately at Arm after monitor is fixed (Cutscene_S1_02_Noey_Screen_Fixed)"
     },
     "bg_echomind_noey_upload_010": {
       "kind": "cg",
       "status": "active",
-      "file": "/art/stage1/Cutscene_S1_03_EchoMind_Noey_Upload_00001_.png",
+      "file": "/art/stage1/Cutscene_S1_03_EchoMind_Noey_Upload_00001_.webp",
       "note": "Arm plugging phone to upload Noey's ID card into Echo Mind terminal console at late night (Cutscene_S1_03_EchoMind_Noey_Upload)"
     },
     "bg_day_transition": {
@@ -132,7 +132,7 @@
     "bg_noey_welcome_020": {
       "kind": "cg",
       "status": "draft",
-      "file": "/art/stage1/Cutscene_S1_02_Noey_Welcome_EyeLevel_00001_.png",
+      "file": "/art/stage1/Cutscene_S1_02_Noey_Welcome_EyeLevel_00001_.webp",
       "note": "Noey smiles brightly as Arm arrives to help repair her computer, viewed at normal eye level. Bound to S1_02_noey_desk/020."
     },
     "bg_noey_wallet_discovery_040": {
@@ -140,12 +140,12 @@
       "status": "approved",
       "shot": "bg_noey_wallet_discovery_040",
       "version": 3,
-      "file": "/art/cg/bg_noey_wallet_discovery_040.v3.png"
+      "file": "/art/cg/bg_noey_wallet_discovery_040.v3.webp"
     },
     "bg_noey_ticket_015": {
       "kind": "cg",
       "status": "draft",
-      "file": "/art/stage1/Cutscene_S1_02_Noey_Ticket_Verified_00001_.png",
+      "file": "/art/stage1/Cutscene_S1_02_Noey_Ticket_Verified_00001_.webp",
       "note": "Noey, adult marketing intern, at the office desk with a dark monitor. Bound only to S1_02_noey_desk/015; render prompt and verification receipts in workspace validation-completion-20261026."
     }
   }

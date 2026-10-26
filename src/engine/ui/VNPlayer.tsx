@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { VNProject, DialogueNode, ChoiceNode, PlayerSettings } from '@/schema/types';
 import { VNEngine, EngineState } from '../core/VNEngine';
 import { Stage } from './Stage';
@@ -110,6 +110,57 @@ export const VNPlayer: React.FC<VNPlayerProps> = ({ project }) => {
     },
     [engine]
   );
+
+  // Preload upcoming and adjacent scene backgrounds into browser memory cache
+  const preloadedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const preload = (url?: string) => {
+      if (!url || preloadedRef.current.has(url) || url.startsWith('data:')) return;
+      preloadedRef.current.add(url);
+      const img = new Image();
+      img.src = url;
+    };
+
+    // Preload current background immediately
+    if (currentBg?.src) preload(currentBg.src);
+
+    // Preload immediate next node's background
+    const findNextBg = (targetId?: string) => {
+      if (!targetId) return;
+      const targetNode = project.nodes[targetId];
+      if (targetNode && targetNode.type === 'dialogue' && targetNode.backgroundId) {
+        const bg = project.backgrounds[targetNode.backgroundId];
+        if (bg?.src) preload(bg.src);
+      }
+    };
+
+    if (state.currentNode) {
+      if (state.currentNode.type === 'dialogue') {
+        const d = state.currentNode as DialogueNode;
+        if (d.nextId) findNextBg(d.nextId);
+      } else if (state.currentNode.type === 'choice') {
+        const c = state.currentNode as ChoiceNode;
+        c.options.forEach((opt) => findNextBg(opt.targetNodeId));
+      }
+    }
+  }, [state.currentNode, currentBg, project]);
+
+  // Idle background preloading for all game backgrounds
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const bgList = Object.values(project.backgrounds).map((bg) => bg.src).filter(Boolean);
+      bgList.forEach((src, idx) => {
+        setTimeout(() => {
+          if (!preloadedRef.current.has(src) && !src.startsWith('data:')) {
+            preloadedRef.current.add(src);
+            const img = new Image();
+            img.src = src;
+          }
+        }, idx * 120);
+      });
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [project]);
 
   return (
     <div className="relative w-full h-full flex items-center justify-center overflow-hidden bg-zinc-950 select-none">

@@ -13,55 +13,55 @@ export const OVERTIME_BACKGROUNDS: Record<string, BackgroundDef> = {
   bg_server_room_dark: {
     id: 'bg_server_room_dark',
     name: 'ห้องเซิร์ฟเวอร์ชั้นใต้ดิน (กะดึก)',
-    src: '/art/stage1/Storyboard_S1_01_ServerRoom_00001_.png'
+    src: '/art/stage1/Storyboard_S1_01_ServerRoom_00001_.webp'
   },
 
   bg_crt_awakens: {
     id: 'bg_crt_awakens',
     name: 'หน้าจอมอนิเตอร์ CRT สว่างวาบ (Echo Mind Awakens)',
-    src: '/art/stage1/POV_S1_01_CRT_Awakens_00001_.png'
+    src: '/art/stage1/POV_S1_01_CRT_Awakens_00001_.webp'
   },
 
   bg_arm_shocked: {
     id: 'bg_arm_shocked',
     name: 'อาร์มตกใจปนสงสัยหน้าจอเรืองแสง (Reaction Manhwa Cutscene)',
-    src: '/art/stage1/Cutscene_S1_01_ArmShocked_00001_.png'
+    src: '/art/stage1/Cutscene_S1_01_ArmShocked_00001_.webp'
   },
 
   bg_id_card_template: {
     id: 'bg_id_card_template',
     name: 'ต้นแบบสแกนบัตรประชาชนเรืองแสง (Biometric ID Template UI)',
-    src: '/art/stage1/Cutscene_S1_01_ID_Card_Template_00001_.png'
+    src: '/art/stage1/Cutscene_S1_01_ID_Card_Template_00001_.webp'
   },
 
   bg_intervention_recovery: {
     id: 'bg_intervention_recovery',
     name: 'อาร์มฟื้นฟูร่างกายพร้อมโฮโลแกรม RECOVERY_ENERGY (Manhwa Cutscene)',
-    src: '/art/stage1/Cutscene_S1_01_Arm_Holo_Recovery_00001_.png'
+    src: '/art/stage1/Cutscene_S1_01_Arm_Holo_Recovery_00001_.webp'
   },
 
   bg_intervention_focus: {
     id: 'bg_intervention_focus',
     name: 'อาร์มเร่งสมาธิพร้อมโฮโลแกรม HYPER_FOCUS (Manhwa Cutscene)',
-    src: '/art/stage1/Cutscene_S1_01_Arm_Holo_Focus_00001_.png'
+    src: '/art/stage1/Cutscene_S1_01_Arm_Holo_Focus_00001_.webp'
   },
 
   bg_intervention_confidence: {
     id: 'bg_intervention_confidence',
     name: 'อาร์มเปี่ยมความมั่นใจพร้อมโฮโลแกรม CONFIDENCE_BOOST (Manhwa Cutscene)',
-    src: '/art/stage1/Cutscene_S1_01_Arm_Holo_Confidence_00001_.png'
+    src: '/art/stage1/Cutscene_S1_01_Arm_Holo_Confidence_00001_.webp'
   },
 
   bg_arm_scheming_exit: {
     id: 'bg_arm_scheming_exit',
     name: 'อาร์มยิ้มเจ้าเล่ห์เตรียมตัวกลับบ้าน (Scheming Mastermind Cutscene)',
-    src: '/art/stage1/Cutscene_S1_01_Arm_Scheming_Exit_00001_.png'
+    src: '/art/stage1/Cutscene_S1_01_Arm_Scheming_Exit_00001_.webp'
   },
 
   bg_corporate_hq_yg: {
     id: 'bg_corporate_hq_yg',
     name: 'ตึกสำนักงานใหญ่สไตล์ YG ยามเช้า (Corporate HQ Establishing Shot)',
-    src: '/art/stage1/Cutscene_S1_02_Corporate_HQ_YG_00001_.png'
+    src: '/art/stage1/Cutscene_S1_02_Corporate_HQ_YG_00001_.webp'
   },
 
   bg_day_transition: {
@@ -94,49 +94,49 @@ export const OVERTIME_BACKGROUNDS: Record<string, BackgroundDef> = {
   bg_marketing_office: {
     id: 'bg_marketing_office',
     name: 'แผนกการตลาด ชั้น 2 (กลางวัน)',
-    src: '/art/stage1/Storyboard_S1_02_UnderDesk_00001_.png'
+    src: '/art/stage1/Storyboard_S1_02_UnderDesk_00001_.webp'
   },
 
   bg_under_desk: {
     id: 'bg_under_desk',
     name: 'มือถือกำลังถ่ายภาพบัตรประชาชนของน้องเนยใต้โต๊ะ (Recon Photo POV)',
-    src: '/art/stage1/Cutscene_S1_02_Phone_Snap_UnderDesk_00001_.png'
+    src: '/art/stage1/Cutscene_S1_02_Phone_Snap_UnderDesk_00001_.webp'
   },
 
   bg_cg_noey_intimate: {
     id: 'bg_cg_noey_intimate',
     name: 'SPECIAL EVENT CG: น้องเนยใต้โต๊ะทำงาน (R-15)',
-    src: '/art/stage1/Storyboard_S1_02_UnderDesk_00001_.png'
+    src: '/art/stage1/Storyboard_S1_02_UnderDesk_00001_.webp'
   },
 
   bg_hr_corridor: {
     id: 'bg_hr_corridor',
     name: 'โถงทางเดินชั้น 4 หน้าฝ่ายบุคคล (HR)',
-    src: '/art/stage1/Storyboard_S1_04_HRConfrontation_00001_.png'
+    src: '/art/stage1/Storyboard_S1_04_HRConfrontation_00001_.webp'
   },
 
   bg_cg_noey_catmaid: {
     id: 'bg_cg_noey_catmaid',
     name: 'SPECIAL PHOTO #01: น้องเนยชุดคอสเพลย์แมวเหมียว (Cat-Maid)',
-    src: '/art/stage1/Storyboard_S1_03_CatMaid_00001_.png'
+    src: '/art/stage1/Storyboard_S1_03_CatMaid_00001_.webp'
   },
 
   bg_cg_noey_lingerie: {
     id: 'bg_cg_noey_lingerie',
     name: 'SPECIAL PHOTO #02: น้องเนยเสื้อเชิ้ตขาว & ผ้าลูกไม้ดำ (Midnight Silk)',
-    src: '/art/stage1/Storyboard_S1_05_MidnightSilkKeycard_00001_.png'
+    src: '/art/stage1/Storyboard_S1_05_MidnightSilkKeycard_00001_.webp'
   },
 
   bg_noey_screen_fixed_072: {
     id: 'bg_noey_screen_fixed_072',
     name: 'เนยดีใจที่จอคอมเปิดติดพร้อมส่งสายตาออดอ้อนขอบคุณพี่อาร์ม (S1_02/072)',
-    src: '/art/stage1/Cutscene_S1_02_Noey_Screen_Fixed_00001_.png'
+    src: '/art/stage1/Cutscene_S1_02_Noey_Screen_Fixed_00001_.webp'
   },
 
   bg_echomind_noey_upload_010: {
     id: 'bg_echomind_noey_upload_010',
     name: 'อาร์มเสียบสายส่งภาพบัตรประชาชนของเนยเข้าสู่ Echo Mind Terminal (S1_03/010)',
-    src: '/art/stage1/Cutscene_S1_03_EchoMind_Noey_Upload_00001_.png'
+    src: '/art/stage1/Cutscene_S1_03_EchoMind_Noey_Upload_00001_.webp'
   },
 
 

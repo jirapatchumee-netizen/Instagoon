@@ -18,7 +18,10 @@ export function resolveAssetPath(fileOrUrl: string): string {
   if (fileOrUrl.startsWith('data:') || fileOrUrl.startsWith('http://') || fileOrUrl.startsWith('https://')) {
     return fileOrUrl;
   }
-  const clean = fileOrUrl.startsWith('/') ? fileOrUrl.slice(1) : fileOrUrl;
+  let clean = fileOrUrl.startsWith('/') ? fileOrUrl.slice(1) : fileOrUrl;
+  if (clean.endsWith('.png')) {
+    clean = clean.slice(0, -4) + '.webp';
+  }
   const base = import.meta.env.BASE_URL || './';
   const prefix = base.endsWith('/') ? base : `${base}/`;
   return `${prefix}${clean}`;
