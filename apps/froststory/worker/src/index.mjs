@@ -81,11 +81,12 @@ async function auth(req,env,url) {
     await env.DB.batch([
      env.DB.prepare("INSERT INTO users(id,email,google_id,age_verified_at,consent_version,created_at) VALUES(?,?,'local_'||?,?,?,?)").bind(uid,adminEmail,uid,now,'1.0',now),
      env.DB.prepare("INSERT INTO invites(email,status) VALUES(?,'active') ON CONFLICT(email) DO UPDATE SET status='active'").bind(adminEmail),
-     env.DB.prepare("INSERT INTO energy(user_id,free,purchased) VALUES(?,10,0) ON CONFLICT(user_id) DO UPDATE SET free=10").bind(uid),
-     env.DB.prepare("INSERT OR REPLACE INTO user_credentials(user_id,password_hash,salt,role,updated_at) VALUES(?,'STUDIO_KEY','STUDIO_KEY','admin',?)").bind(uid,now)
+     env.DB.prepare("INSERT INTO energy(user_id,free,purchased) VALUES(?,10,0) ON CONFLICT(user_id) DO UPDATE SET free=10").bind(uid)
     ]);
     user = { id: uid, email: adminEmail };
    }
+   // The studio key is the admin credential: always record the role, including for pre-existing accounts.
+   await run(env, "INSERT OR REPLACE INTO user_credentials(user_id,password_hash,salt,role,updated_at) VALUES(?,'STUDIO_KEY','STUDIO_KEY','admin',?)", user.id, now);
    const raw = token();
    await run(env, 'INSERT INTO sessions(id,user_id,expires_at) VALUES(?,?,?)', await hash(raw), user.id, now + 604800000);
    return json({ ok: true, user: { id: user.id, email: user.email, role: 'admin' } }, 200, {

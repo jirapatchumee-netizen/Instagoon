@@ -113,6 +113,9 @@ assert.equal((await call('/api/admin/npc/c',{method:'POST',data:{definition:{}},
 assert.equal((await call('/api/dev/energy',{method:'POST',data:{amount:50},sess:guest.sess})).status,403);
 assert.equal((await call('/api/dev/test-models',{method:'POST',data:{passcode:'frost2026'},sess:guest.sess})).status,403);
 const adminSess = (await call('/auth/login',{method:'POST',data:{studioKey:'fixture-studio-key'}})).sess;
+sql.prepare("DELETE FROM user_credentials WHERE user_id=(SELECT id FROM users WHERE email='creator@froststory.local')").run();
+const relogin = (await call('/auth/login',{method:'POST',data:{studioKey:'fixture-studio-key'}})).sess;
+assert.equal((await call('/api/admin/overview',{sess:relogin,e:openEnv})).status,200,'studio login grants admin to an existing account without credentials');
 assert.equal((await call('/api/dev/test-models',{method:'POST',data:{models:['../../v1/files']},sess:adminSess})).status,400);
 {
  const gid = sql.prepare("SELECT user_id FROM energy ORDER BY rowid DESC").all().find(x=>x.user_id.startsWith('guest_')).user_id;
