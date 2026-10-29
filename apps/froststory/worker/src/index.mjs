@@ -363,16 +363,13 @@ Reply in Thai naturally as "${npcDef?.name || creatorData.name}" (1-3 conversati
 Output STRICT JSON format: {"reply": "Thai text", "matchedRuleIds": ["id1", ...], "affectionDelta": 1 to 3, "learnedMemory": {"key": "player.xxx", "value": "xxx"} or null}`;
 
    if (env.GEMINI_API_KEY && !replyText) {
-     // Pool of verified explicit models (all 6 models verified from dashboard)
+     // Strictly use ONLY the Most Economical & Fastest group (No expensive/slow backups)
      const verifiedModels = [
        'gemini-2.5-flash',
-       'gemini-3-flash-preview',
-       'gemini-3.6-flash',
-       'gemini-3.8-flash',
-       'gemini-3.5-flash-lite',
-       'gemini-3.1-flash-lite'
+       'gemini-3.1-flash-lite',
+       'gemini-3.5-flash-lite'
      ];
-     // Randomize/shuffle pool per request to balance traffic evenly across models
+     // Randomize/shuffle pool per request to balance traffic evenly across the 3 models
      const candidateModels = [...verifiedModels];
      for (let i = candidateModels.length - 1; i > 0; i--) {
        const j = Math.floor(Math.random() * (i + 1));
@@ -419,34 +416,14 @@ Output STRICT JSON format: {"reply": "Thai text", "matchedRuleIds": ["id1", ...]
      aiDebug = { error: 'GEMINI_API_KEY is not configured in env' };
    }
 
-   if (env.AI_API_KEY && !replyText) {
-     try {
-       const baseUrl = env.AI_BASE_URL || 'https://api.openai.com/v1';
-       const res = await fetch(`${baseUrl}/chat/completions`, {
-         method: 'POST',
-         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${env.AI_API_KEY}` },
-         body: JSON.stringify({
-           model: env.AI_MODEL || 'gpt-4o-mini',
-           messages: [{ role: 'user', content: systemPrompt }],
-           response_format: { type: 'json_object' }
-         })
-       });
-       if(res.ok) {
-         const data = await res.json();
-         const raw = data.choices?.[0]?.message?.content;
-         if(raw) {
-           const parsed = JSON.parse(raw);
-           if(parsed.reply) replyText = parsed.reply;
-           if(Array.isArray(parsed.matchedRuleIds)) detectedRuleIds.push(...parsed.matchedRuleIds);
-           if(parsed.affectionDelta) scoreDelta = Math.min(3, Math.max(1, Number(parsed.affectionDelta)));
-           if(parsed.learnedMemory?.key && parsed.learnedMemory?.value) newMem = parsed.learnedMemory;
-         }
-       }
-     } catch(e) {}
-   }
-
-   if(!replyText) {
-     replyText = npcDef?.style?.fallback || `ขอบคุณที่ทักมาคุยนะคะ 😊 วันนี้งานทางนู้นเหนื่อยไหมคะ?`;
+   // If all models in the economical & fast group are exhausted or rate-limited:
+   if (!replyText) {
+     // Refund deducted energy immediately
+     await run(env, 'UPDATE energy SET free=free+1 WHERE user_id=?', user.id);
+     return json({
+       error: 'rate_limit',
+       message: 'ขณะนี้ระบบ AI (กลุ่มประหยัดและเร็ว) ถึงขีดจำกัดชั่วคราว (Rate Limit) กรุณารอสักครู่แล้วลองใหม่อีกครั้งนะคะ (คืนพลังงานให้เรียบร้อยแล้ว)'
+     }, 429);
    }
 
    // External knowledge is never supplied to the rule/memory classifier above.

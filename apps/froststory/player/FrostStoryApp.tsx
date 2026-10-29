@@ -424,6 +424,8 @@ export function FrostStoryApp() {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes('energy_empty')) {
         setError('พลังงานหมดแล้ว! (1⚡/ข้อความ) รอรีเฟรชพลังงานฟรีวันพรุ่งนี้');
+      } else if (msg.includes('rate_limit')) {
+        setError('ขณะนี้ระบบ AI ติดขีดจำกัดชั่วคราว (Rate Limit) กรุณารอสักครู่แล้วลองส่งใหม่อีกครั้งนะคะ (คืนพลังงานให้เรียบร้อยแล้ว)');
       } else {
         setError(msg);
       }
