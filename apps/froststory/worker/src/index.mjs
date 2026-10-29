@@ -203,6 +203,44 @@ async function player(req,env,user,path,now) {
   ]);
   return json({ok:true});
  }
+ if(path==='/api/dev/test-models' && method==='POST'){
+  if(user.role !== 'admin') return json({error:'forbidden'}, 403);
+  const b = await body(req).catch(()=>({}));
+  const modelsToTest = Array.isArray(b.models) ? b.models : [
+    'gemini-3-flash-preview',
+    'gemini-3-flash',
+    'gemini-2.5-flash',
+    'gemini-2.0-flash',
+    'gemini-2-flash',
+    'gemini-flash-latest'
+  ];
+  const results = {};
+  for(const m of modelsToTest){
+    const start = Date.now();
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(env.GEMINI_API_KEY)}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: 'ช่วยตอบภาษาไทย 1 ประโยคสั้นๆ แนะนำตัวเองว่าคุณคือโมเดลอะไรครับ' }] }]
+        })
+      });
+      const durationMs = Date.now() - start;
+      if(res.ok){
+        const data = await res.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+        results[m] = { success: true, text, durationMs };
+      } else {
+        const err = await res.text();
+        results[m] = { success: false, status: res.status, error: err.slice(0, 250), durationMs };
+      }
+    } catch(e) {
+      results[m] = { success: false, exception: String(e), durationMs: Date.now() - start };
+    }
+  }
+  return json({ ok: true, results });
+ }
  if(path==='/api/consent' && method==='POST'){const b=await body(req);await run(env,'UPDATE users SET age_verified_at=?,consent_version=? WHERE id=?',now,string(b.consentVersion,100),user.id);return json({ok:true});}
  if(!user.age_verified_at)return json({error:'age_consent_required'},403);
  if(path==='/api/creators'&&method==='GET')return json({creators:(await all(env,'SELECT c.*,COALESCE(r.score,0) AS relationship FROM creators c LEFT JOIN relationships r ON r.creator_id=c.id AND r.user_id=? ORDER BY c.name',user.id)).map(c=>({id:c.id,name:c.name,bio:c.bio,avatarKey:c.avatar_key,relationship:c.relationship}))});
@@ -323,7 +361,7 @@ Reply in Thai naturally as "${npcDef?.name || creatorData.name}" (1-3 conversati
 Output STRICT JSON format: {"reply": "Thai text", "matchedRuleIds": ["id1", ...], "affectionDelta": 1 to 3, "learnedMemory": {"key": "player.xxx", "value": "xxx"} or null}`;
 
    if (env.GEMINI_API_KEY && !replyText) {
-     const candidateModels = [env.GEMINI_MODEL || 'gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-flash-lite', 'gemini-2.5-pro'];
+     const candidateModels = [env.GEMINI_MODEL || 'gemini-2.5-flash', 'gemini-3-flash-preview', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-flash-latest'];
      for (const geminiModel of candidateModels) {
        if (replyText) break;
        try {
