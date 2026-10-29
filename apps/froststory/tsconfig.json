@@ -1,4 +1,14 @@
 {
   "extends": "../../tsconfig.json",
-  "include": ["player", "main.tsx", "studio.tsx", "../../src/modules/froststory/FrostStoryStudio.tsx"]
+  "include": [
+    "player",
+    "main.tsx",
+    "studio.tsx",
+    "../../src/modules/froststory/FrostStoryStudio.tsx",
+    "../../src/modules/npc-studio/**/*.ts",
+    "../../src/modules/npc-studio/**/*.tsx"
+  ],
+  "compilerOptions": {
+    "allowImportingTsExtensions": true
+  }
 }

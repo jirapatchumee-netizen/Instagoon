@@ -1,7 +1,7 @@
 import { lazy, StrictMode, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
 
-const Studio = lazy(() => import('../../src/modules/froststory/FrostStoryStudio'));
+const Studio = lazy(() => import('../../src/modules/npc-studio/CloudStudio'));
 
 const root = document.getElementById('studio-root');
 if (!root) throw new Error('Missing studio application root element (#studio-root)');

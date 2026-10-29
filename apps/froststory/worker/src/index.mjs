@@ -46,6 +46,9 @@ async function access(req,env,user) {
 async function auth(req,env,url) {
  const origin = env.PUBLIC_ORIGIN || url.origin;
  if(url.pathname==='/auth/demo') {
+  // Demo creates an administrator session; it must never be available on a
+  // public host. Keep it solely for a developer running the Worker locally.
+  if(!['localhost','127.0.0.1','[::1]'].includes(url.hostname)) return json({error:'not_found'},404);
   const now = Date.now();
   const demoEmail = 'creator@froststory.local';
   let user = await one(env,'SELECT * FROM users WHERE email=?',demoEmail);

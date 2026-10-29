@@ -1,0 +1,4 @@
+'use client';
+
+export function Field({label,value,onChange,multiline=false,hint,placeholder,type='text'}:{label:string;value:string;onChange:(v:string)=>void;multiline?:boolean;hint?:string;placeholder?:string;type?:string}) {return <label className={'field '+(multiline?'full':'')}><span>{label}</span>{multiline?<textarea rows={3} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}/>:<input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}/>} {hint&&<small>{hint}</small>}</label>;}
+export function NumberField({label,value,onChange,min=0,max=100,step=1}:{label:string;value:number;onChange:(v:number)=>void;min?:number;max?:number;step?:number}) {return <label className="field"><span>{label}</span><input type="number" min={min} max={max} step={step} value={value} onChange={e=>onChange(Number(e.target.value))}/></label>;}

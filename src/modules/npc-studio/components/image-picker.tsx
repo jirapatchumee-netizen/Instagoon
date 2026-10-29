@@ -1,0 +1,5 @@
+'use client';
+import { useState } from 'react';
+import { Upload, X } from 'lucide-react';
+import { assetUrl, upload } from '../lib/client.ts';
+export function ImagePicker({value,onChange,onError,label='อัปโหลดรูปภาพ'}:{value:string;onChange:(v:string)=>void;onError:(m:string)=>void;label?:string}) {const [loading,setLoading]=useState(false);return <div className="image-picker">{value&&<img className="upload-preview" src={assetUrl(value)} alt="ภาพที่อัปโหลด"/>}<label className={'upload-zone '+(value?'has-image':'')}><Upload/><span>{loading?'กำลังอัปโหลด…':label}</span><small>PNG, JPG, WebP · แปลงเป็น WebP สูงสุด 850 KB</small><input type="file" accept="image/png,image/jpeg,image/webp" disabled={loading} onChange={async e=>{const file=e.target.files?.[0];e.target.value='';if(!file)return;setLoading(true);try{onChange((await upload(file)).asset);}catch(error){onError(error instanceof Error?error.message:'อัปโหลดไม่สำเร็จ');}finally{setLoading(false);}}}/></label>{value&&<button type="button" className="text-button danger" onClick={()=>onChange('')}><X/>นำรูปออก</button>}</div>;}

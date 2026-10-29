@@ -6,6 +6,9 @@ on:
     paths:
       - 'apps/froststory/**'
       - 'src/modules/froststory/**'
+      - 'src/modules/npc-studio/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
       - '.github/workflows/deploy-instagoon.yml'
   workflow_dispatch:
 

@@ -37,6 +37,8 @@ async function request(path,{method='GET',data,cookie=true,origin=true}={}){
  const response=await worker.fetch(new Request(env.PUBLIC_ORIGIN+path,{method,headers,body:data===undefined?undefined:JSON.stringify(data)}),env);let payload;try{payload=await response.json()}catch{payload=null}return {status:response.status,payload};
 }
 assert.equal((await request('/api/me',{cookie:false})).status,401);
+assert.equal((await request('/auth/demo',{cookie:false})).status,404);
+assert.equal(sql.prepare("SELECT COUNT(*) count FROM users WHERE email='creator@froststory.local'").get().count,0);
 assert.equal((await request('/api/admin/overview')).status,403);
 assert.equal((await request('/api/consent',{method:'POST',origin:false,data:{consentVersion:'v1'}})).status,403);
 let result=await request('/api/posts/p/comments',{method:'POST',data:{requestId:'request1',content:'Hi'}});assert.equal(result.status,200);assert.equal(result.payload.energy.free,2);assert.equal(result.payload.relationship,1);
