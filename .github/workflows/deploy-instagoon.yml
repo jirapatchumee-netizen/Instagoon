@@ -9,6 +9,7 @@ on:
       - 'src/modules/npc-studio/**'
       - 'package.json'
       - 'pnpm-lock.yaml'
+      - 'tsconfig.json'
       - '.github/workflows/deploy-instagoon.yml'
   workflow_dispatch:
 
