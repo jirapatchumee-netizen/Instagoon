@@ -14,6 +14,8 @@ FrostStory is an Instagram-style visual novel and companion web application.
 
 ## Automated Verification
 
+NPC Studio keeps creator-authored knowledge in the NPC definition. The memory tab edits each NPC's entries, and the chat Dev panel enables or disables retrieval. Matching uses titles and aliases from the current message. Retrieved facts are supplied only to a separate reply-generation request, never to the existing relationship-rule classifier. The live web-search switch remains disabled; this release makes no Google Search requests. The cloud backend's previously documented differences from the local studio remain in effect.
+
 Build and run the automated checks from the repository root:
 
 ```sh
