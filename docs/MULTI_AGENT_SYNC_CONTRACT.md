@@ -80,3 +80,24 @@ pnpm vn:check
 ```
 
 Pushing commits that fail `pnpm --dir apps/froststory build` will break the automated GitHub Actions CI/CD pipeline on Cloudflare Workers.
+
+---
+
+## 📢 6. Mandatory Sync Briefing Protocol (สรุปการเปลี่ยนแปลงทุกครั้งที่ซิงก์)
+
+Whenever an AI Agent or developer synchronizes changes (after running `git pull --rebase origin main` or before/after pushing updates):
+You MUST provide a clear, concise **Sync Briefing** in the chat using this standardized 4-part format:
+
+```text
+🔄 **[Instagoon Sync Briefing]**
+- 📦 **Commits**: <commit hash, author, title>
+- 🛠️ **Functional Changes**: <what was added, modified, or fixed>
+- 🔍 **Impact & Blast Radius**: <affected files, schemas, APIs, or UI routes>
+- 🚀 **Build Status**: <verified via `pnpm --dir apps/froststory build` (0 errors)>
+```
+
+### ทำไมกติกานี้ถึงจำเป็นอย่างยิ่ง:
+1. **ไม่ทำงานแบบตาบอด (Zero Blind Spot)**: ทั้งสองทีมจะรู้ทันทีว่าอีกฝั่งเพิ่งอัปเดตอะไรไป ไม่ต้องเดาหรือตามอ่าน Git log เอง
+2. **ป้องกันงานซ้ำซ้อนและการเขียนทับ**: หากอีกฝั่งกำลังแก้ไฟล์เดียวกัน จะเห็นทันทีตั้งแต่ตอน Pull และประสานงานกันได้ทันท่วงที
+3. **ตรวจสอบความสมบูรณ์ต่อเนื่อง**: ยืนยันว่าการรวมโค้ด (Rebase) ไม่ทำให้ Build พังและพร้อม Deploy ขึ้น Production เสมอ
+
