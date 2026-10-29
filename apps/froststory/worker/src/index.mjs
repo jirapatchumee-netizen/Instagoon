@@ -362,11 +362,12 @@ Reply in Thai naturally as "${npcDef?.name || creatorData.name}" (1-3 conversati
 Output STRICT JSON format: {"reply": "Thai text", "matchedRuleIds": ["id1", ...], "affectionDelta": 1 to 3, "learnedMemory": {"key": "player.xxx", "value": "xxx"} or null}`;
 
    if (env.GEMINI_API_KEY && !replyText) {
-     // Pool of verified explicit models (excluding ambiguous latest aliases)
+     // Pool of verified explicit models (all 6 models verified from dashboard)
      const verifiedModels = [
        'gemini-2.5-flash',
        'gemini-3-flash-preview',
        'gemini-3.6-flash',
+       'gemini-3.8-flash',
        'gemini-3.5-flash-lite',
        'gemini-3.1-flash-lite'
      ];
