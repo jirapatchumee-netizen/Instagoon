@@ -1,6 +1,9 @@
-# 🎭 Frost Novel Studio — Developer & AI Agent Contract
+# 🎭 Frost Novel Studio & Instagoon — Developer & AI Agent Contract
 
-> **เป้าหมาย:** ให้ Developer และ AI Agent แก้ไขและต่อยอดเนื้อเรื่องได้เร็วที่สุด โดยไม่ต้องโหลดข้อมูลจำนวนมาก และไม่ทำลายความสมบูรณ์ของระบบ
+> **เป้าหมาย:** ให้ Developer และ AI Agent แก้ไขและต่อยอดเนื้อเรื่องและระบบ Instagoon ได้เร็วที่สุด โดยไม่ทำลายความสมบูรณ์ของระบบ
+>
+> 🌐 **Instagoon Multi-Agent Sync Contract:** อ่านข้อตกลงการพัฒนาขนานและการซิงก์ Git ที่ [docs/MULTI_AGENT_SYNC_CONTRACT.md](file:///Users/macminim4pro/FrostNova/FrostNovaWorkspace/projects/Visual%20Novel/docs/MULTI_AGENT_SYNC_CONTRACT.md)  
+> 📖 **Team Dev Guide:** อ่านคู่มือการติดตั้งและคำสั่งรันระบบที่ [docs/TEAM_CONTENT_DEV_GUIDE.md](file:///Users/macminim4pro/FrostNova/FrostNovaWorkspace/projects/Visual%20Novel/docs/TEAM_CONTENT_DEV_GUIDE.md)
 
 ---
 
@@ -39,7 +42,19 @@
 
 - `games/overtime/game.json`: ข้อมูล Meta, รายชื่อตัวละคร, ฉากหลัง, และตัวแปรเริ่มต้น
 - `games/overtime/INDEX.md`: สารบัญฉากสร้างอัตโนมัติ (ห้ามแก้ด้วยมือ)
+- `games/overtime/scripts/`: โฟลเดอร์เก็บไฟล์บทละครแบบย่อ (`.fscript`) สำหรับเขียนบทและแปลงกลับไป-กลับมา
 - `games/overtime/scenes/`: โฟลเดอร์เก็บไฟล์เนื้อเรื่องแบบแยกฉาก (Compact JSON)
+- `scripts/vn_compiler.py`: ตัวแปลงบท Frost Script DSL ➔ `pnpm vn:compile` / `pnpm vn:decompile`
 - `src/demo/overtimeSecretsAssets.ts`: กราฟิก Asset ตัวละครและฉาก (SVG / WebP)
-- `src/engine/`: Runtime Engine (Save/Load, Typewriter, Rollback, Audio Synth) — *เสถียรแล้ว ไม่จำเป็นต้องแก้ไข*
+- `src/engine/`: Runtime Engine (Save/Load, Typewriter, Rollback, Audio Synth) — *เสถียรแล้ว*
 - `src/studio/`: Web Studio สำหรับตรวจเช็ก Node Graph แบบ Visual
+
+---
+
+## 🎨 4. มาตรฐานการ Render ภาพและ Storyboard (ComfyUI)
+
+- **Workflow หลักสำหรับ AI Agent ทุกตัว**: `/Users/macminim4pro/ComfyUI/workflows/Z_Image_Untwisting_544x960.json`
+- **ขนาดภาพมาตรฐาน**: 544×960 (9:16 Portrait)
+- **Style Reference**: `webtoon_style_reference.png`
+- **Runner Script**: `python3 scripts/render_zimage_turbo.py --prompt "<PROMPT>" --prefix "<PREFIX>" --seed <SEED>`
+
