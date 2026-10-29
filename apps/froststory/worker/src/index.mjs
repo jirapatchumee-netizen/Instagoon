@@ -121,7 +121,7 @@ async function auth(req,env,url) {
   await env.DB.batch([
    env.DB.prepare("INSERT INTO users(id,email,google_id,age_verified_at,consent_version,created_at) VALUES(?,?,'local_'||?,?,?,?)").bind(uid, email, uid, now, '1.0', now),
    env.DB.prepare("INSERT INTO invites(email,status) VALUES(?,'active') ON CONFLICT(email) DO UPDATE SET status='active'").bind(email),
-   env.DB.prepare("INSERT INTO energy(user_id,free,purchased) VALUES(?,3,0)").bind(uid),
+   env.DB.prepare("INSERT INTO energy(user_id,free,purchased) VALUES(?,15,0)").bind(uid),
    env.DB.prepare("INSERT INTO user_credentials(user_id,password_hash,salt,role,updated_at) VALUES(?,?,?,?,?)").bind(uid, passwordHash, salt, role, now)
   ]);
   const raw = token();
@@ -137,7 +137,7 @@ async function auth(req,env,url) {
   await env.DB.batch([
    env.DB.prepare("INSERT INTO users(id,email,google_id,age_verified_at,consent_version,is_test,created_at) VALUES(?,?,'guest_'||?,?,?,1,?)").bind(uid, guestEmail, uid, now, '1.0', now),
    env.DB.prepare("INSERT INTO invites(email,status) VALUES(?,'active') ON CONFLICT(email) DO UPDATE SET status='active'").bind(guestEmail),
-   env.DB.prepare("INSERT INTO energy(user_id,free,purchased) VALUES(?,3,0)").bind(uid)
+   env.DB.prepare("INSERT INTO energy(user_id,free,purchased) VALUES(?,15,0)").bind(uid)
   ]);
   const raw = token();
   await run(env, 'INSERT INTO sessions(id,user_id,expires_at) VALUES(?,?,?)', await hash(raw), uid, now + 604800000);
@@ -301,6 +301,7 @@ async function player(req,env,user,path,now) {
    let scoreDelta = 1;
    let newMem = null;
    let detectedRuleIds = [...matchedRuleIds];
+   let aiDebug = null;
 
    const systemPrompt = `You are roleplaying as "${npcDef?.name || creatorData.name}", an authentic idol/creator chatting on instagoon private DM.
 Tagline: "${npcDef?.tagline || ''}".
@@ -322,31 +323,46 @@ Reply in Thai naturally as "${npcDef?.name || creatorData.name}" (1-3 conversati
 Output STRICT JSON format: {"reply": "Thai text", "matchedRuleIds": ["id1", ...], "affectionDelta": 1 to 3, "learnedMemory": {"key": "player.xxx", "value": "xxx"} or null}`;
 
    if (env.GEMINI_API_KEY && !replyText) {
-     try {
-       const geminiModel = env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
-       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent`, {
-         method: 'POST',
-         headers: {
-           'Content-Type': 'application/json',
-           'x-goog-api-key': env.GEMINI_API_KEY
-         },
-         body: JSON.stringify({
-           contents: [{ role: 'user', parts: [{ text: systemPrompt }] }],
-           generationConfig: { responseMimeType: 'application/json' }
-         })
-       });
-       if(res.ok) {
-         const data = await res.json();
-         const raw = data.candidates?.[0]?.content?.parts?.[0]?.text;
-         if(raw) {
-           const parsed = JSON.parse(raw);
-           if(parsed.reply) replyText = parsed.reply;
-           if(Array.isArray(parsed.matchedRuleIds)) detectedRuleIds.push(...parsed.matchedRuleIds);
-           if(parsed.affectionDelta) scoreDelta = Math.min(3, Math.max(1, Number(parsed.affectionDelta)));
-           if(parsed.learnedMemory?.key && parsed.learnedMemory?.value) newMem = parsed.learnedMemory;
+     const candidateModels = [env.GEMINI_MODEL || 'gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-flash-lite', 'gemini-2.5-pro'];
+     for (const geminiModel of candidateModels) {
+       if (replyText) break;
+       try {
+         const url = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${encodeURIComponent(env.GEMINI_API_KEY)}`;
+         const res = await fetch(url, {
+           method: 'POST',
+           headers: {
+             'Content-Type': 'application/json',
+             'x-goog-api-key': env.GEMINI_API_KEY
+           },
+           body: JSON.stringify({
+             contents: [{ role: 'user', parts: [{ text: systemPrompt }] }],
+             generationConfig: { responseMimeType: 'application/json' }
+           })
+         });
+         if(res.ok) {
+           const data = await res.json();
+           const raw = data.candidates?.[0]?.content?.parts?.[0]?.text;
+           if(raw) {
+             const parsed = JSON.parse(raw);
+             if(parsed.reply) replyText = parsed.reply;
+             if(Array.isArray(parsed.matchedRuleIds)) detectedRuleIds.push(...parsed.matchedRuleIds);
+             if(parsed.affectionDelta) scoreDelta = Math.min(3, Math.max(1, Number(parsed.affectionDelta)));
+             if(parsed.learnedMemory?.key && parsed.learnedMemory?.value) newMem = parsed.learnedMemory;
+           }
+           aiDebug = { success: true, model: geminiModel };
+           break;
+         } else {
+           const errBody = await res.text();
+           console.error('Gemini API Error on', geminiModel, res.status, errBody);
+           aiDebug = { status: res.status, modelTried: geminiModel, error: errBody.slice(0, 300) };
          }
+       } catch(e) {
+         console.error('Gemini Fetch Exception on', geminiModel, e);
+         aiDebug = { exception: String(e) };
        }
-     } catch(e) {}
+     }
+   } else if (!env.GEMINI_API_KEY) {
+     aiDebug = { error: 'GEMINI_API_KEY is not configured in env' };
    }
 
    if (env.AI_API_KEY && !replyText) {
@@ -458,7 +474,8 @@ Output STRICT JSON format: {"reply": "Thai text", "matchedRuleIds": ["id1", ...]
      trust,
      romance,
      level: currentLv,
-     energy: await energy(env, user.id, now)
+     energy: await energy(env, user.id, now),
+     aiDebug
    });
   }
   const allAiMessages = await all(env, 'SELECT id, role, content, media_key mediaKey, affection_delta affectionDelta, created_at createdAt FROM ai_chat_messages WHERE user_id=? AND creator_id=? ORDER BY created_at ASC LIMIT 100', user.id, creator);
