@@ -474,8 +474,7 @@ Output STRICT JSON format: {"reply": "Thai text", "matchedRuleIds": ["id1", ...]
      trust,
      romance,
      level: currentLv,
-     energy: await energy(env, user.id, now),
-     aiDebug
+     energy: await energy(env, user.id, now)
    });
   }
   const allAiMessages = await all(env, 'SELECT id, role, content, media_key mediaKey, affection_delta affectionDelta, created_at createdAt FROM ai_chat_messages WHERE user_id=? AND creator_id=? ORDER BY created_at ASC LIMIT 100', user.id, creator);
