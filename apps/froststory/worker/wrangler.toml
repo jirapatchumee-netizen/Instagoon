@@ -1,0 +1,23 @@
+name = "froststory-api"
+main = "src/index.mjs"
+compatibility_date = "2026-10-01"
+
+# Replace with IDs of provisioned resources before deploying.
+[[d1_databases]]
+binding = "DB"
+database_name = "froststory"
+database_id = "6a48d2df-a32b-4b13-9148-7ed2abfc0789"
+migrations_dir = "migrations"
+
+# [[r2_buckets]]
+# binding = "MEDIA"
+# bucket_name = "froststory-media"
+
+[assets]
+directory = "../dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*", "/auth/*"]
+
+[vars]
+GEMINI_MODEL = "gemini-2.5-flash-lite"

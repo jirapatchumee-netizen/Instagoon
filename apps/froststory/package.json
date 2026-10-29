@@ -1,0 +1,13 @@
+{
+  "name": "froststory",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc -p tsconfig.json && vite build",
+    "preview": "vite preview --host 127.0.0.1"
+  },
+  "devDependencies": {
+    "wrangler": "^4.154.0"
+  }
+}

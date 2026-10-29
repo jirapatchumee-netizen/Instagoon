@@ -5,7 +5,7 @@ Synthesizes:
 1. story-architect-skill: Scene narrative beat decomposition & 1st-Person POV camera mapping (62 nodes -> 38 POV shots)
 2. build-character-sheet-prompt: Vertical 544x960 character reference sheets & immutable DNA lock
 3. Higgsfield-Skill: Cinematic POV camera directing & natural-language prompt compilation
-Dispatches to ComfyUI workflow: /Users/macminim4pro/ComfyUI/workflows/Z_Image_Turbo_AnimeLora3_544x960.json
+Dispatches to ComfyUI workflow: /Users/macminim4pro/ComfyUI/workflows/Z_Image_Untwisting_544x960.json
 """
 
 import argparse
@@ -17,7 +17,7 @@ from pathlib import Path
 # Paths
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parent
-COMFY_WORKFLOW = "/Users/macminim4pro/ComfyUI/workflows/Z_Image_Turbo_AnimeLora3_544x960.json"
+COMFY_WORKFLOW = "/Users/macminim4pro/ComfyUI/workflows/Z_Image_Untwisting_544x960.json"
 MANIFEST_JSON = PROJECT_ROOT / "art/storyboard_stage1_pov_544x960.json"
 PUBLIC_OUTPUT_DIR = PROJECT_ROOT / "public/art/stage1"
 

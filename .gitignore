@@ -4,3 +4,5 @@ dist
 *.local
 .frostnova
 Source Reference
+outputs/
+.audit/

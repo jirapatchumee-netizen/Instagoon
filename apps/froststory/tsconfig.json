@@ -1,0 +1,4 @@
+{
+  "extends": "../../tsconfig.json",
+  "include": ["player", "main.tsx", "studio.tsx", "../../src/modules/froststory/FrostStoryStudio.tsx"]
+}

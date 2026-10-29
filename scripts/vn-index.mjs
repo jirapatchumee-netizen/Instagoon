@@ -79,11 +79,9 @@ for (const row of sceneRows) {
 
 mdLines.push('');
 mdLines.push('## 🗺️ Story Flow Summary');
-mdLines.push('1. `S1_01_server_room` ➔ `S1_02_noey_desk`');
-mdLines.push('2. `S1_02_noey_desk` ➔ (Heist Choice: Bad End OR `S1_03_night_terminal`)');
-mdLines.push('3. `S1_03_night_terminal` ➔ `S1_04_hr_incident` (Cat-Maid Photo Shoot)');
-mdLines.push('4. `S1_04_hr_incident` ➔ `S1_05_keycard` (Pim Bullying & Revenge Alliance)');
-mdLines.push('5. `S1_05_keycard` ➔ `STAGE 1 COMPLETE` (Midnight Silk Photo + Pim ID Card Handover)');
+for (const row of sceneRows) {
+  mdLines.push(`- \`${row.id}\` → ${row.exits}`);
+}
 
 fs.writeFileSync(path.join(gameDir, 'INDEX.md'), mdLines.join('\n') + '\n', 'utf8');
 console.log(`✅ games/overtime/INDEX.md generated successfully with ${sceneFiles.length} scenes.`);

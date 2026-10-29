@@ -11,7 +11,7 @@ import { parseArgs } from 'node:util';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '..');
-const gameDir = path.join(rootDir, 'games', 'overtime');
+const gameDir = process.env.VN_STUDIO_GAME_DIR || path.join(rootDir, 'games', 'overtime');
 const { values: target } = parseArgs({ options: {
   node: { type: 'string' }, asset: { type: 'string' }, file: { type: 'string' },
 } });
@@ -118,6 +118,16 @@ for (const file of sceneFiles) {
             });
           }
         });
+      } else if (node.cond || node.branch) {
+        for (const key of ['then', 'else']) {
+          const destination = node[key];
+          if (!destination) {
+            console.error(`❌ [${fullId}] Branch is missing '${key}'`);
+            errors++;
+          } else {
+            crossReferences.push({ source: fullId, target: destination.includes('/') ? destination : `${sceneId}/${destination}`, type: `branch ${key}` });
+          }
+        }
       } else if (node.go) {
         crossReferences.push({
           source: fullId,

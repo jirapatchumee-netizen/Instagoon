@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Z-Image Turbo 544x960 ComfyUI Render Runner
+Z-Image Untwisting 544x960 ComfyUI Render Runner
 Executes prompts against local ComfyUI instance (http://127.0.0.1:8188)
-using ~/ComfyUI/workflows/Z_Image_Turbo_AnimeLora3_544x960.json
+using ~/ComfyUI/workflows/Z_Image_Untwisting_544x960.json
 """
 
 import argparse
@@ -15,7 +15,7 @@ import urllib.request
 import urllib.error
 from pathlib import Path
 
-DEFAULT_WORKFLOW = str(Path.home() / "ComfyUI/workflows/Z_Image_Turbo_AnimeLora3_544x960.json")
+DEFAULT_WORKFLOW = str(Path.home() / "ComfyUI/workflows/Z_Image_Untwisting_544x960.json")
 COMFY_URL = "http://127.0.0.1:8188"
 COMFY_OUTPUT_DIR = Path.home() / "ComfyUI/output"
 
@@ -50,7 +50,7 @@ def queue_prompt(workflow_dict, host_url=COMFY_URL):
         return json.loads(resp.read().decode("utf-8"))
 
 
-def wait_for_prompt(prompt_id, host_url=COMFY_URL, timeout_sec=120):
+def wait_for_prompt(prompt_id, host_url=COMFY_URL, timeout_sec=200):
     start = time.time()
     while time.time() - start < timeout_sec:
         try:
@@ -64,7 +64,7 @@ def wait_for_prompt(prompt_id, host_url=COMFY_URL, timeout_sec=120):
     raise TimeoutError(f"Prompt {prompt_id} did not complete within {timeout_sec}s")
 
 
-def render(prompt_text, prefix="Storyboard", seed=42, output_dir=None, workflow_path=DEFAULT_WORKFLOW):
+def render(prompt_text, prefix="Storyboard", seed=42, output_dir=None, workflow_path=DEFAULT_WORKFLOW, reference_image=None):
     wf_file = Path(workflow_path)
     if not wf_file.exists():
         raise FileNotFoundError(f"Workflow file not found: {workflow_path}")
@@ -76,6 +76,8 @@ def render(prompt_text, prefix="Storyboard", seed=42, output_dir=None, workflow_
     wf["5"]["inputs"]["text"] = prompt_text
     wf["9"]["inputs"]["seed"] = int(seed)
     wf["11"]["inputs"]["filename_prefix"] = prefix
+    if reference_image and "12" in wf and "image" in wf["12"].get("inputs", {}):
+        wf["12"]["inputs"]["image"] = reference_image
 
     res = queue_prompt(wf)
     prompt_id = res.get("prompt_id")
@@ -117,12 +119,13 @@ def render(prompt_text, prefix="Storyboard", seed=42, output_dir=None, workflow_
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Render via Z-Image Turbo ComfyUI workflow")
+    parser = argparse.ArgumentParser(description="Render via Z-Image Untwisting ComfyUI workflow")
     parser.add_argument("--prompt", required=True, help="Positive prompt text")
     parser.add_argument("--prefix", default="Storyboard", help="Filename prefix")
     parser.add_argument("--seed", type=int, default=42, help="Seed integer")
     parser.add_argument("--output-dir", default=None, help="Destination directory")
     parser.add_argument("--workflow", default=DEFAULT_WORKFLOW, help="Workflow JSON path")
+    parser.add_argument("--reference-image", default=None, help="Reference style image filename in ComfyUI input")
 
     args = parser.parse_args()
     try:
@@ -131,7 +134,8 @@ def main():
             prefix=args.prefix,
             seed=args.seed,
             output_dir=args.output_dir,
-            workflow_path=args.workflow
+            workflow_path=args.workflow,
+            reference_image=args.reference_image
         )
         print(json.dumps(result, indent=2, ensure_ascii=False))
     except Exception as e:

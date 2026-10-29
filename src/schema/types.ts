@@ -131,6 +131,14 @@ export interface HistoryEntry {
   timestamp: number;
 }
 
+export interface ChoiceCheckpoint {
+  nodeId: string;
+  variables: Record<string, unknown>;
+  characters: CharacterStagePlacement[];
+  currentBgId?: string;
+  historyLength: number;
+}
+
 export interface SaveMetadata {
   slotId: string;
   title: string;
@@ -149,6 +157,7 @@ export interface SaveData {
   currentBgId?: string;
   currentBgmId?: string;
   characters?: CharacterStagePlacement[];
+  choiceCheckpoints?: Record<string, ChoiceCheckpoint>;
   thumbnail?: string;
 }
 
