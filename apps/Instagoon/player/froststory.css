@@ -2314,6 +2314,22 @@ dialog.fs-overlay::backdrop {
   text-align: center;
 }
 
+.fs-login-legal {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  font-size: 0.78rem;
+}
+
+.fs-login-legal a {
+  color: var(--login-muted);
+  text-underline-offset: 3px;
+}
+
+.fs-login-legal a:hover {
+  color: var(--login-pearl);
+}
+
 @keyframes fsLoginDriftA {
   0% {
     transform: translate3d(0, 0, 0) rotate(0deg) scale(1);

@@ -50,6 +50,8 @@ const TRANSLATIONS = {
     loginSecret: 'จริง ๆ แล้วมีเรื่องหนึ่งที่ไม่เคยบอกใครเลย',
     loginSecretLock: 'สนิทกันอีกนิดถึงจะเห็น',
     loginAgeNote: 'สำหรับผู้มีอายุ 18 ปีขึ้นไป ครั้งแรกจะให้ยืนยันอายุก่อนเริ่มเล่น',
+    loginPrivacy: 'นโยบายความเป็นส่วนตัว',
+    loginTerms: 'ข้อกำหนดการใช้งาน',
     loginErrors: {
       login_cancelled: 'ยกเลิกการเข้าสู่ระบบแล้ว ลองใหม่ได้ทุกเมื่อ',
       access_revoked: 'บัญชีนี้ถูกระงับการเข้าใช้งาน',
@@ -128,6 +130,8 @@ const TRANSLATIONS = {
     loginSecret: 'There’s something I’ve never told anyone…',
     loginSecretLock: 'Get closer to read this',
     loginAgeNote: 'For players 18 and over. You’ll confirm your age the first time you sign in.',
+    loginPrivacy: 'Privacy Policy',
+    loginTerms: 'Terms of Service',
     loginErrors: {
       login_cancelled: 'Sign-in cancelled. You can try again anytime.',
       access_revoked: 'This account has been suspended.',
@@ -206,6 +210,8 @@ const TRANSLATIONS = {
     loginSecret: 'ほんとうはね、誰にも言ったことがない話があるの',
     loginSecretLock: 'もっと仲良くなると読めます',
     loginAgeNote: '18歳以上の方が対象です。初回ログイン時に年齢を確認します。',
+    loginPrivacy: 'プライバシーポリシー',
+    loginTerms: '利用規約',
     loginErrors: {
       login_cancelled: 'ログインをキャンセルしました。いつでもやり直せます。',
       access_revoked: 'このアカウントは利用停止中です。',
@@ -530,6 +536,10 @@ function LoginScreen({
             <span>{t.loginGoogle}</span>
           </a>
           <p className="fs-login-note">{t.loginAgeNote}</p>
+          <nav className="fs-login-legal">
+            <a href="/privacy.html">{t.loginPrivacy}</a>
+            <a href="/terms.html">{t.loginTerms}</a>
+          </nav>
         </div>
       </div>
     </main>
