@@ -378,16 +378,41 @@ export function FrostStoryApp() {
   >([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // Player Auth States
-  const [playerEmail, setPlayerEmail] = useState('');
-  const [playerPassword, setPlayerPassword] = useState('');
-  const [isPlayerRegister, setIsPlayerRegister] = useState(false);
-  const [playerAuthLoading, setPlayerAuthLoading] = useState(false);
-
   // AI Free-Text DM Chat State
   const [aiDmTab, setAiDmTab] = useState<'ai' | 'story'>('ai');
   const [aiInput, setAiInput] = useState('');
   const [aiSending, setAiSending] = useState(false);
+  const [memoryPanel, setMemoryPanel] = useState<{ open: boolean; items: { key: string; value: string }[] }>({ open: false, items: [] });
+
+  useEffect(() => {
+    setMemoryPanel({ open: false, items: [] });
+  }, [selectedCreator?.id]);
+
+  async function toggleMemoryPanel() {
+    if (!selectedCreator) return;
+    if (memoryPanel.open) {
+      setMemoryPanel({ open: false, items: [] });
+      return;
+    }
+    try {
+      const res = await api<{ memories: { key: string; value: string }[] }>(`/api/chats/${encodeURIComponent(selectedCreator.id)}/memories`);
+      setMemoryPanel({ open: true, items: res.memories });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function forgetMemory(key: string) {
+    if (!selectedCreator) return;
+    if (!window.confirm(`ให้ ${selectedCreator.name} ลืมเรื่องนี้ใช่ไหม?`)) return;
+    try {
+      await api(`/api/chats/${encodeURIComponent(selectedCreator.id)}/memories/${encodeURIComponent(key)}`, { method: 'DELETE' });
+      setMemoryPanel((prev) => ({ ...prev, items: prev.items.filter((m) => m.key !== key) }));
+      if (chat?.memories) setChat({ ...chat, memories: chat.memories.filter((m) => m.key !== key) });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
 
   async function handleSendAiMessage(e: React.FormEvent) {
     e.preventDefault();
@@ -422,7 +447,10 @@ export function FrostStoryApp() {
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes('energy_empty')) {
+      if (msg.includes('thread_busy')) {
+        setAiInput(text);
+        setError(`${selectedCreator.name} กำลังพิมพ์ตอบข้อความก่อนหน้าอยู่… รอสักครู่แล้วส่งใหม่นะคะ`);
+      } else if (msg.includes('energy_empty')) {
         setError('พลังงานหมดแล้ว! (1⚡/ข้อความ) รอรีเฟรชพลังงานฟรีวันพรุ่งนี้');
       } else if (msg.includes('rate_limit')) {
         setError('ขณะนี้ระบบ AI ติดขีดจำกัดชั่วคราว (Rate Limit) กรุณารอสักครู่แล้วลองส่งใหม่อีกครั้งนะคะ (คืนพลังงานให้เรียบร้อยแล้ว)');
@@ -466,44 +494,6 @@ export function FrostStoryApp() {
       setError(e instanceof Error ? e.message : 'Reset failed');
     } finally {
       setDevActionLoading(false);
-    }
-  }
-
-  async function handlePlayerAuth(e: React.FormEvent) {
-    e.preventDefault();
-    if (!playerEmail.trim() || !playerPassword) return;
-    setPlayerAuthLoading(true);
-    setError('');
-    try {
-      const endpoint = isPlayerRegister ? '/auth/register' : '/auth/login';
-      const res = await api<{ ok: boolean; user: User }>(endpoint, json({
-        email: playerEmail.trim(),
-        password: playerPassword
-      }));
-      if (res?.user) {
-        await Promise.all([loadMe(), loadFeed()]);
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      if (msg === 'email_already_exists') setError('อีเมลนี้ถูกใช้งานแล้ว กรุณาเข้าสู่ระบบ');
-      else if (msg === 'invalid_credentials') setError('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
-      else if (msg === 'password_too_short') setError('รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร');
-      else setError(msg);
-    } finally {
-      setPlayerAuthLoading(false);
-    }
-  }
-
-  async function handleGuestPlay() {
-    setPlayerAuthLoading(true);
-    setError('');
-    try {
-      await api('/auth/guest', json({}));
-      await Promise.all([loadMe(), loadFeed()]);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setPlayerAuthLoading(false);
     }
   }
 
@@ -654,85 +644,17 @@ export function FrostStoryApp() {
           <p>{t.loginSubtitle}</p>
           {error && <p role="alert" style={{ color: '#f87171', background: 'rgba(244,63,94,0.12)', border: '1px solid rgba(244,63,94,0.3)', padding: '8px 12px', borderRadius: '8px', fontSize: '0.82rem' }}>{error}</p>}
 
-          {/* Email & Password Authentication Form */}
-          <form onSubmit={handlePlayerAuth} style={{ display: 'flex', flexDirection: 'column', gap: '10px', textAlign: 'left', marginTop: '10px' }}>
-            <input
-              type="email"
-              required
-              placeholder="อีเมลผู้เล่น (Player Email)"
-              value={playerEmail}
-              onChange={(e) => setPlayerEmail(e.target.value)}
-              style={{ background: '#0b0e18', border: '1px solid #242e47', borderRadius: '8px', padding: '10px 14px', color: '#fff', fontSize: '0.85rem' }}
-            />
-            <input
-              type="password"
-              required
-              minLength={6}
-              placeholder="รหัสผ่าน (อย่างน้อย 6 ตัวอักษร)"
-              value={playerPassword}
-              onChange={(e) => setPlayerPassword(e.target.value)}
-              style={{ background: '#0b0e18', border: '1px solid #242e47', borderRadius: '8px', padding: '10px 14px', color: '#fff', fontSize: '0.85rem' }}
-            />
-            <button
-              type="submit"
-              disabled={playerAuthLoading}
-              className="fs-primary"
-              style={{ padding: '11px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 700 }}
-            >
-              {playerAuthLoading ? 'กำลังดำเนินการ...' : isPlayerRegister ? '✨ สมัครสมาชิกผู้เล่น' : '🚀 เข้าสู่ระบบ'}
-            </button>
-            <div style={{ textAlign: 'center', marginTop: '2px' }}>
-              <button
-                type="button"
-                onClick={() => { setIsPlayerRegister(!isPlayerRegister); setError(''); }}
-                style={{ background: 'transparent', border: 'none', color: '#38bdf8', fontSize: '0.78rem', cursor: 'pointer', textDecoration: 'underline' }}
-              >
-                {isPlayerRegister ? 'มีบัญชีแล้ว? เข้าสู่ระบบ' : 'ยังไม่มีบัญชีผู้เล่น? สมัครสมาชิก'}
-              </button>
-            </div>
-          </form>
-
-          <div style={{ margin: '14px 0 10px', display: 'flex', alignItems: 'center', gap: '8px', color: '#64748b', fontSize: '0.75rem' }}>
-            <div style={{ flex: 1, height: '1px', background: '#242e47' }} />
-            <span>หรือเข้าเล่นด่วน</span>
-            <div style={{ flex: 1, height: '1px', background: '#242e47' }} />
-          </div>
-
-          <button
-            type="button"
-            className="fs-secondary"
-            onClick={handleGuestPlay}
-            disabled={playerAuthLoading}
-            style={{
-              display: 'block',
-              width: '100%',
-              textAlign: 'center',
-              padding: '11px 16px',
-              borderRadius: '8px',
-              border: '1px solid #334155',
-              background: '#191e32',
-              color: '#38bdf8',
-              fontWeight: 700,
-              fontSize: '0.9rem',
-              cursor: 'pointer'
-            }}
-          >
-            ⚡ เข้าเล่นทันที (Play as Guest)
-          </button>
-
           <a
-            className="fs-secondary"
+            className="fs-primary"
             href="/auth/google"
             style={{
-              marginTop: '8px',
+              marginTop: '14px',
               display: 'block',
               textAlign: 'center',
               textDecoration: 'none',
               padding: '10px 16px',
               borderRadius: '8px',
-              border: '1px solid #242e47',
-              color: '#94a3b8',
-              fontSize: '0.8rem'
+              fontWeight: 700
             }}
           >
             {t.loginGoogle}
@@ -1750,6 +1672,31 @@ export function FrostStoryApp() {
                 <p className="fs-empty">{t.noChatFound}</p>
               )}
             </div>
+
+            {/* Player Memory: what this Creator remembers about the player */}
+            {aiDmTab === 'ai' && (
+              <div style={{ padding: '6px 12px', fontSize: 12 }}>
+                <button type="button" onClick={toggleMemoryPanel} style={{ background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', padding: 0 }}>
+                  🧠 สิ่งที่ {selectedCreator.name} จำเกี่ยวกับคุณ {memoryPanel.open ? '▲' : '▼'}
+                </button>
+                {memoryPanel.open && (
+                  memoryPanel.items.length === 0 ? (
+                    <p style={{ margin: '6px 0 0', opacity: 0.7 }}>ยังไม่มีเรื่องที่จำไว้</p>
+                  ) : (
+                    <ul style={{ listStyle: 'none', margin: '6px 0 0', padding: 0, display: 'grid', gap: 4 }}>
+                      {memoryPanel.items.map((m) => (
+                        <li key={m.key} style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                          <span>{m.value}</span>
+                          <button type="button" onClick={() => forgetMemory(m.key)} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: 0 }}>
+                            ลืม
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )
+                )}
+              </div>
+            )}
 
             {/* Bottom Interactive Tray */}
             {aiDmTab === 'ai' ? (

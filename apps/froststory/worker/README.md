@@ -10,7 +10,9 @@ The Worker requires D1 and R2 bindings named `DB` and `MEDIA`. Replace the place
 - `ACCESS_TEAM_DOMAIN`: Cloudflare Access team hostname, without a scheme or path.
 - `ACCESS_AUDIENCE`: Cloudflare Access application audience tag.
 
-Configure Cloudflare Access to cover the Studio and `/api/admin/*`. The Worker independently validates the Access JWT issuer, audience, expiration, signature and email, then checks the Google session and administrator email. Admin requests fail closed when settings or credentials are absent. Configure the Access policy and verify it with real credentials before use. The API requires same-origin requests, secure session cookies, and an `Origin` header on writes.
+Players sign in only with Google. Anyone with a verified Google email can sign up; there is no email/password or guest sign-in. Setting an email's invite to `revoked` blocks that account. New accounts must accept the 18+ consent before any content is served. An earlier account with the same email is linked to the Google identity on first Google sign-in.
+
+`/api/admin/*` admits a session whose user has the `admin` role (granted by the `STUDIO_KEY` login) or matches `ADMIN_EMAIL`, **or** a request carrying a valid Cloudflare Access JWT for the administrator. Access is not yet required in addition to the studio key, so `STUDIO_KEY` alone grants admin: keep it long and secret. Admin requests fail closed when none of these is present. Configure the Access policy and verify it with real credentials before use. The API requires same-origin requests, secure session cookies, and an `Origin` header on writes.
 
 Apply `migrations/0001_init.sql` to a new database using Wrangler migrations. Never apply this initial schema to an existing production database without a migration and backup plan. Publishing is separate from deployment and requires provisioned accounts, OAuth configuration and a Cloudflare Access policy.
 

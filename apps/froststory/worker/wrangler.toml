@@ -19,5 +19,9 @@ binding = "ASSETS"
 not_found_handling = "single-page-application"
 run_worker_first = ["/api/*", "/auth/*"]
 
+# Daily 02:00 Asia/Bangkok: summarize then delete AI chat messages older than 180 days.
+[triggers]
+crons = ["0 19 * * *"]
+
 [vars]
 GEMINI_MODEL = "gemini-2.5-flash"
