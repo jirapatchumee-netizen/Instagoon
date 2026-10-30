@@ -90,7 +90,7 @@ CLI หนึ่งตัวใน `scripts/` รับ style ID, scene prompt, 
 
 ## ตัวอย่าง brief สำหรับส่งงานหลังเตรียม workflow พร้อม
 
-สร้างภาพทดสอบเนยด้วย style ID noey-soft-romance-v1 อ่าน ART_STYLE.md และ style.json ในโปรเจกต์ Visual Novel ใช้ reference.png เป็น style conditioning จริง คงตัวตนเนยและชุดทำงาน ท่ายืนข้างประตู ทำทีละหนึ่งภาพ เก็บ workflow และ receipt คู่ภาพ แสดงภาพเทียบต้นแบบ หาก checkpoint, node หรือ reference conditioning ยังไม่พร้อม ให้รายงานสิ่งที่ขาด ห้ามแทนด้วย prompt-only แล้วอ้างว่าใช้ reference แล้ว
+สร้างภาพทดสอบเนยด้วย style ID noey-soft-romance-v1 อ่าน docs/archive/visual-novel/ART_STYLE.md และ style.json ในโปรเจกต์ Visual Novel ใช้ reference.png เป็น style conditioning จริง คงตัวตนเนยและชุดทำงาน ท่ายืนข้างประตู ทำทีละหนึ่งภาพ เก็บ workflow และ receipt คู่ภาพ แสดงภาพเทียบต้นแบบ หาก checkpoint, node หรือ reference conditioning ยังไม่พร้อม ให้รายงานสิ่งที่ขาด ห้ามแทนด้วย prompt-only แล้วอ้างว่าใช้ reference แล้ว
 
 ## ขอบเขตและผลกระทบ
 
