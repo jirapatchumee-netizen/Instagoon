@@ -7,7 +7,7 @@ In the Social Story Platform (FrostStory), the Content Studio tool (IG Idol NPC 
 ## Key Decisions
 
 1. **Zero Studio Code Leakage**:
-   - `FrostStoryStudio` is decoupled from `apps/froststory/main.tsx` so the public `dist/assets/` output contains only player runtime code.
+   - `FrostStoryStudio` is decoupled from `apps/Instagoon/main.tsx` so the public `dist/assets/` output contains only player runtime code.
    - Administrative and authoring surfaces run on localhost, completely air-gapped from player distribution.
 
 2. **3D Relationship Dimension Schema Migration**:

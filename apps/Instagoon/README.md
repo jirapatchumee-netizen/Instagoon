@@ -1,6 +1,6 @@
-# FrostStory
+# Instagoon
 
-FrostStory is an Instagram-style visual novel and companion web application.
+Instagoon is an Instagram-style visual novel and companion web application.
 
 ## UI/UX System: Style 1 (Insta-Prime Native iOS 18)
 
@@ -19,9 +19,9 @@ NPC Studio keeps creator-authored knowledge in the NPC definition. The memory ta
 Build and run the automated checks from the repository root:
 
 ```sh
-pnpm --dir apps/froststory build
-python3 apps/froststory/worker/tests/test_schema.py
-node --no-warnings apps/froststory/worker/tests/api.mjs
+pnpm --dir apps/Instagoon build
+python3 apps/Instagoon/worker/tests/test_schema.py
+node --no-warnings apps/Instagoon/worker/tests/api.mjs
 ```
 
 ## Local Development & Preview
@@ -29,8 +29,8 @@ node --no-warnings apps/froststory/worker/tests/api.mjs
 For a local player UI test with synthetic data only, run these in separate terminals:
 
 ```sh
-node --no-warnings apps/froststory/tests/ui-fixture.mjs
-pnpm --dir apps/froststory exec vite --host 127.0.0.1 --port 5174 --strictPort
+node --no-warnings apps/Instagoon/tests/ui-fixture.mjs
+pnpm --dir apps/Instagoon exec vite --host 127.0.0.1 --port 5174 --strictPort
 ```
 
 Open `http://127.0.0.1:5174/`. The fixture runs the real Worker against an in-memory SQLite database and injects a synthetic session. It binds only to localhost, is not part of the deployed Worker, and loses its data on exit. Never expose it to a network or use it with real player data. This fixture does not test Google OAuth, Cloudflare Access, R2, or live D1.

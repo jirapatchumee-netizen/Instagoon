@@ -56,7 +56,7 @@ pnpm install
 
 ### 🌟 4.1 รัน Instagoon Studio & Phone Simulator (งานหลักของทีม Content)
 ```bash
-pnpm --dir apps/froststory dev
+pnpm --dir apps/Instagoon dev
 ```
 เมื่อรันแล้ว ให้เปิดเบราว์เซอร์ไปที่:
 * **Creator Studio:** [http://localhost:5173/studio.html](http://localhost:5173/studio.html)
@@ -76,7 +76,7 @@ pnpm dev
 
 ```text
 Instagoon/
-├── apps/froststory/
+├── apps/Instagoon/
 │   ├── player/                      # หน้าจอฝั่งผู้เล่น (Player App UI)
 │   │   ├── FrostStoryApp.tsx        # คอมโพเนนต์หลักฝั่งผู้เล่น + แถบ Dev Drawer
 │   │   └── froststory.css           # สไตล์ UI แบบ Instagram
@@ -107,7 +107,7 @@ Instagoon/
 * ตัวอย่าง: ปรับสีธีม, เพิ่มปุ่มลัดคำพูดทดสอบ, ปรับเลย์เอาต์ iPhone Simulator
 
 ### 6.2 การปรับแต่งสมอง AI และกฎความสัมพันธ์
-* แก้ไขที่: `apps/froststory/worker/src/index.mjs`
+* แก้ไขที่: `apps/Instagoon/worker/src/index.mjs`
 * **สูตรคำนวณคะแนน 3D**:
   $$\text{Total Score} = \frac{(\text{Closeness} \times 40) + (\text{Trust} \times 40) + (\text{Romance} \times 20)}{100}$$
 * **เกณฑ์เลเวล**:
@@ -121,7 +121,7 @@ Instagoon/
 เพื่อป้องกันไม่ให้เกิด Error บน Server ให้รันคำสั่งตรวจสอบการ Build ในเครื่องก่อนเสมอ:
 ```bash
 # ตรวจสอบการคอมไพล์ของ Instagoon
-pnpm --dir apps/froststory build
+pnpm --dir apps/Instagoon build
 ```
 หากขึ้นว่า `✓ built in ...` แสดงว่าโค้ดไม่มี Syntax/Type Error และพร้อมส่งขึ้น Server ได้อย่างปลอดภัย
 
@@ -157,7 +157,7 @@ git push origin main
 1. **ห้ามพิมพ์ API Key ลงในโค้ดหรือไฟล์ Git เด็ดขาด**:  
    ระบบเชื่อมต่อกับ `GEMINI_API_KEY` ผ่าน Cloudflare Serverless Secret ไว้เรียบร้อยแล้ว ทุกการเรียกใช้งานจะส่งผ่าน Server ปลอดภัย 100%
 2. **การเปลี่ยนโมเดล AI**:  
-   หากต้องการทดสอบโมเดลอื่น เช่น `gemini-2.5-flash` สามารถเปลี่ยนค่าได้ที่ตัวแปร `GEMINI_MODEL` ในไฟล์ `apps/froststory/worker/wrangler.toml` แล้วสั่ง Push ได้ทันที
+   หากต้องการทดสอบโมเดลอื่น เช่น `gemini-2.5-flash` สามารถเปลี่ยนค่าได้ที่ตัวแปร `GEMINI_MODEL` ในไฟล์ `apps/Instagoon/worker/wrangler.toml` แล้วสั่ง Push ได้ทันที
 3. **การรีเซ็ตข้อมูลทดสอบ**:  
    ในหน้า Studio มีปุ่ม `🔄 ล้างแชท AI` อยู่บนหัวจอ Simulator ใช้กดเพื่อล้างความจำและประวัติแชทสำหรับการทดสอบรอบใหม่ได้ตลอดเวลาโดยไม่กระทบข้อมูลจริงของระบบ
 

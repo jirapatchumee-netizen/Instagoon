@@ -10,17 +10,17 @@
 
 ## ⚡ 1. กฎเหล็กในการทำงาน (Non-Negotiable Workflow)
 
-1. **โฟกัสหลักอยู่ที่โฟลเดอร์ `apps/froststory/` เท่านั้น:**
-   - **Player App:** `apps/froststory/player/FrostStoryApp.tsx` (UI สไตล์ Instagram ครบวงจร Feed, Stories, Reels, DM Chat)
-   - **Backend Worker & D1 Database:** `apps/froststory/worker/` (Cloudflare Workers API, Gemini AI integration, D1 SQLite migrations)
-   - **Creator Studio:** `apps/froststory/studio.html` (เครื่องมือจัดการ Creator และ Prompt)
+1. **โฟกัสหลักอยู่ที่โฟลเดอร์ `apps/Instagoon/` เท่านั้น:**
+   - **Player App:** `apps/Instagoon/player/FrostStoryApp.tsx` (UI สไตล์ Instagram ครบวงจร Feed, Stories, Reels, DM Chat)
+   - **Backend Worker & D1 Database:** `apps/Instagoon/worker/` (Cloudflare Workers API, Gemini AI integration, D1 SQLite migrations)
+   - **Creator Studio:** `apps/Instagoon/studio.html` (เครื่องมือจัดการ Creator และ Prompt)
 2. **รักษาขอบเขต Routing และการเข้าถึงระบบ:**
-   - ห้ามแก้ไข `apps/froststory/index.html` ให้โหลด `/studio.tsx` เด็ดขาด (โหมดผู้เล่น `/` แยกขาดจากโหมดสตูดิโอ `/studio.html`)
+   - ห้ามแก้ไข `apps/Instagoon/index.html` ให้โหลด `/studio.tsx` เด็ดขาด (โหมดผู้เล่น `/` แยกขาดจากโหมดสตูดิโอ `/studio.html`)
 3. **การทดสอบและรันระบบ:**
-   - Frontend: `cd apps/froststory && pnpm dev` (รันบน localhost:5173)
-   - Backend Worker: `cd apps/froststory/worker && pnpm run dev`
+   - Frontend: `cd apps/Instagoon && pnpm dev` (รันบน localhost:5173)
+   - Backend Worker: `cd apps/Instagoon/worker && pnpm run dev`
 4. **การเปลี่ยนแปลง Schema และฐานข้อมูล D1:**
-   - ทุกการเปลี่ยนแปลงโครงสร้างข้อมูลแชท, ความทรงจำ, หรือตารางผู้เล่น ต้องสร้างไฟล์ Migration ใน `apps/froststory/worker/migrations/` เสมอ
+   - ทุกการเปลี่ยนแปลงโครงสร้างข้อมูลแชท, ความทรงจำ, หรือตารางผู้เล่น ต้องสร้างไฟล์ Migration ใน `apps/Instagoon/worker/migrations/` เสมอ
 5. **ดึงอัปเดตก่อนเริ่มงานและไม่ Force-Push:**
    - ดำเนินการตาม `docs/MULTI_AGENT_SYNC_CONTRACT.md` สม่ำเสมอเพื่อป้องกัน Merge Conflict ระหว่าง Agent
 

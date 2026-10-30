@@ -169,7 +169,7 @@ const googleLogin=async(email,sub)=>{
  const state=new URL(start.headers.get('location')).searchParams.get('state');
  const saved=globalThis.fetch;
  globalThis.fetch=async u=>String(u).includes('oauth2.googleapis.com/token')?Response.json({access_token:'t'}):Response.json({email,sub,email_verified:true});
- try{const r=await worker.fetch(new Request(`${env.PUBLIC_ORIGIN}/auth/callback?state=${state}&code=c`,{headers:{cookie:'frost_oauth='+state}}),gEnv);const c=r.headers.get('set-cookie');return {status:r.status,sess:c&&c.split(';')[0]};}
+ try{const r=await worker.fetch(new Request(`${env.PUBLIC_ORIGIN}/auth/callback?state=${state}&code=c`,{headers:{cookie:'frost_oauth='+state}}),gEnv);const c=r.headers.get('set-cookie');return {status:r.status,location:r.headers.get('location'),sess:c&&c.split(';')[0]};}
  finally{globalThis.fetch=saved;}
 };
 const guest=await googleLogin('player1@gmail.com','sub-player1');
@@ -180,7 +180,14 @@ sql.prepare("INSERT INTO users(id,email,google_id,created_at) VALUES('pre','pre@
 assert.equal((await googleLogin('pre@gmail.com','sub-pre')).status,302,'existing email account links to Google');
 assert.equal(sql.prepare("SELECT google_id g FROM users WHERE id='pre'").get().g,'sub-pre');
 sql.prepare("INSERT INTO invites(email,status) VALUES('banned@gmail.com','revoked')").run();
-assert.equal((await googleLogin('banned@gmail.com','sub-banned')).status,403,'revoked email is refused');
+const banned=await googleLogin('banned@gmail.com','sub-banned');
+assert.equal(banned.location,'/?auth_error=access_revoked','revoked email returns to the login page with its reason');
+assert.equal(banned.sess,null,'revoked email is refused a session');
+const cancelled=await worker.fetch(new Request(`${env.PUBLIC_ORIGIN}/auth/callback?error=access_denied&state=s`),gEnv);
+assert.equal(cancelled.headers.get('location'),'/?auth_error=login_cancelled','cancelling at Google returns to the login page');
+const forged=await worker.fetch(new Request(`${env.PUBLIC_ORIGIN}/auth/callback?state=forged&code=c`,{headers:{cookie:'frost_oauth=other'}}),gEnv);
+assert.equal(forged.headers.get('location'),'/?auth_error=invalid_oauth_state','a mismatched state never signs in');
+assert.equal(forged.headers.get('set-cookie'),null,'a mismatched state sets no session');
 assert.equal((await call('/api/feed',{sess:guest.sess})).status,403,'guest must accept age consent first');
 assert.equal((await call('/api/consent',{method:'POST',data:{consentVersion:'beta-2026-10'},sess:guest.sess})).status,200);
 const openEnv = {...env, ADMIN_EMAIL: undefined, ACCESS_TEAM_DOMAIN: undefined, ACCESS_AUDIENCE: undefined};

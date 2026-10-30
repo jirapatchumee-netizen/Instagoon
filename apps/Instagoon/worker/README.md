@@ -1,4 +1,4 @@
-# FrostStory Worker
+# Instagoon Worker
 
 This Worker is an implementation in progress. It is not ready to launch a public or closed beta. In particular, backup deletion replay, the retention policy, launch content, Google and Cloudflare configuration, production restore verification, and real browser testing remain outstanding.
 
@@ -19,8 +19,8 @@ Apply `migrations/0001_init.sql` to a new database using Wrangler migrations. Ne
 Run local regression checks:
 
 ```sh
-python3 apps/froststory/worker/tests/test_schema.py
-node --no-warnings apps/froststory/worker/tests/api.mjs
+python3 apps/Instagoon/worker/tests/test_schema.py
+node --no-warnings apps/Instagoon/worker/tests/api.mjs
 ```
 
 The second test uses an in-memory SQLite implementation of the D1 API. It checks Worker request handlers, but it does not validate live D1 transaction behavior, R2, Google OAuth, Cloudflare Access, or actual browser login. Test those integrations against provisioned services before inviting players.

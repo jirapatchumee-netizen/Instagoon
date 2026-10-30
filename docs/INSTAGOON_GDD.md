@@ -60,7 +60,7 @@ flowchart TD
 ## 🛠️ 4. สถาปัตยกรรมและโฟลเดอร์ทำงาน (Technical Architecture)
 
 ```
-apps/froststory/
+apps/Instagoon/
 ├── index.html              # Entry Point: Player Web App
 ├── studio.html             # Entry Point: Creator & Content Studio
 ├── main.tsx / studio.tsx   # React Entrypoints
@@ -77,10 +77,10 @@ apps/froststory/
 ### 💻 คำสั่งสำหรับรันระบบ (Developer Commands):
 ```bash
 # รัน Frontend แอปผู้เล่นและสตูดิโอ (Vite)
-cd apps/froststory
+cd apps/Instagoon
 pnpm dev
 
 # รัน Backend Cloudflare Worker (Local D1/R2)
-cd apps/froststory/worker
+cd apps/Instagoon/worker
 pnpm run dev
 ```

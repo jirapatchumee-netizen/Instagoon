@@ -1,8 +1,8 @@
-# 🎨 DESIGN.md — Instagoon (FrostStory Player & Studio)
+# 🎨 DESIGN.md — Instagoon Player & Studio
 
 > ดีไซน์ซิสเต็มของ Instagoon ดีไซน์ของ Visual Novel เดิมอยู่ที่ [`docs/archive/visual-novel/DESIGN_VN.md`](docs/archive/visual-novel/DESIGN_VN.md)
 
-## 1. FrostStory UI System — Style 1: Insta-Prime (Native iOS 18)
+## 1. Instagoon UI System — Style 1: Insta-Prime (Native iOS 18)
 
 > **Design Target**: Simulation of a native Instagram iOS mobile app embedded inside a web client.
 
@@ -17,7 +17,7 @@
     - Heart Activity notification with unread red ping dot.
     - Direct Message Airplane (`<IgShare />`) with red badge counter.
 
-### 1.2 SVG Vector Icon System (`apps/froststory/player/InstagramIcons.tsx`)
+### 1.2 SVG Vector Icon System (`apps/Instagoon/player/InstagramIcons.tsx`)
 All icons are custom-crafted vector SVGs reproducing native Instagram geometries:
 - `IgLogo`: Authentic cursive script wordmark.
 - `IgHeart`: Native stroke-width 2 outline with filled vibrant red state (`#ef4444`) and spring pop keyframe.

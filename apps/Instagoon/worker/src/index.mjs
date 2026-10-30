@@ -199,22 +199,25 @@ async function auth(req,env,url) {
   return new Response(null, { status: 302, headers: { location: '/auth/demo?redirect=' + encodeURIComponent(target) } });
  }
  const redirect=origin+'/auth/callback';
+ // The callback is a browser navigation: failures return to the login page, which shows the reason.
+ const authError=code=>new Response(null,{status:302,headers:{location:'/?auth_error='+code,'cache-control':'no-store'}});
  if(url.pathname==='/auth/google') {
   const state=token(), verifier=token(), challenge=base64url(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(verifier))));
   await run(env,'INSERT INTO oauth_states(id,verifier,expires_at) VALUES(?,?,?)',await hash(state),verifier,Date.now()+600000);
   const q=new URLSearchParams({client_id:env.GOOGLE_CLIENT_ID,redirect_uri:redirect,response_type:'code',scope:'openid email',state,code_challenge:challenge,code_challenge_method:'S256'});
   return new Response(null,{status:302,headers:{location:'https://accounts.google.com/o/oauth2/v2/auth?'+q,'set-cookie':secureCookie('frost_oauth',state,600),'cache-control':'no-store'}});
  }
- const state=url.searchParams.get('state'), code=url.searchParams.get('code'); if(!state||!code||state!==cookie(req,'frost_oauth'))return json({error:'invalid_oauth_state'},400);
+ if(url.searchParams.get('error')==='access_denied')return authError('login_cancelled');
+ const state=url.searchParams.get('state'), code=url.searchParams.get('code'); if(!state||!code||state!==cookie(req,'frost_oauth'))return authError('invalid_oauth_state');
  const hashed=await hash(state), record=await one(env,'SELECT verifier,expires_at FROM oauth_states WHERE id=?',hashed);
  await run(env,'DELETE FROM oauth_states WHERE id=?',hashed);
- if(!record||record.expires_at<=Date.now())return json({error:'invalid_oauth_state'},400);
+ if(!record||record.expires_at<=Date.now())return authError('invalid_oauth_state');
  const tr=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams({code,client_id:env.GOOGLE_CLIENT_ID,client_secret:env.GOOGLE_CLIENT_SECRET,redirect_uri:redirect,grant_type:'authorization_code',code_verifier:record.verifier})});
- if(!tr.ok)return json({error:'google_auth_failed'},401); const tokens=await tr.json();
- const ur=await fetch('https://openidconnect.googleapis.com/v1/userinfo',{headers:{authorization:`Bearer ${tokens.access_token}`}}); if(!ur.ok)return json({error:'google_auth_failed'},401);
- const profile=await ur.json(); if(!profile.email_verified||!profile.email||!profile.sub)return json({error:'email_not_verified'},403);
+ if(!tr.ok)return authError('google_auth_failed'); const tokens=await tr.json();
+ const ur=await fetch('https://openidconnect.googleapis.com/v1/userinfo',{headers:{authorization:`Bearer ${tokens.access_token}`}}); if(!ur.ok)return authError('google_auth_failed');
+ const profile=await ur.json(); if(!profile.email_verified||!profile.email||!profile.sub)return authError('email_not_verified');
  const email=profile.email.toLowerCase(); const invitation=await one(env,'SELECT status FROM invites WHERE email=?',email);
- if(invitation?.status==='revoked'&&email!==(env.ADMIN_EMAIL||'').toLowerCase())return json({error:'access_revoked'},403);
+ if(invitation?.status==='revoked'&&email!==(env.ADMIN_EMAIL||'').toLowerCase())return authError('access_revoked');
  const now=Date.now(); let user=await one(env,'SELECT * FROM users WHERE google_id=?',profile.sub);
  // Google verified this email, so an earlier account with the same email (pre-Google sign-up) is linked rather than duplicated.
  if(!user){user=await one(env,'SELECT * FROM users WHERE lower(email)=?',email); if(user) await run(env,'UPDATE users SET google_id=? WHERE id=?',profile.sub,user.id);}

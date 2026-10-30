@@ -32,6 +32,7 @@
 }
 
 .fs-gate {
+  box-sizing: border-box;
   display: grid;
   place-items: center;
   padding: 24px;
@@ -2027,6 +2028,320 @@ dialog.fs-overlay::backdrop {
   justify-content: space-between;
 }
 
+/* Login Screen — glossy */
+.fs-gate.fs-login {
+  --login-night: #1a0b26;
+  --login-candy: #ff4f9a;
+  --login-lilac: #a97cff;
+  --login-pearl: #fff3f8;
+  --login-honey: #ffc86b;
+  --login-muted: #cbb8d9;
+  --login-gloss: linear-gradient(180deg, rgba(255, 255, 255, 0.17), rgba(255, 255, 255, 0.05) 46%, rgba(255, 255, 255, 0.02));
+  min-height: 100svh;
+  padding: max(24px, env(safe-area-inset-top)) 22px max(24px, env(safe-area-inset-bottom));
+  color: var(--login-pearl);
+  font-family: 'Zen Maru Gothic', 'IBM Plex Sans Thai Looped', -apple-system, 'Hiragino Maru Gothic ProN', sans-serif;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: linear-gradient(180deg, #24102f 0%, var(--login-night) 55%, #12071a 100%);
+}
 
+/* Slow drifting light behind the content */
+.fs-gate.fs-login::before,
+.fs-gate.fs-login::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: -25%;
+  pointer-events: none;
+  will-change: transform;
+}
 
+.fs-gate.fs-login::before {
+  background:
+    radial-gradient(34% 26% at 78% 22%, rgba(169, 124, 255, 0.5), transparent 70%),
+    radial-gradient(38% 28% at 20% 64%, rgba(255, 79, 154, 0.36), transparent 72%);
+  animation: fsLoginDriftA 52s ease-in-out infinite alternate;
+}
 
+.fs-gate.fs-login::after {
+  background: radial-gradient(28% 20% at 62% 82%, rgba(255, 200, 107, 0.14), transparent 70%);
+  animation: fsLoginDriftB 68s ease-in-out infinite alternate;
+}
+
+.fs-gate.fs-login:lang(ja) {
+  word-break: auto-phrase;
+}
+
+.fs-login-column {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  width: min(100%, 400px);
+}
+
+.fs-login-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.fs-login-wordmark {
+  font-size: 1.55rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0) 52%),
+    linear-gradient(100deg, var(--login-candy), var(--login-lilac));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 2px 10px rgba(255, 79, 154, 0.45));
+}
+
+.fs-login-langs {
+  display: flex;
+  padding: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: var(--login-gloss), rgba(42, 18, 60, 0.6);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+
+.fs-login-langs button {
+  min-width: 44px;
+  min-height: 32px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--login-muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.fs-login-langs button[aria-pressed='true'] {
+  color: #ffffff;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0) 55%),
+    linear-gradient(135deg, var(--login-candy), var(--login-lilac));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 4px 14px -4px rgba(255, 79, 154, 0.7);
+}
+
+.fs-login-slogan {
+  display: flex;
+  flex-direction: column;
+  margin: 18px 0 0;
+  font-weight: 900;
+  line-height: 1.18;
+  text-wrap: balance;
+}
+
+.fs-login-slogan span:not(:last-child) {
+  font-size: clamp(2.4rem, 12vw, 3rem);
+  letter-spacing: -0.01em;
+}
+
+.fs-login-slogan span:last-child {
+  margin-top: 10px;
+  color: var(--login-muted);
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.fs-login-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 28px;
+  background: var(--login-gloss), rgba(40, 17, 56, 0.55);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.3),
+    0 28px 60px -28px rgba(255, 79, 154, 0.55);
+}
+
+.fs-login-preview-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+  font-size: 0.84rem;
+}
+
+.fs-login-avatar {
+  display: inline-flex;
+  flex-shrink: 0;
+  padding: 2px;
+  border-radius: 50%;
+  background: linear-gradient(45deg, var(--login-honey), var(--login-candy), var(--login-lilac));
+}
+
+.fs-login-avatar span {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 2px solid var(--login-night);
+  border-radius: 50%;
+  background: #2a1238;
+  color: var(--login-pearl);
+}
+
+.fs-login-online {
+  width: 8px;
+  height: 8px;
+  margin-left: auto;
+  border-radius: 50%;
+  background: #4ade80;
+  box-shadow: 0 0 10px rgba(74, 222, 128, 0.7);
+}
+
+.fs-login-bubble {
+  position: relative;
+  align-self: flex-start;
+  max-width: 84%;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 20px 20px 20px 6px;
+  overflow: hidden;
+  background: var(--login-gloss), rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.fs-login-bubble-own {
+  align-self: flex-end;
+  border-radius: 20px 20px 6px 20px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.36), rgba(255, 255, 255, 0) 50%),
+    linear-gradient(135deg, var(--login-candy), var(--login-lilac));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 8px 20px -10px rgba(255, 79, 154, 0.8);
+}
+
+.fs-login-secret {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.fs-login-secret .fs-login-bubble {
+  color: transparent;
+  text-shadow: 0 0 9px rgba(255, 243, 248, 0.85);
+  user-select: none;
+}
+
+.fs-login-lock {
+  position: absolute;
+  left: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  color: #3a1530;
+  font-size: 0.8rem;
+  font-weight: 700;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0) 55%),
+    linear-gradient(135deg, #ffe3ad, var(--login-honey) 55%, #ff9f6b);
+  box-shadow: inset 0 1px 0 #ffffff, inset 0 -2px 4px rgba(160, 70, 20, 0.25), 0 8px 22px -8px rgba(255, 168, 80, 0.9);
+}
+
+.fs-login-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.fs-login-error {
+  margin: 0;
+  padding: 11px 14px;
+  border: 1px solid rgba(255, 120, 160, 0.45);
+  border-radius: 16px;
+  background: var(--login-gloss), rgba(120, 20, 60, 0.4);
+  color: #ffd1e1;
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.fs-login-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 0 24px;
+  border-radius: 999px;
+  color: #2a0f3a;
+  font-size: 1.02rem;
+  font-weight: 700;
+  text-decoration: none;
+  background: linear-gradient(180deg, #ffffff 0%, var(--login-pearl) 48%, #f7d9ea 52%, #fdeef6 100%);
+  box-shadow:
+    inset 0 1px 0 #ffffff,
+    inset 0 -2px 6px rgba(169, 124, 255, 0.25),
+    0 14px 34px -12px rgba(255, 79, 154, 0.75);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.fs-login-google:hover {
+  box-shadow:
+    inset 0 1px 0 #ffffff,
+    inset 0 -2px 6px rgba(169, 124, 255, 0.25),
+    0 18px 40px -12px rgba(255, 79, 154, 0.95);
+}
+
+.fs-login-google:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+.fs-login-note {
+  margin: 0;
+  color: var(--login-muted);
+  font-size: 0.78rem;
+  line-height: 1.55;
+  text-align: center;
+}
+
+@keyframes fsLoginDriftA {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+  }
+  50% {
+    transform: translate3d(-6%, 5%, 0) rotate(8deg) scale(1.08);
+  }
+  100% {
+    transform: translate3d(5%, -4%, 0) rotate(-6deg) scale(0.96);
+  }
+}
+
+@keyframes fsLoginDriftB {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  100% {
+    transform: translate3d(-12%, -10%, 0) scale(1.2);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fs-gate.fs-login::before,
+  .fs-gate.fs-login::after {
+    animation: none;
+  }
+
+  .fs-login-google {
+    transition: none;
+  }
+}

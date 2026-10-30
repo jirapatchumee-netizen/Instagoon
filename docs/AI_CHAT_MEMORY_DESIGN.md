@@ -2,7 +2,7 @@
 
 สถานะ: Implemented ในโค้ด (ยังไม่ apply migration กับ D1 จริงและยังไม่ deploy) · วันที่ 2026-10-30
 หมายเหตุการ implement: lock lease ใช้ 90 วินาที (ไม่ใช่ 30) เพราะการเรียก model หลักมี timeout 20 วินาทีต่อครั้ง สูงสุด 3 ครั้ง บวกรอบ knowledge อีก 20 วินาที; dashboard ใช้ path `/api/admin/chat-metrics` เพราะ `/api/admin/metrics` เดิมมีใช้งานอยู่แล้ว
-ขอบเขต: `apps/froststory/worker` (Cloudflare Worker + D1) · ศัพท์ตาม `GLOSSARY.md` · การตัดสินใจเรื่อง concurrency ดู `docs/adr/0001-dm-thread-single-flight-in-d1.md`
+ขอบเขต: `apps/Instagoon/worker` (Cloudflare Worker + D1) · ศัพท์ตาม `GLOSSARY.md` · การตัดสินใจเรื่อง concurrency ดู `docs/adr/0001-dm-thread-single-flight-in-d1.md`
 
 ## 1. ข้อกำหนดที่ตกลงแล้ว
 | # | การตัดสินใจ |

@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   Globe,
   Info,
+  LockKeyhole,
   Phone,
   Send,
   Sparkles,
@@ -12,6 +13,7 @@ import {
   Zap,
 } from 'lucide-react';
 import {
+  GoogleG,
   IgLogo,
   IgHeart,
   IgComment,
@@ -27,15 +29,34 @@ import {
 } from './InstagramIcons';
 import './froststory.css';
 
-export type Lang = 'th' | 'en';
+export type Lang = 'th' | 'en' | 'ja';
+
+const LANGS: { id: Lang; label: string; name: string }[] = [
+  { id: 'th', label: 'ไทย', name: 'ภาษาไทย' },
+  { id: 'en', label: 'EN', name: 'English' },
+  { id: 'ja', label: '日本語', name: '日本語' },
+];
+const nextLang = (lang: Lang): Lang =>
+  LANGS[(LANGS.findIndex(({ id }) => id === lang) + 1) % LANGS.length].id;
 
 const TRANSLATIONS = {
   th: {
     loading: 'กำลังโหลด instagoon…',
-    loginTitle: 'instagoon',
-    loginSubtitle: 'เรื่องราวของคนที่คุณอยากรู้จักให้มากขึ้น',
-    loginInviteNotice: 'สำหรับผู้ได้รับเชิญเข้าสู่ช่วงทดลองเท่านั้น',
+    loginSlogan: ['ยิ่งคุย', 'ยิ่งสนิท', 'ยิ่งปลดล็อกความลับที่คุณเท่านั้นที่รู้'],
+    loginPreviewStatus: 'ข้อความใหม่ 1 รายการ',
+    loginPreviewIncoming: 'เมื่อคืนคุณบอกว่าจะเล่าต่อ… ยังจำได้ไหม?',
+    loginPreviewOutgoing: 'จำได้สิ ไม่คิดว่าเธอจะจำได้ด้วย',
     loginGoogle: 'เข้าสู่ระบบด้วย Google',
+    loginSecret: 'จริง ๆ แล้วมีเรื่องหนึ่งที่ไม่เคยบอกใครเลย',
+    loginSecretLock: 'สนิทกันอีกนิดถึงจะเห็น',
+    loginAgeNote: 'สำหรับผู้มีอายุ 18 ปีขึ้นไป ครั้งแรกจะให้ยืนยันอายุก่อนเริ่มเล่น',
+    loginErrors: {
+      login_cancelled: 'ยกเลิกการเข้าสู่ระบบแล้ว ลองใหม่ได้ทุกเมื่อ',
+      access_revoked: 'บัญชีนี้ถูกระงับการเข้าใช้งาน',
+      email_not_verified: 'อีเมล Google นี้ยังไม่ได้ยืนยัน กรุณายืนยันแล้วลองอีกครั้ง',
+      google_auth_failed: 'เชื่อมต่อ Google ไม่สำเร็จ กรุณาลองอีกครั้ง',
+      invalid_oauth_state: 'หมดเวลาเข้าสู่ระบบ กรุณาลองอีกครั้ง',
+    },
     consentTitle: 'ก่อนเริ่มเรื่องราว',
     consentDesc1:
       'ระบบนี้มีเนื้อหาสำหรับผู้มีอายุ 18 ปีขึ้นไป ช่วงทดลองนี้เก็บข้อมูลที่จำเป็นต่อการให้บริการและวัดผล ความคืบหน้าอาจต้องรีเซ็ตหากจำเป็น',
@@ -98,11 +119,22 @@ const TRANSLATIONS = {
     viewMore: 'ดูเพิ่มเติม',
   },
   en: {
-    loading: 'Loading Instagram…',
-    loginTitle: 'Instagram',
-    loginSubtitle: 'Stories of those you want to get closer to',
-    loginInviteNotice: 'For invited closed beta testers only',
+    loading: 'Loading instagoon…',
+    loginSlogan: ['Talk more.', 'Get closer.', 'Unlock the secrets only you get to know.'],
+    loginPreviewStatus: '1 new message',
+    loginPreviewIncoming: 'You said you’d tell me the rest last night… remember?',
+    loginPreviewOutgoing: 'Of course. I didn’t think you would too.',
     loginGoogle: 'Sign in with Google',
+    loginSecret: 'There’s something I’ve never told anyone…',
+    loginSecretLock: 'Get closer to read this',
+    loginAgeNote: 'For players 18 and over. You’ll confirm your age the first time you sign in.',
+    loginErrors: {
+      login_cancelled: 'Sign-in cancelled. You can try again anytime.',
+      access_revoked: 'This account has been suspended.',
+      email_not_verified: 'This Google email is not verified. Verify it and try again.',
+      google_auth_failed: 'Could not reach Google. Please try again.',
+      invalid_oauth_state: 'Sign-in timed out. Please try again.',
+    },
     consentTitle: 'Before Beginning',
     consentDesc1:
       'This simulation contains 18+ content. This preview collects data strictly necessary for operation and measurement. Progress may be reset if required.',
@@ -163,6 +195,84 @@ const TRANSLATIONS = {
     player: 'User',
     originalAudio: 'Original audio',
     viewMore: 'more',
+  },
+  ja: {
+    loading: 'instagoon を読み込み中…',
+    loginSlogan: ['話すほど、', '近づくほど、', 'あなただけが知る秘密がひらく。'],
+    loginPreviewStatus: '新着メッセージ 1件',
+    loginPreviewIncoming: '昨日の夜、続きを話すって言ってたよね… 覚えてる？',
+    loginPreviewOutgoing: 'もちろん。君も覚えてるとは思わなかった。',
+    loginGoogle: 'Google でログイン',
+    loginSecret: 'ほんとうはね、誰にも言ったことがない話があるの',
+    loginSecretLock: 'もっと仲良くなると読めます',
+    loginAgeNote: '18歳以上の方が対象です。初回ログイン時に年齢を確認します。',
+    loginErrors: {
+      login_cancelled: 'ログインをキャンセルしました。いつでもやり直せます。',
+      access_revoked: 'このアカウントは利用停止中です。',
+      email_not_verified: 'この Google メールアドレスは未確認です。確認してからもう一度お試しください。',
+      google_auth_failed: 'Google に接続できませんでした。もう一度お試しください。',
+      invalid_oauth_state: 'ログインの有効期限が切れました。もう一度お試しください。',
+    },
+    consentTitle: 'はじめる前に',
+    consentDesc1:
+      'このシミュレーションには18歳以上向けの内容が含まれます。このプレビューでは運営と計測に必要なデータのみを収集します。必要に応じて進行状況がリセットされる場合があります。',
+    consentDesc2: '確認すると、18歳以上であり、ベータ版の規約に同意したことになります。',
+    consentAccept: '18歳以上です。同意する',
+    logout: 'ログアウト',
+    feed: 'ホーム',
+    creators: '発見',
+    notifications: 'お知らせ',
+    account: 'プロフィール',
+    yourStory: 'ストーリーズ',
+    todayStories: '今日のストーリーズ',
+    energyRefillPrefix: '次の回復',
+    energyRefillDefault: '無料エネルギーは4時間ごとに回復します',
+    noPosts: '新しい投稿はまだありません',
+    sendMessage: 'メッセージ',
+    likesCount: (n: number) => `「いいね！」${n.toLocaleString()}件`,
+    commentsTitle: (n: number) => `コメント${n}件をすべて見る`,
+    delete: '削除',
+    report: '報告する',
+    reportPrompt: 'このコメントを報告する理由',
+    commentPlaceholder: 'コメントを追加…',
+    postBtn: '投稿する',
+    claimedReward: '受け取り済み ✓',
+    firstCommentReward: '+1 Rel · 1⚡',
+    firstCommentUsedHint: '2回目以降のコメントは無料ですが、関係度は上がりません',
+    firstCommentNewHint: '最初のコメントはエネルギーを1消費し、関係度が1上がります',
+    knowBetterTitle: '見つけてつながる',
+    charactersCount: (n: number) => `${n}アカウント`,
+    openDM: 'メッセージ',
+    relationship: '関係度',
+    noNotifs: '新しいお知らせはありません',
+    betaUserDesc: 'ベータテスターアカウント（18歳以上）',
+    languageSetting: '言語',
+    deleteAccountTitle: 'アカウントを削除',
+    deleteAccountDesc:
+      '個人データ、チャット履歴、コメントは完全に削除されます。元に戻すことはできません。',
+    deleteAccountBtn: 'アカウントを削除',
+    deleteAccountConfirm: 'アカウントとすべての進行状況を削除しますか？この操作は取り消せません。',
+    storyOf: (name: string) => `${name}のストーリー`,
+    exclusiveStory: '24時間限定ストーリー',
+    broadcastStory: 'ストーリー',
+    unlockableGateDesc: '開くと、このストーリーは24時間後に消えます',
+    openStoryBtn: 'ストーリーを開く',
+    replyStoryPlaceholder: 'ストーリーに返信…',
+    storyExpired: 'このストーリーは期限切れです',
+    timeLeft: (h: number, m: number, s: number) => `残り ${h}時間${m}分${s}秒`,
+    online: 'オンライン',
+    selectEpisode: 'エピソード',
+    completed: '完了',
+    locked: 'ロック中',
+    noChatFound: '会話が見つかりません',
+    episodeEnded: '✨ エピソード完了',
+    selectReply: '返信を選択',
+    connectionError: '接続できません',
+    genericError: 'エラーが発生しました。もう一度お試しください。',
+    you: 'あなた',
+    player: 'ユーザー',
+    originalAudio: 'オリジナル音源',
+    viewMore: '続きを読む',
   },
 };
 
@@ -268,7 +378,7 @@ function Media({
 }
 
 const formatDateTime = (value: number, lang: Lang) =>
-  new Date(value).toLocaleString(lang === 'th' ? 'th-TH' : 'en-US', {
+  new Date(value).toLocaleString({ th: 'th-TH', en: 'en-US', ja: 'ja-JP' }[lang], {
     dateStyle: 'medium',
     timeStyle: 'short',
   });
@@ -338,11 +448,99 @@ function Modal({
   );
 }
 
+function LoginScreen({
+  t,
+  lang,
+  onSetLang,
+  error,
+}: {
+  t: (typeof TRANSLATIONS)[Lang];
+  lang: Lang;
+  onSetLang: (lang: Lang) => void;
+  error: string;
+}) {
+  const [authError] = useState(() =>
+    new URLSearchParams(window.location.search).get('auth_error')
+  );
+
+  useEffect(() => {
+    if (authError) window.history.replaceState(null, '', window.location.pathname);
+  }, [authError]);
+
+  const message = authError
+    ? (Object.entries(t.loginErrors).find(([code]) => code === authError)?.[1] ?? t.genericError)
+    : error;
+
+  return (
+    <main className="fs-gate fs-login" lang={lang}>
+      <div className="fs-login-column">
+        <div className="fs-login-topbar">
+          <span className="fs-login-wordmark">instagoon</span>
+          <div className="fs-login-langs" role="group" aria-label="Language">
+            {LANGS.map(({ id, label, name }) => (
+              <button
+                key={id}
+                type="button"
+                lang={id}
+                aria-label={name}
+                aria-pressed={lang === id}
+                onClick={() => onSetLang(id)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <h1 className="fs-login-slogan">
+          {t.loginSlogan.map((line) => (
+            <span key={line}>{line}</span>
+          ))}
+        </h1>
+
+        <div className="fs-login-preview" aria-hidden="true">
+          <div className="fs-login-preview-head">
+            <span className="fs-login-avatar">
+              <span>
+                <Sparkles size={15} />
+              </span>
+            </span>
+            <strong>{t.loginPreviewStatus}</strong>
+            <i className="fs-login-online" />
+          </div>
+          <p className="fs-login-bubble">{t.loginPreviewIncoming}</p>
+          <p className="fs-login-bubble fs-login-bubble-own">{t.loginPreviewOutgoing}</p>
+          <div className="fs-login-secret">
+            <p className="fs-login-bubble">{t.loginSecret}</p>
+            <span className="fs-login-lock">
+              <LockKeyhole size={14} strokeWidth={2.4} />
+              {t.loginSecretLock}
+            </span>
+          </div>
+        </div>
+
+        <div className="fs-login-actions">
+          {message && (
+            <p role="alert" className="fs-login-error">
+              {message}
+            </p>
+          )}
+          <a className="fs-login-google" href="/auth/google">
+            <GoogleG size={20} />
+            <span>{t.loginGoogle}</span>
+          </a>
+          <p className="fs-login-note">{t.loginAgeNote}</p>
+        </div>
+      </div>
+    </main>
+  );
+}
+
 export function FrostStoryApp() {
   const [lang, setLang] = useState<Lang>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('froststory_lang');
-      if (saved === 'th' || saved === 'en') return saved;
+      if (LANGS.some(({ id }) => id === saved)) return saved as Lang;
     }
     return 'th';
   });
@@ -625,42 +823,12 @@ export function FrostStoryApp() {
 
   if (!user)
     return (
-      <main className="fs-gate">
-        <div className="fs-card fs-welcome">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span className="fs-eyebrow">PRIVATE BETA · 18+</span>
-            <button
-              type="button"
-              className="fs-lang-toggle"
-              onClick={() => handleSetLang(lang === 'th' ? 'en' : 'th')}
-            >
-              <Globe size={13} />
-              <span>{lang.toUpperCase()}</span>
-            </button>
-          </div>
-          <div style={{ margin: '14px 0 8px' }}>
-            <IgLogo size={120} />
-          </div>
-          <p>{t.loginSubtitle}</p>
-          {error && <p role="alert" style={{ color: '#f87171', background: 'rgba(244,63,94,0.12)', border: '1px solid rgba(244,63,94,0.3)', padding: '8px 12px', borderRadius: '8px', fontSize: '0.82rem' }}>{error}</p>}
-
-          <a
-            className="fs-primary"
-            href="/auth/google"
-            style={{
-              marginTop: '14px',
-              display: 'block',
-              textAlign: 'center',
-              textDecoration: 'none',
-              padding: '10px 16px',
-              borderRadius: '8px',
-              fontWeight: 700
-            }}
-          >
-            {t.loginGoogle}
-          </a>
-        </div>
-      </main>
+      <LoginScreen
+        t={t}
+        lang={lang}
+        onSetLang={handleSetLang}
+        error={error}
+      />
     );
 
   if (!user.ageVerifiedAt)
@@ -672,7 +840,7 @@ export function FrostStoryApp() {
             <button
               type="button"
               className="fs-lang-toggle"
-              onClick={() => handleSetLang(lang === 'th' ? 'en' : 'th')}
+              onClick={() => handleSetLang(nextLang(lang))}
             >
               <Globe size={13} />
               <span>{lang.toUpperCase()}</span>
@@ -727,8 +895,8 @@ export function FrostStoryApp() {
             <button
               type="button"
               className="fs-lang-toggle"
-              onClick={() => handleSetLang(lang === 'th' ? 'en' : 'th')}
-              title={lang === 'th' ? 'Switch to English' : 'เปลี่ยนเป็นภาษาไทย'}
+              onClick={() => handleSetLang(nextLang(lang))}
+              title={LANGS.find(({ id }) => id === nextLang(lang))?.name}
             >
               <Globe size={12} />
               <span>{lang.toUpperCase()}</span>
@@ -1253,20 +1421,16 @@ export function FrostStoryApp() {
               <div className="fs-account-lang">
                 <span>{t.languageSetting}</span>
                 <div className="fs-lang-buttons">
-                  <button
-                    type="button"
-                    className={lang === 'th' ? 'is-active' : ''}
-                    onClick={() => handleSetLang('th')}
-                  >
-                    🇹🇭 ภาษาไทย
-                  </button>
-                  <button
-                    type="button"
-                    className={lang === 'en' ? 'is-active' : ''}
-                    onClick={() => handleSetLang('en')}
-                  >
-                    🇺🇸 English
-                  </button>
+                  {LANGS.map(({ id, name }) => (
+                    <button
+                      key={id}
+                      type="button"
+                      className={lang === id ? 'is-active' : ''}
+                      onClick={() => handleSetLang(id)}
+                    >
+                      {name}
+                    </button>
+                  ))}
                 </div>
               </div>
 

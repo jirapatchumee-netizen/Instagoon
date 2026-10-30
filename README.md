@@ -19,7 +19,7 @@
 ### 1. รัน Frontend (Player App & Studio)
 ```bash
 # เข้าโฟลเดอร์แอป Instagoon
-cd apps/froststory
+cd apps/Instagoon
 
 # ติดตั้ง Dependencies (ถ้ายังไม่ได้ลง)
 pnpm install
@@ -30,7 +30,7 @@ pnpm dev
 
 ### 2. รัน Backend API (Cloudflare Worker)
 ```bash
-cd apps/froststory/worker
+cd apps/Instagoon/worker
 
 # ติดตั้ง Dependencies
 pnpm install
