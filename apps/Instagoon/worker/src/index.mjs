@@ -247,6 +247,7 @@ async function player(req,env,user,path,now,ctx) {
   return json({ok:true, energy:await energy(env, user.id, now)});
  }
  if(path==='/api/dev/reset' && method==='POST'){
+  if(!isAdminUser(env,user)) return json({error:'forbidden'}, 403);
   const b=await body(req), creatorId=id(b.creatorId);
   await env.DB.batch([
     env.DB.prepare('DELETE FROM ai_chat_messages WHERE user_id=? AND creator_id=?').bind(user.id, creatorId),

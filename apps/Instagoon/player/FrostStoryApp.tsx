@@ -283,7 +283,13 @@ const TRANSLATIONS = {
 };
 
 type Energy = { free: number; purchased: number; nextRefillAt: number | null };
-type User = { id: string; email: string; ageVerifiedAt: number | null; consentVersion: string | null };
+type User = {
+  id: string;
+  email: string;
+  ageVerifiedAt: number | null;
+  consentVersion: string | null;
+  isAdmin?: boolean;
+};
 type Creator = { id: string; name: string; bio: string; avatarKey: string | null; relationship: number };
 type Comment = { id: string; content: string; createdAt: number; own: boolean };
 type Post = {
@@ -960,15 +966,17 @@ export function FrostStoryApp() {
               )}
             </button>
 
-            {/* Dev Tools Quick Toggle Button */}
-            <button
-              type="button"
-              className={`fs-dev-toggle-btn ${showDevBar ? 'is-active' : ''}`}
-              onClick={() => setShowDevBar(!showDevBar)}
-              title="เปิดแถบเครื่องมือ Dev & Telemetry"
-            >
-              🛠️ DEV
-            </button>
+            {/* Dev tools: admins only */}
+            {user.isAdmin && (
+              <button
+                type="button"
+                className={`fs-dev-toggle-btn ${showDevBar ? 'is-active' : ''}`}
+                onClick={() => setShowDevBar(!showDevBar)}
+                title="เปิดแถบเครื่องมือ Dev & Telemetry"
+              >
+                🛠️ DEV
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -1938,7 +1946,7 @@ export function FrostStoryApp() {
       )}
 
       {/* Dev Tools Telemetry Drawer */}
-      {showDevBar && (
+      {user.isAdmin && showDevBar && (
         <aside className="fs-dev-drawer" aria-label="แถบเครื่องมือ Dev">
           <div className="fs-dev-drawer-header">
             <div className="fs-dev-drawer-title">
