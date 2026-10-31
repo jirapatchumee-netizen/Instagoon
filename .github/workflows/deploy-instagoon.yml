@@ -39,6 +39,11 @@ jobs:
       - name: 🛠️ Install dependencies
         run: pnpm install --no-frozen-lockfile
 
+      - name: 🧪 Worker tests (gameplay purity + API)
+        run: |
+          node --test apps/Instagoon/worker/tests/*.test.mjs
+          node apps/Instagoon/worker/tests/api.mjs
+
       - name: 🏗️ Build staging
         run: pnpm --dir apps/Instagoon run build:staging
 

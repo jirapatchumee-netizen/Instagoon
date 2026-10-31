@@ -1,4 +1,5 @@
 import { selectKnowledge } from './knowledge.mjs';
+import { relationshipConfig, overallScore, levelOf, matchKeywordRules, secretsFor, levelStyle, applyRules, pickReward } from './gameplay/index.mjs';
 const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), {status, headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store',...headers}});
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), {status}); };
 const token = () => Array.from(crypto.getRandomValues(new Uint8Array(32)), n => n.toString(16).padStart(2,'0')).join('');
@@ -382,15 +383,9 @@ async function player(req,env,user,path,now,ctx) {
    try{ruleUses=JSON.parse(relRow?.rule_uses_json||'{}');}catch(e){}
    const before = { closeness, trust, romance };
 
-   const weights = npcDef?.relationship?.weights || { closeness: 40, trust: 40, romance: 20 };
-   const romanceEnabled = npcDef?.relationship?.romanceEnabled !== false;
-   const activeWeights = romanceEnabled ? weights : { closeness: weights.closeness, trust: weights.trust, romance: 0 };
-   const totalWeight = (activeWeights.closeness || 0) + (activeWeights.trust || 0) + (activeWeights.romance || 0);
-   let rel = totalWeight > 0 ? Math.round((((closeness * (activeWeights.closeness || 0)) + (trust * (activeWeights.trust || 0)) + (romance * (activeWeights.romance || 0))) / totalWeight) * 100) / 100 : (relRow?.score || 0);
-   const thresholds = npcDef?.relationship?.thresholds || [0, 20, 40, 60, 80];
-   let currentLv = 0;
-   for(const th of thresholds){if(rel >= th) currentLv++;}
-   currentLv = Math.max(1, Math.min(5, currentLv));
+   const relCfg = relationshipConfig(npcDef);
+   let rel = overallScore(relCfg, { closeness, trust, romance }, relRow?.score || 0);
+   let currentLv = levelOf(relCfg, rel);
 
    const userMessageId = crypto.randomUUID();
    await run(env, 'INSERT INTO ai_chat_messages(id, user_id, creator_id, role, content, created_at) VALUES(?,?,?,?,?,?)', userMessageId, user.id, creator, 'user', userText, now);
@@ -474,23 +469,13 @@ async function player(req,env,user,path,now,ctx) {
    const recentRows = await all(env, 'SELECT role, content FROM ai_chat_messages WHERE user_id=? AND creator_id=? ORDER BY created_at DESC LIMIT 6', user.id, creator);
    const recentHistory = recentRows.reverse().map(r => `${r.role === 'user' ? 'Player' : (npcDef?.name || creatorData.name)}: ${r.content}`).join('\n');
 
-   const lowerText = userText.toLowerCase();
-   const matchedRuleIds = [];
-   if(npcDef?.rules){
-     for(const r of npcDef.rules){
-       if(r.kind === 'keyword' && Array.isArray(r.keywords)){
-         if(r.keywords.some(k => k && lowerText.includes(String(k).toLowerCase().trim()))){
-           matchedRuleIds.push(r.id);
-         }
-       }
-     }
-   }
+   const matchedRuleIds = matchKeywordRules(npcDef, userText);
 
-   const availableSecrets = (npcDef?.secrets || []).filter(s => currentLv >= (s.minLevel || 1));
+   const availableSecrets = secretsFor(npcDef, currentLv);
    const secretsPrompt = availableSecrets.length > 0
      ? `Available secrets you can reveal naturally if asked: [${availableSecrets.map(s => s.content).join('; ')}]`
      : 'Do NOT reveal any hidden secrets yet as trust is still building.';
-   const currentStyle = (npcDef?.style?.levelStyles && npcDef.style.levelStyles[currentLv - 1]) || 'เป็นธรรมชาติ อบอุ่น';
+   const currentStyle = levelStyle(npcDef, currentLv);
    const semanticRules = (npcDef?.rules || []).filter(r => r.kind === 'semantic');
    const rulesPrompt = semanticRules.length > 0
      ? `Semantic rules to detect: ${semanticRules.map(r => `"${r.id}" (${r.description})`).join(', ')}`
@@ -620,57 +605,18 @@ Output STRICT JSON format: {"reply": "Thai text", "matchedRuleIds": ["id1", ...]
 
    const finalDetectedRules = Array.from(new Set(detectedRuleIds));
    if (npcDef?.rules) {
-     for (const r of npcDef.rules) {
-       if (finalDetectedRules.includes(r.id)) {
-         events[r.id] = (events[r.id] || 0) + 1;
-         const uses = ruleUses[r.id] || 0;
-         if (r.maxUses === 0 || uses < r.maxUses) {
-           closeness = Math.min(100, Math.max(0, closeness + (r.changes?.closeness || 0)));
-           trust = Math.min(100, Math.max(0, trust + (r.changes?.trust || 0)));
-           romance = Math.min(100, Math.max(0, romance + (r.changes?.romance || 0)));
-           ruleUses[r.id] = uses + 1;
-         }
-       }
-     }
-     rel = totalWeight > 0 ? Math.round((((closeness * (activeWeights.closeness || 0)) + (trust * (activeWeights.trust || 0)) + (romance * (activeWeights.romance || 0))) / totalWeight) * 100) / 100 : rel;
-     let newLv = 0;
-     for (const th of thresholds) { if (rel >= th) newLv++; }
-     currentLv = Math.max(1, Math.min(5, newLv));
+     ({ closeness, trust, romance, events, ruleUses } = applyRules(npcDef, finalDetectedRules, { closeness, trust, romance, events, ruleUses }));
+     rel = overallScore(relCfg, { closeness, trust, romance }, rel);
+     currentLv = levelOf(relCfg, rel);
    } else {
      rel = Math.min(100, rel + scoreDelta);
    }
 
-   let rewardMediaKey = null;
-   let rewardMsg = null;
-   if (npcDef?.rewards) {
-     for (const rew of npcDef.rewards) {
-       const already = await one(env, 'SELECT 1 FROM reward_unlocks WHERE user_id=? AND creator_id=? AND reward_key=?', user.id, creator, rew.asset);
-       if (already) continue;
-       let passed = true;
-       for (const cond of (rew.conditions || [])) {
-         if (cond.field === 'level' && currentLv < (cond.value || 0)) passed = false;
-         if (cond.field === 'closeness' && closeness < (cond.value || 0)) passed = false;
-         if (cond.field === 'trust' && trust < (cond.value || 0)) passed = false;
-         if (cond.field === 'romance' && romance < (cond.value || 0)) passed = false;
-         if (cond.field === 'event') {
-           const count = events[cond.eventId] || 0;
-           const reqCount = Math.max(1, cond.value || 1);
-           if (count < reqCount) passed = false;
-         }
-         if (cond.field === 'turns' && turnCount < (cond.value || 0)) passed = false;
-       }
-       if (passed) {
-         rewardMediaKey = rew.asset;
-         rewardMsg = rew.message;
-         await run(env, 'INSERT OR IGNORE INTO reward_unlocks(user_id, creator_id, reward_key, unlocked_at) VALUES(?,?,?,?)', user.id, creator, rew.asset, now);
-         break;
-       }
-     }
-   } else if (rel >= 20 && (rel - scoreDelta) < 20) {
-     rewardMediaKey = 'rewards/noey_special_smile.webp';
-     rewardMsg = 'เนยแอบส่งรูปพิเศษให้คุณเป็นรางวัลที่สนิทกันมากขึ้นนะคะ 💕';
-     await run(env, 'INSERT OR IGNORE INTO reward_unlocks(user_id, creator_id, reward_key, unlocked_at) VALUES(?,?,?,?)', user.id, creator, rewardMediaKey, now);
-   }
+   const unlocked = npcDef?.rewards ? new Set((await all(env, 'SELECT reward_key FROM reward_unlocks WHERE user_id=? AND creator_id=?', user.id, creator)).map(r => r.reward_key)) : new Set();
+   const reward = pickReward(npcDef, { closeness, trust, romance, level: currentLv, events, turns: turnCount, score: rel, scoreDelta }, unlocked);
+   const rewardMediaKey = reward?.asset ?? null;
+   const rewardMsg = reward?.message ?? null;
+   if (reward) await run(env, 'INSERT OR IGNORE INTO reward_unlocks(user_id, creator_id, reward_key, unlocked_at) VALUES(?,?,?,?)', user.id, creator, reward.asset, now);
 
    if (rewardMediaKey && rewardMsg) {
      replyText += `\n\n📸 (${rewardMsg})`;
