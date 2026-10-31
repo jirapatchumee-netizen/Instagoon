@@ -49,6 +49,7 @@ The backend Worker (`apps/Instagoon/worker/src/index.mjs`) connects to Google Ge
    - `gemini-2.5-flash` (~1.3s response time)
    - `gemini-3.1-flash-lite` (~1.4s response time)
    - `gemini-3.5-flash-lite` (~1.7s response time, 150K RPD)
+   Chat picks one model per **Chat Visit**: `modelsForVisit()` rotates the pool by an FNV-1a hash of `visit_id`, so a player's conversation keeps the same persona while separate visits still spread evenly across the three quota pools. The rest of the pool is only the failover order inside a single turn.
 2. **No Expensive Fallbacks**:
    Do not re-add slow/expensive models (Gemini 3.6, 3.8, etc.) or external OpenAI fallbacks without team alignment.
 3. **Rate Limit Handling**:

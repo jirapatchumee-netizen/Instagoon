@@ -7,7 +7,7 @@
 ## 1. ข้อกำหนดที่ตกลงแล้ว
 | # | การตัดสินใจ |
 |---|---|
-| Q1 | หน่วยการคุยคือ **DM Thread** (ผู้เล่น × Creator, ถาวร) และ **Chat Visit** (เงียบ > 30 นาที = visit ใหม่, ใช้กับ analytics เท่านั้น) คำว่า "session" สงวนไว้สำหรับ Login Session |
+| Q1 | หน่วยการคุยคือ **DM Thread** (ผู้เล่น × Creator, ถาวร) และ **Chat Visit** (เงียบ > 30 นาที = visit ใหม่, ใช้กับ analytics และเป็นคีย์ล็อกโมเดลของ Chat Visit) คำว่า "session" สงวนไว้สำหรับ Login Session |
 | Q2 | DM Thread รับข้อความทีละข้อความด้วย lease lock ใน D1 (90 วินาที) ถ้าถูกถือครองอยู่ให้ตอบ `409 thread_busy` ค่าความสัมพันธ์ใช้การบวกส่วนต่างแบบ atomic |
 | Q3 | หัก Energy แบบ atomic แยกตามถัง คืนเข้าถังเดิมเมื่อล้มเหลว และบันทึก `token_ledger` ทุกครั้ง |
 | Q4 | เพิ่ม Thread Summary และเก็บ `source_message_id` กับ `updated_at` ใน Player Memory |

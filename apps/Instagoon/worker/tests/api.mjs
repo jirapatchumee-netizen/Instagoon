@@ -145,6 +145,26 @@ try{const turn=await request('/api/chats/c/message',{method:'POST',data:{message
   assert.equal(sql.prepare("SELECT COUNT(*) n FROM ai_chat_messages WHERE id='ancient'").get().n,0);
   assert.equal(sql.prepare("SELECT summary FROM dm_threads WHERE user_id='u' AND creator_id='c'").get().summary,'เคยเล่าเรื่องเก่า');
   assert.ok(sql.prepare("SELECT COUNT(*) n FROM ai_chat_messages WHERE user_id='u' AND creator_id='c'").get().n>0,'recent messages are kept');
+  // A Chat Visit is bound to one chat model, so the persona cannot shift mid-conversation.
+  sql.prepare("UPDATE energy SET free=10,purchased=0 WHERE user_id='u'").run();
+  const visitId=sql.prepare("SELECT current_visit_id v FROM dm_threads WHERE user_id='u' AND creator_id='c'").get().v;
+  const tried=[];
+  globalThis.fetch=async url=>{tried.push(String(url).match(/\/models\/([^:/]+):generateContent/)[1]);return reply(null);};
+  for(const text of ['เล่าต่อหน่อย','ยังคุยเรื่องเดิม','จำได้ไหม']) assert.equal((await request('/api/chats/c/message',{method:'POST',data:{message:text}})).status,200);
+  assert.equal(new Set(tried).size,1,'every turn of one visit starts on the same model');
+  const visitModel=tried[0];
+  // Only a rate-limited turn leaves that model, and it returns to it on the next turn.
+  tried.length=0;
+  globalThis.fetch=async url=>{const m=String(url).match(/\/models\/([^:/]+):generateContent/)[1];tried.push(m);return m===visitModel?new Response('quota',{status:429}):reply(null);};
+  assert.equal((await request('/api/chats/c/message',{method:'POST',data:{message:'ช่วงนี้ติดlimit'}})).status,200,'the turn still answers from the next model in the fixed order');
+  assert.equal(tried[0],visitModel,'failover begins from the visit model');
+  assert.equal(tried.length,2);assert.notEqual(tried[1],visitModel);
+  assert.equal(sql.prepare("SELECT COUNT(*) n FROM ai_turn_metrics WHERE user_id='u' AND outcome='ok' AND fallback_count=1").get().n,1);
+  tried.length=0;
+  globalThis.fetch=async url=>{tried.push(String(url).match(/\/models\/([^:/]+):generateContent/)[1]);return reply(null);};
+  assert.equal((await request('/api/chats/c/message',{method:'POST',data:{message:'กลับมาคุยต่อ'}})).status,200);
+  assert.deepEqual(tried,[visitModel],'the visit goes back to its own model once the limit passes');
+  assert.equal(sql.prepare("SELECT current_visit_id v FROM dm_threads WHERE user_id='u' AND creator_id='c'").get().v,visitId,'the failover does not start a new visit');
  } finally { globalThis.fetch=saved; delete env.GEMINI_API_KEY; }
 }
 result=await request('/api/account',{method:'DELETE'});assert.equal(result.status,200);assert.equal((await request('/api/me')).status,401);assert.equal(sql.prepare('SELECT count(*) count FROM comments').get().count,0);assert.equal(sql.prepare('SELECT count(*) count FROM invites').get().count,0);

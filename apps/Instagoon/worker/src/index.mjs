@@ -29,6 +29,14 @@ const SUMMARY_EVERY = 20;
 const CHAT_RETENTION_MS = 180 * 86400000;
 const MEMORY_KEY = /^player\.[\w.-]{1,60}$/;
 const defer = (ctx, promise) => { const guarded = promise.catch(e => console.error('background task failed', e?.name)); if(ctx?.waitUntil) ctx.waitUntil(guarded); return guarded; };
+// FNV-1a over the Chat Visit id picks a stable start index in the model group: every turn of one
+// visit tries the same model first, while separate visits still spread evenly across the group.
+function modelsForVisit(pool, visitId) {
+ let h = 2166136261;
+ for(let i = 0; i < visitId.length; i++){ h ^= visitId.charCodeAt(i); h = Math.imul(h, 16777619); }
+ const offset = (h >>> 0) % pool.length;
+ return [...pool.slice(offset), ...pool.slice(0, offset)];
+}
 async function takeEnergy(env, uid, now) {
  await energy(env, uid, now);
  for(const bucket of ['free','purchased']){
@@ -492,12 +500,9 @@ Output STRICT JSON format: {"reply": "Thai text", "matchedRuleIds": ["id1", ...]
        'gemini-3.1-flash-lite',
        'gemini-3.5-flash-lite'
      ];
-     // Randomize/shuffle pool per request to balance traffic evenly across the 3 models
-     const candidateModels = [...verifiedModels];
-     for (let i = candidateModels.length - 1; i > 0; i--) {
-       const j = Math.floor(Math.random() * (i + 1));
-       [candidateModels[i], candidateModels[j]] = [candidateModels[j], candidateModels[i]];
-     }
+     // One Chat Visit keeps one model so the persona does not shift mid-conversation;
+     // the remaining members of the group stay as this turn's rate-limit failover order.
+     const candidateModels = modelsForVisit(verifiedModels, visitId);
      for (const geminiModel of candidateModels) {
        if (replyText) break;
        try {
