@@ -43,6 +43,14 @@ test('rules clamp axes, count events and respect maxUses without mutating input'
   assert.equal(twice.closeness, 100); assert.equal(twice.romance, 10); assert.equal(twice.events.r, 2); assert.equal(twice.ruleUses.r, 1);
 });
 
+test('cooldown skips three successful turns and preserves legacy counts', () => {
+  const npc={rules:[{id:'r',cooldown:3,maxUses:0,changes:{trust:5}}]};
+  let state={closeness:0,trust:0,romance:0,events:{},ruleUses:{r:2},turns:1};
+  state=applyRules(npc,['r'],state);assert.deepEqual(state.ruleUses.r,{count:3,lastTurn:1});
+  for(let turn=2;turn<=4;turn++){state=applyRules(npc,['r'],{...state,turns:turn});assert.equal(state.trust,5);}
+  state=applyRules(npc,['r'],{...state,turns:5});assert.equal(state.trust,10);assert.equal(state.events.r,5);
+});
+
 test('rewards: first passing, skip unlocked, legacy threshold', () => {
   const npc = { rewards: [{ asset: 'a', message: 'A', conditions: [{ field: 'level', value: 2 }] }, { asset: 'b', message: 'B', conditions: [{ field: 'event', eventId: 'cat', value: 2 }, { field: 'turns', value: 3 }] }] };
   const st = { closeness: 0, trust: 0, romance: 0, level: 2, events: { cat: 2 }, turns: 3, score: 0, scoreDelta: 1 };

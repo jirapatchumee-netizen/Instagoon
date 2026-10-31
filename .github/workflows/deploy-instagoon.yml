@@ -41,7 +41,7 @@ jobs:
 
       - name: 🧪 Worker tests (gameplay purity + API)
         run: |
-          node --test apps/Instagoon/worker/tests/*.test.mjs
+          node --experimental-strip-types --test apps/Instagoon/worker/tests/*.test.mjs
           node apps/Instagoon/worker/tests/api.mjs
 
       - name: 🏗️ Build staging

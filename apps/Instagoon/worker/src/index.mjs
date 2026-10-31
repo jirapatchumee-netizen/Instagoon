@@ -605,7 +605,7 @@ Output STRICT JSON format: {"reply": "Thai text", "matchedRuleIds": ["id1", ...]
 
    const finalDetectedRules = Array.from(new Set(detectedRuleIds));
    if (npcDef?.rules) {
-     ({ closeness, trust, romance, events, ruleUses } = applyRules(npcDef, finalDetectedRules, { closeness, trust, romance, events, ruleUses }));
+     ({ closeness, trust, romance, events, ruleUses } = applyRules(npcDef, finalDetectedRules, { closeness, trust, romance, events, ruleUses, turns:turnCount }));
      rel = overallScore(relCfg, { closeness, trust, romance }, rel);
      currentLv = levelOf(relCfg, rel);
    } else {
@@ -619,7 +619,7 @@ Output STRICT JSON format: {"reply": "Thai text", "matchedRuleIds": ["id1", ...]
    if (reward) await run(env, 'INSERT OR IGNORE INTO reward_unlocks(user_id, creator_id, reward_key, unlocked_at) VALUES(?,?,?,?)', user.id, creator, reward.asset, now);
 
    if (rewardMediaKey && rewardMsg) {
-     replyText += `\n\n📸 (${rewardMsg})`;
+     replyText = rewardMsg;
    }
 
    // Apply deltas in SQL so a concurrent comment's score change is never overwritten.

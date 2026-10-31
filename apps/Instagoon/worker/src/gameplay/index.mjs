@@ -48,12 +48,15 @@ export function applyRules(npcDef, ruleIds, state) {
   for (const r of npcDef?.rules || []) {
     if (!ruleIds.includes(r.id)) continue;
     s.events[r.id] = (s.events[r.id] || 0) + 1;
-    const uses = s.ruleUses[r.id] || 0;
-    if (r.maxUses === 0 || uses < r.maxUses) {
+    const previous = s.ruleUses[r.id];
+    const count = typeof previous === 'number' ? previous : (previous?.count || 0);
+    const lastTurn = typeof previous === 'object' && Number.isInteger(previous?.lastTurn) ? previous.lastTurn : null;
+    const cooling = lastTurn !== null && Number.isInteger(s.turns) && s.turns - lastTurn <= (r.cooldown || 0);
+    if (!cooling && (!r.maxUses || count < r.maxUses)) {
       s.closeness = clamp(s.closeness + (r.changes?.closeness || 0));
       s.trust = clamp(s.trust + (r.changes?.trust || 0));
-      s.romance = clamp(s.romance + (r.changes?.romance || 0));
-      s.ruleUses[r.id] = uses + 1;
+      s.romance = npcDef?.relationship?.romanceEnabled === false ? 0 : clamp(s.romance + (r.changes?.romance || 0));
+      s.ruleUses[r.id] = Number.isInteger(s.turns) ? {count:count+1,lastTurn:s.turns} : count+1;
     }
   }
   return s;
@@ -69,7 +72,7 @@ export function pickReward(npcDef, state, unlocked) {
       : null;
   }
   for (const rew of npcDef.rewards) {
-    if (unlocked.has(rew.asset)) continue;
+    if (!rew.asset || unlocked.has(rew.asset)) continue;
     const passed = (rew.conditions || []).every(c => {
       switch (c.field) {
         case 'level': return state.level >= (c.value || 0);
@@ -78,7 +81,7 @@ export function pickReward(npcDef, state, unlocked) {
         case 'romance': return state.romance >= (c.value || 0);
         case 'event': return (state.events[c.eventId] || 0) >= Math.max(1, c.value || 1);
         case 'turns': return state.turns >= (c.value || 0);
-        default: return true;
+        default: return false;
       }
     });
     if (passed) return { asset: rew.asset, message: rew.message };
