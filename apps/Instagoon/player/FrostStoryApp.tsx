@@ -681,41 +681,6 @@ export function FrostStoryApp() {
     }
   }
 
-  // Dev Tools State & Actions
-  const [showDevBar, setShowDevBar] = useState(false);
-  const [devActionLoading, setDevActionLoading] = useState(false);
-
-  async function handleDevRefill(amount: number) {
-    setDevActionLoading(true);
-    try {
-      const res = await api<{ ok: boolean; energy: Energy }>('/api/dev/energy', json({ amount }));
-      if (res.energy) setEnergy(res.energy);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Refill failed');
-    } finally {
-      setDevActionLoading(false);
-    }
-  }
-
-  async function handleDevReset() {
-    if (!selectedCreator) return;
-    if (!window.confirm(`ต้องการรีเซ็ตแชทและค่าความสัมพันธ์ของ ${selectedCreator.name} ทั้งหมดใช่หรือไม่?`)) return;
-    setDevActionLoading(true);
-    try {
-      await api('/api/dev/reset', json({ creatorId: selectedCreator.id }));
-      const refreshed = await api<{ chat: Chat }>(`/api/chats/${encodeURIComponent(selectedCreator.id)}`);
-      setChat(refreshed.chat);
-      setSelectedCreator({ ...selectedCreator, relationship: 0 });
-      setCreators((prev) =>
-        prev.map((c) => (c.id === selectedCreator.id ? { ...c, relationship: 0 } : c))
-      );
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Reset failed');
-    } finally {
-      setDevActionLoading(false);
-    }
-  }
-
   const loadMe = useCallback(async () => {
     const result = await api<{ user: User; energy: Energy }>('/api/me');
     setUser(result.user);
@@ -966,17 +931,6 @@ export function FrostStoryApp() {
               )}
             </button>
 
-            {/* Dev tools: admins only */}
-            {user.isAdmin && (
-              <button
-                type="button"
-                className={`fs-dev-toggle-btn ${showDevBar ? 'is-active' : ''}`}
-                onClick={() => setShowDevBar(!showDevBar)}
-                title="เปิดแถบเครื่องมือ Dev & Telemetry"
-              >
-                🛠️ DEV
-              </button>
-            )}
           </div>
         </div>
       </header>
@@ -1946,128 +1900,6 @@ export function FrostStoryApp() {
       )}
 
       {/* Dev Tools Telemetry Drawer */}
-      {user.isAdmin && showDevBar && (
-        <aside className="fs-dev-drawer" aria-label="แถบเครื่องมือ Dev">
-          <div className="fs-dev-drawer-header">
-            <div className="fs-dev-drawer-title">
-              <span>🛠️ Dev Tools & Telemetry Monitor</span>
-            </div>
-            <button
-              type="button"
-              className="fs-dev-close-btn"
-              onClick={() => setShowDevBar(false)}
-              aria-label="Close Dev Drawer"
-            >
-              ✕
-            </button>
-          </div>
-
-          {/* Quick Energy Refill */}
-          <div className="fs-dev-card">
-            <div className="fs-dev-card-label">
-              <span>⚡ พลังงานทดสอบ (Energy)</span>
-              <strong style={{ color: '#38bdf8' }}>
-                {(energy?.free || 0) + (energy?.purchased || 0)} ⚡
-              </strong>
-            </div>
-            <div className="fs-dev-btn-group">
-              <button
-                type="button"
-                className="fs-dev-action-btn success"
-                disabled={devActionLoading}
-                onClick={() => void handleDevRefill(5)}
-              >
-                +5⚡ เติมด่วน
-              </button>
-              <button
-                type="button"
-                className="fs-dev-action-btn success"
-                disabled={devActionLoading}
-                onClick={() => void handleDevRefill(10)}
-              >
-                +10⚡ เติมเต็ม
-              </button>
-            </div>
-          </div>
-
-          {/* 3D Relationship Telemetry */}
-          {selectedCreator && (
-            <div className="fs-dev-card">
-              <div className="fs-dev-card-label">
-                <span>💖 3D Relationship ({selectedCreator.name})</span>
-                <span style={{ color: '#f472b6' }}>
-                  Lv.{Math.min(5, Math.floor((selectedCreator.relationship || 0) / 20) + 1)}
-                </span>
-              </div>
-              <div className="fs-dev-stat-grid">
-                <div className="fs-dev-stat-item">
-                  <span className="fs-dev-stat-num">{chat?.closeness ?? 0}</span>
-                  <div className="fs-dev-stat-title">Closeness</div>
-                </div>
-                <div className="fs-dev-stat-item">
-                  <span className="fs-dev-stat-num">{chat?.trust ?? 0}</span>
-                  <div className="fs-dev-stat-title">Trust</div>
-                </div>
-                <div className="fs-dev-stat-item">
-                  <span className="fs-dev-stat-num">{chat?.romance ?? 0}</span>
-                  <div className="fs-dev-stat-title">Romance</div>
-                </div>
-                <div className="fs-dev-stat-item">
-                  <span className="fs-dev-stat-num" style={{ color: '#f472b6' }}>
-                    {selectedCreator.relationship}
-                  </span>
-                  <div className="fs-dev-stat-title">Score</div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* AI Memories Inspector */}
-          {chat?.memories && chat.memories.length > 0 && (
-            <div className="fs-dev-card">
-              <div className="fs-dev-card-label">
-                <span>🧠 AI Memories ({chat.memories.length})</span>
-              </div>
-              <div className="fs-dev-memory-list">
-                {chat.memories.map((m) => (
-                  <div key={m.key} className="fs-dev-memory-tag">
-                    <strong style={{ color: '#38bdf8' }}>{m.key}</strong>
-                    <span>{m.value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Reset & Quick Links */}
-          <div className="fs-dev-card">
-            <div className="fs-dev-card-label">
-              <span>🔧 คำสั่งจัดการด่วน</span>
-            </div>
-            <div className="fs-dev-btn-group">
-              {selectedCreator && (
-                <button
-                  type="button"
-                  className="fs-dev-action-btn danger"
-                  disabled={devActionLoading}
-                  onClick={() => void handleDevReset()}
-                >
-                  🔄 รีเซ็ตแชท {selectedCreator.name}
-                </button>
-              )}
-              <a
-                href="/studio"
-                target="_blank"
-                rel="noreferrer"
-                className="fs-dev-action-btn"
-                style={{ textDecoration: 'none' }}
-              >
-                🛠️ เปิด Creator Studio ➔
-              </a>
-            </div>
-          </div>
-        </aside>
-      )}
     </div>
   );
 }
