@@ -1,4 +1,5 @@
 import { selectKnowledge } from './knowledge.mjs';
+import { ensureContent, bundledMedia } from './content.mjs';
 import { relationshipConfig, overallScore, levelOf, matchKeywordRules, secretsFor, levelStyle, applyRules, pickReward } from './gameplay/index.mjs';
 const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), {status, headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store',...headers}});
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), {status}); };
@@ -714,7 +715,7 @@ Output STRICT JSON format: {"reply": "Thai text", "matchedRuleIds": ["id1", ...]
   for(const p of posts)if(await visiblePost(env,user,p.id,now)){allowed=true;break;}
   if(!allowed){const stories=await all(env,'SELECT id FROM stories WHERE media_key=?',mediaKey);for(const s of stories){const story=await visibleStory(env,user,s.id,now);if(story && (story.type==='broadcast' || story.first_viewed_at!=null)){allowed=true;break;}}}
   if(!allowed){allowed=!!await one(env,'SELECT 1 FROM reward_unlocks WHERE user_id=? AND reward_key=?',user.id,mediaKey);}
-  if(!allowed)return json({error:'not_found'},404);const file=await mediaStore(env).get(mediaKey);if(!file)return json({error:'not_found'},404);
+  if(!allowed)return json({error:'not_found'},404);const file=await bundledMedia(env,mediaKey)||await mediaStore(env).get(mediaKey);if(!file)return json({error:'not_found'},404);
   return new Response(file.body,{headers:{'content-type':file.httpMetadata?.contentType||'application/octet-stream','cache-control':'private, no-store','x-content-type-options':'nosniff'}});
  }
  if(path==='/api/account'&&method==='DELETE'){await run(env,'DELETE FROM users WHERE id=?',user.id);return json({ok:true},200,{'set-cookie':secureCookie('frost_session','',0)});}
@@ -808,6 +809,7 @@ async fetch(req,env,ctx){
   }
   if(path==='/auth/google'||path==='/auth/callback'||path==='/auth/demo'||path==='/auth/login')return await auth(req,env,url);
   if(!path.startsWith('/api/'))return json({error:'not_found'},404);
+  try{await ensureContent(env);}catch(e){console.error('content sync failed',String(e?.message||e));}
   const user=await session(req,env);
   if(path==='/api/logout'&&req.method==='POST'){if(user)await run(env,'DELETE FROM sessions WHERE id=?',await hash(cookie(req,'frost_session')));return json({ok:true},200,{'set-cookie':secureCookie('frost_session','',0)});}
   if(path==='/api/account'&&req.method==='DELETE'){if(!user)return json({error:'unauthorized'},401);await env.DB.batch([env.DB.prepare('DELETE FROM invites WHERE email=?').bind(user.email),env.DB.prepare('DELETE FROM users WHERE id=?').bind(user.id)]);return json({ok:true},200,{'set-cookie':secureCookie('frost_session','',0)});}

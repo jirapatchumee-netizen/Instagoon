@@ -18,6 +18,7 @@ assert.equal((await request('/assets/game.js', 'session')).status, 401);
 user = { email: 'owner@example.com' };
 assert.equal(await (await request('/assets/game.js', 'session')).text(), 'private asset');
 assert.equal((await request('/studio.html', 'session')).status, 404);
+assert.equal((await request('/_content/media/rewards/secret.webp', 'session')).status, 404);
 assert.equal((await request('/api/admin/overview', 'session')).status, 404);
 env.STAGING_EMAILS = '';
 assert.equal((await request('/assets/game.js', 'session')).status, 401);

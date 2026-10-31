@@ -4,9 +4,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "tsc -p tsconfig.json && vite build",
+    "build": "tsc -p tsconfig.json && vite build && node --experimental-strip-types scripts/build-content.mjs",
     "preview": "vite preview --host 127.0.0.1",
-    "build:staging": "tsc -p tsconfig.json && vite build --mode staging && vite build --config vite.staging-login.config.ts"
+    "build:staging": "tsc -p tsconfig.json && vite build --mode staging && vite build --config vite.staging-login.config.ts && node --experimental-strip-types scripts/build-content.mjs"
   },
   "devDependencies": {
     "wrangler": "^4.154.0"
