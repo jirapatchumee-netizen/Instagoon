@@ -9,3 +9,4 @@ outputs/
 
 # Google OAuth client secrets: never commit
 client_secret_*.json
+.wrangler

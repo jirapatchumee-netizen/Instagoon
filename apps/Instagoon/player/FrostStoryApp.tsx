@@ -31,15 +31,15 @@ import './froststory.css';
 
 export type Lang = 'th' | 'en' | 'ja';
 
-const LANGS: { id: Lang; label: string; name: string }[] = [
+export const LANGS: { id: Lang; label: string; name: string }[] = [
   { id: 'th', label: 'ไทย', name: 'ภาษาไทย' },
   { id: 'en', label: 'EN', name: 'English' },
-  { id: 'ja', label: '日本語', name: '日本語' },
+  { id: 'ja', label: 'JP', name: '日本語' },
 ];
 const nextLang = (lang: Lang): Lang =>
   LANGS[(LANGS.findIndex(({ id }) => id === lang) + 1) % LANGS.length].id;
 
-const TRANSLATIONS = {
+export const TRANSLATIONS = {
   th: {
     loading: 'กำลังโหลด instagoon…',
     loginSlogan: ['ยิ่งคุย', 'ยิ่งสนิท', 'ยิ่งปลดล็อกความลับที่คุณเท่านั้นที่รู้'],
@@ -460,7 +460,7 @@ function Modal({
   );
 }
 
-function LoginScreen({
+export function LoginScreen({
   t,
   lang,
   onSetLang,
@@ -800,12 +800,7 @@ export function FrostStoryApp() {
     });
   };
 
-  if (loading)
-    return (
-      <main className="fs-gate" aria-busy="true">
-        {t.loading}
-      </main>
-    );
+  if (loading) return null;
 
   if (!user)
     return (
@@ -829,7 +824,7 @@ export function FrostStoryApp() {
               onClick={() => handleSetLang(nextLang(lang))}
             >
               <Globe size={13} />
-              <span>{lang.toUpperCase()}</span>
+              <span>{lang === 'ja' ? 'JP' : lang.toUpperCase()}</span>
             </button>
           </div>
           <h1>{t.consentTitle}</h1>
@@ -885,7 +880,7 @@ export function FrostStoryApp() {
               title={LANGS.find(({ id }) => id === nextLang(lang))?.name}
             >
               <Globe size={12} />
-              <span>{lang.toUpperCase()}</span>
+              <span>{lang === 'ja' ? 'JP' : lang.toUpperCase()}</span>
             </button>
 
             {/* Energy Telemetry */}

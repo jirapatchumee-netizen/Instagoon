@@ -1,0 +1,24 @@
+name = "instagoon-staging"
+main = "src/staging.mjs"
+compatibility_date = "2026-10-01"
+workers_dev = false
+preview_urls = false
+keep_vars = true
+routes = [{ pattern = "staging.instagoon.app", custom_domain = true }]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "instagoon-staging"
+database_id = "386f836c-5bb7-4eb2-a1b0-87dfd85fa5e6"
+migrations_dir = "migrations"
+
+[assets]
+directory = "../dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = true
+
+[vars]
+GEMINI_MODEL = "gemini-2.5-flash"
+PUBLIC_ORIGIN = "https://staging.instagoon.app"
+STAGING_EMAILS = "jirapat.chumee@gmail.com"
