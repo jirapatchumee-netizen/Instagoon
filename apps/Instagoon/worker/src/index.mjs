@@ -58,8 +58,12 @@ async function recordTurn(env, t) {
   crypto.randomUUID(), t.userId, t.creatorId, t.visitId, t.now, t.outcome, t.model ?? null, t.latencyMs ?? null, t.tokensIn ?? null, t.tokensOut ?? null, t.fallbackCount || 0, t.energyBucket ?? null, t.delta?.closeness || 0, t.delta?.trust || 0, t.delta?.romance || 0, t.levelAfter ?? null, JSON.stringify(t.matchedRuleIds || []));
 }
 async function bumpThread(env, ctx, uid, creator, name, messages) {
- await run(env, 'UPDATE dm_threads SET messages_since_summary=messages_since_summary+? WHERE user_id=? AND creator_id=?', messages, uid, creator);
- const thread = await one(env, 'SELECT messages_since_summary n FROM dm_threads WHERE user_id=? AND creator_id=?', uid, creator);
+ // The counter read must follow the increment, so both statements ride one round trip in order.
+ const [, countRes] = await env.DB.batch([
+  env.DB.prepare('UPDATE dm_threads SET messages_since_summary=messages_since_summary+? WHERE user_id=? AND creator_id=?').bind(messages, uid, creator),
+  env.DB.prepare('SELECT messages_since_summary n FROM dm_threads WHERE user_id=? AND creator_id=?').bind(uid, creator)
+ ]);
+ const thread = countRes.results[0] ?? null;
  if(thread?.n >= SUMMARY_EVERY) defer(ctx, summarizeThread(env, uid, creator, name));
 }
 // Folds messages newer than summarized_through into the Thread Summary; a failure keeps the previous summary.
@@ -210,8 +214,12 @@ async function auth(req,env,url) {
  return new Response(null,{status:302,headers:{location:'/', 'set-cookie':secureCookie('frost_session',raw,604800),'cache-control':'no-store'}});
 }
 async function energy(env,uid,now) {
- await run(env,'UPDATE energy SET free=3,next_refill_at=NULL WHERE user_id=? AND next_refill_at IS NOT NULL AND next_refill_at<=?',uid,now);
- const row=await one(env,'SELECT free,purchased,next_refill_at FROM energy WHERE user_id=?',uid); return {free:row.free,purchased:row.purchased,nextRefillAt:row.next_refill_at};
+ // Refill then read back, in one round trip; the order inside batch() is sequential.
+ const [, rowRes] = await env.DB.batch([
+  env.DB.prepare('UPDATE energy SET free=3,next_refill_at=NULL WHERE user_id=? AND next_refill_at IS NOT NULL AND next_refill_at<=?').bind(uid,now),
+  env.DB.prepare('SELECT free,purchased,next_refill_at FROM energy WHERE user_id=?').bind(uid)
+ ]);
+ const row=rowRes.results[0]; return {free:row.free,purchased:row.purchased,nextRefillAt:row.next_refill_at};
 }
 const postShape = p=>({id:p.id,creatorId:p.creator_id,creatorName:p.creator_name,caption:p.caption,mediaKey:p.media_key,publishedAt:p.published_at,relationshipRequired:p.relationship_required,simulatedLikes:p.simulated_likes,likes:p.likes,firstCommentUsed:!!p.claimed});
 const storyShape = s=>({id:s.id,creatorId:s.creator_id,type:s.type,mediaKey:s.media_key,publishedAt:s.published_at,expiresAt:s.type==='broadcast'?s.published_at+86400000:s.first_viewed_at==null?null:s.first_viewed_at+86400000,firstViewedAt:s.first_viewed_at});
@@ -628,9 +636,13 @@ Output STRICT JSON format: {"reply": "Thai text", "matchedRuleIds": ["id1", ...]
    // Apply deltas in SQL so a concurrent comment's score change is never overwritten.
    const delta = { closeness: closeness - before.closeness, trust: trust - before.trust, romance: romance - before.romance };
    const scoreFromDimensions = !!npcDef?.rules;
-   await run(env, 'INSERT OR IGNORE INTO relationships(user_id, creator_id) VALUES(?,?)', user.id, creator);
-   await run(env, 'UPDATE relationships SET closeness=MIN(100, MAX(0, COALESCE(closeness,0)+?)), trust=MIN(100, MAX(0, COALESCE(trust,0)+?)), romance=MIN(100, MAX(0, COALESCE(romance,0)+?)), turns=COALESCE(turns,0)+1, events_json=?, rule_uses_json=?, score=CASE WHEN ? THEN ? ELSE MIN(100, score+?) END WHERE user_id=? AND creator_id=?', delta.closeness, delta.trust, delta.romance, JSON.stringify(events), JSON.stringify(ruleUses), scoreFromDimensions ? 1 : 0, rel, scoreDelta, user.id, creator);
-   if(!scoreFromDimensions) rel = (await one(env, 'SELECT score FROM relationships WHERE user_id=? AND creator_id=?', user.id, creator))?.score ?? rel;
+   // Create-then-increment-then-read-back rides one round trip, in this order.
+   const [, , scoreRes] = await env.DB.batch([
+     env.DB.prepare('INSERT OR IGNORE INTO relationships(user_id, creator_id) VALUES(?,?)').bind(user.id, creator),
+     env.DB.prepare('UPDATE relationships SET closeness=MIN(100, MAX(0, COALESCE(closeness,0)+?)), trust=MIN(100, MAX(0, COALESCE(trust,0)+?)), romance=MIN(100, MAX(0, COALESCE(romance,0)+?)), turns=COALESCE(turns,0)+1, events_json=?, rule_uses_json=?, score=CASE WHEN ? THEN ? ELSE MIN(100, score+?) END WHERE user_id=? AND creator_id=?').bind(delta.closeness, delta.trust, delta.romance, JSON.stringify(events), JSON.stringify(ruleUses), scoreFromDimensions ? 1 : 0, rel, scoreDelta, user.id, creator),
+     env.DB.prepare('SELECT score FROM relationships WHERE user_id=? AND creator_id=?').bind(user.id, creator)
+   ]);
+   if(!scoreFromDimensions) rel = scoreRes.results[0]?.score ?? rel;
 
    await run(env, 'INSERT INTO ai_chat_messages(id, user_id, creator_id, role, content, media_key, affection_delta, created_at) VALUES(?,?,?,?,?,?,?,?)', crypto.randomUUID(), user.id, creator, 'assistant', replyText, rewardMediaKey, scoreDelta, now + 1);
    await recordTurn(env, {userId:user.id, creatorId:creator, visitId, now, outcome:'ok', model:usedModel, latencyMs:Date.now() - aiStartedAt, tokensIn, tokensOut, fallbackCount, energyBucket, delta, levelAfter:currentLv, matchedRuleIds:finalDetectedRules});
@@ -659,10 +671,17 @@ Output STRICT JSON format: {"reply": "Thai text", "matchedRuleIds": ["id1", ...]
     await run(env, 'UPDATE dm_threads SET lock_token=NULL, lock_until=0 WHERE user_id=? AND creator_id=? AND lock_token=?', user.id, creator, lockToken);
    }
   }
-  const allAiMessages = await all(env, 'SELECT id, role, content, media_key mediaKey, affection_delta affectionDelta, created_at createdAt FROM ai_chat_messages WHERE user_id=? AND creator_id=? ORDER BY created_at ASC LIMIT 100', user.id, creator);
-  const memList = await all(env, 'SELECT key, value, created_at createdAt FROM player_memories WHERE user_id=? AND creator_id=? ORDER BY created_at DESC', user.id, creator);
-  const relRow = await one(env, 'SELECT score, closeness, trust, romance, turns FROM relationships WHERE user_id=? AND creator_id=?', user.id, creator);
-  const npcDefRow = await one(env, 'SELECT definition_json FROM npc_definitions WHERE creator_id=?', creator);
+  // The chat screen needs these four independent rows together; they used to be four round trips.
+  const [messagesRes, memRes, relRes, npcRes] = await env.DB.batch([
+    env.DB.prepare('SELECT id, role, content, media_key mediaKey, affection_delta affectionDelta, created_at createdAt FROM ai_chat_messages WHERE user_id=? AND creator_id=? ORDER BY created_at ASC LIMIT 100').bind(user.id, creator),
+    env.DB.prepare('SELECT key, value, created_at createdAt FROM player_memories WHERE user_id=? AND creator_id=? ORDER BY created_at DESC').bind(user.id, creator),
+    env.DB.prepare('SELECT score, closeness, trust, romance, turns FROM relationships WHERE user_id=? AND creator_id=?').bind(user.id, creator),
+    env.DB.prepare('SELECT definition_json FROM npc_definitions WHERE creator_id=?').bind(creator)
+  ]);
+  const allAiMessages = messagesRes.results;
+  const memList = memRes.results;
+  const relRow = relRes.results[0] ?? null;
+  const npcDefRow = npcRes.results[0] ?? null;
   let npcDef = null;
   if(npcDefRow?.definition_json){try{npcDef=JSON.parse(npcDefRow.definition_json);}catch(e){}}
 

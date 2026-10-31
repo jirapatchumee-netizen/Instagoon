@@ -22,3 +22,8 @@ run_worker_first = true
 GEMINI_MODEL = "gemini-2.5-flash"
 PUBLIC_ORIGIN = "https://staging.instagoon.app"
 STAGING_EMAILS = "jirapat.chumee@gmail.com,taychinsgo@gmail.com"
+# Fill these with Google's published USD per 1M tokens for the active model group to make
+# /api/admin/chat-metrics report estimatedCostUsd. Left unset on purpose: the numbers must come
+# from the pricing page, not from a guess. See docs/AI_CHAT_COST_PLAN.md (P0).
+# GEMINI_PRICE_IN_PER_M = ""
+# GEMINI_PRICE_OUT_PER_M = ""

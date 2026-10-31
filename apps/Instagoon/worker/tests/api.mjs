@@ -147,6 +147,16 @@ try{const turn=await request('/api/chats/c/message',{method:'POST',data:{message
   assert.equal(chat.latencyMs.samples,4);assert.equal(chat.visits.count,2);assert.equal(chat.creators[0].creatorId,'c');
   assert.equal(chat.daily.reduce((n,d)=>n+d.tokensIn,0),300);assert.equal(chat.daily[0].estimatedCostUsd,null,'no cost without configured prices');
   assert.equal(chat.rateLimitRate,0.2);
+  // Pricing vars turn the same endpoint into a cost report; the fixture numbers below are test
+  // data that pins the arithmetic, not Google's real rates.
+  env.GEMINI_PRICE_IN_PER_M='1';env.GEMINI_PRICE_OUT_PER_M='3';
+  const pricedResponse=await worker.fetch(new Request(env.PUBLIC_ORIGIN+'/api/admin/chat-metrics',{headers:{cookie:'frost_session='+adminRaw,'cf-access-jwt-assertion':jwt}}),env);
+  const priced=await pricedResponse.json();
+  const day=priced.daily.find(d=>d.tokensIn||d.tokensOut);
+  assert.equal(pricedResponse.status,200);assert.ok(day,'a day carries token usage');
+  assert.equal(day.estimatedCostUsd,(day.tokensIn*1+day.tokensOut*3)/1e6);
+  assert.equal(day.estimatedCostPerPlayerUsd, day.players ? (day.tokensIn*1+day.tokensOut*3)/1e6/day.players : null);
+  delete env.GEMINI_PRICE_IN_PER_M;delete env.GEMINI_PRICE_OUT_PER_M;
   // Retention summarizes the thread, then removes messages older than 180 days.
   sql.prepare("INSERT INTO ai_chat_messages(id,user_id,creator_id,role,content,created_at) VALUES('ancient','u','c','user','เรื่องเก่า',?)").run(Date.now()-181*86400000);
   globalThis.fetch=async(_u,init)=>{assert.ok(JSON.parse(init.body).systemInstruction);return Response.json({candidates:[{content:{parts:[{text:JSON.stringify({summary:'เคยเล่าเรื่องเก่า'})}]}}]});};
