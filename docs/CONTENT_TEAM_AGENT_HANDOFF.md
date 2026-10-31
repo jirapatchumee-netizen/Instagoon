@@ -28,3 +28,56 @@
 - **ข้อเสนอ Staging:** วิธีส่งชุดที่ระบุรุ่น แยกข้อมูลทดสอบ และให้ทั้งสองทีมตรวจ โดยระบุสิ่งที่ต้องสร้างเพิ่ม
 - **เผยแพร่และกู้คืน:** วิธีรักษาข้อมูลผู้เล่น ความเสี่ยงของ migration และแนวทางกู้คืนที่ต้องพิสูจน์
 - **คำถามและขั้นต่อไป:** ข้อขัดแย้งกับแผน สิ่งที่ยังไม่ทราบ ผู้ที่ต้องตัดสินใจ และหลักฐานประกอบ
+
+## ภาคผนวก ก. ข้อตัดสินสถาปัตยกรรมเมื่อ 31 ต.ค. 2026 (ให้ AI agent ฝั่ง Content ปฏิบัติตาม)
+
+> **อัปเดต 31 ต.ค. 2026 (หลังตัดสินใจ):** เว็บ Studio ถูกลบออกทั้งหมดแล้ว (commit `a8900d8`) ไม่มี `/studio` บน staging, ไม่มี `dist-studio`, ไม่มี `STUDIO_KEY`/`POST /auth/login` และไม่มี `/api/admin` ที่เขียนเนื้อหา ส่วนที่ระบุถึง Studio ในภาคผนวกนี้จึงไม่มีผลแล้ว
+> ระบบจริง: เนื้อหาอยู่ใน git ที่ `apps/Instagoon/content/` (`creators/<id>/character.json`, `posts.json`, `stories.json`, `media/<key>` ดู `content/README.md`) · build รวมเข้า `dist/_content` และ Worker sync เข้า D1 เองเมื่อเวอร์ชันเปลี่ยน (ตัวละคร/โพสต์ที่หายไปเป็น `suspended`) · รูปเสิร์ฟผ่าน `/api/media` เท่านั้น · merge เข้า `main` → deploy staging อัตโนมัติ → prod รออนุมัติใน GitHub environment `production` · ข้อที่ยังมีผล: git เป็นต้นฉบับ, AI agent ฝั่ง Content มีสิทธิ์ git เท่านั้น, ทุกการเปลี่ยนผ่าน PR, prod ต้องอนุมัติ
+
+OQ-1 และ OQ-2 ด้านล่างได้คำตอบจากระบบจริงแล้ว (โครง `content/` ตามข้างบน และสื่ออยู่ใน `content/media/`)
+
+
+สถานะ: เจ้าของผลิตภัณฑ์ยืนยันผ่านการซักถาม 7 รอบ ไม่ใช่ข้อเสนออีกต่อไป หากไม่เห็นด้วยกับข้อใด ให้เปิด PR ถกเถียงพร้อมหลักฐาน ห้ามสมมติต่างจากนี้ในระหว่างทำงาน
+
+### ข้อที่ล็อกแล้ว
+
+1. เฟส 1 **ไม่สร้างโดเมนใหม่** ไม่มี `studio.instagoon.app` (ยังไม่ resolve ใน DNS อยู่แล้ว) เครื่องมือแก้ไขข้อมูลไปอยู่ที่ `staging.instagoon.app/studio` ชื่อ `studio.instagoon.app` ถูกจองไว้ใน [ADR 0007](adr/0007-studio-surface-on-staging-host-and-git-driven-content-pipeline.md) สำหรับวันที่เครื่องมือต้องดูหรือคุมข้อมูลจริง (liveops/analytics)
+2. ต้นฉบับข้อมูลคือ **ไฟล์ใน git** (`NpcSchema` v1.0 ที่ `src/modules/npc-studio/lib/npc/schema.ts` เป็น contract) ฐานข้อมูล D1 เป็นเพียงสำเนาที่ระบบ sync เข้าไป
+3. AI agent ฝั่ง Content มี **สิทธิ์ git เท่านั้น** ไม่มี `STUDIO_KEY` ไม่มี API token ของ studio และไม่ต้องมี
+4. `STUDIO_KEY` ถูกตัดออกจากทุก environment และปิดเส้นทาง `POST /auth/login` แบบ passcode บน host ผู้เล่น (หน้าจอล็อกอินของ Studio ต้องเปลี่ยนไปใช้ session จาก Gmail)
+5. ผู้เข้า Studio ใช้ allowlist ชุดเดียวกับ `STAGING_EMAILS` เพราะ staging ถูกสร้างมาเพื่อทีมพัฒนาเท่านั้น
+6. Build แยกเป็น `dist` (ผู้เล่นเท่านั้น ขึ้นทั้ง prod และ staging) กับ `dist-studio` (เสิร์ฟเฉพาะเส้นทาง `/studio` บน staging) prod bundle ต้องไม่มี Studio code
+7. `content/**` merge เข้า `main` แล้ว job ใน CI จะ upsert เข้า D1 `instagoon-staging` อัตโนมัติ ทุก PR ต้องรัน validate แบบ dry-run ก่อน merge
+8. การลบตัวละครหรือตอนในไฟล์ไม่ลบข้อมูลจริง เปลี่ยนเป็น `status = suspended` และ CI ต้อง fail ถ้าการหายไปของไฟล์ทำให้ revision ที่ผู้เล่นใช้อยู่กลายเป็น orphan
+9. การเผยแพร่เข้า prod เป็นงานของ CI ที่ต้องมีการอนุมัติ 1 คนจากทีม Game UI และ 1 คนจากทีม Content ผ่าน GitHub environment approval (รายชื่อผูกกับ `CODEOWNERS`) ไม่มีปุ่ม publish ที่ถือ credential ของ prod
+10. ผู้เล่นที่สนทนาค้างอยู่ยังคงผูกกับ revision เดิมตาม `chat_states.revision_id` ผู้เล่นที่เริ่มใหม่ได้ revision ใหม่
+11. snapshot ของชุดเนื้อหาที่เผยแพร่คือ commit sha/tag ใน git พร้อมบันทึกในตาราง `published_revisions` การย้อนกลับ = รัน job เผยแพร่ sha เดิมใหม่ ไม่ใช่การ restore ฐานข้อมูล
+12. schema ใหม่เป็น migration `0007` แบบ additive เท่านั้น (`audit_log`, `published_revisions`) apply ที่ staging ก่อน prod โดยเจ้าของบัญชีตาม [runbook](INSTAGOON_RELEASE_RUNBOOK.md)
+13. สิ่งที่บังคับในเฟส 1: sync ต้อง idempotent (รันซ้ำแล้วได้ผลเดิม ไม่แตะข้อมูลผู้เล่น), dry-run validate ใน PR, audit แบบ append-only ใน D1 สำหรับทุก sync และทุก publish, และมีเพดานจำนวน request/งบ AI ต่อวันบน environment ทดสอบ
+14. ขอบเขตของ Studio เฟส 1 คือ content pipeline เท่านั้น (ตัวละคร กฎ ความสัมพันธ์ revision preview audit) analytics และ liveops เลื่อนเป็นเฟส 2 ไม่มี raw SQL console และไม่มี endpoint ที่เขียนตารางผู้เล่น (`users` `sessions` `chat` `relationships`) จากเครื่องมือ
+15. งานแอดมินบน prod (เพิ่มหรือระงับ invite ตั้ง energy) ย้ายไปเป็น CI job หรือสคริปต์ที่เจ้าของบัญชีรันผ่าน `wrangler` + GitHub Actions ที่ต้องอนุมัติ ไม่เหลือหน้า web admin บน prod
+
+### สิ่งที่คุณต้องตอบ ภายใน 4 พ.ย. 2026 (สองข้อนี้ block การเขียน sync script)
+
+**OQ-1 โครง path ของ `content/`** ใน repository นี้ยังไม่มีโฟลเดอร์ `content/` ค่า default ชั่วคราวที่ทีม Game UI จะใช้คือ
+
+```
+content/creators/<npcId>/character.json      # ผ่าน NpcSchema v1.0
+content/creators/<npcId>/posts/<id>.json
+content/creators/<npcId>/stories/<id>.json
+content/creators/<npcId>/images/<file>       # อ้างอิงตาม field asset/avatar ใน schema
+```
+
+คุณต้องตอบพร้อมหลักฐาน: Studio หรือระบบที่คุณใช้อยู่ export/นำเข้าในรูปแบบไหน id ของตัวละครมาจากไหน (uuid หรือชื่อที่คนตั้ง) ตั้งชื่อไฟล์และโฟลเดอร์อย่างไร ไฟล์ใดถือเป็นต้นฉบับและไฟล์ใดเป็นของ build และถ้าโครง default ขัดกับระบบของคุณ ทางออกที่เสนอคือแบบไหน
+
+**OQ-2 วิธีส่งสื่อเข้า environment ทดสอบ** ค่า default ชั่วคราวคือเก็บในตาราง `media_blobs` ของ D1 ตามที่ระบบทำอยู่ จำกัด 900KB ต่อไฟล์ และ CI fail ทันทีที่ไฟล์เกิน (R2 เลื่อนเป็นเฟส 2) คุณต้องตอบพร้อมตัวเลขจริงที่สำรวจ: จำนวนไฟล์และขนาดของแต่ละตัวละครที่ใกล้จะปล่อย รูปแบบไฟล์ที่ใช้อัลบั้ม reward/post การตั้งชื่อที่ตรงกับ field `asset` และ `avatar` ใน schema และถ้าจำเป็นจริง ๆ จะขอเปิด R2 ด้วยเหตุผลอะไร เอกสารที่เขียนไว้แล้วและควรอ่านก่อนตอบคือ [CONTENT_MEDIA_STATIC_ASSETS_PROPOSAL.md](CONTENT_MEDIA_STATIC_ASSETS_PROPOSAL.md) และ [CONTENT_MISSING_MEDIA_2026-10-31.md](CONTENT_MISSING_MEDIA_2026-10-31.md)
+
+ถ้าพ้น 4 พ.ย. 2026 แล้วยังไม่มีคำตอบ ทีม Game UI จะถือว่าค่า default ชั่วคราวทั้งสองข้อเป็นข้อตัดสินสุดท้าย และจะเขียน sync script ตามนั้น (การแก้ทีหลังต้องเปิด PR ใหม่)
+
+### สิ่งที่ห้ามทำระหว่างนี้
+
+- ห้าม deploy ห้ามรัน migration บน prod และห้ามแก้ข้อมูลผู้เล่นจริง
+- ห้าม push ตรงเข้า `main` ทุกการเปลี่ยนต้องผ่าน PR และให้ CI validate
+- ห้ามสร้าง credential ใหม่ให้ AI agent เพื่อเรียก API เขียนข้อมูล
+- ห้ามใส่ secrets ข้อมูลผู้เล่นจริง หรือเนื้อหาลับ (secrets/rewards ที่ยังปลดล็อกไม่ได้) ในรายงานหรือใน commit
+- ถ้าพบข้อขัดแย้งระหว่างข้อตัดสินข้างบนกับระบบจริงของคุณ ให้หยุดแล้วรายงาน อย่าเลือกเองเงียบ ๆ
