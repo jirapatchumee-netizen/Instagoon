@@ -49,3 +49,6 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: 'apps/Instagoon/worker'
+          # The action falls back to wrangler 3 when it can't find a local install, and wrangler 3
+          # ignores assets.run_worker_first, so browser navigations to /auth/* got the SPA instead.
+          wranglerVersion: '4.154.0'
