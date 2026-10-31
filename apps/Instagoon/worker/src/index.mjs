@@ -216,7 +216,10 @@ async function auth(req,env,url) {
  if(!tr.ok)return authError('google_auth_failed'); const tokens=await tr.json();
  const ur=await fetch('https://openidconnect.googleapis.com/v1/userinfo',{headers:{authorization:`Bearer ${tokens.access_token}`}}); if(!ur.ok)return authError('google_auth_failed');
  const profile=await ur.json(); if(!profile.email_verified||!profile.email||!profile.sub)return authError('email_not_verified');
- const email=profile.email.toLowerCase(); const invitation=await one(env,'SELECT status FROM invites WHERE email=?',email);
+ const email=profile.email.toLowerCase();
+ // Staging only: reject accounts outside the allowlist before any user or session row is written.
+ if(env.STAGING_EMAILS && !env.STAGING_EMAILS.split(',').some(e=>e.trim().toLowerCase()===email))return authError('not_allowed');
+ const invitation=await one(env,'SELECT status FROM invites WHERE email=?',email);
  if(invitation?.status==='revoked'&&email!==(env.ADMIN_EMAIL||'').toLowerCase())return authError('access_revoked');
  const now=Date.now(); let user=await one(env,'SELECT * FROM users WHERE google_id=?',profile.sub);
  // Google verified this email, so an earlier account with the same email (pre-Google sign-up) is linked rather than duplicated.

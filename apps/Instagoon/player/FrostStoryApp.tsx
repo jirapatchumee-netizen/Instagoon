@@ -55,6 +55,7 @@ export const TRANSLATIONS = {
     loginErrors: {
       login_cancelled: 'ยกเลิกการเข้าสู่ระบบแล้ว ลองใหม่ได้ทุกเมื่อ',
       access_revoked: 'บัญชีนี้ถูกระงับการเข้าใช้งาน',
+      not_allowed: 'บัญชีนี้ยังไม่ได้รับสิทธิ์เข้าใช้งานเว็บนี้',
       email_not_verified: 'อีเมล Google นี้ยังไม่ได้ยืนยัน กรุณายืนยันแล้วลองอีกครั้ง',
       google_auth_failed: 'เชื่อมต่อ Google ไม่สำเร็จ กรุณาลองอีกครั้ง',
       invalid_oauth_state: 'หมดเวลาเข้าสู่ระบบ กรุณาลองอีกครั้ง',
@@ -135,6 +136,7 @@ export const TRANSLATIONS = {
     loginErrors: {
       login_cancelled: 'Sign-in cancelled. You can try again anytime.',
       access_revoked: 'This account has been suspended.',
+      not_allowed: 'This account does not have access to this site.',
       email_not_verified: 'This Google email is not verified. Verify it and try again.',
       google_auth_failed: 'Could not reach Google. Please try again.',
       invalid_oauth_state: 'Sign-in timed out. Please try again.',
@@ -215,6 +217,7 @@ export const TRANSLATIONS = {
     loginErrors: {
       login_cancelled: 'ログインをキャンセルしました。いつでもやり直せます。',
       access_revoked: 'このアカウントは利用停止中です。',
+      not_allowed: 'このアカウントにはこのサイトへのアクセス権がありません。',
       email_not_verified: 'この Google メールアドレスは未確認です。確認してからもう一度お試しください。',
       google_auth_failed: 'Google に接続できませんでした。もう一度お試しください。',
       invalid_oauth_state: 'ログインの有効期限が切れました。もう一度お試しください。',

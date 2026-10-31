@@ -183,6 +183,13 @@ sql.prepare("INSERT INTO invites(email,status) VALUES('banned@gmail.com','revoke
 const banned=await googleLogin('banned@gmail.com','sub-banned');
 assert.equal(banned.location,'/?auth_error=access_revoked','revoked email returns to the login page with its reason');
 assert.equal(banned.sess,null,'revoked email is refused a session');
+gEnv.STAGING_EMAILS='owner@example.com';
+const outsider=await googleLogin('outsider@gmail.com','sub-outsider');
+assert.equal(outsider.location,'/?auth_error=not_allowed','staging rejects an email outside the allowlist with its reason');
+assert.equal(outsider.sess,null,'staging gives an outsider no session');
+assert.equal(sql.prepare("SELECT count(*) n FROM users WHERE email='outsider@gmail.com'").get().n,0,'staging stores no row for an outsider');
+assert.equal((await googleLogin('Owner@example.com','sub-owner')).status,302,'staging allowlisted email signs in');
+delete gEnv.STAGING_EMAILS;
 const cancelled=await worker.fetch(new Request(`${env.PUBLIC_ORIGIN}/auth/callback?error=access_denied&state=s`),gEnv);
 assert.equal(cancelled.headers.get('location'),'/?auth_error=login_cancelled','cancelling at Google returns to the login page');
 const forged=await worker.fetch(new Request(`${env.PUBLIC_ORIGIN}/auth/callback?state=forged&code=c`,{headers:{cookie:'frost_oauth=other'}}),gEnv);
