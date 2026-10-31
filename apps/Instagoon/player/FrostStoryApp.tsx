@@ -479,6 +479,9 @@ function LoginScreen({
 
   return (
     <main className="fs-gate fs-login" lang={lang}>
+      <div className="fs-login-device">
+      <div className="fs-login-screen">
+      <span className="fs-login-island" aria-hidden="true" />
       <div className="fs-login-column">
         <div className="fs-login-topbar">
           <span className="fs-login-wordmark">instagoon</span>
@@ -541,6 +544,8 @@ function LoginScreen({
             <a href="/terms.html">{t.loginTerms}</a>
           </nav>
         </div>
+      </div>
+      </div>
       </div>
     </main>
   );

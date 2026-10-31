@@ -5,7 +5,7 @@
   overflow-x: hidden;
   background: #000000;
   color: #f8fafc;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: 'Zen Maru Gothic', 'Mitr', -apple-system, 'Hiragino Maru Gothic ProN', sans-serif;
   user-select: none;
 }
 
@@ -2040,7 +2040,6 @@ dialog.fs-overlay::backdrop {
   min-height: 100svh;
   padding: max(24px, env(safe-area-inset-top)) 22px max(24px, env(safe-area-inset-bottom));
   color: var(--login-pearl);
-  font-family: 'Zen Maru Gothic', 'IBM Plex Sans Thai Looped', -apple-system, 'Hiragino Maru Gothic ProN', sans-serif;
   position: relative;
   isolation: isolate;
   overflow: hidden;
@@ -2079,6 +2078,115 @@ dialog.fs-overlay::backdrop {
   flex-direction: column;
   gap: 26px;
   width: min(100%, 400px);
+}
+
+/* Phone frame: only on screens large enough to show it; phones stay full-screen */
+.fs-login-device,
+.fs-login-screen {
+  display: contents;
+}
+
+.fs-login-island {
+  display: none;
+}
+
+@media (min-width: 640px) and (min-height: 720px) {
+  .fs-gate.fs-login {
+    padding: 32px;
+    /* Pink glow behind the phone (a large box-shadow blur renders as a hard-edged box in some browsers) */
+    background:
+      radial-gradient(260px 420px at 50% 62%, rgba(255, 79, 154, 0.22), transparent 70%),
+      linear-gradient(180deg, #24102f 0%, var(--login-night) 55%, #12071a 100%);
+  }
+
+  .fs-login-device {
+    position: relative;
+    display: block;
+    width: 400px;
+    height: min(860px, calc(100svh - 64px));
+    padding: 11px;
+    border-radius: 60px;
+    background: linear-gradient(150deg, #4a3557 0%, #1c1023 30%, #120a18 65%, #3b2848 100%);
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.22),
+      inset 0 2px 1px rgba(255, 255, 255, 0.35),
+      0 0 0 1px rgba(0, 0, 0, 0.6),
+      0 24px 40px -16px rgba(0, 0, 0, 0.85);
+  }
+
+  /* Side buttons: power on the right, two volume keys on the left */
+  .fs-login-device::before,
+  .fs-login-device::after {
+    content: '';
+    position: absolute;
+    width: 4px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, #2b1d33, #5a4366, #2b1d33);
+  }
+
+  .fs-login-device::after {
+    right: -4px;
+    top: 200px;
+    height: 96px;
+  }
+
+  .fs-login-device::before {
+    left: -4px;
+    top: 170px;
+    height: 58px;
+    box-shadow: 0 74px 0 #3b2848;
+  }
+
+  .fs-login-screen {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow-y: auto;
+    border-radius: 49px;
+    background: rgba(26, 11, 38, 0.5);
+    backdrop-filter: blur(24px) saturate(130%);
+    -webkit-backdrop-filter: blur(24px) saturate(130%);
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.8);
+    scrollbar-width: none;
+  }
+
+  .fs-login-screen::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Glass reflection across the screen */
+  .fs-login-screen::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(118deg, rgba(255, 255, 255, 0.09) 0%, rgba(255, 255, 255, 0.02) 32%, transparent 33%);
+  }
+
+  .fs-login-island {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    z-index: 1;
+    display: block;
+    width: 118px;
+    height: 34px;
+    border-radius: 20px;
+    background: #000000;
+    transform: translateX(-50%);
+  }
+
+  .fs-login-screen .fs-login-column {
+    width: 100%;
+    margin: auto 0;
+    padding: 64px 24px 32px;
+  }
+
+  .fs-login-slogan span:not(:last-child) {
+    font-size: 2.9rem;
+  }
 }
 
 .fs-login-topbar {
