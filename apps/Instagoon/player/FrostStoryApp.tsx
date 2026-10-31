@@ -1,21 +1,18 @@
-import { useCallback, useEffect, useState, useRef, type FormEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useState, useRef, type FormEvent, type ReactNode } from 'react';
 import {
   ArrowLeft,
+  Check,
   ChevronDown,
   Globe,
-  Info,
   LockKeyhole,
-  Phone,
   Send,
   Sparkles,
   User as UserIcon,
-  Video,
   X,
   Zap,
 } from 'lucide-react';
 import {
   GoogleG,
-  IgLogo,
   IgHeart,
   IgComment,
   IgShare,
@@ -49,22 +46,58 @@ function LangSelect({
   className?: string;
   short?: boolean;
 }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const current = LANGS.find(({ id }) => id === lang) ?? LANGS[0];
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener('pointerdown', close);
+    return () => document.removeEventListener('pointerdown', close);
+  }, [open]);
+
   return (
-    <label className={`fs-lang-select ${className}`}>
-      <Globe size={12} aria-hidden="true" />
-      <select
+    <div
+      ref={rootRef}
+      className="fs-lang-select"
+      onKeyDown={(event) => event.key === 'Escape' && setOpen(false)}
+    >
+      <button
+        type="button"
+        className={`fs-lang-trigger ${className}`}
         aria-label="Language"
-        value={lang}
-        onChange={(event) => onChange(event.target.value as Lang)}
+        aria-haspopup="true"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
       >
-        {LANGS.map(({ id, label, name }) => (
-          <option key={id} value={id} lang={id}>
-            {short ? label : name}
-          </option>
-        ))}
-      </select>
-      <ChevronDown size={12} aria-hidden="true" />
-    </label>
+        <Globe size={12} aria-hidden="true" />
+        <span lang={current.id}>{short ? current.label : current.name}</span>
+        <ChevronDown size={12} aria-hidden="true" className="fs-lang-chevron" />
+      </button>
+      {open && (
+        <div className="fs-lang-menu">
+          {LANGS.map(({ id, label, name }) => (
+            <button
+              key={id}
+              type="button"
+              lang={id}
+              aria-pressed={id === lang}
+              onClick={() => {
+                setOpen(false);
+                if (id !== lang) onChange(id);
+              }}
+            >
+              <span className="fs-lang-code">{label}</span>
+              <span>{name}</span>
+              {id === lang && <Check size={13} aria-hidden="true" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -149,6 +182,10 @@ export const TRANSLATIONS = {
     player: 'ผู้ใช้',
     originalAudio: 'เสียงต้นฉบับ',
     viewMore: 'ดูเพิ่มเติม',
+    chatTab: 'แชท',
+    storyTab: 'เนื้อเรื่อง',
+    sendFailed: 'ส่งไม่สำเร็จ · แตะเพื่อลองใหม่',
+    chatLoading: 'กำลังเปิดแชท',
   },
   en: {
     loading: 'Loading instagoon…',
@@ -230,6 +267,10 @@ export const TRANSLATIONS = {
     player: 'User',
     originalAudio: 'Original audio',
     viewMore: 'more',
+    chatTab: 'Chat',
+    storyTab: 'Story',
+    sendFailed: 'Not sent · Tap to retry',
+    chatLoading: 'Opening chat',
   },
   ja: {
     loading: 'instagoon を読み込み中…',
@@ -311,6 +352,10 @@ export const TRANSLATIONS = {
     player: 'ユーザー',
     originalAudio: 'オリジナル音源',
     viewMore: '続きを読む',
+    chatTab: 'チャット',
+    storyTab: 'ストーリー',
+    sendFailed: '送信できませんでした · タップして再送',
+    chatLoading: 'チャットを開いています',
   },
 };
 
@@ -403,6 +448,69 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   return data as T;
 }
 
+function ChatComposer({
+  placeholder,
+  disabled,
+  onSend,
+}: {
+  placeholder: string;
+  disabled: boolean;
+  onSend: (text: string) => void;
+}) {
+  const [text, setText] = useState('');
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+  }, [text]);
+
+  const submit = () => {
+    const value = text.trim();
+    if (!value || disabled) return;
+    onSend(value);
+    setText('');
+    ref.current?.focus();
+  };
+
+  return (
+    <form
+      className="fs-dm-input-form"
+      onSubmit={(event) => {
+        event.preventDefault();
+        submit();
+      }}
+    >
+      <textarea
+        ref={ref}
+        rows={1}
+        className="fs-dm-text-input"
+        placeholder={placeholder}
+        value={text}
+        enterKeyHint="send"
+        onChange={(event) => setText(event.target.value)}
+        onKeyDown={(event) => {
+          // Enter sends; Shift+Enter is a new line; Enter that confirms an IME (Thai/Japanese) candidate is ignored.
+          if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing && event.keyCode !== 229) {
+            event.preventDefault();
+            submit();
+          }
+        }}
+      />
+      <button
+        type="submit"
+        className="fs-dm-send-btn"
+        aria-label="Send"
+        disabled={!text.trim() || disabled}
+      >
+        <Send size={18} />
+      </button>
+    </form>
+  );
+}
+
 const media = (key: string) => `/api/media/${key.split('/').map(encodeURIComponent).join('/')}`;
 
 function Media({
@@ -473,6 +581,8 @@ function Modal({
   useEffect(() => {
     const element = ref.current;
     element?.showModal();
+    // Land focus on the content, not the first button, so no focus ring flashes on open.
+    element?.querySelector<HTMLElement>('[data-autofocus]')?.focus({ preventScroll: true });
     return () => {
       if (element?.open) element.close();
     };
@@ -614,12 +724,14 @@ export function FrostStoryApp() {
   const [notifications, setNotifications] = useState<
     { id: string; text: string; createdAt: number }[]
   >([]);
-  const chatEndRef = useRef<HTMLDivElement>(null);
+  const msgsRef = useRef<HTMLDivElement>(null);
+  const stickToBottomRef = useRef(true);
+  const chatOpenedAtRef = useRef(0);
 
   // AI Free-Text DM Chat State
   const [aiDmTab, setAiDmTab] = useState<'ai' | 'story'>('ai');
-  const [aiInput, setAiInput] = useState('');
   const [aiSending, setAiSending] = useState(false);
+  const [pending, setPending] = useState<{ id: string; content: string; failed?: string }[]>([]);
   const [memoryPanel, setMemoryPanel] = useState<{ open: boolean; items: { key: string; value: string }[] }>({ open: false, items: [] });
 
   useEffect(() => {
@@ -652,13 +764,16 @@ export function FrostStoryApp() {
     }
   }
 
-  async function handleSendAiMessage(e: React.FormEvent) {
-    e.preventDefault();
-    if (!selectedCreator || !aiInput.trim() || aiSending) return;
-    const text = aiInput.trim();
-    setAiInput('');
+  async function sendAiMessage(text: string, retryId?: string) {
+    if (!selectedCreator || !chat || aiSending) return;
+    const id = retryId ?? crypto.randomUUID();
+    setPending((prev) =>
+      retryId
+        ? prev.map((item) => (item.id === id ? { id, content: text } : item))
+        : [...prev, { id, content: text }]
+    );
+    stickToBottomRef.current = true;
     setAiSending(true);
-    setError('');
     try {
       const res = await api<{
         ok: boolean;
@@ -669,32 +784,25 @@ export function FrostStoryApp() {
         energy: Energy;
       }>(`/api/chats/${encodeURIComponent(selectedCreator.id)}/message`, json({ message: text }));
 
-      if (res.messages && chat) {
-        setChat({ ...chat, aiMessages: res.messages });
-      }
-      if (res.energy) {
-        setEnergy(res.energy);
-      }
+      setPending((prev) => prev.filter((item) => item.id !== id));
+      if (res.messages) setChat((prev) => (prev ? { ...prev, aiMessages: res.messages } : prev));
+      if (res.energy) setEnergy(res.energy);
       if (typeof res.relationship === 'number') {
-        setSelectedCreator({ ...selectedCreator, relationship: res.relationship });
+        setSelectedCreator((prev) => (prev ? { ...prev, relationship: res.relationship } : prev));
         setCreators((prev) =>
-          prev.map((c) =>
-            c.id === selectedCreator.id ? { ...c, relationship: res.relationship } : c
-          )
+          prev.map((c) => (c.id === selectedCreator.id ? { ...c, relationship: res.relationship } : c))
         );
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes('thread_busy')) {
-        setAiInput(text);
-        setError(`${selectedCreator.name} กำลังพิมพ์ตอบข้อความก่อนหน้าอยู่… รอสักครู่แล้วส่งใหม่นะคะ`);
-      } else if (msg.includes('energy_empty')) {
-        setError('พลังงานหมดแล้ว! (1⚡/ข้อความ) รอรีเฟรชพลังงานฟรีวันพรุ่งนี้');
-      } else if (msg.includes('rate_limit')) {
-        setError('ขณะนี้ระบบ AI ติดขีดจำกัดชั่วคราว (Rate Limit) กรุณารอสักครู่แล้วลองส่งใหม่อีกครั้งนะคะ (คืนพลังงานให้เรียบร้อยแล้ว)');
-      } else {
-        setError(msg);
-      }
+      const reason = msg.includes('thread_busy')
+        ? `${selectedCreator.name} กำลังพิมพ์ตอบข้อความก่อนหน้าอยู่`
+        : msg.includes('energy_empty')
+          ? 'พลังงานหมด (1⚡ ต่อข้อความ) รอรีเฟรชพรุ่งนี้'
+          : msg.includes('rate_limit')
+            ? 'ระบบ AI ไม่ว่างชั่วคราว คืนพลังงานให้แล้ว'
+            : msg;
+      setPending((prev) => prev.map((item) => (item.id === id ? { ...item, failed: reason } : item)));
     } finally {
       setAiSending(false);
     }
@@ -736,11 +844,18 @@ export function FrostStoryApp() {
     };
   }, [loadMe, loadFeed, t.connectionError]);
 
+  const chatLoaded = Boolean(chat);
+  useLayoutEffect(() => {
+    const el = msgsRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+    stickToBottomRef.current = true;
+  }, [chatLoaded, selectedCreator?.id, aiDmTab]);
+
   useEffect(() => {
-    if (chat) {
-      chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [chat]);
+    const el = msgsRef.current;
+    if (el && stickToBottomRef.current) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+  }, [chat?.aiMessages?.length, chat?.history.length, chat?.currentNodeId, pending, aiSending]);
 
   async function action(fn: () => Promise<void>) {
     setBusy(true);
@@ -791,11 +906,24 @@ export function FrostStoryApp() {
   }
 
   async function openChat(creator: Creator) {
-    await action(async () => {
+    setError('');
+    setChat(null);
+    setPending([]);
+    setSelectedCreator(creator);
+    chatOpenedAtRef.current = Date.now();
+    try {
       const result = await api<{ chat: Chat }>(`/api/chats/${encodeURIComponent(creator.id)}`);
-      setSelectedCreator(creator);
       setChat(result.chat);
-    });
+    } catch (e) {
+      setSelectedCreator(null);
+      setError(e instanceof Error ? e.message : t.genericError);
+    }
+  }
+
+  function closeChat() {
+    setSelectedCreator(null);
+    setChat(null);
+    setPending([]);
   }
 
   async function openStory(story: Story) {
@@ -880,7 +1008,7 @@ export function FrostStoryApp() {
             onKeyDown={(e) => e.key === 'Enter' && setScreen('feed')}
             title="Instagram"
           >
-            <IgLogo size={96} className="fs-real-logo" />
+            <span className="fs-wordmark">instagoon</span>
           </div>
 
           <div className="fs-header-actions">
@@ -1298,7 +1426,6 @@ export function FrostStoryApp() {
           <div className="fs-section-pad">
             <div className="fs-section-heading">
               <div>
-                <span className="fs-eyebrow">DIRECT MESSAGES</span>
                 <h1>{t.knowBetterTitle}</h1>
               </div>
               <span className="fs-muted">{t.charactersCount(creators.length)}</span>
@@ -1354,7 +1481,6 @@ export function FrostStoryApp() {
           <div className="fs-section-pad">
             <div className="fs-section-heading">
               <div>
-                <span className="fs-eyebrow">ACTIVITY</span>
                 <h1>{t.notifications}</h1>
               </div>
             </div>
@@ -1378,7 +1504,6 @@ export function FrostStoryApp() {
           <div className="fs-section-pad">
             <div className="fs-section-heading">
               <div>
-                <span className="fs-eyebrow">PROFILE</span>
                 <h1>{t.account}</h1>
               </div>
             </div>
@@ -1568,96 +1693,69 @@ export function FrostStoryApp() {
         </Modal>
       )}
 
-      {/* Instagram Direct Message (DM) Active Chat Modal */}
-      {selectedCreator && chat && (
-        <Modal
-          labelledBy="fs-chat-title"
-          onClose={() => {
-            setSelectedCreator(null);
-            setChat(null);
-          }}
-        >
-          <section className="fs-dm-modal">
-            {/* Sticky Instagram DM Header */}
+      {/* Direct message sheet */}
+      {selectedCreator && (
+        <Modal labelledBy="fs-chat-title" onClose={closeChat}>
+          <section className="fs-dm-modal" aria-busy={!chat}>
             <header className="fs-dm-header">
-              <div className="fs-dm-header-left">
-                <button
-                  className="fs-dm-back"
-                  aria-label="Back"
-                  onClick={() => {
-                    setSelectedCreator(null);
-                    setChat(null);
-                  }}
-                >
-                  <ArrowLeft size={22} />
-                </button>
-                <div className="fs-creator-avatar-wrap">
-                  <div className="fs-avatar">
-                    {selectedCreator.avatarKey ? (
-                      <img
-                        src={media(selectedCreator.avatarKey)}
-                        alt={selectedCreator.name}
-                      />
-                    ) : (
-                      selectedCreator.name.slice(0, 1)
-                    )}
-                  </div>
-                  <span className="fs-online-dot" />
+              <button className="fs-dm-back" aria-label="Back" onClick={closeChat}>
+                <ArrowLeft size={22} />
+              </button>
+              <div className="fs-creator-avatar-wrap">
+                <div className="fs-avatar">
+                  {selectedCreator.avatarKey ? (
+                            <img src={media(selectedCreator.avatarKey)} alt={selectedCreator.name} />
+                          ) : (
+                            selectedCreator.name.slice(0, 1)
+                          )}
                 </div>
-                <div>
-                  <div className="fs-dm-title-row">
-                    <h2 id="fs-chat-title">{selectedCreator.name}</h2>
-                    <IgVerified size={15} />
-                  </div>
-                  <span className="fs-dm-status">
-                    {t.online} · {t.relationship} Lv.{selectedCreator.relationship}
-                  </span>
-                </div>
+                <span className="fs-online-dot" />
               </div>
-
-              <div className="fs-dm-header-icons" aria-hidden="true">
-                <Phone size={18} />
-                <Video size={18} />
-                <Info size={18} />
+              <div className="fs-dm-header-text">
+                <div className="fs-dm-title-row">
+                  <h2 id="fs-chat-title">{selectedCreator.name}</h2>
+                  <IgVerified size={14} />
+                </div>
+                <span className="fs-dm-status">
+                  {t.online} · Lv.{selectedCreator.relationship}
+                </span>
               </div>
             </header>
 
-            {/* Mode Switcher: 100% Free AI Chatbot vs Scripted Story */}
-            <div className="fs-dm-mode-toggle">
+            <div className="fs-dm-mode-toggle" role="tablist" data-active={aiDmTab}>
+              <span className="fs-dm-mode-thumb" aria-hidden="true" />
               <button
                 type="button"
-                className={`fs-dm-mode-btn ${aiDmTab === 'ai' ? 'active' : ''}`}
+                role="tab"
+                aria-selected={aiDmTab === 'ai'}
+                className="fs-dm-mode-btn"
                 onClick={() => setAiDmTab('ai')}
               >
-                <Sparkles size={13} />
-                <span>💬 คุยสด AI (100% Free Chat)</span>
+                {t.chatTab}
               </button>
               <button
                 type="button"
-                className={`fs-dm-mode-btn ${aiDmTab === 'story' ? 'active' : ''}`}
+                role="tab"
+                aria-selected={aiDmTab === 'story'}
+                className="fs-dm-mode-btn"
                 onClick={() => setAiDmTab('story')}
               >
-                <span>📖 บทเนื้อเรื่อง (Story)</span>
+                {t.storyTab}
               </button>
             </div>
 
-            {/* Episode Switcher Bar (Only in Story mode) */}
-            {aiDmTab === 'story' && chat.episodes?.length > 0 && (
+            {aiDmTab === 'story' && chat && chat.episodes?.length > 0 && (
               <div className="fs-episodes" aria-label={t.selectEpisode}>
                 {chat.episodes.map((episode) => (
                   <button
                     className="fs-episode-pill"
                     key={episode.id}
                     aria-current={episode.id === chat.episodeId ? 'true' : undefined}
-                    disabled={
-                      busy || !episode.accessible || episode.id === chat.episodeId
-                    }
+                    disabled={busy || !episode.accessible || episode.id === chat.episodeId}
                     onClick={() =>
                       void action(async () => {
                         const result = await api<{ chat: Chat }>(
-                          `/api/chats/${encodeURIComponent(
-                            selectedCreator.id
-                          )}/episode`,
+                          `/api/chats/${encodeURIComponent(selectedCreator.id)}/episode`,
                           json({ episodeId: episode.id })
                         );
                         setChat(result.chat);
@@ -1672,100 +1770,115 @@ export function FrostStoryApp() {
               </div>
             )}
 
-            {/* Instagram DM Messages Scroll Area */}
-            <div className="fs-dm-messages">
-              {/* Creator Bio Header inside Chat */}
+            <div
+              className="fs-dm-messages"
+              ref={msgsRef}
+              tabIndex={-1}
+              data-autofocus
+              onScroll={(event) => {
+                const el = event.currentTarget;
+                stickToBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+              }}
+            >
               <div className="fs-dm-bio-card">
                 <div className="fs-avatar fs-avatar-large fs-dm-bio-avatar">
                   {selectedCreator.avatarKey ? (
-                    <img
-                      src={media(selectedCreator.avatarKey)}
-                      alt={selectedCreator.name}
-                    />
-                  ) : (
-                    selectedCreator.name.slice(0, 1)
-                  )}
+                            <img src={media(selectedCreator.avatarKey)} alt={selectedCreator.name} />
+                          ) : (
+                            selectedCreator.name.slice(0, 1)
+                          )}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
-                  <strong>{selectedCreator.name}</strong>
-                  <IgVerified size={15} />
-                </div>
+                <strong>{selectedCreator.name}</strong>
                 <span className="fs-dm-handle">@{selectedCreator.id}</span>
                 <p>{selectedCreator.bio}</p>
-                <div style={{ display: 'flex', gap: '10px', fontSize: '0.72rem', color: '#94a3b8', marginTop: '6px' }}>
-                  <span>💖 สนิทสนม: {selectedCreator.relationship}/100</span>
-                  <span>⚡ พลังงาน: {(energy?.free || 0) + (energy?.purchased || 0)}</span>
-                </div>
               </div>
 
-              {aiDmTab === 'ai' ? (
+              {!chat ? (
+                <div className="fs-dm-skeleton" role="status" aria-label={t.chatLoading}>
+                  <span />
+                  <span />
+                  <span />
+                </div>
+              ) : aiDmTab === 'ai' ? (
                 <>
-                  {chat.aiMessages && chat.aiMessages.length > 0 ? (
-                    chat.aiMessages.map((msg) =>
-                      msg.role === 'user' ? (
-                        <div key={msg.id} className="fs-dm-row-right">
-                          <div className="fs-answer" style={{ maxWidth: '82%', wordBreak: 'break-word' }}>
-                            {msg.content}
-                          </div>
-                        </div>
-                      ) : (
-                        <div key={msg.id} className="fs-dm-row-left" style={{ alignItems: 'flex-start' }}>
-                          <div className="fs-avatar fs-avatar-tiny">
-                            {selectedCreator.avatarKey ? (
-                              <img src={media(selectedCreator.avatarKey)} alt="" />
-                            ) : (
-                              selectedCreator.name.slice(0, 1)
-                            )}
-                          </div>
-                          <div style={{ maxWidth: '82%' }}>
-                            {msg.mediaKey && (
-                              <div>
-                                <span className="fs-reward-badge">🎁 ปลดล็อกรูปรางวัลพิเศษ!</span>
-                                <img src={media(msg.mediaKey)} alt="Reward" className="fs-reward-photo" />
-                              </div>
-                            )}
-                            <div className="fs-bubble" style={{ wordBreak: 'break-word' }}>
-                              {msg.content}
-                            </div>
-                            {msg.affectionDelta ? (
-                              <span style={{ fontSize: '0.65rem', color: '#f472b6', marginTop: '2px', display: 'inline-block' }}>
-                                +{msg.affectionDelta} 💖 ความสนิทสนม
-                              </span>
-                            ) : null}
-                          </div>
-                        </div>
-                      )
-                    )
-                  ) : (
-                    <div style={{ textAlign: 'center', padding: '24px 16px', color: '#64748b', fontSize: '0.8rem' }}>
-                      <p>✨ ทักทาย <strong>{selectedCreator.name}</strong> ได้เลยค่ะ!</p>
-                      <p style={{ fontSize: '0.72rem', marginTop: '4px' }}>พิมพ์ข้อความคุยสดแบบ AI Chatbot 100% ฟรีสไตล์ (ใช้ 1⚡ ต่อข้อความ)</p>
-                    </div>
+                  {(chat.aiMessages ?? []).length === 0 && pending.length === 0 && (
+                    <p className="fs-dm-empty">
+                      ทักทาย <strong>{selectedCreator.name}</strong> ได้เลย · 1⚡ ต่อข้อความ
+                    </p>
                   )}
-
+                  {(chat.aiMessages ?? []).map((msg, index, list) => {
+                    const next = list[index + 1];
+                    const groupEnd = !next || next.role !== msg.role || (pending.length > 0 && index === list.length - 1);
+                    const isNew = msg.role === 'assistant' && msg.createdAt > chatOpenedAtRef.current;
+                    return msg.role === 'user' ? (
+                      <div key={msg.id} className={`fs-dm-row-right${groupEnd ? ' fs-group-end' : ''}`}>
+                        <div className="fs-answer">{msg.content}</div>
+                      </div>
+                    ) : (
+                      <div key={msg.id} className={`fs-dm-row-left${groupEnd ? ' fs-group-end' : ''}${isNew ? ' fs-msg-in' : ''}`}>
+                        <div className={`fs-avatar fs-avatar-tiny${groupEnd ? '' : ' is-spacer'}`} aria-hidden={!groupEnd}>
+                          {selectedCreator.avatarKey ? (
+                            <img src={media(selectedCreator.avatarKey)} alt="" />
+                          ) : (
+                            selectedCreator.name.slice(0, 1)
+                          )}
+                        </div>
+                        <div className="fs-dm-msg-col">
+                          {msg.mediaKey && (
+                            <>
+                              <span className="fs-reward-badge">🎁 ปลดล็อกรูปรางวัลพิเศษ!</span>
+                              <img src={media(msg.mediaKey)} alt="Reward" className="fs-reward-photo" />
+                            </>
+                          )}
+                          <div className="fs-bubble">{msg.content}</div>
+                          {msg.affectionDelta ? (
+                            <span className="fs-dm-affection">+{msg.affectionDelta} 💖</span>
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {pending.map((item) => (
+                    <div key={item.id} className="fs-dm-row-right fs-group-end fs-msg-out">
+                      {item.failed ? (
+                        <button
+                          type="button"
+                          className="fs-dm-failed"
+                          disabled={aiSending}
+                          onClick={() => void sendAiMessage(item.content, item.id)}
+                        >
+                          <span className="fs-answer is-failed">{item.content}</span>
+                          <span className="fs-dm-failed-note" role="alert">
+                            {item.failed} · {t.sendFailed}
+                          </span>
+                        </button>
+                      ) : (
+                        <div className="fs-answer is-sending">{item.content}</div>
+                      )}
+                    </div>
+                  ))}
                   {aiSending && (
-                    <div className="fs-dm-row-left">
+                    <div className="fs-dm-row-left fs-group-end fs-msg-in">
                       <div className="fs-avatar fs-avatar-tiny">
                         {selectedCreator.avatarKey ? (
-                          <img src={media(selectedCreator.avatarKey)} alt="" />
-                        ) : (
-                          selectedCreator.name.slice(0, 1)
-                        )}
+                            <img src={media(selectedCreator.avatarKey)} alt="" />
+                          ) : (
+                            selectedCreator.name.slice(0, 1)
+                          )}
                       </div>
-                      <div className="fs-ai-typing">
+                      <div className="fs-ai-typing" aria-label={`${selectedCreator.name} is typing`}>
                         <span className="fs-ai-typing-dot" />
                         <span className="fs-ai-typing-dot" />
                         <span className="fs-ai-typing-dot" />
                       </div>
                     </div>
                   )}
-                  <div ref={chatEndRef} />
                 </>
               ) : node ? (
                 <>
                   {chat.history.map((entry, index) => (
                     <div key={`${entry.id}-${index}`} className="fs-dm-turn">
-                      <div className="fs-dm-row-left">
+                      <div className="fs-dm-row-left fs-group-end">
                         <div className="fs-avatar fs-avatar-tiny">
                           {selectedCreator.avatarKey ? (
                             <img src={media(selectedCreator.avatarKey)} alt="" />
@@ -1773,79 +1886,64 @@ export function FrostStoryApp() {
                             selectedCreator.name.slice(0, 1)
                           )}
                         </div>
-                        <div className="fs-bubble">{entry.text}</div>
+                        <div className="fs-dm-msg-col">
+                          <div className="fs-bubble">{entry.text}</div>
+                        </div>
                       </div>
                       {entry.choiceText && (
-                        <div className="fs-dm-row-right">
+                        <div className="fs-dm-row-right fs-group-end">
                           <div className="fs-answer">{entry.choiceText}</div>
                         </div>
                       )}
                     </div>
                   ))}
-
-                  <div className="fs-dm-row-left">
+                  <div className="fs-dm-row-left fs-group-end fs-msg-in" key={node.id}>
                     <div className="fs-avatar fs-avatar-tiny">
                       {selectedCreator.avatarKey ? (
-                        <img src={media(selectedCreator.avatarKey)} alt="" />
-                      ) : (
-                        selectedCreator.name.slice(0, 1)
-                      )}
+                            <img src={media(selectedCreator.avatarKey)} alt="" />
+                          ) : (
+                            selectedCreator.name.slice(0, 1)
+                          )}
                     </div>
-                    <div className="fs-bubble">{node.text}</div>
+                    <div className="fs-dm-msg-col">
+                      <div className="fs-bubble">{node.text}</div>
+                    </div>
                   </div>
-
-                  <div ref={chatEndRef} />
                 </>
               ) : (
                 <p className="fs-empty">{t.noChatFound}</p>
               )}
             </div>
 
-            {/* Player Memory: what this Creator remembers about the player */}
-            {aiDmTab === 'ai' && (
-              <div style={{ padding: '6px 12px', fontSize: 12 }}>
-                <button type="button" onClick={toggleMemoryPanel} style={{ background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', padding: 0 }}>
-                  🧠 สิ่งที่ {selectedCreator.name} จำเกี่ยวกับคุณ {memoryPanel.open ? '▲' : '▼'}
+            {aiDmTab === 'ai' && chat && (
+              <div className="fs-dm-memory">
+                <button type="button" className="fs-dm-memory-toggle" aria-expanded={memoryPanel.open} onClick={toggleMemoryPanel}>
+                  🧠 สิ่งที่ {selectedCreator.name} จำเกี่ยวกับคุณ
                 </button>
-                {memoryPanel.open && (
-                  memoryPanel.items.length === 0 ? (
-                    <p style={{ margin: '6px 0 0', opacity: 0.7 }}>ยังไม่มีเรื่องที่จำไว้</p>
+                {memoryPanel.open &&
+                  (memoryPanel.items.length === 0 ? (
+                    <p className="fs-dm-memory-empty">ยังไม่มีเรื่องที่จำไว้</p>
                   ) : (
-                    <ul style={{ listStyle: 'none', margin: '6px 0 0', padding: 0, display: 'grid', gap: 4 }}>
+                    <ul className="fs-dm-memory-list">
                       {memoryPanel.items.map((m) => (
-                        <li key={m.key} style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                        <li key={m.key}>
                           <span>{m.value}</span>
-                          <button type="button" onClick={() => forgetMemory(m.key)} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: 0 }}>
+                          <button type="button" onClick={() => forgetMemory(m.key)}>
                             ลืม
                           </button>
                         </li>
                       ))}
                     </ul>
-                  )
-                )}
+                  ))}
               </div>
             )}
 
-            {/* Bottom Interactive Tray */}
             {aiDmTab === 'ai' ? (
-              <form className="fs-dm-input-form" onSubmit={handleSendAiMessage}>
-                <input
-                  type="text"
-                  className="fs-dm-text-input"
-                  placeholder={`ส่งข้อความหา ${selectedCreator.name}... (1⚡)`}
-                  value={aiInput}
-                  onChange={(e) => setAiInput(e.target.value)}
-                  disabled={aiSending}
-                />
-                <button
-                  type="submit"
-                  className="fs-dm-send-btn"
-                  disabled={!aiInput.trim() || aiSending}
-                >
-                  <Send size={14} />
-                  <span>{aiSending ? '...' : 'ส่ง'}</span>
-                </button>
-              </form>
+              <ChatComposer
+                placeholder={`ส่งข้อความหา ${selectedCreator.name}…`}
+                disabled={!chat || aiSending}
+                onSend={(text) => void sendAiMessage(text)}
+              />
             ) : (
               <footer className="fs-dm-footer">
                 {node ? (
@@ -1864,9 +1962,7 @@ export function FrostStoryApp() {
                           onClick={() =>
                             void action(async () => {
                               const result = await api<{ chat: Chat }>(
-                                `/api/chats/${encodeURIComponent(
-                                  selectedCreator.id
-                                )}/choose`,
+                                `/api/chats/${encodeURIComponent(selectedCreator.id)}/choose`,
                                 json({ choiceId: choice.id })
                               );
                               setChat(result.chat);

@@ -5,34 +5,6 @@ interface IconProps extends React.SVGProps<SVGSVGElement> {
   className?: string;
 }
 
-// 1. Authentic instagoon Cursive Wordmark Logo
-export const IgLogo: React.FC<IconProps> = ({ size = 104, className = '', ...props }) => (
-  <svg
-    viewBox="0 0 114 29"
-    width={size}
-    height={size * (29 / 114)}
-    fill="currentColor"
-    className={className}
-    aria-label="instagoon"
-    {...props}
-  >
-    <path d="M15.4 0C6.9 0 0 6.9 0 15.4c0 6.8 4.4 12.6 10.5 14.6-.8-1.5-1.2-3.3-1.2-5.1 0-6.4 5.2-11.5 11.5-11.5 1.8 0 3.5.4 5.1 1.2C23.9 6.5 20 0 15.4 0z" opacity="0" />
-    {/* Clean stylized instagoon script lettering */}
-    <text
-      x="0"
-      y="22"
-      fontFamily="'Playfair Display', 'Brush Script MT', 'Grandista', cursive"
-      fontStyle="italic"
-      fontWeight="700"
-      fontSize="25"
-      letterSpacing="-0.5px"
-      fill="currentColor"
-    >
-      instagoon
-    </text>
-  </svg>
-);
-
 // Google "G" mark for the sign-in button; its colours are fixed by Google's branding rules.
 export const GoogleG: React.FC<IconProps> = ({ size = 20, className = '', ...props }) => (
   <svg viewBox="0 0 48 48" width={size} height={size} className={className} aria-hidden="true" {...props}>
