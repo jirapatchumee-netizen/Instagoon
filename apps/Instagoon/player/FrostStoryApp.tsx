@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, useRef, type FormEvent, type ReactNode } from 'react';
 import {
   ArrowLeft,
+  ChevronDown,
   Globe,
   Info,
   LockKeyhole,
@@ -36,8 +37,36 @@ export const LANGS: { id: Lang; label: string; name: string }[] = [
   { id: 'en', label: 'EN', name: 'English' },
   { id: 'ja', label: 'JP', name: '日本語' },
 ];
-const nextLang = (lang: Lang): Lang =>
-  LANGS[(LANGS.findIndex(({ id }) => id === lang) + 1) % LANGS.length].id;
+
+function LangSelect({
+  lang,
+  onChange,
+  className = 'fs-lang-toggle',
+  short = false,
+}: {
+  lang: Lang;
+  onChange: (lang: Lang) => void;
+  className?: string;
+  short?: boolean;
+}) {
+  return (
+    <label className={`fs-lang-select ${className}`}>
+      <Globe size={12} aria-hidden="true" />
+      <select
+        aria-label="Language"
+        value={lang}
+        onChange={(event) => onChange(event.target.value as Lang)}
+      >
+        {LANGS.map(({ id, label, name }) => (
+          <option key={id} value={id} lang={id}>
+            {short ? label : name}
+          </option>
+        ))}
+      </select>
+      <ChevronDown size={12} aria-hidden="true" />
+    </label>
+  );
+}
 
 export const TRANSLATIONS = {
   th: {
@@ -494,20 +523,7 @@ export function LoginScreen({
       <div className="fs-login-column">
         <div className="fs-login-topbar">
           <span className="fs-login-wordmark">instagoon</span>
-          <div className="fs-login-langs" role="group" aria-label="Language">
-            {LANGS.map(({ id, label, name }) => (
-              <button
-                key={id}
-                type="button"
-                lang={id}
-                aria-label={name}
-                aria-pressed={lang === id}
-                onClick={() => onSetLang(id)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <LangSelect lang={lang} onChange={onSetLang} className="fs-login-langs" />
         </div>
 
         <h1 className="fs-login-slogan">
@@ -821,14 +837,7 @@ export function FrostStoryApp() {
         <div className="fs-card fs-welcome">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span className="fs-eyebrow">PRIVATE BETA</span>
-            <button
-              type="button"
-              className="fs-lang-toggle"
-              onClick={() => handleSetLang(nextLang(lang))}
-            >
-              <Globe size={13} />
-              <span>{lang === 'ja' ? 'JP' : lang.toUpperCase()}</span>
-            </button>
+            <LangSelect lang={lang} onChange={handleSetLang} short />
           </div>
           <h1>{t.consentTitle}</h1>
           <p>{t.consentDesc1}</p>
@@ -875,16 +884,7 @@ export function FrostStoryApp() {
           </div>
 
           <div className="fs-header-actions">
-            {/* 2-Language Toggle Button */}
-            <button
-              type="button"
-              className="fs-lang-toggle"
-              onClick={() => handleSetLang(nextLang(lang))}
-              title={LANGS.find(({ id }) => id === nextLang(lang))?.name}
-            >
-              <Globe size={12} />
-              <span>{lang === 'ja' ? 'JP' : lang.toUpperCase()}</span>
-            </button>
+            <LangSelect lang={lang} onChange={handleSetLang} short />
 
             {/* Energy Telemetry */}
             <span
@@ -1395,18 +1395,7 @@ export function FrostStoryApp() {
 
               <div className="fs-account-lang">
                 <span>{t.languageSetting}</span>
-                <div className="fs-lang-buttons">
-                  {LANGS.map(({ id, name }) => (
-                    <button
-                      key={id}
-                      type="button"
-                      className={lang === id ? 'is-active' : ''}
-                      onClick={() => handleSetLang(id)}
-                    >
-                      {name}
-                    </button>
-                  ))}
-                </div>
+                <LangSelect lang={lang} onChange={handleSetLang} />
               </div>
 
               <button

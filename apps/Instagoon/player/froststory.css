@@ -187,27 +187,30 @@
   margin: 16px 0;
 }
 
-.fs-lang-buttons {
-  display: flex;
-  gap: 6px;
+.fs-lang-select {
+  position: relative;
+  cursor: pointer;
 }
 
-.fs-lang-buttons button {
-  padding: 6px 12px;
-  border-radius: 8px;
-  border: 1px solid #27272a;
+.fs-lang-select select {
+  appearance: none;
+  border: 0;
+  margin: 0;
+  padding: 0 2px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  outline: none;
+}
+
+.fs-lang-select option {
   background: #18181b;
-  color: #a1a1aa;
-  font-size: 0.75rem;
-  font-weight: 600;
-  transition: all 0.15s ease;
+  color: #ffffff;
 }
 
-.fs-lang-buttons button.is-active {
-  background: linear-gradient(90deg, rgba(236, 72, 153, 0.2), rgba(139, 92, 246, 0.2));
+.fs-lang-select:focus-within {
   border-color: #ec4899;
-  color: #ffffff;
-  font-weight: 700;
 }
 
 .fs-energy {
@@ -2024,33 +2027,19 @@ dialog.fs-overlay::backdrop {
 
 .fs-login-langs {
   display: flex;
-  padding: 3px;
+  align-items: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 12px;
+  color: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 700;
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 999px;
   background: var(--login-gloss), rgba(42, 18, 60, 0.6);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 
-.fs-login-langs button {
-  min-width: 44px;
-  min-height: 32px;
-  padding: 0 11px;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--login-muted);
-  font-size: 0.8rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.fs-login-langs button[aria-pressed='true'] {
-  color: #ffffff;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0) 55%),
-    linear-gradient(135deg, var(--login-candy), var(--login-lilac));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 4px 14px -4px rgba(255, 79, 154, 0.7);
-}
 
 .fs-login-slogan {
   display: flex;
