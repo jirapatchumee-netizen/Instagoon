@@ -19,7 +19,7 @@ export default {
    return app.fetch(req, env, ctx);
   }
   if (!await allowed(req, env)) {
-   if (req.method === 'GET' && (pathname === '/' || pathname.startsWith('/staging-login/') || pathname === '/privacy.html' || pathname === '/terms.html' || pathname === '/legal.css' || pathname === '/legal.js')) {
+   if (req.method === 'GET' && (pathname === '/' || pathname.startsWith('/staging-login/') || pathname === '/privacy' || pathname === '/privacy.html' || pathname === '/terms' || pathname === '/terms.html' || pathname === '/legal.css' || pathname === '/legal.js')) {
     const assetUrl = new URL(req.url);
     if (pathname === '/') assetUrl.pathname = '/staging-login/staging-login';
     const response = await env.ASSETS.fetch(new Request(assetUrl, req));

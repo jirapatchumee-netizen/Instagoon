@@ -10,6 +10,7 @@ const env = {
 const request = (path, cookie) => worker.fetch(new Request(`https://staging.example${path}`, { headers: cookie ? { cookie: `frost_session=${cookie}` } : {} }), env, {});
 assert.equal((await request('/')).status, 200);
 assert.equal((await request('/assets/game.js')).status, 401);
+for (const path of ['/privacy', '/privacy.html', '/terms', '/terms.html']) assert.equal((await request(path)).status, 200, path);
 assert.equal((await request('/api/me')).status, 401);
 assert.equal((await request('/auth/google')).status, 503);
 user = { email: 'other@example.com' };
