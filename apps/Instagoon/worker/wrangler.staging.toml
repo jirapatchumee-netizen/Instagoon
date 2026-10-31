@@ -21,4 +21,4 @@ run_worker_first = true
 [vars]
 GEMINI_MODEL = "gemini-2.5-flash"
 PUBLIC_ORIGIN = "https://staging.instagoon.app"
-STAGING_EMAILS = "jirapat.chumee@gmail.com"
+STAGING_EMAILS = "jirapat.chumee@gmail.com,taychinsgo@gmail.com"
