@@ -6,3 +6,6 @@ dist
 Source Reference
 outputs/
 .audit/
+
+# Google OAuth client secrets: never commit
+client_secret_*.json
