@@ -13,14 +13,14 @@ on:
       - '.github/workflows/deploy-instagoon.yml'
   workflow_dispatch:
 
-concurrency:
-  group: 'cloudflare-worker-instagoon'
-  cancel-in-progress: false
-
 jobs:
   staging:
     name: Deploy staging (automatic)
     runs-on: ubuntu-latest
+    # Per-job groups: a production run waiting for approval must not block the next staging deploy.
+    concurrency:
+      group: instagoon-staging
+      cancel-in-progress: false
     steps:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
@@ -62,6 +62,9 @@ jobs:
     name: Deploy production (needs approval)
     needs: staging
     runs-on: ubuntu-latest
+    concurrency:
+      group: instagoon-production
+      cancel-in-progress: false
     # Required reviewers are set on this environment in GitHub Settings → Environments.
     environment:
       name: production
