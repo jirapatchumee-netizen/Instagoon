@@ -35,11 +35,34 @@ export async function ensureContent(env) {
         ...c.stories.map(s => q('INSERT INTO stories(id,creator_id,type,media_key,published_at,relationship_required,status) VALUES(?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET creator_id=excluded.creator_id,type=excluded.type,media_key=excluded.media_key,published_at=excluded.published_at,relationship_required=excluded.relationship_required,status=excluded.status', s.id, c.id, s.type, s.mediaKey, s.publishedAt, s.relationshipRequired, s.status)),
       );
     }
+    // A creator that was in an earlier bundle and is gone from this one is hidden: its posts and
+    // stories are suspended (player rows keep referencing them) and it leaves the creator list.
+    // Creators that never came from git (older D1 rows) are not touched.
+    const meta = async k => JSON.parse((await env.DB.prepare('SELECT value FROM content_meta WHERE key=?').bind(k).first())?.value || '[]');
+    const ids = b.creators.map(c => c.id);
+    const removed = [...new Set([...(await meta('creators')), ...(await meta('removed_creators'))])].filter(id => !ids.includes(id));
+    for (const id of removed) {
+      stmts.push(
+        q("UPDATE posts SET status='suspended' WHERE creator_id=? AND status<>'suspended'", id),
+        q("UPDATE stories SET status='suspended' WHERE creator_id=? AND status<>'suspended'", id),
+      );
+    }
+    const setMeta = (k, v) => q('INSERT INTO content_meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value', k, v);
+    stmts.push(setMeta('creators', JSON.stringify(ids)), setMeta('removed_creators', JSON.stringify(removed)));
     stmts.push(q("INSERT INTO content_meta(key,value) VALUES('version',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", b.version));
     await env.DB.batch(stmts);
     console.log('content synced', b.version, b.creators.length);
   }
   seeded = b.version;
+}
+
+// Creator ids removed from git since they were last published; [] before the first sync.
+export async function removedCreators(env) {
+  try {
+    return JSON.parse((await env.DB.prepare("SELECT value FROM content_meta WHERE key='removed_creators'").first())?.value || '[]');
+  } catch {
+    return []; // content_meta does not exist until a bundle has been synced
+  }
 }
 
 // Media file shipped in the bundle, or null so the caller falls back to D1/R2.

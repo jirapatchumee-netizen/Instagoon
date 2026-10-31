@@ -1,6 +1,15 @@
 import app from './index.mjs';
 
-const headers = { 'cache-control': 'no-store', 'x-robots-tag': 'noindex, nofollow' };
+// Same values as public/_headers, which only applies to assets served without the Worker.
+const headers = {
+ 'cache-control': 'no-store',
+ 'x-robots-tag': 'noindex, nofollow',
+ 'content-security-policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+ 'x-frame-options': 'DENY',
+ 'x-content-type-options': 'nosniff',
+ 'referrer-policy': 'strict-origin-when-cross-origin',
+ 'permissions-policy': 'camera=(), microphone=(), geolocation=()'
+};
 
 async function allowed(req, env) {
  const raw = req.headers.get('cookie')?.match(/(?:^|;\s*)frost_session=([^;]+)/)?.[1];
@@ -34,8 +43,7 @@ export default {
   if (req.method !== 'GET' && req.method !== 'HEAD') return new Response('Method not allowed', { status: 405, headers });
   const response = await env.ASSETS.fetch(req);
   const result = new Response(response.body, response);
-  result.headers.set('cache-control', 'no-store');
-  result.headers.set('x-robots-tag', 'noindex, nofollow');
+  for (const [key, value] of Object.entries(headers)) result.headers.set(key, value);
   return result;
  }
 };

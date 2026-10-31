@@ -800,8 +800,10 @@ export function FrostStoryApp() {
         : msg.includes('energy_empty')
           ? 'พลังงานหมด (1⚡ ต่อข้อความ) รอรีเฟรชพรุ่งนี้'
           : msg.includes('rate_limit')
-            ? 'ระบบ AI ไม่ว่างชั่วคราว คืนพลังงานให้แล้ว'
-            : msg;
+            ? 'ระบบ AI มีคนใช้เยอะ รอสักครู่ คืนพลังงานให้แล้ว'
+            : msg.includes('ai_unavailable')
+              ? 'AI ตอบไม่ได้ชั่วคราว คืนพลังงานให้แล้ว'
+              : msg;
       setPending((prev) => prev.map((item) => (item.id === id ? { ...item, failed: reason } : item)));
     } finally {
       setAiSending(false);

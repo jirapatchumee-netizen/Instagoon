@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
-import { mkdtempSync, mkdirSync, readdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readdirSync, readFileSync, writeFileSync, existsSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { newNpc } from '../../../../src/modules/npc-studio/lib/npc/schema.ts';
 import { buildContent } from '../../scripts/build-content.mjs';
-import { ensureContent, bundledMedia, resetContentCache } from '../src/content.mjs';
+import { ensureContent, bundledMedia, resetContentCache, removedCreators } from '../src/content.mjs';
 
 function fixture() {
   const root = mkdtempSync(join(tmpdir(), 'content-'));
@@ -68,6 +68,16 @@ test('worker seeds D1 from the bundle, is idempotent, and suspends removed posts
   resetContentCache();
   await ensureContent(e);
   assert.deepEqual(sql.prepare("SELECT id,caption,status FROM posts ORDER BY id").all().map(r => ({ ...r })), [{ id: 'o1', caption: 'keep', status: 'published' }, { id: 'p1', caption: 'edited', status: 'published' }, { id: 'p2', caption: 'two', status: 'suspended' }]);
+
+  // Removing the creator folder hides the creator and suspends its posts; a creator that never came from git stays.
+  rmSync(join(content, 'creators', 'tester'), { recursive: true });
+  mkdirSync(join(content, 'creators', 'kept'), { recursive: true });
+  writeFileSync(join(content, 'creators', 'kept', 'character.json'), JSON.stringify({ ...newNpc('kept'), name: 'Kept', avatar: 'avatars/tester.webp' }));
+  buildContent(content, dist);
+  resetContentCache();
+  await ensureContent(e);
+  assert.deepEqual(await removedCreators(e), ['tester']);
+  assert.deepEqual(sql.prepare("SELECT id,status FROM posts ORDER BY id").all().map(r => ({ ...r })), [{ id: 'o1', status: 'published' }, { id: 'p1', status: 'suspended' }, { id: 'p2', status: 'suspended' }]);
 });
 
 test('NPC ZIP import unpacks into a folder the build accepts', async () => {
