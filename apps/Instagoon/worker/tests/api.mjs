@@ -10,13 +10,16 @@ for (const file of readdirSync(migrationsDir).sort()) {
   sql.exec(readFileSync(new URL(file, migrationsDir), 'utf8'));
  }
 }
+const isReadQuery = q => /^\s*(SELECT|WITH|PRAGMA|VALUES)\b/i.test(q);
 const statement = (query, args=[]) => ({
+ query, args,
  bind(...next) {return statement(query,next);},
  async first(){return sql.prepare(query).get(...args)??null;},
  async all(){return {results:sql.prepare(query).all(...args)};},
  async run(){const result=sql.prepare(query).run(...args);return {meta:{changes:result.changes}};}
 });
-const DB={prepare:statement,async batch(statements){sql.exec('BEGIN');try {const results=[];for(const s of statements) results.push(await s.run());sql.exec('COMMIT');return results;}catch(e){sql.exec('ROLLBACK');throw e;}}};
+// Mirrors D1 batch(): one {results, meta, success} entry per statement, in the given order.
+const DB={prepare:statement,async batch(statements){sql.exec('BEGIN');try {const results=[];for(const s of statements){if(isReadQuery(s.query)) results.push({results:sql.prepare(s.query).all(...s.args),meta:{changes:0},success:true});else{const r=sql.prepare(s.query).run(...s.args);results.push({results:[],meta:{changes:r.changes},success:true});}}sql.exec('COMMIT');return results;}catch(e){sql.exec('ROLLBACK');throw e;}}};
 const objects=new Map();
 const MEDIA={async list(){return {objects:[]}},async get(key){return objects.get(key)||null},async head(key){return objects.get(key)||null},async put(key,value,opts){if(objects.has(key))return null;const result={body:value,httpMetadata:opts.httpMetadata};objects.set(key,result);return result}};
 const env={DB,MEDIA,PUBLIC_ORIGIN:'https://frost.test',ADMIN_EMAIL:'admin@example.com'};
@@ -77,7 +80,13 @@ const metricResponse=await worker.fetch(new Request(env.PUBLIC_ORIGIN+'/api/admi
 sql.prepare("UPDATE energy SET free=10 WHERE user_id='u'").run();
 sql.prepare('INSERT INTO npc_definitions(creator_id,definition_json,updated_at) VALUES(?,?,?)').run('c',JSON.stringify({name:'Creator',rules:[],knowledge:[{id:'n',title:'เนเน่',aliases:['Nene'],content:'ข้อเท็จจริงจำลอง',source:'https://example.com',checkedAt:''}]}),now);
 const priorFetch=globalThis.fetch;let firstPrompt='',secondPrompt='';env.GEMINI_API_KEY='fixture-only';globalThis.fetch=async(_url,init)=>{const body=JSON.parse(init.body);const prompt=body.contents[0].parts[0].text;if(body.systemInstruction){secondPrompt=prompt;return Response.json({candidates:[{content:{parts:[{text:JSON.stringify({reply:'ข้อมูลจากฐานความรู้ค่ะ'})}]}}]});}firstPrompt=prompt;return Response.json({candidates:[{content:{parts:[{text:JSON.stringify({reply:'สวัสดี',matchedRuleIds:[],affectionDelta:1,learnedMemory:null})}]}}]});};
-try{const turn=await request('/api/chats/c/message',{method:'POST',data:{message:'รู้จัก Nene ไหม'}});assert.equal(turn.status,200);assert.equal(turn.payload.knowledgeResult.entries[0].title,'เนเน่');assert.equal(turn.payload.knowledgeResult.applied,true);assert.doesNotMatch(firstPrompt,/ข้อเท็จจริงจำลอง/);assert.match(secondPrompt,/ข้อเท็จจริงจำลอง/);}finally{globalThis.fetch=priorFetch;delete env.GEMINI_API_KEY;}
+try{const turn=await request('/api/chats/c/message',{method:'POST',data:{message:'รู้จัก Nene ไหม'}});assert.equal(turn.status,200);assert.equal(turn.payload.knowledgeResult.entries[0].title,'เนเน่');assert.equal(turn.payload.knowledgeResult.applied,true);assert.doesNotMatch(firstPrompt,/ข้อเท็จจริงจำลอง/);assert.match(secondPrompt,/ข้อเท็จจริงจำลอง/);
+ // P1b: the freshly inserted player row must not also appear inside Recent DM history.
+ assert.equal(firstPrompt.split('รู้จัก Nene ไหม').length-1,1,'the player message reaches the classifier exactly once');
+ // P1: the knowledge pass rewrites the draft, so it never carries the classifier prompt or its schema.
+ assert.match(secondPrompt,/draftReply/);assert.match(secondPrompt,/รู้จัก Nene ไหม/);
+ assert.doesNotMatch(secondPrompt,/Output STRICT JSON format/);assert.doesNotMatch(secondPrompt,/matchedRuleIds/);
+ assert.ok(secondPrompt.length<firstPrompt.length,'the rewrite payload must be smaller than the classifier prompt');}finally{globalThis.fetch=priorFetch;delete env.GEMINI_API_KEY;}
 // DM Thread single-flight, atomic energy, Chat Visit, metrics, Player Memory controls and retention.
 {
  const saved=globalThis.fetch;env.GEMINI_API_KEY='fixture-only';
@@ -165,6 +174,18 @@ try{const turn=await request('/api/chats/c/message',{method:'POST',data:{message
   assert.equal((await request('/api/chats/c/message',{method:'POST',data:{message:'กลับมาคุยต่อ'}})).status,200);
   assert.deepEqual(tried,[visitModel],'the visit goes back to its own model once the limit passes');
   assert.equal(sql.prepare("SELECT current_visit_id v FROM dm_threads WHERE user_id='u' AND creator_id='c'").get().v,visitId,'the failover does not start a new visit');
+  // Independent reads travel in batched round trips, not one statement at a time.
+  sql.prepare("UPDATE energy SET free=5,purchased=0 WHERE user_id='u'").run();
+  globalThis.fetch=async()=>reply(null);
+  const priorBatch=DB.batch; const batchedQueries=[];
+  DB.batch=async function(statements){batchedQueries.push(statements.map(s=>s.query));return priorBatch.call(this,statements);};
+  try{ assert.equal((await request('/api/chats/c/message',{method:'POST',data:{message:'ทดสอบอ่านแบบ batch'}})).status,200); }
+  finally{ DB.batch=priorBatch; }
+  const batched=batchedQueries.flat();
+  const allBatched=fragments=>fragments.every(f=>batched.some(q=>q.includes(f)));
+  assert.ok(batched.length>=2,'the turn issues at least two batched reads');
+  assert.ok(allBatched(['FROM dm_threads WHERE user_id=?','FROM npc_definitions WHERE creator_id=?','FROM relationships WHERE user_id=?','FROM reward_unlocks WHERE user_id=?']),'thread, NPC definition, relationship and reward unlocks share one round trip');
+  assert.ok(allBatched(['FROM player_memories WHERE user_id=?','ORDER BY created_at DESC LIMIT 7']),'memory and recent history share one round trip');
  } finally { globalThis.fetch=saved; delete env.GEMINI_API_KEY; }
 }
 result=await request('/api/account',{method:'DELETE'});assert.equal(result.status,200);assert.equal((await request('/api/me')).status,401);assert.equal(sql.prepare('SELECT count(*) count FROM comments').get().count,0);assert.equal(sql.prepare('SELECT count(*) count FROM invites').get().count,0);
