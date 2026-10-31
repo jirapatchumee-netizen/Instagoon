@@ -3,10 +3,7 @@
   "include": [
     "player",
     "main.tsx",
-    "studio.tsx",
-    "../../src/modules/froststory/FrostStoryStudio.tsx",
-    "../../src/modules/npc-studio/**/*.ts",
-    "../../src/modules/npc-studio/**/*.tsx"
+    "../../src/modules/npc-studio/**/*.ts"
   ],
   "compilerOptions": {
     "allowImportingTsExtensions": true

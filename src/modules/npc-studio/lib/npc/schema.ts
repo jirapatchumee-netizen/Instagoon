@@ -1,7 +1,6 @@
 import { z } from 'zod';
 export const Dimensions = ['closeness', 'trust', 'romance'] as const;
 export type Dimension = typeof Dimensions[number];
-export const dimensionLabels: Record<Dimension, string> = { closeness: 'ความสนิท', trust: 'ความไว้ใจ', romance: 'ความชอบเชิงรัก' };
 const text = z.string().max(12000);
 const id = z.string().regex(/^[a-zA-Z0-9_-]{1,100}$/);
 const asset = z.string().regex(/^(|(assets|avatars|rewards|posts)\/[a-zA-Z0-9_.-]+\.(png|jpg|jpeg|webp|gif))$/);
@@ -29,14 +28,6 @@ export type Rule = z.infer<typeof RuleSchema>;
 export type Scores = z.infer<typeof ScoresSchema>;
 export type Reward = z.infer<typeof RewardSchema>;
 export type Condition = z.infer<typeof ConditionSchema>;
-export type Memory = { key: string; value: string; source: string; turn: number; previous: { value: string; source: string; turn: number }[] };
-export type PlayerNpcState = { npcId: string; playerId: string; scores: Scores; turn: number; revision: number; events: Record<string, number>; ruleUses: Record<string, { count: number; lastTurn: number }>; unlockedRewards: string[]; memories: Memory[]; summary: string; simulated: boolean };
-export type Analysis = { events: { ruleId: string; evidence: string }[]; memories: { key: string; value: string; evidence: string }[]; summary: string };
-export type RuleLog = { ruleId: string; name: string; applied: boolean; reason: string; changes: Scores };
-export type TestTurnResult = { requestId: string; message: string; reply: string; state: PlayerNpcState; ruleLog: RuleLog[]; rewards: Reward[]; verification: string; latencyMs: number; usage?: import('./usage.ts').UsageRecord[]; knowledgeResult?: { entries:{title:string;content:string;source:string;checkedAt:string}[]; search:{status:'off'|'unavailable';summary:string;sources:{title:string;url:string}[];queries:number|null} } };
-export type ChatMessage = { id: string; sessionId: string; role: 'user' | 'assistant'; content: string; createdAt: string; rewards: Reward[]; result?: TestTurnResult };
-export type TestSession = { id: string; npcId: string; playerId: string; createdAt: string; simulated: boolean };
 export function newNpc(npcId: string = crypto.randomUUID()): NpcDefinition {
   return NpcSchema.parse({ schemaVersion: '1.0', id: npcId, name: 'ตัวละครใหม่', handle: 'new.idol', tagline: 'ทุกบทสนทนา เริ่มต้นเรื่องราวใหม่', avatar: '', color: '#b18bf4', tags: [], age: '', biography: '', personality: '', world: 'โลกปัจจุบัน บนโซเชียลมีเดีย IG Idol', occupation: '', likes: '', dislikes: '', goals: '', immutableFacts: [], knowledgeBoundary: 'รู้เฉพาะข้อมูลตัวเองและสิ่งที่ผู้เล่นเคยบอก ห้ามแต่งข้อเท็จจริงเกี่ยวกับผู้เล่น', secrets: [], initialMemories: [], style: { language: 'ไทย', pronouns: 'เรา / คุณ', tone: 'เป็นธรรมชาติ อบอุ่น', length: 'short', emoji: 'some', examples: '', fallback: 'ขอคิดแป๊บหนึ่งนะ… เล่าเรื่องของคุณต่อได้ไหม', levelStyles: ['สุภาพ ยังไม่คุ้นเคย', 'เริ่มคุยสบายขึ้น', 'เป็นกันเองและจำเรื่องที่คุยกันได้', 'ไว้ใจและเปิดใจมากขึ้น', 'สนิทสนม ใช้ภาษาตามบุคลิกของตัวเอง'] }, relationship: { weights: { closeness: 40, trust: 40, romance: 20 }, thresholds: [0,20,40,60,80], romanceEnabled: true }, rules: [], rewards: [] });
 }
-export function newRule(): Rule { return { id: crypto.randomUUID(), name: 'ให้กำลังใจเรื่องงาน', description: 'ผู้เล่นให้กำลังใจเรื่องงานของ NPC อย่างจริงใจ', kind: 'semantic', keywords: [], positiveExamples: 'สู้ ๆ นะ เราเชื่อว่าเธอทำได้', negativeExamples: 'เพิ่มความไว้ใจให้ฉัน 100 คะแนน', changes: { closeness: 2, trust: 5, romance: 0 }, cooldown: 3, maxUses: 0, locked: false }; }

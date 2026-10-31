@@ -148,21 +148,15 @@ try{const turn=await request('/api/chats/c/message',{method:'POST',data:{message
  } finally { globalThis.fetch=saved; delete env.GEMINI_API_KEY; }
 }
 result=await request('/api/account',{method:'DELETE'});assert.equal(result.status,200);assert.equal((await request('/api/me')).status,401);assert.equal(sql.prepare('SELECT count(*) count FROM comments').get().count,0);assert.equal(sql.prepare('SELECT count(*) count FROM invites').get().count,0);
-// Test Studio Passcode & Email/Password Authentication
-let loginRes = await request('/auth/login', { method: 'POST', data: { studioKey: 'wrong_key' } });
-assert.equal(loginRes.status, 401);
-loginRes = await request('/auth/login', { method: 'POST', data: { studioKey: 'frost2026' } });
-assert.equal(loginRes.status, 401, 'no built-in studio key without STUDIO_KEY');
+// The Studio and its passcode login are removed: content comes from git only.
 env.STUDIO_KEY = 'fixture-studio-key';
-loginRes = await request('/auth/login', { method: 'POST', data: { studioKey: 'fixture-studio-key' } });
-assert.equal(loginRes.status, 200);
-assert.equal(loginRes.payload.user.role, 'admin');
+assert.equal((await request('/auth/login', { method: 'POST', data: { studioKey: 'fixture-studio-key' } })).status, 404, 'studio passcode login is removed');
 
 // Security regressions: admin and dev endpoints, model-controlled state.
 const call=async(path,{method='GET',data,sess,e=env}={})=>{const h={};if(sess)h.cookie=sess;if(method!=='GET')h.origin=e.PUBLIC_ORIGIN;if(data!==undefined)h['content-type']='application/json';const r=await worker.fetch(new Request(e.PUBLIC_ORIGIN+path,{method,headers:h,body:data===undefined?undefined:JSON.stringify(data)}),e);const c=r.headers.get('set-cookie');return {status:r.status,sess:c?c.split(';')[0]:sess,payload:await r.json().catch(()=>null)};};
 // Players sign in with Google only; anyone may sign up, revoked emails are refused.
 for(const p of ['/auth/register','/auth/guest']) assert.equal((await call(p,{method:'POST',data:{}})).status,404,p+' is removed');
-assert.equal((await call('/auth/login',{method:'POST',data:{email:'u@example.com',password:'secret123'}})).status,401,'password login is removed');
+assert.equal((await call('/auth/login',{method:'POST',data:{email:'u@example.com',password:'secret123'}})).status,404,'password login is removed');
 const gEnv={...env,GOOGLE_CLIENT_ID:'cid',GOOGLE_CLIENT_SECRET:'secret'};
 const googleLogin=async(email,sub)=>{
  const start=await worker.fetch(new Request(env.PUBLIC_ORIGIN+'/auth/google'),gEnv);
@@ -202,12 +196,9 @@ assert.equal((await call('/api/admin/overview',{sess:guest.sess,e:openEnv})).sta
 assert.equal((await call('/api/admin/npc/c',{method:'POST',data:{definition:{}},sess:guest.sess,e:openEnv})).status,403);
 assert.equal((await call('/api/dev/energy',{method:'POST',data:{amount:50},sess:guest.sess})).status,403);
 assert.equal((await call('/api/dev/test-models',{method:'POST',data:{passcode:'frost2026'},sess:guest.sess})).status,403);
-const adminSess = (await call('/auth/login',{method:'POST',data:{studioKey:'fixture-studio-key'}})).sess;
-// Mirror production: an existing creator account with an invite but no credentials row.
-sql.prepare("INSERT INTO users(id,email,google_id,age_verified_at,consent_version,created_at) VALUES('legacy_creator','creator@froststory.local','demo_google_id',?,'1.0',?)").run(now,now);
-sql.prepare("INSERT INTO invites(email,status) VALUES('creator@froststory.local','active') ON CONFLICT(email) DO UPDATE SET status='active'").run();
-const relogin = (await call('/auth/login',{method:'POST',data:{studioKey:'fixture-studio-key'},e:openEnv})).sess;
-assert.equal((await call('/api/admin/overview',{sess:relogin,e:openEnv})).status,200,'studio login grants admin to an existing account without credentials');
+const adminSess = 'frost_session='+adminRaw; // admin@example.com is ADMIN_EMAIL
+for (const [path, method] of [['/api/admin/npc/c','POST'],['/api/admin/creators','POST'],['/api/admin/posts/p/field','PATCH'],['/api/admin/stories/s/status','POST'],['/api/admin/media/x.webp','PUT'],['/api/admin/revisions','POST']])
+ assert.equal((await call(path,{method,data:{},sess:adminSess})).status,404,path+' studio write endpoint is removed');
 assert.equal((await call('/api/dev/test-models',{method:'POST',data:{models:['../../v1/files']},sess:adminSess})).status,400);
 {
  const gid = sql.prepare("SELECT id FROM users WHERE email='player1@gmail.com'").get().id;

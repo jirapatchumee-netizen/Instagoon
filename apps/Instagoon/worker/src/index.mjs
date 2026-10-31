@@ -12,17 +12,14 @@ const all = async (env, sql, ...values) => (await env.DB.prepare(sql).bind(...va
 const run = (env, sql, ...values) => env.DB.prepare(sql).bind(...values).run();
 const string = (x, max=1000) => typeof x === 'string' && x.trim() && x.length <= max ? x.trim() : fail('invalid_input');
 const id = x => /^[a-zA-Z0-9_-]{1,80}$/.test(x || '') ? x : fail('invalid_id');
-const D1_MEDIA_MAX = 900 * 1024;
 const d1Media = env => ({
   async get(k){const r=await env.DB.prepare('SELECT content_type,bytes FROM media_blobs WHERE key=?').bind(k).first();return r?{body:new Uint8Array(r.bytes),httpMetadata:{contentType:r.content_type}}:null;},
-  async put(k,bytes,opts){if(bytes.byteLength>D1_MEDIA_MAX)fail('invalid_media_size');const r=await env.DB.prepare('INSERT OR IGNORE INTO media_blobs(key,content_type,bytes,size,uploaded_at) VALUES(?,?,?,?,?)').bind(k,opts.httpMetadata.contentType,bytes,bytes.byteLength,Date.now()).run();return r.meta.changes?{}:null;},
   async list(){const {results}=await env.DB.prepare('SELECT key,size,uploaded_at FROM media_blobs ORDER BY uploaded_at DESC LIMIT 1000').all();return {objects:results.map(o=>({key:o.key,size:o.size,uploaded:new Date(o.uploaded_at)}))};}
 });
 const mediaStore = env => env.MEDIA || d1Media(env);
 const key = x => /^[a-zA-Z0-9_./-]{1,200}$/.test(x || '') && !x.includes('..') ? x : fail('invalid_media_key');
 const integer = (v, fallback=0) => v == null ? fallback : Number.isSafeInteger(v) && v>=0 ? v : fail('invalid_number');
 const body = async req => { try {const x=await req.json(); if(!x||typeof x!=='object'||Array.isArray(x)) throw 0; return x;} catch {return fail('invalid_json');} };
-const sameString = (a, b) => { if(typeof a!=='string'||typeof b!=='string'||a.length!==b.length) return false; let d=0; for(let i=0;i<a.length;i++) d|=a.charCodeAt(i)^b.charCodeAt(i); return d===0; };
 const isAdminUser = (env,user) => !!user && (user.role === 'admin' || (!!env.ADMIN_EMAIL && user.email.toLowerCase() === env.ADMIN_EMAIL.toLowerCase()));
 // DM Thread lease covers up to three primary model attempts plus the knowledge pass.
 const THREAD_LOCK_MS = 90000;
@@ -168,33 +165,6 @@ async function auth(req,env,url) {
   const raw=token();
   await run(env,'INSERT INTO sessions(id,user_id,expires_at) VALUES(?,?,?)',await hash(raw),user.id,now+604800000);
   return new Response(null,{status:302,headers:{location:url.searchParams.get('redirect')||'/', 'set-cookie':secureCookie('frost_session',raw,604800),'cache-control':'no-store'}});
- }
- if(url.pathname==='/auth/login' && req.method==='POST') {
-  const b = await body(req);
-  const now = Date.now();
-  if(b.studioKey || b.passcode) {
-   const inputKey = String(b.studioKey || b.passcode).trim();
-   if(!env.STUDIO_KEY || !sameString(inputKey, env.STUDIO_KEY)) return json({error:'invalid_passcode'}, 401);
-   const adminEmail = (env.ADMIN_EMAIL || 'creator@froststory.local').toLowerCase();
-   let user = await one(env, 'SELECT * FROM users WHERE lower(email)=?', adminEmail);
-   if(!user) {
-    const uid = 'admin_' + crypto.randomUUID().slice(0,8);
-    await env.DB.batch([
-     env.DB.prepare("INSERT INTO users(id,email,google_id,age_verified_at,consent_version,created_at) VALUES(?,?,'local_'||?,?,?,?)").bind(uid,adminEmail,uid,now,'1.0',now),
-     env.DB.prepare("INSERT INTO invites(email,status) VALUES(?,'active') ON CONFLICT(email) DO UPDATE SET status='active'").bind(adminEmail),
-     env.DB.prepare("INSERT INTO energy(user_id,free,purchased) VALUES(?,10,0) ON CONFLICT(user_id) DO UPDATE SET free=10").bind(uid)
-    ]);
-    user = { id: uid, email: adminEmail };
-   }
-   // The studio key is the admin credential: always record the role, including for pre-existing accounts.
-   await run(env, "INSERT OR REPLACE INTO user_credentials(user_id,password_hash,salt,role,updated_at) VALUES(?,'STUDIO_KEY','STUDIO_KEY','admin',?)", user.id, now);
-   const raw = token();
-   await run(env, 'INSERT INTO sessions(id,user_id,expires_at) VALUES(?,?,?)', await hash(raw), user.id, now + 604800000);
-   return json({ ok: true, user: { id: user.id, email: user.email, role: 'admin' } }, 200, {
-    'set-cookie': secureCookie('frost_session', raw, 604800)
-   });
-  }
-  return json({error:'invalid_passcode'}, 401);
  }
  if(!env.GOOGLE_CLIENT_ID||!env.GOOGLE_CLIENT_SECRET) {
   const target = url.searchParams.get('redirect') || '/';
@@ -721,11 +691,6 @@ Output STRICT JSON format: {"reply": "Thai text", "matchedRuleIds": ["id1", ...]
  if(path==='/api/account'&&method==='DELETE'){await run(env,'DELETE FROM users WHERE id=?',user.id);return json({ok:true},200,{'set-cookie':secureCookie('frost_session','',0)});}
  return json({error:'not_found'},404);
 }
-function validateNodes(nodes){
- if(!Array.isArray(nodes)||nodes.length<1||nodes.length>500)return fail('invalid_nodes');
- const ids=new Set(); for(const n of nodes){id(n.id);string(n.text,10000);if(ids.has(n.id)||!Array.isArray(n.choices)||n.choices.length>20||typeof n.end!=='boolean'||(n.end&&n.choices.length))return fail('invalid_nodes');ids.add(n.id);for(const c of n.choices){id(c.id);id(c.nextNodeId);string(c.text,1000);}}
- for(const n of nodes){const choices=new Set();for(const c of n.choices){if(!ids.has(c.nextNodeId)||choices.has(c.id))return fail('invalid_nodes');choices.add(c.id);}}return JSON.stringify(nodes);
-}
 async function admin(req,env,path,now){
  const method=req.method;
  if(path==='/api/admin/metrics'&&method==='GET'){
@@ -741,16 +706,6 @@ async function admin(req,env,path,now){
   const url=new URL(req.url),to=Number(url.searchParams.get('to'))||now,from=Number(url.searchParams.get('from'))||to-30*86400000;
   if(!Number.isSafeInteger(from)||!Number.isSafeInteger(to)||from>=to)return fail('invalid_range');
   return json(await chatMetrics(env,from,to));
- }
- const npcMatch = path.match(/^\/api\/admin\/npc\/([\w-]+)$/);
- if(npcMatch&&method==='GET'){
-  const row=await one(env,'SELECT definition_json FROM npc_definitions WHERE creator_id=?',npcMatch[1]);
-  return json({ok:true, definition: row?.definition_json ? JSON.parse(row.definition_json) : null});
- }
- if(npcMatch&&method==='POST'){
-  const b=await body(req);
-  await run(env,'INSERT INTO npc_definitions(creator_id, definition_json, updated_at) VALUES(?,?,?) ON CONFLICT(creator_id) DO UPDATE SET definition_json=excluded.definition_json, updated_at=excluded.updated_at',npcMatch[1],JSON.stringify(b.definition),now);
-  return json({ok:true});
  }
  if(path==='/api/admin/overview'&&method==='GET'){
   const [creators,posts,stories,episodes,revisions,invites,reports,users,comments,media]=await Promise.all([
@@ -772,30 +727,6 @@ async function admin(req,env,path,now){
  m=path.match(/^\/api\/admin\/reports\/([\w-]+)\/hide$/);
  if(m&&method==='POST'){await env.DB.batch([env.DB.prepare('UPDATE comments SET hidden=1 WHERE id=(SELECT comment_id FROM reports WHERE id=?)').bind(id(m[1])),env.DB.prepare("UPDATE reports SET status='resolved' WHERE id=?").bind(m[1])]);return json({ok:true});}
  if(path==='/api/admin/energy'&&method==='POST'){const b=await body(req),uid=id(b.userId),amount=integer(b.amount);if(amount<1||amount>1000)return fail('invalid_amount');const result=await env.DB.batch([env.DB.prepare('UPDATE energy SET purchased=purchased+? WHERE user_id=?').bind(amount,uid),env.DB.prepare('INSERT INTO token_ledger(id,user_id,delta_purchased,reason,created_at) VALUES(?,?,?,?,?)').bind(crypto.randomUUID(),uid,amount,string(b.reason,500),now)]);if(!result[0].meta.changes)return json({error:'not_found'},404);return json({ok:true});}
- m=path.match(/^\/api\/admin\/media\/(.+)$/);
- if(m&&method==='GET'){const file=await mediaStore(env).get(key(decodeURIComponent(m[1])));if(!file)return json({error:'not_found'},404);return new Response(file.body,{headers:{'content-type':file.httpMetadata?.contentType||'application/octet-stream','cache-control':'private, max-age=300','x-content-type-options':'nosniff'}});}
- if(m&&method==='PUT'){const k=key(decodeURIComponent(m[1])),type=req.headers.get('content-type');if(!['image/webp','video/mp4','video/webm'].includes(type))return fail('invalid_media_type');const length=Number(req.headers.get('content-length'));if(!Number.isSafeInteger(length)||length<12||length>5*1024*1024)return fail('invalid_media_size');const bytes=await req.arrayBuffer();if(bytes.byteLength<12||bytes.byteLength>5*1024*1024)return fail('invalid_media_size');const head=new Uint8Array(bytes,0,12), ascii=String.fromCharCode(...head);if((type==='image/webp'&&(!ascii.startsWith('RIFF')||ascii.slice(8,12)!=='WEBP'))||(type==='video/mp4'&&ascii.slice(4,8)!=='ftyp')||(type==='video/webm'&&!(head[0]===0x1a&&head[1]===0x45&&head[2]===0xdf&&head[3]===0xa3)))return fail('invalid_media_content');const stored=await mediaStore(env).put(k,bytes,{onlyIf:new Headers({'if-none-match':'*'}),httpMetadata:{contentType:type}});if(!stored)return json({error:'media_key_exists'},409);return json({ok:true});}
- m=path.match(/^\/api\/admin\/(posts|creators)\/([\w-]+)\/field$/);
- if(m&&method==='PATCH'){const b=await body(req),fields={posts:{caption:v=>string(v,5000),mediaKey:v=>key(v)},creators:{name:v=>string(v,100),bio:v=>string(v,2000),avatarKey:v=>key(v)}}[m[1]],col={caption:'caption',mediaKey:'media_key',name:'name',bio:'bio',avatarKey:'avatar_key'}[b.field];if(!fields[b.field])return fail('invalid_field');const r=await run(env,`UPDATE ${m[1]} SET ${col}=? WHERE id=?`,fields[b.field](b.value),m[2]);return r.meta?.changes===0?json({error:'not_found'},404):json({ok:true});}
- m=path.match(/^\/api\/admin\/(posts|stories|revisions)\/([\w-]+)\/status$/);
- if(m&&method==='POST'){const b=await body(req),status=b.status;if(!['published','suspended'].includes(status))return fail('invalid_status');const table=m[1],item=await one(env,`SELECT status FROM ${table} WHERE id=?`,id(m[2]));if(!item)return json({error:'not_found'},404);await run(env,`UPDATE ${table} SET status=? WHERE id=?`,status,m[2]);return json({ok:true});}
- m=path.match(/^\/api\/admin\/(creators|posts|stories|episodes|revisions)(?:\/([\w-]+))?$/);
- if(m&&(method==='POST'||method==='PATCH')){
-  const b=await body(req),table=m[1],itemId=id(method==='PATCH'?m[2]:b.id);if(method==='PATCH'&&!m[2])return fail('invalid_id');
-  if(method==='PATCH'&&!['creators','episodes'].includes(table)){const old=await one(env,`SELECT status FROM ${table} WHERE id=?`,itemId);if(!old)return json({error:'not_found'},404);if(old.status!=='draft')return json({error:'published_content_immutable'},409);}
-  if(table==='creators'){
-   const vals=[string(b.name,120),typeof b.bio==='string'&&b.bio.length<=2000?b.bio:fail('invalid_input'),b.avatarKey?key(b.avatarKey):null];
-   if(method==='POST')await run(env,'INSERT INTO creators(id,name,bio,avatar_key) VALUES(?,?,?,?)',itemId,...vals);else await run(env,'UPDATE creators SET name=?,bio=?,avatar_key=? WHERE id=?',...vals,itemId);
-  } else if(table==='posts'){
-   const vals=[id(b.creatorId),string(b.caption,5000),b.mediaKey?key(b.mediaKey):null,integer(b.publishedAt,now),integer(b.relationshipRequired),integer(b.simulatedLikes)];
-   if(method==='POST')await run(env,'INSERT INTO posts(id,creator_id,caption,media_key,published_at,relationship_required,simulated_likes) VALUES(?,?,?,?,?,?,?)',itemId,...vals);else await run(env,'UPDATE posts SET creator_id=?,caption=?,media_key=?,published_at=?,relationship_required=?,simulated_likes=? WHERE id=? AND status=\'draft\'',...vals,itemId);
-  } else if(table==='stories'){
-   if(!['broadcast','unlockable'].includes(b.type))return fail('invalid_story_type');const vals=[id(b.creatorId),b.type,key(b.mediaKey),integer(b.publishedAt,now),integer(b.relationshipRequired)];
-   if(method==='POST')await run(env,'INSERT INTO stories(id,creator_id,type,media_key,published_at,relationship_required) VALUES(?,?,?,?,?,?)',itemId,...vals);else await run(env,"UPDATE stories SET creator_id=?,type=?,media_key=?,published_at=?,relationship_required=? WHERE id=? AND status='draft'",...vals,itemId);
-  } else if(table==='episodes'){if(method==='PATCH'){const current=await one(env,'SELECT creator_id FROM episodes WHERE id=?',itemId);if(!current)return json({error:'not_found'},404);if(current.creator_id!==b.creatorId)return json({error:'creator_immutable'},409);}const vals=[id(b.creatorId),string(b.title,200),integer(b.relationshipRequired),integer(b.position)];if(method==='POST')await run(env,'INSERT INTO episodes(id,creator_id,title,relationship_required,position) VALUES(?,?,?,?,?)',itemId,...vals);else await run(env,'UPDATE episodes SET creator_id=?,title=?,relationship_required=?,position=? WHERE id=?',...vals,itemId);
-  } else {const creator=id(b.creatorId),episode=id(b.episodeId);if(!await one(env,'SELECT id FROM episodes WHERE id=? AND creator_id=?',episode,creator))return fail('invalid_episode');const vals=[creator,episode,validateNodes(b.nodes)];if(method==='POST')await run(env,'INSERT INTO revisions(id,creator_id,episode_id,nodes,created_at) VALUES(?,?,?,?,?)',itemId,...vals,now);else await run(env,"UPDATE revisions SET creator_id=?,episode_id=?,nodes=? WHERE id=? AND status='draft'",...vals,itemId);}
-  return json({ok:true});
- }
  return json({error:'not_found'},404);
 }
 export default {async scheduled(_event,env,ctx){ctx.waitUntil(retention(env,Date.now()).then(r=>console.log('chat retention',JSON.stringify(r))));},
@@ -807,7 +738,7 @@ async fetch(req,env,ctx){
   if(!['GET','HEAD','OPTIONS'].includes(req.method)) {
    if(reqOrigin !== origin && reqOrigin !== url.origin) return json({error:'invalid_origin'},403);
   }
-  if(path==='/auth/google'||path==='/auth/callback'||path==='/auth/demo'||path==='/auth/login')return await auth(req,env,url);
+  if(path==='/auth/google'||path==='/auth/callback'||path==='/auth/demo')return await auth(req,env,url);
   if(!path.startsWith('/api/'))return json({error:'not_found'},404);
   try{await ensureContent(env);}catch(e){console.error('content sync failed',String(e?.message||e));}
   const user=await session(req,env);
