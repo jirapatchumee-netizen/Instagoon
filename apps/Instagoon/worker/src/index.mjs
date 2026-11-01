@@ -214,6 +214,34 @@ async function auth(req,env,url) {
  const raw=token(); await run(env,'INSERT INTO sessions(id,user_id,expires_at) VALUES(?,?,?)',await hash(raw),user.id,now+604800000);
  return new Response(null,{status:302,headers:{location:'/', 'set-cookie':secureCookie('frost_session',raw,604800),'cache-control':'no-store'}});
 }
+// Choice outcomes of a scripted episode (ADR 0008). Score is recomputed from the three axes with the character's
+// own weights, so a script can never hand out more weighted progress than its validator allowed. Each choice is
+// applied once per pinned revision: replaying the same revision shows the other endings without farming points,
+// and publishing a new revision (its id is a hash of the nodes) makes the choices fresh again.
+async function applyChoiceOutcome(env, userId, creator, rev, choice, now) {
+  const effect = choice.effects, memory = choice.memory;
+  if (!effect && !memory) return;
+  const marker = `ep:${rev.episode_id}:${rev.id}:${choice.id}`;
+  const row = await one(env, 'SELECT closeness, trust, romance, events_json FROM relationships WHERE user_id=? AND creator_id=?', userId, creator);
+  let events = {};
+  try { events = JSON.parse(row?.events_json || '{}'); } catch (e) {}
+  if (effect && !events[marker]) {
+    const defRow = await one(env, 'SELECT definition_json FROM npc_definitions WHERE creator_id=?', creator);
+    let npcDef = null;
+    if (defRow?.definition_json) { try { npcDef = JSON.parse(defRow.definition_json); } catch (e) {} }
+    const cfg = relationshipConfig(npcDef);
+    const clamp = v => Math.min(100, Math.max(0, v));
+    const closeness = clamp((row?.closeness || 0) + (effect.closeness || 0));
+    const trust = clamp((row?.trust || 0) + (effect.trust || 0));
+    const romance = clamp((row?.romance || 0) + (effect.romance || 0));
+    events[marker] = 1;
+    await run(env, 'INSERT INTO relationships(user_id, creator_id, score, closeness, trust, romance, events_json) VALUES(?,?,?,?,?,?,?) ON CONFLICT(user_id, creator_id) DO UPDATE SET score=excluded.score, closeness=excluded.closeness, trust=excluded.trust, romance=excluded.romance, events_json=excluded.events_json',
+      userId, creator, overallScore(cfg, { closeness, trust, romance }, 0), closeness, trust, romance, JSON.stringify(events));
+  }
+  if (memory) await run(env, 'INSERT INTO player_memories(user_id, creator_id, key, value, created_at, source_message_id, updated_at) VALUES(?,?,?,?,?,?,?) ON CONFLICT(user_id, creator_id, key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at',
+    userId, creator, String(memory.key), String(memory.value), now, null, now);
+}
+
 async function energy(env,uid,now) {
  // Refill then read back, in one round trip; the order inside batch() is sequential.
  const [, rowRes] = await env.DB.batch([
@@ -347,6 +375,15 @@ async function player(req,env,user,path,now,ctx) {
    const b=await body(req), userText=string(b.message, 1000);
    const creatorData = await one(env, 'SELECT * FROM creators WHERE id=?', creator);
    if(!creatorData) return json({error:'not_found'}, 404);
+   // Creators that ship a published script open in story mode: free chat unlocks only once the player has walked
+   // one of that creator's scripts to an end node (ADR 0008). Checked before the thread lock and before energy,
+   // so a locked turn costs the player nothing. Creators without a script are untouched.
+   const scripted = await one(env, "SELECT 1 AS x FROM episodes e WHERE e.creator_id=? AND EXISTS(SELECT 1 FROM revisions r WHERE r.episode_id=e.id AND r.status='published')", creator);
+   if(scripted){
+    const walks = await all(env, 'SELECT s.current_node_id AS node, rv.nodes AS nodes FROM chat_states s JOIN revisions rv ON rv.id=s.revision_id JOIN episodes ep ON ep.id=s.episode_id WHERE s.user_id=? AND ep.creator_id=?', user.id, creator);
+    const finished = walks.some(w => { try { return !!JSON.parse(w.nodes).find(n => n.id === w.node)?.end; } catch (e) { return false; } });
+    if(!finished) return json({error:'story_required'}, 403);
+   }
    // One message at a time per DM Thread (docs/adr/0001); the lease expires on its own if the Worker dies.
    const lockToken = crypto.randomUUID();
    const locked = await run(env, 'INSERT INTO dm_threads(user_id, creator_id, lock_token, lock_until) VALUES(?,?,?,?) ON CONFLICT(user_id, creator_id) DO UPDATE SET lock_token=excluded.lock_token, lock_until=excluded.lock_until WHERE dm_threads.lock_until<?', user.id, creator, lockToken, now + THREAD_LOCK_MS, now);
@@ -751,7 +788,7 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
   let state=await one(env,'SELECT * FROM chat_states WHERE user_id=? AND episode_id=?',user.id,episode.id);
   if(!state){const rev=await one(env,"SELECT * FROM revisions WHERE episode_id=? AND status='published' ORDER BY created_at DESC,id DESC LIMIT 1",episode.id);if(!rev)return json({error:'not_found'},404);const nodes=JSON.parse(rev.nodes);if(!nodes.length)return json({error:'not_found'},404);const inserted=await run(env,'INSERT OR IGNORE INTO chat_states(user_id,episode_id,revision_id,current_node_id) VALUES(?,?,?,?)',user.id,episode.id,rev.id,nodes[0].id);if(inserted.meta.changes){await run(env,'INSERT INTO activity(user_id,kind,created_at) VALUES(?,?,?)',user.id,'dm_start',now);if(nodes[0].end)await run(env,'INSERT INTO activity(user_id,kind,created_at) VALUES(?,?,?)',user.id,'dm_end',now);}state=await one(env,'SELECT * FROM chat_states WHERE user_id=? AND episode_id=?',user.id,episode.id);}
   const rev=await one(env,'SELECT * FROM revisions WHERE id=?',state.revision_id);if(!rev||rev.status==='suspended')return json({error:'content_suspended'},403);const nodes=JSON.parse(rev.nodes);let node=nodes.find(n=>n.id===state.current_node_id);if(!node)return json({error:'invalid_revision'},500);
-  if(method==='POST'&&m[2]==='choose'){const b=await body(req), choice=node.choices?.find(c=>c.id===b.choiceId);if(!choice)return json({error:'invalid_choice'},400);const next=nodes.find(n=>n.id===choice.nextNodeId);if(!next)return json({error:'invalid_revision'},500);const result=await run(env,'UPDATE chat_states SET current_node_id=?,last_choice_id=? WHERE user_id=? AND episode_id=? AND current_node_id=?',next.id,choice.id,user.id,episode.id,node.id);if(!result.meta.changes)return json({error:'state_changed'},409);if(next.end)await run(env,'INSERT INTO activity(user_id,kind,created_at) VALUES(?,?,?)',user.id,'dm_end',now);node=next;}
+  if(method==='POST'&&m[2]==='choose'){const b=await body(req), choice=node.choices?.find(c=>c.id===b.choiceId);if(!choice)return json({error:'invalid_choice'},400);const next=nodes.find(n=>n.id===choice.nextNodeId);if(!next)return json({error:'invalid_revision'},500);const result=await run(env,'UPDATE chat_states SET current_node_id=?,last_choice_id=? WHERE user_id=? AND episode_id=? AND current_node_id=?',next.id,choice.id,user.id,episode.id,node.id);if(!result.meta.changes)return json({error:'state_changed'},409);if(next.end)await run(env,'INSERT INTO activity(user_id,kind,created_at) VALUES(?,?,?)',user.id,'dm_end',now);await applyChoiceOutcome(env,user.id,creator,rev,choice,now);node=next;}
   else if(!(method==='GET'&&!m[2])&&!(method==='POST'&&m[2]==='episode'))return json({error:'not_found'},404);
   await run(env,'INSERT INTO activity(user_id,kind,created_at) VALUES(?,?,?)',user.id,'dm',now);
   const visited=await all(env,'SELECT node_id,choice_id FROM chat_history WHERE user_id=? AND episode_id=? ORDER BY position',user.id,episode.id);const history=visited.slice(0,-1).map(v=>{const n=nodes.find(x=>x.id===v.node_id);return {id:n.id,text:n.text,end:n.end,choiceText:n.choices.find(c=>c.id===v.choice_id)?.text};});

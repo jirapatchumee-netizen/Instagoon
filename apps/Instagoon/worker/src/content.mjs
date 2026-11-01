@@ -33,6 +33,12 @@ export async function ensureContent(env) {
         q("UPDATE stories SET status='suspended' WHERE creator_id=? AND status<>'suspended' AND id NOT IN (SELECT value FROM json_each(?))", c.id, JSON.stringify(c.stories.map(s => s.id))),
         ...c.posts.map(p => q('INSERT INTO posts(id,creator_id,caption,media_key,published_at,relationship_required,simulated_likes,status) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET creator_id=excluded.creator_id,caption=excluded.caption,media_key=excluded.media_key,published_at=excluded.published_at,relationship_required=excluded.relationship_required,simulated_likes=excluded.simulated_likes,status=excluded.status', p.id, c.id, p.caption, p.mediaKey, p.publishedAt, p.relationshipRequired, p.simulatedLikes, p.status)),
         ...c.stories.map(s => q('INSERT INTO stories(id,creator_id,type,media_key,published_at,relationship_required,status) VALUES(?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET creator_id=excluded.creator_id,type=excluded.type,media_key=excluded.media_key,published_at=excluded.published_at,relationship_required=excluded.relationship_required,status=excluded.status', s.id, c.id, s.type, s.mediaKey, s.publishedAt, s.relationshipRequired, s.status)),
+        // Episodes have no status column: an episode drops out of the game when none of its revisions is
+        // published, so removal from git suspends the revision instead of deleting player state. A published
+        // revision is never rewritten — its id is a hash of its nodes (ADR 0004), so re-running only flips status.
+        ...c.episodes.map(e => q('INSERT INTO episodes(id,creator_id,title,relationship_required,position) VALUES(?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title,creator_id=excluded.creator_id,relationship_required=excluded.relationship_required,position=excluded.position', e.id, c.id, e.title, e.relationshipRequired, e.position)),
+        q("UPDATE revisions SET status='suspended' WHERE creator_id=? AND status='published' AND id NOT IN (SELECT value FROM json_each(?))", c.id, JSON.stringify(c.episodes.map(e => e.revisionId))),
+        ...c.episodes.map(e => q('INSERT INTO revisions(id,creator_id,episode_id,nodes,status,created_at) VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET status=excluded.status', e.revisionId, c.id, e.id, JSON.stringify(e.nodes), e.status, now)),
       );
     }
     // A creator that was in an earlier bundle and is gone from this one is hidden: its posts and

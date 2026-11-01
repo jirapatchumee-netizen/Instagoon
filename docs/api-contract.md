@@ -174,3 +174,10 @@ CREATE TABLE published_revisions (
 
 - OQ-1 โครง path จริงของ `content/` และวิธี map ไฟล์เข้า `NpcSchema`
 - OQ-2 วิธีส่งสื่อเข้า environment ทดสอบ (D1 `media_blobs` ต่อไฟล์ ≤900KB ตาม default ชั่วคราว vs เปิด R2)
+
+## DM episodes (ADR 0008)
+
+- `POST /api/chats/:creator/message` → `403 {"error":"story_required"}` เมื่อ creator นั้นมี published episode และผู้เล่นยังไม่มีบทใดที่เดินถึง node `end` ไม่หักพลังงาน ไม่ค้าง thread lock
+- node schema ที่ engine ยอมรับ: `{id, text, choices:[{id, text, nextNodeId, effects?:{closeness,trust,romance}, memory?:{key,value}}], end}`
+  `effects` เป็น int |v| ≤ 30 ใช้ครั้งเดียวต่อ choice ต่อ `revision_id` ที่ pin · `memory` upsert ลง `player_memories` (latest wins)
+- `revisionId = rev_<episodeId>_<sha8(nodes)>` · published revision แก้ไม่ได้ · `dist/_content/episode-progress-reset.sql` สร้างทุก build ที่มีบท และรันด้วยมือโดยเจ้าของบัญชีเท่านั้น

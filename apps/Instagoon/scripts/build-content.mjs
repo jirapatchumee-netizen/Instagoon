@@ -11,6 +11,15 @@ const ID = /^[a-zA-Z0-9_-]{1,80}$/;
 const KEY = /^[a-zA-Z0-9_./-]{1,200}$/;
 const MAX_FILE = 25 * 1024 * 1024; // Workers Static Assets per-file limit
 const STATUS = ['draft', 'published', 'suspended'];
+// DM episodes (ADR 0008). The engine reads {id,text,choices:[{id,text,nextNodeId}],end} and nothing else,
+// so effects/memory are additions the Worker applies on /choose.
+const EP_DIMS = ['closeness', 'trust', 'romance'];
+const EP_MAX_NODES = 24;
+const EP_TEXT = 180;
+const EP_CHOICE_TEXT = 40;
+const EP_EFFECT_CAP = 30;
+const EP_BEST_GAIN = [20, 24]; // one playthrough must be able to cross thresholds[1] (Lv2)
+const EP_MEMORY_KEY = /^[a-zA-Z0-9_.-]{1,60}$/;
 
 export function buildContent(contentDir, distDir) {
   if (!existsSync(join(contentDir, 'creators'))) return null;
@@ -64,7 +73,84 @@ export function buildContent(contentDir, distDir) {
       if (!s.media) err(w, 'media is required'); else needMedia(w, s.media);
       return { id: s.id, type: s.type, mediaKey: s.media, publishedAt: time(w, s.publishedAt), relationshipRequired: int(w, s.relationshipRequired, 0, 100), status: status(w, s.status) };
     });
-    creators.push({ id: npc.id, name: npc.name, bio: npc.tagline, avatarKey: npc.avatar || null, definition: npc, posts, stories });
+    const episodes = readJson(join(base, 'episodes.json'), []).map((ep, i) => {
+      const w = `${where}/episodes.json[${i}]`;
+      uniqueId(w, ep.id);
+      if (typeof ep.title !== 'string' || !ep.title.trim() || ep.title.length > 120) err(w, 'title must be text up to 120 chars');
+      const rawNodes = Array.isArray(ep.nodes) ? ep.nodes : [];
+      if (!rawNodes.length) { err(w, 'nodes must be a non-empty array'); return null; }
+      if (rawNodes.length > EP_MAX_NODES) err(w, `nodes must be at most ${EP_MAX_NODES}`);
+      const nodeIds = new Set(), choiceIds = new Set();
+      for (const n of rawNodes) {
+        if (typeof n?.id !== 'string' || !ID.test(n.id)) err(w, 'invalid node id');
+        else if (nodeIds.has(n.id)) err(w, `duplicate node id \"${n.id}\"`);
+        else nodeIds.add(n.id);
+      }
+      const nodes = rawNodes.map((n, j) => {
+        const nw = `${w}.nodes[${j}]`;
+        if (typeof n.text !== 'string' || !n.text.trim()) err(nw, 'text is required');
+        else if (n.text.length > EP_TEXT) err(nw, `text is longer than ${EP_TEXT} chars`);
+        const end = n.end === true;
+        const rawChoices = Array.isArray(n.choices) ? n.choices : [];
+        if (end && rawChoices.length) err(nw, 'an end node must have no choices');
+        if (!end && !rawChoices.length) err(nw, 'a non-end node needs at least one choice');
+        const choices = rawChoices.map((c, k) => {
+          const cw = `${nw}.choices[${k}]`;
+          if (typeof c.id !== 'string' || !ID.test(c.id)) err(cw, 'invalid choice id');
+          else if (choiceIds.has(c.id)) err(cw, `duplicate choice id \"${c.id}\"`);
+          else choiceIds.add(c.id);
+          if (typeof c.text !== 'string' || !c.text.trim() || c.text.length > EP_CHOICE_TEXT) err(cw, `text must be 1-${EP_CHOICE_TEXT} chars`);
+          if (!nodeIds.has(c.nextNodeId)) err(cw, `unknown nextNodeId \"${c.nextNodeId}\"`);
+          const clean = { id: c.id, text: c.text, nextNodeId: c.nextNodeId };
+          if (c.effects) {
+            const eff = {};
+            for (const dim of EP_DIMS) {
+              const v = c.effects[dim] ?? 0;
+              if (!Number.isInteger(v) || Math.abs(v) > EP_EFFECT_CAP) err(`${cw}.effects.${dim}`, `must be an integer within ±${EP_EFFECT_CAP}`);
+              eff[dim] = v;
+            }
+            clean.effects = eff;
+          }
+          if (c.memory) {
+            if (typeof c.memory.key !== 'string' || !EP_MEMORY_KEY.test(c.memory.key)) err(`${cw}.memory`, 'invalid memory key');
+            if (typeof c.memory.value !== 'string' || !c.memory.value.trim() || c.memory.value.length > 400) err(`${cw}.memory`, 'memory value must be 1-400 chars');
+            clean.memory = { key: c.memory.key, value: c.memory.value };
+          }
+          return clean;
+        });
+        return { id: n.id, text: n.text, choices, end };
+      });
+      const byId = new Map(nodes.map(n => [n.id, n]));
+      const reached = new Set([nodes[0].id]), queue = [nodes[0]];
+      while (queue.length) for (const c of queue.shift().choices) {
+        const next = byId.get(c.nextNodeId);
+        if (next && !reached.has(next.id)) { reached.add(next.id); queue.push(next); }
+      }
+      for (const id of nodeIds) if (!reached.has(id)) err(w, `node \"${id}\" is unreachable from the first node`);
+      if (!nodes.some(n => n.end)) err(w, 'no end node');
+      const W = npc.relationship.weights;
+      const totalW = W.closeness + W.trust + (npc.relationship.romanceEnabled ? W.romance : 0);
+      if (totalW <= 0) { err(w, 'character weights must sum above 0 to validate episode gains'); return null; }
+      const gains = [];
+      const walk = (id, acc, path) => {
+        const n = byId.get(id);
+        if (!n) return; // an unknown nextNodeId is already reported; path analysis must not crash on it
+        if (n.end) { gains.push(Math.round(((acc.closeness * W.closeness + acc.trust * W.trust + acc.romance * W.romance) / totalW) * 10) / 10); return; }
+        for (const c of n.choices) {
+          if (path.has(c.nextNodeId)) { err(w, `cycle back to node \"${c.nextNodeId}\"`); continue; }
+          const e = c.effects || {};
+          walk(c.nextNodeId, { closeness: acc.closeness + (e.closeness || 0), trust: acc.trust + (e.trust || 0), romance: acc.romance + (e.romance || 0) }, new Set([...path, c.nextNodeId]));
+        }
+      };
+      walk(nodes[0].id, { closeness: 0, trust: 0, romance: 0 }, new Set([nodes[0].id]));
+      const best = Math.max(...gains), worst = Math.min(...gains);
+      if (gains.length > 1 && best === worst) err(w, 'every path gives the same score gain, so the choices do not matter');
+      if (best < EP_BEST_GAIN[0] || best > EP_BEST_GAIN[1]) err(w, `best path weighted score gain is ${best}, must be ${EP_BEST_GAIN[0]}-${EP_BEST_GAIN[1]} so one playthrough can reach Lv2`);
+      if (worst < -EP_EFFECT_CAP) err(w, `worst path costs ${worst}, must not fall below -${EP_EFFECT_CAP}`);
+      const revisionId = `rev_${ep.id}_${createHash('sha256').update(JSON.stringify(nodes)).digest('hex').slice(0, 8)}`;
+      return { id: ep.id, title: ep.title, relationshipRequired: int(w, ep.relationshipRequired, 0, 100), position: int(w, ep.position, 0, 1000), status: status(w, ep.status), revisionId, nodes };
+    }).filter(Boolean);
+    creators.push({ id: npc.id, name: npc.name, bio: npc.tagline, avatarKey: npc.avatar || null, definition: npc, posts, stories, episodes });
   }
   if (errors.length) throw new Error(`content check failed:\n- ${errors.join('\n- ')}`);
 
@@ -75,6 +161,22 @@ export function buildContent(contentDir, distDir) {
   mkdirSync(out, { recursive: true });
   if (media.length) cpSync(mediaDir, join(out, 'media'), { recursive: true });
   writeFileSync(join(out, 'content.json'), JSON.stringify(bundle));
+  // A player pinned to an older revision would keep reading a script that is no longer published. Wiping
+  // player progress is never a side effect of a content deploy, so this ships as a file the owner runs.
+  const eps = bundle.creators.flatMap(c => c.episodes);
+  if (eps.length) {
+    const stale = eps.map(e => `(episode_id = '${e.id}' AND revision_id <> '${e.revisionId}')`).join(' OR ');
+    writeFileSync(join(out, 'episode-progress-reset.sql'), [
+      '-- ADR 0008: ส่งผู้เล่นที่ติดอยู่บน revision เก่ากลับไปเล่นบทเวอร์ชันปัจจุบันใหม่',
+      '-- คนที่เล่น revision นี้อยู่แล้วไม่ถูกแตะ. รันหลัง deploy bundle นี้เท่านั้น:',
+      '--   pnpm --dir apps/Instagoon exec wrangler d1 execute instagoon-staging --remote \\',
+      '--     --config worker/wrangler.staging.toml --file apps/Instagoon/dist/_content/episode-progress-reset.sql',
+      `DELETE FROM chat_active WHERE (user_id, episode_id) IN (SELECT user_id, episode_id FROM chat_states WHERE ${stale});`,
+      `DELETE FROM chat_history WHERE (user_id, episode_id) IN (SELECT user_id, episode_id FROM chat_states WHERE ${stale});`,
+      `DELETE FROM chat_states WHERE ${stale};`,
+      ''
+    ].join('\n'));
+  }
   return bundle;
 }
 
@@ -86,6 +188,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const app = fileURLToPath(new URL('..', import.meta.url));
   try {
     const b = buildContent(process.argv[2] || join(app, 'content'), process.argv[3] || join(app, 'dist'));
-    console.log(b ? `content ${b.version}: ${b.creators.length} creators, ${b.media.length} media files` : 'content: none (no content/creators folder)');
+    console.log(b ? `content ${b.version}: ${b.creators.length} creators, ${b.media.length} media files, ${b.creators.reduce((n, c) => n + c.episodes.length, 0)} episodes` : 'content: none (no content/creators folder)');
   } catch (e) { console.error(e.message); process.exit(1); }
 }
