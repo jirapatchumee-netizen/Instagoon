@@ -178,7 +178,7 @@ async function auth(req,env,url) {
    await env.DB.batch([
     env.DB.prepare("INSERT INTO users(id,email,google_id,age_verified_at,consent_version,created_at) VALUES(?,?,'demo_google_id',?,?,?)").bind(uid,demoEmail,now,'1.0',now),
     env.DB.prepare("INSERT INTO invites(email,status) VALUES(?,'active') ON CONFLICT(email) DO UPDATE SET status='active'").bind(demoEmail),
-    env.DB.prepare("INSERT INTO energy(user_id,free,purchased) VALUES(?,5,0) ON CONFLICT(user_id) DO UPDATE SET free=5").bind(uid),
+    env.DB.prepare("INSERT INTO energy(user_id,free,purchased) VALUES(?,10,0) ON CONFLICT(user_id) DO UPDATE SET free=10").bind(uid),
     env.DB.prepare("INSERT OR REPLACE INTO user_credentials(user_id,password_hash,salt,role,updated_at) VALUES(?,'DEMO','DEMO','admin',?)").bind(uid,now)
    ]);
    user={id:uid,email:demoEmail};
@@ -253,7 +253,7 @@ async function applyChoiceOutcome(env, userId, creator, rev, choice, now) {
 async function energy(env,uid,now) {
  // Refill then read back, in one round trip; the order inside batch() is sequential.
  const [, rowRes] = await env.DB.batch([
-  env.DB.prepare('UPDATE energy SET free=3,next_refill_at=NULL WHERE user_id=? AND next_refill_at IS NOT NULL AND next_refill_at<=?').bind(uid,now),
+  env.DB.prepare('UPDATE energy SET free=10,next_refill_at=NULL WHERE user_id=? AND next_refill_at IS NOT NULL AND next_refill_at<=?').bind(uid,now),
   env.DB.prepare('SELECT free,purchased,next_refill_at FROM energy WHERE user_id=?').bind(uid)
  ]);
  const row=rowRes.results[0]; return {free:row.free,purchased:row.purchased,nextRefillAt:row.next_refill_at};
@@ -530,6 +530,8 @@ async function player(req,env,user,path,now,ctx) {
    let scoreDelta = 1;
    let newMem = null;
    let detectedRuleIds = [...matchedRuleIds];
+   let suggestedReplies = [];
+   let moodToast = null;
    let aiDebug = null;
    let usedModel = null, tokensIn = 0, tokensOut = 0, fallbackCount = 0;
    const aiStartedAt = Date.now();
@@ -569,6 +571,12 @@ Empathy-First Bridge & Tone Rules (CRITICAL PRIORITY):
 - NEVER ignore the player's emotional state or situation to talk exclusively about yourself. Always address what they just did or feel before your own topics.
 - Conversational Momentum (Question Hooks): Keep the chat lively and engaging. In ~75% of your messages, end with a playful, open-ended question or charming hook (e.g. asking what they had for dinner, asking them to help choose something cute, or teasingly asking if they're thinking of ${npcName}) so the conversation never hits a dead end.
 - Pronoun Standard: Zero-Pronoun Natural Thai DM. Do NOT use stiff formal pronouns like 'คุณ' or 'นาย'. Refer to yourself as "${npcName}" or 'เค้า'. Drop user-referencing pronouns naturally like authentic Thai speech.
+- Contextual Reply Suggestions (CRITICAL): Provide exactly 3 short, natural Thai reply choices for the player in suggestedReplies:
+  1. Flirty / Romantic option (หยอดหรือชม)
+  2. Teasing / Playful banter option (กวนหรือแซวเล่น)
+  3. Thoughtful inquiry / Daily life question option (ใส่ใจหรือชวนคุยเรื่องชีวิตประจำวัน)
+  Keep each choice short (under 15 words) and natural for authentic Thai IG DM.
+- Emotional Reaction (moodToast): If the interaction meaningfully impacts your emotions, provide a short 1-line reaction in Thai with an emoji in moodToast (e.g. "${npcName}แอบยิ้มกับข้อความของคุณ 💕", "${npcName}รู้สึกไว้ใจคุณมากขึ้น ✨", "${npcName}กำลังแกล้งงอนคุณอยู่นะ 🙈"). Otherwise null.
 Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Instagram DM, STRICTLY NO 'คะ/ค่ะ').`;
    const playerTurn = JSON.stringify({
      playerMessage: userText,
@@ -584,7 +592,9 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
          ? { type: 'ARRAY', items: { type: 'STRING', enum: semanticRules.map(r => String(r.id)) } }
          : { type: 'ARRAY', items: { type: 'STRING' } },
        affectionDelta: { type: 'INTEGER' },
-       learnedMemory: { type: 'OBJECT', nullable: true, properties: { key: { type: 'STRING' }, value: { type: 'STRING' } } }
+       learnedMemory: { type: 'OBJECT', nullable: true, properties: { key: { type: 'STRING' }, value: { type: 'STRING' } } },
+       suggestedReplies: { type: 'ARRAY', items: { type: 'STRING' } },
+       moodToast: { type: 'STRING', nullable: true }
      },
      required: ['reply']
    };
@@ -628,6 +638,12 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
            if(parsed.affectionDelta) scoreDelta = Math.min(3, Math.max(1, Math.round(Number(parsed.affectionDelta)) || 1));
            const lm = parsed.learnedMemory;
            if(typeof lm?.key === 'string' && typeof lm?.value === 'string' && MEMORY_KEY.test(lm.key) && lm.value.trim() && lm.value.length <= 200) newMem = {key: lm.key, value: lm.value.trim()};
+           if(Array.isArray(parsed.suggestedReplies) && parsed.suggestedReplies.length > 0) {
+             suggestedReplies = parsed.suggestedReplies.filter(s => typeof s === 'string' && s.trim()).slice(0, 3).map(s => s.trim());
+           }
+           if(typeof parsed.moodToast === 'string' && parsed.moodToast.trim()) {
+             moodToast = parsed.moodToast.trim();
+           }
            aiDebug = { success: true, model: geminiModel };
            usedModel = geminiModel;
            break;
@@ -721,9 +737,24 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
 
    const allAiMessages = await all(env, 'SELECT id, role, content, media_key mediaKey, affection_delta affectionDelta, created_at createdAt FROM ai_chat_messages WHERE user_id=? AND creator_id=? ORDER BY created_at ASC LIMIT 100', user.id, creator);
 
+   if(!suggestedReplies.length) {
+     suggestedReplies = [
+       `แอบคิดถึง${npcName}อยู่เหมือนกันนะ ✨`,
+       `พูดแบบนี้เดี๋ยวก็หลงคารมเข้าหรอก 😏`,
+       `วันนี้ทำงานเหนื่อยไหม เป็นไงบ้าง 🤍`
+     ];
+   }
+   if(!moodToast && (delta.romance > 0 || delta.closeness > 0 || delta.trust > 0 || scoreDelta > 1)) {
+     if (delta.romance > 0) moodToast = `${npcName}รู้สึกใจเต้นกับข้อความของคุณ 💕`;
+     else if (delta.trust > 0) moodToast = `${npcName}เริ่มไว้ใจคุณมากขึ้น ✨`;
+     else moodToast = `${npcName}สนิทกับคุณมากขึ้น 🤍`;
+   }
+
    return json({
      ok: true,
      reply: replyText,
+     suggestedReplies,
+     moodToast,
      knowledgeResult:{entries:entries.map(({title,source,checkedAt})=>({title,source,checkedAt})),applied:knowledgeApplied,search:{status:search.status,sources:search.sources,queries:search.queries,usage:search.usage}},
      mediaKey: rewardMediaKey,
      messages: allAiMessages,
