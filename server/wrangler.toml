@@ -14,7 +14,7 @@ migrations_dir = "migrations"
 # bucket_name = "froststory-media"
 
 [assets]
-directory = "../dist"
+directory = "../client/dist"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
 # /_content/* holds game media; the Worker returns 404 so locked files are only served via /api/media.

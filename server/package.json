@@ -1,0 +1,12 @@
+{
+  "name": "@instagoon/server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --local --config wrangler.local-staging.toml --persist-to /tmp/instagoon-local-staging --ip 127.0.0.1 --port 8799",
+    "test": "node --experimental-strip-types --test tests/*.test.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "^4.154.0"
+  }
+}

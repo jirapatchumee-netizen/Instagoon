@@ -4,7 +4,11 @@ on:
   push:
     branches: [main]
     paths:
-      - 'apps/Instagoon/**'
+      - 'client/**'
+      - 'server/**'
+      - 'content/**'
+      - 'packages/**'
+      - 'scripts/**'
       - 'package.json'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
@@ -15,7 +19,6 @@ jobs:
   staging:
     name: Deploy staging (automatic)
     runs-on: ubuntu-latest
-    # Per-job groups: a production run waiting for approval must not block the next staging deploy.
     concurrency:
       group: instagoon-staging
       cancel-in-progress: false
@@ -39,20 +42,18 @@ jobs:
 
       - name: 🧪 Worker tests (gameplay purity + API)
         run: |
-          node --experimental-strip-types --test apps/Instagoon/worker/tests/*.test.mjs
-          node apps/Instagoon/worker/tests/api.mjs
+          node --experimental-strip-types --test server/tests/*.test.mjs
+          node server/tests/api.mjs
 
       - name: 🏗️ Build staging
-        run: pnpm --dir apps/Instagoon run build:staging
+        run: pnpm build:staging
 
       - name: 🚀 Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: 'apps/Instagoon/worker'
-          # The action falls back to wrangler 3 when it can't find a local install, and wrangler 3
-          # ignores assets.run_worker_first, so browser navigations to /auth/* got the SPA instead.
+          workingDirectory: 'server'
           wranglerVersion: '4.154.0'
           command: deploy --config wrangler.staging.toml
 
@@ -63,7 +64,6 @@ jobs:
     concurrency:
       group: instagoon-production
       cancel-in-progress: false
-    # Required reviewers are set on this environment in GitHub Settings → Environments.
     environment:
       name: production
       url: https://instagoon.app
@@ -86,15 +86,13 @@ jobs:
         run: pnpm install --no-frozen-lockfile
 
       - name: 🏗️ Build production
-        run: pnpm --dir apps/Instagoon build
+        run: pnpm build
 
       - name: 🚀 Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: 'apps/Instagoon/worker'
-          # The action falls back to wrangler 3 when it can't find a local install, and wrangler 3
-          # ignores assets.run_worker_first, so browser navigations to /auth/* got the SPA instead.
+          workingDirectory: 'server'
           wranglerVersion: '4.154.0'
           command: deploy

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import JSZip from 'jszip';
-import { newNpc } from '../../lib/npc/schema.ts';
+import { newNpc } from '../../packages/contracts/npc/schema.ts';
 import { validateNpcBundle } from '../../scripts/validate-npc-bundle.mjs';
 
 test('validates manifest and rejects mismatched IDs and unsafe paths', async()=>{

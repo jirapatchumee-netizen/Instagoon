@@ -25,7 +25,7 @@ jobs:
       - run: pnpm install --no-frozen-lockfile
       - name: Worker tests (gameplay purity, NPC bundle, API)
         run: |
-          node --experimental-strip-types --test apps/Instagoon/worker/tests/*.test.mjs
-          node apps/Instagoon/worker/tests/api.mjs
+          node --experimental-strip-types --test server/tests/*.test.mjs
+          node server/tests/api.mjs
       - name: Build (player + staging login)
-        run: pnpm --dir apps/Instagoon run build:staging
+        run: pnpm build:staging

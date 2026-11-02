@@ -1,2 +1,7 @@
+packages:
+  - 'client'
+  - 'server'
+  - 'packages/*'
 allowBuilds:
-  esbuild: true
+  esbuild: set this to true or false
+  workerd: set this to true or false

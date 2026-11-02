@@ -13,7 +13,7 @@ database_id = "386f836c-5bb7-4eb2-a1b0-87dfd85fa5e6"
 migrations_dir = "migrations"
 
 [assets]
-directory = "../dist"
+directory = "../client/dist"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
 run_worker_first = true

@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto';
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { NpcSchema } from '../lib/npc/schema.ts';
+import { NpcSchema } from '../packages/contracts/npc/schema.ts';
 
 const ID = /^[a-zA-Z0-9_-]{1,80}$/;
 const KEY = /^[a-zA-Z0-9_./-]{1,200}$/;
@@ -187,7 +187,7 @@ function walk(dir) {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const app = fileURLToPath(new URL('..', import.meta.url));
   try {
-    const b = buildContent(process.argv[2] || join(app, 'content'), process.argv[3] || join(app, 'dist'));
+    const b = buildContent(process.argv[2] || join(app, 'content'), process.argv[3] || join(app, 'client', 'dist'));
     console.log(b ? `content ${b.version}: ${b.creators.length} creators, ${b.media.length} media files, ${b.creators.reduce((n, c) => n + c.episodes.length, 0)} episodes` : 'content: none (no content/creators folder)');
   } catch (e) { console.error(e.message); process.exit(1); }
 }

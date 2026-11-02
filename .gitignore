@@ -13,6 +13,6 @@ outputs/
 client_secret_*.json
 
 # local art / media working copies (generated, not shipped)
-apps/Instagoon/art/
-apps/Instagoon/content/creators/*/assets/
-apps/Instagoon/content/creators/*/avatars/
+client/art/
+content/creators/*/assets/
+content/creators/*/avatars/

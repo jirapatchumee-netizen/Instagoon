@@ -5,7 +5,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { mkdtempSync, mkdirSync, readdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { newNpc } from '../../lib/npc/schema.ts';
+import { newNpc } from '../../packages/contracts/npc/schema.ts';
 import { buildContent } from '../../scripts/build-content.mjs';
 import { ensureContent, resetContentCache } from '../src/content.mjs';
 import worker from '../src/index.mjs';
