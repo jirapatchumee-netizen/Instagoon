@@ -11,17 +11,21 @@
 
 ## ⚡ 1. กฎเหล็กในการทำงาน (Non-Negotiable Workflow)
 
-1. **โฟกัสหลักอยู่ที่โฟลเดอร์ `apps/Instagoon/` เท่านั้น:**
-   - **Player App:** `apps/Instagoon/player/FrostStoryApp.tsx` (UI สไตล์ Instagram ครบวงจร Feed, Stories, Reels, DM Chat)
-   - **Backend Worker & D1 Database:** `apps/Instagoon/worker/` (Cloudflare Workers API, Gemini AI integration, D1 SQLite migrations)
-   - **Creator Studio:** `apps/Instagoon/studio.html` (เครื่องมือจัดการ Creator และ Prompt)
-2. **รักษาขอบเขต Routing และการเข้าถึงระบบ:**
-   - ห้ามแก้ไข `apps/Instagoon/index.html` ให้โหลด `/studio.tsx` เด็ดขาด (โหมดผู้เล่น `/` แยกขาดจากโหมดสตูดิโอ `/studio.html`)
+1. **โครงสร้างโฟลเดอร์ใหม่ (Clean Fullstack Architecture):**
+   - **Player App (Frontend):** `client/` (Vite + React 19 + Tailwind, UI สไตล์ Instagram ครบวงจร Feed, Stories, Reels, DM Chat)
+   - **Backend Worker & D1 Database:** `server/` (Cloudflare Workers API, Gemini AI integration, D1 SQLite migrations)
+   - **Game Content:** `content/` (`creators/`, `media/` ข้อมูลตัวละครและเนื้อหาเกม)
+   - **Shared Contracts:** `packages/contracts/` (`npc/schema.ts` สคีมากลาง)
+   - **Build & Helper Scripts:** `scripts/` (`build-content.mjs`, `validate-npc-bundle.mjs`)
+2. **รักษาขอบเขต Routing และความปลอดภัย:**
+   - Client App เป็น Player Mode เท่านั้น (Studio UI เดิมถูกถอดออกแล้ว)
+   - ปิดการปล่อย Source Maps ในโหมด Staging และ Production เสมอ (`sourcemap: false`)
 3. **การทดสอบและรันระบบ:**
-   - Frontend: `cd apps/Instagoon && pnpm dev` (รันบน localhost:5173)
-   - Backend Worker: `cd apps/Instagoon/worker && pnpm run dev`
+   - Frontend: `pnpm dev` (รันบน localhost:5173)
+   - Backend Worker: `cd server && pnpm dev` (รันบน localhost:8799)
+   - ตรวจสอบระบบและรันเทส: `pnpm build:staging && pnpm test`
 4. **การเปลี่ยนแปลง Schema และฐานข้อมูล D1:**
-   - ทุกการเปลี่ยนแปลงโครงสร้างข้อมูลแชท, ความทรงจำ, หรือตารางผู้เล่น ต้องสร้างไฟล์ Migration ใน `apps/Instagoon/worker/migrations/` เสมอ
+   - ทุกการเปลี่ยนแปลงโครงสร้างข้อมูลแชท, ความทรงจำ, หรือตารางผู้เล่น ต้องสร้างไฟล์ Migration ใน `server/migrations/` เสมอ
 5. **ดึงอัปเดตก่อนเริ่มงานและไม่ Force-Push:**
    - ดำเนินการตาม `docs/MULTI_AGENT_SYNC_CONTRACT.md` สม่ำเสมอเพื่อป้องกัน Merge Conflict ระหว่าง Agent
 
@@ -35,8 +39,8 @@ Repo นี้เก็บเฉพาะกติกา ส่วนเคร�
 - **ขนาดภาพมาตรฐาน**: 544×960 (9:16 Portrait สไตล์ Webtoon/Instagram Post & Story)
 - **Engine & Settings**: Z-Image Turbo + Untwisting RoPE (`beta: 2.5`), `RFInversion` (flowturbo_pc, gamma 0.5, decoupled style conditioning cache), `AnimeLora3` strength **0.5**, Sampler **`er_sde`** **8 steps**, CFG **1.0**
 - **Style Reference**: `webtoon_style_reference.png` (เก็บใน art pipeline)
-- **Asset เข้าเกม**: ภาพที่ render เสร็จแล้วต้องถูกคัดลอกไปที่ `apps/Instagoon/content/media/{assets|avatars|posts|stories}` แล้ว commit (ADR-0007) — ตัว pipeline/ไฟล์กลางไม่ต้อง commit
-- *Character Consistency Standard*: ต้องมี `apps/Instagoon/content/creators/{creator}/visual_bible.json` เพื่อล็อก Face DNA, ทรงผม, สีผม, สัดส่วนอายุ และสไตล์เสื้อผ้า ห้ามพิมพ์ Prompt หน้าตาตัวละครแบบ Ad-hoc เด็ดขาด
+- **Asset เข้าเกม**: ภาพที่ render เสร็จแล้วต้องถูกคัดลอกไปที่ `content/media/{assets|avatars|posts|stories}` แล้ว commit (ADR-0007) — ตัว pipeline/ไฟล์กลางไม่ต้อง commit
+- *Character Consistency Standard*: ต้องมี `content/creators/{creator}/visual_bible.json` เพื่อล็อก Face DNA, ทรงผม, สีผม, สัดส่วนอายุ และสไตล์เสื้อผ้า ห้ามพิมพ์ Prompt หน้าตาตัวละครแบบ Ad-hoc เด็ดขาด
 
 ---
 

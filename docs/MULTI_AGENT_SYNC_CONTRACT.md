@@ -29,15 +29,15 @@ Because multiple autonomous agents and developers commit to `main` simultaneousl
 
 ## 🧭 2. Architectural Boundaries & Routing Integrity
 
-There is one player surface. The web Creator Studio was removed in commit `a8900d8` (`feat(instagoon)!: remove the web Studio and its content-editing API`), so `apps/Instagoon/studio.html` and `apps/Instagoon/studio.tsx` no longer exist. Do not recreate them.
+There is one player surface. The web Creator Studio was removed in commit `a8900d8`, so `studio.html` and `studio.tsx` no longer exist. Do not recreate them.
 
 | Route | File | Root Element | Script Target | Purpose |
 |---|---|---|---|---|
-| **`/` (Root)** | `apps/Instagoon/index.html` | `<div id="root"></div>` | `/main.tsx` | **Player Web App** (Instagram-style feed, player chat, stories) |
+| **`/` (Root)** | `client/index.html` | `<div id="root"></div>` | `/main.tsx` | **Player Web App** (Instagram-style feed, player chat, stories) |
 
-Game content (characters, posts, stories, media) is edited as files in `apps/Instagoon/content` and validated by `scripts/build-content.mjs`; see `content/README.md` and ADR 0007. Admin surfaces stay behind `isAdminUser` on `/api/admin/*`.
+Game content (characters, posts, stories, media) is edited as files in `content/` and validated by `scripts/build-content.mjs`; see `content/README.md` and ADR 0007. Admin surfaces stay behind `isAdminUser` on `/api/admin/*`.
 
-⚠️ **CRITICAL:** Never edit `apps/Instagoon/index.html` to load a Studio entrypoint. Build and check content with `pnpm --dir apps/Instagoon run build:staging`.
+⚠️ **CRITICAL:** Never edit `client/index.html` to load a Studio entrypoint. Build and check content with `pnpm build:staging`.
 
 ---
 
