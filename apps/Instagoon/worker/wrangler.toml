@@ -1,0 +1,28 @@
+name = "froststory-api"
+main = "src/index.mjs"
+compatibility_date = "2026-10-01"
+
+# Replace with IDs of provisioned resources before deploying.
+[[d1_databases]]
+binding = "DB"
+database_name = "froststory"
+database_id = "6a48d2df-a32b-4b13-9148-7ed2abfc0789"
+migrations_dir = "migrations"
+
+# [[r2_buckets]]
+# binding = "MEDIA"
+# bucket_name = "froststory-media"
+
+[assets]
+directory = "../dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+# /_content/* holds game media; the Worker returns 404 so locked files are only served via /api/media.
+run_worker_first = ["/api/*", "/auth/*", "/_content/*"]
+
+# Daily 02:00 Asia/Bangkok: summarize then delete AI chat messages older than 180 days.
+[triggers]
+crons = ["0 19 * * *"]
+
+[vars]
+GEMINI_MODEL = "gemini-2.5-flash"

@@ -1,0 +1,100 @@
+name: Deploy Instagoon (staging auto, production on approval)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/Instagoon/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - '.github/workflows/deploy-instagoon.yml'
+  workflow_dispatch:
+
+jobs:
+  staging:
+    name: Deploy staging (automatic)
+    runs-on: ubuntu-latest
+    # Per-job groups: a production run waiting for approval must not block the next staging deploy.
+    concurrency:
+      group: instagoon-staging
+      cancel-in-progress: false
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: 🛠️ Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: 🧪 Worker tests (gameplay purity + API)
+        run: |
+          node --experimental-strip-types --test apps/Instagoon/worker/tests/*.test.mjs
+          node apps/Instagoon/worker/tests/api.mjs
+
+      - name: 🏗️ Build staging
+        run: pnpm --dir apps/Instagoon run build:staging
+
+      - name: 🚀 Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: 'apps/Instagoon/worker'
+          # The action falls back to wrangler 3 when it can't find a local install, and wrangler 3
+          # ignores assets.run_worker_first, so browser navigations to /auth/* got the SPA instead.
+          wranglerVersion: '4.154.0'
+          command: deploy --config wrangler.staging.toml
+
+  production:
+    name: Deploy production (needs approval)
+    needs: staging
+    runs-on: ubuntu-latest
+    concurrency:
+      group: instagoon-production
+      cancel-in-progress: false
+    # Required reviewers are set on this environment in GitHub Settings → Environments.
+    environment:
+      name: production
+      url: https://instagoon.app
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: 🛠️ Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: 🏗️ Build production
+        run: pnpm --dir apps/Instagoon build
+
+      - name: 🚀 Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: 'apps/Instagoon/worker'
+          # The action falls back to wrangler 3 when it can't find a local install, and wrangler 3
+          # ignores assets.run_worker_first, so browser navigations to /auth/* got the SPA instead.
+          wranglerVersion: '4.154.0'
+          command: deploy

@@ -1,0 +1,18 @@
+node_modules/
+dist/
+.wrangler/
+*.local
+.DS_Store
+.frostnova/
+.audit/
+outputs/
+
+# secrets — never commit
+.dev.vars
+.dev.vars.*
+client_secret_*.json
+
+# local art / media working copies (generated, not shipped)
+apps/Instagoon/art/
+apps/Instagoon/content/creators/*/assets/
+apps/Instagoon/content/creators/*/avatars/

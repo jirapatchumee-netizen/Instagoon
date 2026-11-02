@@ -1,0 +1,23 @@
+{
+  "creatorId": "milin",
+  "name": "มิลิน",
+  "version": "2.0",
+  "identity": {
+    "ageVisual": "20yo youthful cute idol (ดูเด็ก สดใส วัย 20 ปี)",
+    "hairDna": "long wavy honey-brown hair, soft curtain bangs, warm golden-brown undertones (ผมยาวลอนสีน้ำตาลคาราเมลประกายทอง มีหน้าม้าปัดข้าง)",
+    "faceDna": "small heart-shaped face, big glassy expressive amber-brown eyes, cute aegyo-sal, natural flushed peach cheeks, plump glossy gradient lips, youthful innocent look (หน้าเรียวเล็ก ตาโตสีน้ำตาลอำพัน มีดอลลี่อายส์ ปากฉ่ำวาว)",
+    "bodyDna": "slender feminine hourglass figure, fair porcelain skin, delicate collarbone, graceful shoulders (รูปร่างเพรียว ผิวขาวออร่า ไหปลาร้าสวย)",
+    "styleTheme": "Modern Korean Webtoon / Manhwa Adult Romance Art Style (ลายเส้นบางคมชัด แอร์บรัชดิจิทัลไล่เฉด ผิวฉ่ำวาว ไฮไลต์เรืองแสง ริมไลท์ละมุน ฝุ่นประกายแสง)"
+  },
+  "styleAnchor": "(masterpiece, best quality:1.2), modern korean webtoon style, authentic manhwa art, delicate colored lineart, smooth digital airbrush shading, luminous porcelain skin with rosy blush, glossy highlights, volumetric rim lighting, soft glowing ambient particles, vibrant manhwa coloring",
+  "characterAnchor": "(solo, 1girl, 20yo youthful Korean-Thai beauty, Milin:1.3), (long wavy honey-brown hair, soft curtain bangs, big glassy expressive amber-brown eyes, cute aegyo-sal, flushed blushing cheeks, plump glossy gradient lips:1.2), (slender feminine hourglass figure, defined collarbone, graceful shoulders:1.1)",
+  "promptAnchor": "(masterpiece, best quality:1.2), modern korean webtoon style, authentic manhwa art, delicate colored lineart, smooth digital airbrush shading, luminous porcelain skin with rosy blush, glossy highlights, volumetric rim lighting, soft glowing ambient particles, vibrant manhwa coloring, (solo, 1girl, 20yo youthful Korean-Thai beauty, Milin:1.3), (long wavy honey-brown hair, soft curtain bangs, big glassy expressive amber-brown eyes, cute aegyo-sal, flushed blushing cheeks, plump glossy gradient lips:1.2), (slender feminine hourglass figure, defined collarbone, graceful shoulders:1.1)",
+  "negativePrompt": "western comic, 3d render, photorealistic, harsh black lines, flat lighting, dull colors, heavy mature wrinkles, masculine, deformed anatomy, bad hands, text, speech bubble, watermark",
+  "wardrobePresets": {
+    "cat_cosplay": "wearing (black lace cat lingerie, sheer mesh fabric, black cat ear headband, choker with golden bell, playful cat tail:1.2)",
+    "outfit_fitting_chic": "wearing (tight fitted long-sleeve off-shoulder top, cream white tone, bare shoulders and graceful collarbone, minimalist clean aesthetic:1.2)",
+    "casual_room": "wearing (cozy oversized knit cardigan slipping off shoulder, grey ribbed crop top, comfortable cute shorts:1.2)",
+    "nightwear": "wearing (silky satin champagne slip camisole dress, lace trim, delicate straps:1.2)",
+    "balcony_chic": "wearing (elegant black slip dress with subtle slit, delicate silver pendant, lightly wrapped in sheer shawl, city skyline night background:1.2)"
+  }
+}

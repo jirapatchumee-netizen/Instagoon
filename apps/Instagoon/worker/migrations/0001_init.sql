@@ -1,0 +1,62 @@
+PRAGMA foreign_keys = ON;
+CREATE TABLE invites (email TEXT PRIMARY KEY COLLATE NOCASE, status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','revoked')));
+CREATE TABLE users (id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE COLLATE NOCASE, google_id TEXT NOT NULL UNIQUE, age_verified_at INTEGER, consent_version TEXT, is_test INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL);
+CREATE TABLE sessions (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires_at INTEGER NOT NULL);
+CREATE TABLE oauth_states (id TEXT PRIMARY KEY, verifier TEXT NOT NULL, expires_at INTEGER NOT NULL);
+CREATE TABLE creators (id TEXT PRIMARY KEY, name TEXT NOT NULL, bio TEXT NOT NULL DEFAULT '', avatar_key TEXT);
+CREATE TABLE posts (id TEXT PRIMARY KEY, creator_id TEXT NOT NULL REFERENCES creators(id), caption TEXT NOT NULL, media_key TEXT, published_at INTEGER NOT NULL, relationship_required INTEGER NOT NULL DEFAULT 0, simulated_likes INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft','published','suspended')));
+CREATE TABLE stories (id TEXT PRIMARY KEY, creator_id TEXT NOT NULL REFERENCES creators(id), type TEXT NOT NULL CHECK(type IN ('broadcast','unlockable')), media_key TEXT NOT NULL, published_at INTEGER NOT NULL, relationship_required INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft','published','suspended')));
+CREATE TABLE story_views (user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, story_id TEXT NOT NULL REFERENCES stories(id), first_viewed_at INTEGER NOT NULL, PRIMARY KEY(user_id,story_id));
+CREATE TABLE relationships (user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, creator_id TEXT NOT NULL REFERENCES creators(id), score INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(user_id,creator_id));
+CREATE TABLE energy (user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, free INTEGER NOT NULL DEFAULT 3, purchased INTEGER NOT NULL DEFAULT 0, next_refill_at INTEGER);
+CREATE TABLE comment_claims (user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, post_id TEXT NOT NULL REFERENCES posts(id), PRIMARY KEY(user_id,post_id));
+CREATE TABLE comments (id TEXT PRIMARY KEY, request_id TEXT NOT NULL, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, post_id TEXT NOT NULL REFERENCES posts(id), content TEXT NOT NULL CHECK(length(content) BETWEEN 1 AND 1000), hidden INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, UNIQUE(user_id,request_id));
+CREATE TABLE comment_requests (user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, request_id TEXT NOT NULL, PRIMARY KEY(user_id,request_id));
+CREATE TABLE comment_rate_events (user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, created_at INTEGER NOT NULL);
+CREATE TABLE token_ledger (id TEXT PRIMARY KEY, user_id TEXT REFERENCES users(id) ON DELETE SET NULL, delta_free INTEGER NOT NULL DEFAULT 0, delta_purchased INTEGER NOT NULL DEFAULT 0, reason TEXT NOT NULL, created_at INTEGER NOT NULL);
+CREATE TABLE reports (id TEXT PRIMARY KEY, comment_id TEXT NOT NULL REFERENCES comments(id) ON DELETE CASCADE, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, reason TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'open', created_at INTEGER NOT NULL, UNIQUE(user_id,comment_id));
+CREATE TABLE likes (user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, post_id TEXT NOT NULL REFERENCES posts(id), PRIMARY KEY(user_id,post_id));
+CREATE TABLE episodes (id TEXT PRIMARY KEY, creator_id TEXT NOT NULL REFERENCES creators(id), title TEXT NOT NULL, relationship_required INTEGER NOT NULL DEFAULT 0, position INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE revisions (id TEXT PRIMARY KEY, creator_id TEXT NOT NULL REFERENCES creators(id), episode_id TEXT NOT NULL REFERENCES episodes(id), nodes TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft','published','suspended')), created_at INTEGER NOT NULL);
+CREATE TABLE chat_states (user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, episode_id TEXT NOT NULL REFERENCES episodes(id), revision_id TEXT NOT NULL REFERENCES revisions(id), current_node_id TEXT NOT NULL, last_choice_id TEXT, PRIMARY KEY(user_id,episode_id));
+CREATE TABLE chat_active (user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, creator_id TEXT NOT NULL REFERENCES creators(id), episode_id TEXT NOT NULL REFERENCES episodes(id), PRIMARY KEY(user_id,creator_id));
+CREATE TABLE chat_history (user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, episode_id TEXT NOT NULL REFERENCES episodes(id), position INTEGER NOT NULL, node_id TEXT NOT NULL, choice_id TEXT, PRIMARY KEY(user_id,episode_id,position));
+CREATE TRIGGER chat_start AFTER INSERT ON chat_states BEGIN INSERT INTO chat_history(user_id,episode_id,position,node_id) VALUES(NEW.user_id,NEW.episode_id,0,NEW.current_node_id); END;
+CREATE TRIGGER chat_advance AFTER UPDATE OF current_node_id ON chat_states BEGIN
+ UPDATE chat_history SET choice_id=NEW.last_choice_id WHERE user_id=NEW.user_id AND episode_id=NEW.episode_id AND position=(SELECT MAX(position) FROM chat_history WHERE user_id=NEW.user_id AND episode_id=NEW.episode_id);
+ INSERT INTO chat_history(user_id,episode_id,position,node_id) SELECT NEW.user_id,NEW.episode_id,COALESCE(MAX(position),-1)+1,NEW.current_node_id FROM chat_history WHERE user_id=NEW.user_id AND episode_id=NEW.episode_id;
+END;
+CREATE TABLE notifications (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, text TEXT NOT NULL, created_at INTEGER NOT NULL, read_at INTEGER);
+CREATE TABLE activity (user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, kind TEXT NOT NULL, created_at INTEGER NOT NULL);
+CREATE TRIGGER comment_before BEFORE INSERT ON comments BEGIN
+  SELECT CASE WHEN NOT EXISTS (SELECT 1 FROM posts p LEFT JOIN relationships r ON r.creator_id=p.creator_id AND r.user_id=NEW.user_id WHERE p.id=NEW.post_id AND p.status='published' AND p.published_at<=NEW.created_at AND COALESCE(r.score,0)>=p.relationship_required) THEN RAISE(ABORT,'post_unavailable') END;
+  SELECT CASE WHEN EXISTS (SELECT 1 FROM comment_requests WHERE user_id=NEW.user_id AND request_id=NEW.request_id) THEN RAISE(ABORT,'idempotency_conflict') END;
+  DELETE FROM comment_rate_events WHERE user_id=NEW.user_id AND created_at<=NEW.created_at-60000;
+  SELECT CASE WHEN (SELECT COUNT(*) FROM comment_rate_events WHERE user_id=NEW.user_id AND created_at>NEW.created_at-60000)>=10 THEN RAISE(ABORT,'rate_limit') END;
+  INSERT OR IGNORE INTO energy(user_id) VALUES(NEW.user_id);
+  UPDATE energy SET free=3,next_refill_at=NULL WHERE user_id=NEW.user_id AND next_refill_at IS NOT NULL AND next_refill_at<=NEW.created_at;
+  SELECT CASE WHEN NOT EXISTS (SELECT 1 FROM comment_claims WHERE user_id=NEW.user_id AND post_id=NEW.post_id) AND (SELECT free+purchased FROM energy WHERE user_id=NEW.user_id)<1 THEN RAISE(ABORT,'energy_empty') END;
+END;
+CREATE TRIGGER comment_record AFTER INSERT ON comments BEGIN
+  INSERT INTO comment_requests(user_id,request_id) VALUES(NEW.user_id,NEW.request_id);
+  INSERT INTO comment_rate_events(user_id,created_at) VALUES(NEW.user_id,NEW.created_at);
+END;
+CREATE TRIGGER comment_after AFTER INSERT ON comments WHEN NOT EXISTS (SELECT 1 FROM comment_claims WHERE user_id=NEW.user_id AND post_id=NEW.post_id) BEGIN
+  INSERT INTO token_ledger(id,user_id,delta_free,delta_purchased,reason,created_at) SELECT NEW.id,NEW.user_id,CASE WHEN free>0 THEN -1 ELSE 0 END,CASE WHEN free>0 THEN 0 ELSE -1 END,'comment',NEW.created_at FROM energy WHERE user_id=NEW.user_id;
+  UPDATE energy SET next_refill_at=CASE WHEN free>0 AND next_refill_at IS NULL THEN NEW.created_at+14400000 ELSE next_refill_at END,purchased=CASE WHEN free=0 THEN purchased-1 ELSE purchased END,free=CASE WHEN free>0 THEN free-1 ELSE free END WHERE user_id=NEW.user_id;
+  INSERT INTO relationships(user_id,creator_id,score) VALUES(NEW.user_id,(SELECT creator_id FROM posts WHERE id=NEW.post_id),1) ON CONFLICT(user_id,creator_id) DO UPDATE SET score=score+1;
+  INSERT INTO comment_claims(user_id,post_id) VALUES(NEW.user_id,NEW.post_id);
+END;
+CREATE TRIGGER invite_cap BEFORE INSERT ON invites WHEN NEW.status='active' AND (SELECT COUNT(*) FROM invites WHERE status='active')>=100 BEGIN SELECT RAISE(ABORT,'invite_limit'); END;
+CREATE TRIGGER invite_reactivate_cap BEFORE UPDATE OF status ON invites WHEN OLD.status!='active' AND NEW.status='active' AND (SELECT COUNT(*) FROM invites WHERE status='active')>=100 BEGIN SELECT RAISE(ABORT,'invite_limit'); END;
+
+CREATE INDEX activity_user_time ON activity(user_id,created_at);
+CREATE INDEX activity_kind_user ON activity(kind,user_id,created_at);
+CREATE INDEX posts_publication ON posts(status,published_at);
+CREATE INDEX stories_publication ON stories(status,published_at);
+CREATE INDEX comments_post_time ON comments(post_id,created_at);
+CREATE INDEX comment_rate_user_time ON comment_rate_events(user_id,created_at);
+CREATE INDEX revisions_episode_status ON revisions(episode_id,status,created_at);
+CREATE INDEX episodes_creator_position ON episodes(creator_id,position);
+CREATE INDEX posts_media ON posts(media_key);
+CREATE INDEX stories_media ON stories(media_key);

@@ -1,0 +1,36 @@
+{
+  "name": "instagoon",
+  "private": true,
+  "version": "0.2.0",
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --dir apps/Instagoon dev",
+    "build": "pnpm --dir apps/Instagoon build",
+    "preview": "pnpm --dir apps/Instagoon preview",
+    "build:staging": "pnpm --dir apps/Instagoon build:staging",
+    "test:worker": "node --experimental-strip-types --test apps/Instagoon/worker/tests/*.test.mjs"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "idb-keyval": "^6.2.1",
+    "jszip": "3.10.1",
+    "lucide-react": "^0.475.0",
+    "radix-ui": "1.6.7",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwind-merge": "^3.0.1",
+    "zod": "3.25.76",
+    "zod-to-json-schema": "3.25.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.4",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.5.2",
+    "tailwindcss": "^3.4.17",
+    "typescript": "~5.7.2",
+    "vite": "^6.1.0"
+  }
+}

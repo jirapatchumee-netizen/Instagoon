@@ -1,0 +1,31 @@
+name: PR check (Instagoon)
+
+# Runs on every PR into main. Nothing is deployed; this is the gate before merge.
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: pr-check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Tests + build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+      - run: pnpm install --no-frozen-lockfile
+      - name: Worker tests (gameplay purity, NPC bundle, API)
+        run: |
+          node --experimental-strip-types --test apps/Instagoon/worker/tests/*.test.mjs
+          node apps/Instagoon/worker/tests/api.mjs
+      - name: Build (player + staging login)
+        run: pnpm --dir apps/Instagoon run build:staging
