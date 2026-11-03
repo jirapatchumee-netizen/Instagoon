@@ -174,5 +174,46 @@
       "maxUses": 10
     }
   ],
-  "rewards": []
+  "rewards": [
+    {
+      "id": "milin-cat-cosplay",
+      "name": "ชุดคอสเพลย์แมวขี้อ้อน",
+      "asset": "assets/milin_cat_cosplay.png",
+      "caption": "ชุดคอสเพลย์แมวเซ็กซี่ที่มิลินแอบใส่เล่นในห้อง",
+      "message": "ส่งรูปชุดคอสเพลย์แมวให้ดูคนเดียวน้า ห้ามเอาไปเปิดเผยที่ไหนล่ะ 🐱✨",
+      "conditions": [
+        { "field": "level", "value": 2, "eventId": "" }
+      ]
+    },
+    {
+      "id": "milin-late-night",
+      "name": "แชทดึกบนเตียง",
+      "asset": "assets/milin_late_night_chat.png",
+      "caption": "ภาพเซลฟี่บนเตียงยามดึกในห้องนอน",
+      "message": "นอนไม่หลับเลย... แอบถ่ายรูปบนเตียงส่งมาอ้อน เผื่อมีคนใจดีมากล่อม 🥺🤍",
+      "conditions": [
+        { "field": "level", "value": 3, "eventId": "" }
+      ]
+    },
+    {
+      "id": "milin-silk-nightwear",
+      "name": "ชุดนอนผ้าซาตินแชมเปญ",
+      "asset": "assets/milin_silk_nightwear.png",
+      "caption": "ชุดนอนผ้าซาตินแชมเปญสายเดี่ยวตัวโปรด",
+      "message": "ชุดนอนตัวโปรดที่เพิ่งสั่งมา สวยไหมน้า? มิลินใส่ให้ดูเป็นคนแรกเลย 🙈✨",
+      "conditions": [
+        { "field": "level", "value": 4, "eventId": "" }
+      ]
+    },
+    {
+      "id": "milin-balcony",
+      "name": "ดูดาวที่ระเบียงสองคน",
+      "asset": "assets/milin_balcony_confession.png",
+      "caption": "ยืนรับลมดูดาวที่ระเบียงคอนโดวิวเมือง",
+      "message": "บรรยากาศที่ระเบียงคืนนี้ดีจัง... ถ้ามีเธอยืนข้างๆ คงอุ่นกว่านี้เนอะ 🤍",
+      "conditions": [
+        { "field": "level", "value": 5, "eventId": "" }
+      ]
+    }
+  ]
 }

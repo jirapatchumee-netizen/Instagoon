@@ -414,6 +414,7 @@ type Chat = {
   history: { id: string; text: string; end: boolean; choiceText?: string }[];
   aiMessages?: AiChatMessage[];
   memories?: PlayerMemory[];
+  unlockedRewards?: string[];
   closeness?: number;
   trust?: number;
   romance?: number;
@@ -451,10 +452,12 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
 function ChatComposer({
   placeholder,
   disabled,
+  suggestedReplies,
   onSend,
 }: {
   placeholder: string;
   disabled: boolean;
+  suggestedReplies?: string[];
   onSend: (text: string) => void;
 }) {
   const [text, setText] = useState('');
@@ -476,38 +479,55 @@ function ChatComposer({
   };
 
   return (
-    <form
-      className="fs-dm-input-form"
-      onSubmit={(event) => {
-        event.preventDefault();
-        submit();
-      }}
-    >
-      <textarea
-        ref={ref}
-        rows={1}
-        className="fs-dm-text-input"
-        placeholder={placeholder}
-        value={text}
-        enterKeyHint="send"
-        onChange={(event) => setText(event.target.value)}
-        onKeyDown={(event) => {
-          // Enter sends; Shift+Enter is a new line; Enter that confirms an IME (Thai/Japanese) candidate is ignored.
-          if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing && event.keyCode !== 229) {
-            event.preventDefault();
-            submit();
-          }
+    <div className="fs-dm-composer-wrap">
+      {suggestedReplies && suggestedReplies.length > 0 && (
+        <div className="fs-reply-pills-row" role="region" aria-label="Suggested Replies">
+          {suggestedReplies.map((pill, idx) => (
+            <button
+              key={idx}
+              type="button"
+              className="fs-reply-pill"
+              disabled={disabled}
+              onClick={() => onSend(pill)}
+            >
+              {pill}
+            </button>
+          ))}
+        </div>
+      )}
+      <form
+        className="fs-dm-input-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          submit();
         }}
-      />
-      <button
-        type="submit"
-        className="fs-dm-send-btn"
-        aria-label="Send"
-        disabled={!text.trim() || disabled}
       >
-        <Send size={18} />
-      </button>
-    </form>
+        <textarea
+          ref={ref}
+          rows={1}
+          className="fs-dm-text-input"
+          placeholder={placeholder}
+          value={text}
+          enterKeyHint="send"
+          onChange={(event) => setText(event.target.value)}
+          onKeyDown={(event) => {
+            // Enter sends; Shift+Enter is a new line; Enter that confirms an IME (Thai/Japanese) candidate is ignored.
+            if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing && event.keyCode !== 229) {
+              event.preventDefault();
+              submit();
+            }
+          }}
+        />
+        <button
+          type="submit"
+          className="fs-dm-send-btn"
+          aria-label="Send"
+          disabled={!text.trim() || disabled}
+        >
+          <Send size={18} />
+        </button>
+      </form>
+    </div>
   );
 }
 
@@ -811,6 +831,10 @@ export function FrostStoryApp() {
   const [aiDmTab, setAiDmTab] = useState<'ai' | 'story'>('ai');
   const [aiSending, setAiSending] = useState(false);
   const [pending, setPending] = useState<{ id: string; content: string; failed?: string }[]>([]);
+  const [suggestedReplies, setSuggestedReplies] = useState<string[]>([]);
+  const [moodToast, setMoodToast] = useState<string | null>(null);
+  const [unlockedRewards, setUnlockedRewards] = useState<string[]>([]);
+  const moodToastTimerRef = useRef<number | null>(null);
   const [memoryPanel, setMemoryPanel] = useState<{ open: boolean; items: { key: string; value: string }[] }>({ open: false, items: [] });
   const [unlockedStoryModal, setUnlockedStoryModal] = useState<{
     open: boolean;
@@ -821,6 +845,16 @@ export function FrostStoryApp() {
 
   useEffect(() => {
     setMemoryPanel({ open: false, items: [] });
+    setMoodToast(null);
+    if (selectedCreator) {
+      setSuggestedReplies([
+        selectedCreator.id === 'milin' ? 'ทำงานเหนื่อยไหมน้า วันนี้เป็นไงบ้าง 🥺' : 'สวัสดีค่ะ วันนี้เป็นไงบ้าง ✨',
+        'มีเรื่องสนุกๆ เล่าให้ฟังหน่อยสิ 😏',
+        'แอบคิดถึงเลยแวะเข้ามาทักทาย 🤍'
+      ]);
+    } else {
+      setSuggestedReplies([]);
+    }
   }, [selectedCreator?.id]);
 
   async function toggleMemoryPanel() {
@@ -863,8 +897,11 @@ export function FrostStoryApp() {
       const res = await api<{
         ok: boolean;
         reply: string;
+        suggestedReplies?: string[];
+        moodToast?: string | null;
         mediaKey: string | null;
         messages: AiChatMessage[];
+        unlockedRewards?: string[];
         relationship: number;
         energy: Energy;
       }>(`/api/chats/${encodeURIComponent(selectedCreator.id)}/message`, json({ message: text }));
@@ -872,6 +909,15 @@ export function FrostStoryApp() {
       setPending((prev) => prev.filter((item) => item.id !== id));
       if (res.messages) setChat((prev) => (prev ? { ...prev, aiMessages: res.messages } : prev));
       if (res.energy) setEnergy(res.energy);
+      if (res.unlockedRewards) setUnlockedRewards(res.unlockedRewards);
+      if (res.suggestedReplies && res.suggestedReplies.length > 0) {
+        setSuggestedReplies(res.suggestedReplies);
+      }
+      if (res.moodToast) {
+        if (moodToastTimerRef.current) clearTimeout(moodToastTimerRef.current);
+        setMoodToast(res.moodToast);
+        moodToastTimerRef.current = window.setTimeout(() => setMoodToast(null), 4500);
+      }
       if (typeof res.relationship === 'number') {
         setSelectedCreator((prev) => (prev ? { ...prev, relationship: res.relationship } : prev));
         setCreators((prev) =>
@@ -892,6 +938,32 @@ export function FrostStoryApp() {
       setPending((prev) => prev.map((item) => (item.id === id ? { ...item, failed: reason } : item)));
     } finally {
       setAiSending(false);
+    }
+  }
+
+  async function unlockReward(mediaKey: string, method: 'level' | 'energy') {
+    if (!selectedCreator) return;
+    try {
+      const res = await api<{ ok: boolean; unlocked: boolean; energy?: Energy }>(
+        `/api/chats/${encodeURIComponent(selectedCreator.id)}/rewards/unlock`,
+        json({ mediaKey, method })
+      );
+      if (res.unlocked) {
+        setUnlockedRewards((prev) => (prev.includes(mediaKey) ? prev : [...prev, mediaKey]));
+        if (res.energy) setEnergy(res.energy);
+        if (moodToastTimerRef.current) clearTimeout(moodToastTimerRef.current);
+        setMoodToast(`ปลดล็อกรูปภาพของ ${selectedCreator.name} สำเร็จแล้ว! ✨`);
+        moodToastTimerRef.current = window.setTimeout(() => setMoodToast(null), 4000);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('level_too_low')) {
+        alert('ระดับความสัมพันธ์ยังไม่ถึงเกณฑ์ หรือสามารถเลือกกดปลดล็อกทันทีด้วย 3⚡ ได้ค่ะ');
+      } else if (msg.includes('energy_empty')) {
+        alert('พลังงานไม่พอ (ต้องการ 3⚡) รอรีเฟรชพรุ่งนี้ได้เลยค่ะ');
+      } else {
+        setError(msg);
+      }
     }
   }
 
@@ -1001,6 +1073,7 @@ export function FrostStoryApp() {
     try {
       const result = await api<{ chat: Chat }>(`/api/chats/${encodeURIComponent(creator.id)}`);
       setChat(result.chat);
+      setUnlockedRewards(result.chat.unlockedRewards || []);
     } catch (e) {
       setSelectedCreator(null);
       setError(e instanceof Error ? e.message : t.genericError);
@@ -1011,6 +1084,8 @@ export function FrostStoryApp() {
     setSelectedCreator(null);
     setChat(null);
     setPending([]);
+    setMoodToast(null);
+    setSuggestedReplies([]);
   }
 
   async function openStory(story: Story) {
@@ -1809,6 +1884,12 @@ export function FrostStoryApp() {
               </div>
             </header>
 
+            {moodToast && (
+              <div className="fs-mood-toast-banner" role="status">
+                <span>{moodToast}</span>
+              </div>
+            )}
+
             <div className="fs-dm-mode-toggle" role="tablist" data-active={aiDmTab}>
               <span className="fs-dm-mode-thumb" aria-hidden="true" />
               <button
@@ -1932,6 +2013,40 @@ export function FrostStoryApp() {
                         </div>
                         <div className="fs-dm-msg-col">
                           <div className="fs-bubble">{renderBubbleContent(msg.content)}</div>
+                          {msg.mediaKey && (
+                            <div className="fs-blurred-teaser-card">
+                              {unlockedRewards.includes(msg.mediaKey) ? (
+                                <div className="fs-teaser-media-wrap is-unlocked">
+                                  <img src={media(msg.mediaKey)} alt="Exclusive photo" className="fs-teaser-img" />
+                                  <div className="fs-teaser-badge fs-badge-unlocked">✨ ปลดล็อกแล้ว</div>
+                                </div>
+                              ) : (
+                                <div className="fs-teaser-media-wrap is-locked">
+                                  <img src={media(msg.mediaKey)} alt="Locked photo teaser" className="fs-teaser-img is-blurred" />
+                                  <div className="fs-teaser-overlay">
+                                    <div className="fs-teaser-lock-icon">🔒</div>
+                                    <p className="fs-teaser-hint">รูปถ่ายส่วนตัวจาก {selectedCreator.name}</p>
+                                    <div className="fs-teaser-actions">
+                                      <button
+                                        type="button"
+                                        className="fs-teaser-btn fs-teaser-btn-free"
+                                        onClick={() => void unlockReward(msg.mediaKey!, 'level')}
+                                      >
+                                        ✨ ปลดล็อกฟรี (ตามเลเวล)
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="fs-teaser-btn fs-teaser-btn-instant"
+                                        onClick={() => void unlockReward(msg.mediaKey!, 'energy')}
+                                      >
+                                        ⚡ ปลดล็อกทันที (3⚡)
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
                           {msg.affectionDelta ? (
                             <span className="fs-dm-affection">+{msg.affectionDelta} 💖</span>
                           ) : null}
@@ -2043,6 +2158,7 @@ export function FrostStoryApp() {
               <ChatComposer
                 placeholder={`ส่งข้อความหา ${selectedCreator.name}…`}
                 disabled={!chat || aiSending}
+                suggestedReplies={suggestedReplies}
                 onSend={(text) => void sendAiMessage(text)}
               />
             ) : (

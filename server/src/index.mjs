@@ -55,6 +55,21 @@ async function takeEnergy(env, uid, now) {
  }
  return null;
 }
+async function spendEnergy(env, uid, amount, reason, now) {
+ await energy(env, uid, now);
+ const cur = await one(env, 'SELECT free, purchased FROM energy WHERE user_id=?', uid);
+ if(!cur || (cur.free + cur.purchased) < amount) return null;
+ let remaining = amount;
+ const fromFree = Math.min(cur.free, remaining);
+ remaining -= fromFree;
+ const fromPurchased = remaining;
+ await env.DB.batch([
+  env.DB.prepare('UPDATE energy SET free=free-?, purchased=purchased-? WHERE user_id=?').bind(fromFree, fromPurchased, uid),
+  env.DB.prepare('INSERT INTO token_ledger(id,user_id,delta_free,delta_purchased,reason,created_at) VALUES(?,?,?,?,?,?)').bind(crypto.randomUUID(), uid, -fromFree, -fromPurchased, reason, now)
+ ]);
+ const row = await energy(env, uid, now);
+ return { ok: true, energy: row };
+}
 async function refundEnergy(env, uid, bucket, now) {
  if(bucket!=='free' && bucket!=='purchased') return;
  await run(env, `UPDATE energy SET ${bucket}=${bucket}+1 WHERE user_id=?`, uid);
@@ -367,6 +382,30 @@ async function player(req,env,user,path,now,ctx) {
    return removed.meta.changes?json({ok:true}):json({error:'not_found'},404);
   }
   return json({error:'not_found'},404);
+ }
+ m=path.match(/^\/api\/chats\/([\w-]+)\/rewards\/unlock$/);
+ if(m&&method==='POST'){
+  const creator=id(m[1]), b=await body(req), mediaKey=key(b.mediaKey), unlockMethod=string(b.method||'level', 16);
+  const already=await one(env,'SELECT 1 FROM reward_unlocks WHERE user_id=? AND creator_id=? AND reward_key=?',user.id,creator,mediaKey);
+  if(already) return json({ok:true,unlocked:true,already:true,energy:await energy(env,user.id,now)});
+  if(unlockMethod==='energy'){
+   const spent=await spendEnergy(env,user.id,3,'unlock_reward:'+mediaKey,now);
+   if(!spent) return json({error:'energy_empty'},402);
+   await run(env,'INSERT INTO reward_unlocks(user_id,creator_id,reward_key,unlocked_at) VALUES(?,?,?,?)',user.id,creator,mediaKey,now);
+   return json({ok:true,unlocked:true,energy:spent.energy});
+  }
+  const [relRow, defRow]=await env.DB.batch([
+   env.DB.prepare('SELECT score,closeness,trust,romance FROM relationships WHERE user_id=? AND creator_id=?').bind(user.id,creator),
+   env.DB.prepare('SELECT definition_json FROM npc_definitions WHERE creator_id=?').bind(creator)
+  ]);
+  let npcDef=null;if(defRow.results[0]?.definition_json){try{npcDef=JSON.parse(defRow.results[0].definition_json);}catch(e){}}
+  const cfg=relationshipConfig(npcDef);
+  const currentLv=levelOf(cfg, relRow.results[0]?.score||0);
+  const rewItem=(npcDef?.rewards||[]).find(r=>r.asset===mediaKey);
+  const requiredLevel=rewItem?.conditions?.find(c=>c.field==='level')?.value||2;
+  if(currentLv<requiredLevel) return json({error:'level_too_low',requiredLevel,currentLevel:currentLv},403);
+  await run(env,'INSERT INTO reward_unlocks(user_id,creator_id,reward_key,unlocked_at) VALUES(?,?,?,?)',user.id,creator,mediaKey,now);
+  return json({ok:true,unlocked:true,energy:await energy(env,user.id,now)});
  }
  m=path.match(/^\/api\/chats\/([\w-]+)(?:\/(choose|episode|message))?$/);
  if(m){
@@ -716,7 +755,9 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
      rel = Math.min(100, rel + scoreDelta);
    }
 
-   const rewardMediaKey = null;
+   const unlockedSet = new Set((unlockRes.results || []).map(r => r.reward_key));
+   const rewardObj = pickReward(npcDef, { closeness, trust, romance, level: currentLv, events, turns: turnCount, score: rel, scoreDelta }, unlockedSet);
+   const rewardMediaKey = rewardObj?.asset || null;
 
    // Apply deltas in SQL so a concurrent comment's score change is never overwritten.
    const delta = { closeness: closeness - before.closeness, trust: trust - before.trust, romance: romance - before.romance };
@@ -758,6 +799,7 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
      knowledgeResult:{entries:entries.map(({title,source,checkedAt})=>({title,source,checkedAt})),applied:knowledgeApplied,search:{status:search.status,sources:search.sources,queries:search.queries,usage:search.usage}},
      mediaKey: rewardMediaKey,
      messages: allAiMessages,
+     unlockedRewards: Array.from(unlockedSet),
      relationship: rel,
      closeness,
      trust,
@@ -773,17 +815,19 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
     await run(env, 'UPDATE dm_threads SET lock_token=NULL, lock_until=0 WHERE user_id=? AND creator_id=? AND lock_token=?', user.id, creator, lockToken);
    }
   }
-  // The chat screen needs these four independent rows together; they used to be four round trips.
-  const [messagesRes, memRes, relRes, npcRes] = await env.DB.batch([
+  // The chat screen needs these five independent rows together; they used to be multiple round trips.
+  const [messagesRes, memRes, relRes, npcRes, unlocksRes] = await env.DB.batch([
     env.DB.prepare('SELECT id, role, content, media_key mediaKey, affection_delta affectionDelta, created_at createdAt FROM ai_chat_messages WHERE user_id=? AND creator_id=? ORDER BY created_at ASC LIMIT 100').bind(user.id, creator),
     env.DB.prepare('SELECT key, value, created_at createdAt FROM player_memories WHERE user_id=? AND creator_id=? ORDER BY created_at DESC').bind(user.id, creator),
     env.DB.prepare('SELECT score, closeness, trust, romance, turns FROM relationships WHERE user_id=? AND creator_id=?').bind(user.id, creator),
-    env.DB.prepare('SELECT definition_json FROM npc_definitions WHERE creator_id=?').bind(creator)
+    env.DB.prepare('SELECT definition_json FROM npc_definitions WHERE creator_id=?').bind(creator),
+    env.DB.prepare('SELECT reward_key FROM reward_unlocks WHERE user_id=? AND creator_id=?').bind(user.id, creator)
   ]);
   const allAiMessages = messagesRes.results;
   const memList = memRes.results;
   const relRow = relRes.results[0] ?? null;
   const npcDefRow = npcRes.results[0] ?? null;
+  const unlockedRewards = (unlocksRes?.results || []).map(r => r.reward_key);
   let npcDef = null;
   if(npcDefRow?.definition_json){try{npcDef=JSON.parse(npcDefRow.definition_json);}catch(e){}}
 
@@ -802,6 +846,7 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
         episodes: [],
         aiMessages: allAiMessages,
         memories: memList,
+        unlockedRewards,
         closeness: relRow?.closeness || 0,
         trust: relRow?.trust || 0,
         romance: relRow?.romance || 0,
@@ -823,7 +868,7 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
   await run(env,'INSERT INTO activity(user_id,kind,created_at) VALUES(?,?,?)',user.id,'dm',now);
   const visited=await all(env,'SELECT node_id,choice_id FROM chat_history WHERE user_id=? AND episode_id=? ORDER BY position',user.id,episode.id);const history=visited.slice(0,-1).map(v=>{const n=nodes.find(x=>x.id===v.node_id);return {id:n.id,text:n.text,end:n.end,choiceText:n.choices.find(c=>c.id===v.choice_id)?.text};});
   const episodeList=[];for(const e of episodes){let completed=e.id===episode.id?!!node.end:false;if(e.id!==episode.id&&e.revision_id){const pinned=await one(env,'SELECT nodes,status FROM revisions WHERE id=?',e.revision_id);if(pinned&&pinned.status!=='suspended')completed=!!JSON.parse(pinned.nodes).find(n=>n.id===e.current_node_id)?.end;}episodeList.push({id:e.id,title:e.title,accessible:e.relationship_required<=score,completed});}
-  return json({chat:{episodeId:episode.id,revisionId:rev.id,currentNodeId:node.id,nodes:[node],history,episodes:episodeList,aiMessages:allAiMessages,memories:memList,closeness:relRow?.closeness||0,trust:relRow?.trust||0,romance:relRow?.romance||0,score}});
+  return json({chat:{episodeId:episode.id,revisionId:rev.id,currentNodeId:node.id,nodes:[node],history,episodes:episodeList,aiMessages:allAiMessages,memories:memList,unlockedRewards,closeness:relRow?.closeness||0,trust:relRow?.trust||0,romance:relRow?.romance||0,score}});
  }
  if(path==='/api/notifications'&&method==='GET'){
   const posts=await all(env,`SELECT p.id,p.published_at created_at,c.name FROM posts p JOIN creators c ON c.id=p.creator_id LEFT JOIN relationships r ON r.creator_id=p.creator_id AND r.user_id=? WHERE p.status='published' AND p.published_at<=? AND COALESCE(r.score,0)>=p.relationship_required ORDER BY p.published_at DESC LIMIT 50`,user.id,now);
