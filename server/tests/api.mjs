@@ -67,6 +67,8 @@ sql.prepare("UPDATE relationships SET score=2 WHERE user_id='u' AND creator_id='
 result=await request('/api/chats/c/episode',{method:'POST',data:{episodeId:'ep2'}});assert.equal(result.payload.chat.episodeId,'ep2');
 result=await request('/api/chats/c/episode',{method:'POST',data:{episodeId:'ep1'}});assert.equal(result.payload.chat.revisionId,'r1');assert.equal(result.payload.chat.history[0].text,'First revision');
 sql.prepare("UPDATE revisions SET status='suspended' WHERE id='r1'").run();assert.equal((await request('/api/chats/c')).status,403);
+result=await request('/api/chats/c/reset',{method:'POST'});assert.equal(result.status,200,'player can restart a story');
+result=await request('/api/chats/c');assert.equal(result.status,200);assert.equal(result.payload.chat.revisionId,'r2','restart recovers from suspended content');assert.equal(result.payload.chat.history.length,0);assert.equal(result.payload.chat.score,2,'restart keeps relationship progress');
 const pair=await crypto.subtle.generateKey({name:'RSASSA-PKCS1-v1_5',modulusLength:2048,publicExponent:new Uint8Array([1,0,1]),hash:'SHA-256'},true,['sign','verify']);
 const jwk=await crypto.subtle.exportKey('jwk',pair.publicKey);jwk.kid='test';
 const enc=value=>Buffer.from(JSON.stringify(value)).toString('base64url');
