@@ -5,6 +5,7 @@ import {
   ChevronDown,
   Globe,
   LockKeyhole,
+  RotateCcw,
   Send,
   Sparkles,
   User as UserIcon,
@@ -1107,7 +1108,29 @@ export function FrostStoryApp() {
       setChat(result.chat);
       setUnlockedRewards(result.chat.unlockedRewards || []);
     } catch (e) {
+      if (e instanceof Error && e.message === 'content_suspended') {
+        try {
+          await api(`/api/chats/${encodeURIComponent(creator.id)}/reset`, { method: 'POST' });
+          const retry = await api<{ chat: Chat }>(`/api/chats/${encodeURIComponent(creator.id)}`);
+          setChat(retry.chat);
+          setUnlockedRewards(retry.chat.unlockedRewards || []);
+          return;
+        } catch {}
+      }
       setSelectedCreator(null);
+      setError(e instanceof Error ? e.message : t.genericError);
+    }
+  }
+
+  async function resetCurrentChat() {
+    if (!selectedCreator) return;
+    if (!window.confirm('เริ่มเนื้อเรื่องใหม่สำหรับตัวละครนี้ใช่หรือไม่?')) return;
+    try {
+      await api(`/api/chats/${encodeURIComponent(selectedCreator.id)}/reset`, { method: 'POST' });
+      const result = await api<{ chat: Chat }>(`/api/chats/${encodeURIComponent(selectedCreator.id)}`);
+      setChat(result.chat);
+      setUnlockedRewards(result.chat.unlockedRewards || []);
+    } catch (e) {
       setError(e instanceof Error ? e.message : t.genericError);
     }
   }
@@ -2250,6 +2273,16 @@ export function FrostStoryApp() {
                   {t.online} · Lv.{selectedCreator.relationship}
                 </span>
               </div>
+              <button
+                type="button"
+                className="fs-dm-back"
+                style={{ marginLeft: 'auto' }}
+                aria-label="Restart Story"
+                title="เริ่มเรื่องใหม่"
+                onClick={resetCurrentChat}
+              >
+                <RotateCcw size={18} />
+              </button>
             </header>
 
             {moodToast && (
