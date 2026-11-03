@@ -2449,7 +2449,7 @@ dialog.fs-overlay[open]::backdrop {
 }
 
 .fs-answer.is-sending {
-  opacity: 0.6;
+  opacity: 1;
 }
 
 .fs-dm-failed {
