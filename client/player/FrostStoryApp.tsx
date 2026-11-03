@@ -423,6 +423,30 @@ type Chat = {
 };
 type Screen = 'feed' | 'creators' | 'notifications' | 'account';
 
+type ProfileVaultItem = {
+  id: string;
+  name: string;
+  asset: string;
+  caption: string;
+  message: string;
+  minLevel: number;
+  unlocked: boolean;
+};
+
+type ProfileData = {
+  creator: Creator & {
+    tagline?: string;
+    tags?: string[];
+    closeness?: number;
+    trust?: number;
+    romance?: number;
+    level?: number;
+  };
+  posts: Post[];
+  vault: ProfileVaultItem[];
+  episodes: { id: string; title: string; completed: boolean; accessible: boolean }[];
+};
+
 class ApiError extends Error {
   constructor(message: string, readonly status: number) {
     super(message);
@@ -843,6 +867,14 @@ export function FrostStoryApp() {
     episodeTitle?: string;
   }>({ open: false, creatorName: '' });
 
+  // Creator Profile & Close Friends Vault State (ADR 0012)
+  const [profileCreator, setProfileCreator] = useState<Creator | null>(null);
+  const [profileData, setProfileData] = useState<ProfileData | null>(null);
+  const [profileTab, setProfileTab] = useState<'feed' | 'vault' | 'episodes'>('feed');
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [storyToast, setStoryToast] = useState<string | null>(null);
+  const [storyReplyText, setStoryReplyText] = useState('');
+
   useEffect(() => {
     setMemoryPanel({ open: false, items: [] });
     setMoodToast(null);
@@ -1088,6 +1120,54 @@ export function FrostStoryApp() {
     setSuggestedReplies([]);
   }
 
+  async function openProfile(creator: Creator) {
+    setProfileCreator(creator);
+    setProfileTab('feed');
+    setProfileLoading(true);
+    try {
+      const res = await api<ProfileData>(`/api/creators/${encodeURIComponent(creator.id)}/profile`);
+      setProfileData(res);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'ไม่สามารถโหลดโปรไฟล์ได้');
+    } finally {
+      setProfileLoading(false);
+    }
+  }
+
+  function closeProfile() {
+    setProfileCreator(null);
+    setProfileData(null);
+  }
+
+  async function reactToStory(story: Story, reaction: string) {
+    setHeartBurstPostId(`story-${story.id}`);
+    window.setTimeout(() => setHeartBurstPostId(null), 800);
+    try {
+      const res = await api<{ ok: boolean; reaction: string; relationship: number }>(
+        `/api/stories/${encodeURIComponent(story.id)}/react`,
+        json({ reaction })
+      );
+      setCreators((prev) =>
+        prev.map((c) => (c.id === story.creatorId ? { ...c, relationship: res.relationship } : c))
+      );
+      setStoryToast(`ส่งความรู้สึก ${reaction} ถึง ${creatorName(story.creatorId)} แล้ว 💕`);
+      window.setTimeout(() => setStoryToast(null), 3000);
+    } catch {
+      // silent
+    }
+  }
+
+  async function submitStoryReply(story: Story, text: string) {
+    const val = text.trim();
+    if (!val) return;
+    const creator = getCreator(story.creatorId);
+    if (!creator) return;
+    setSelectedStory(null);
+    setStoryReplyText('');
+    await openChat(creator);
+    void sendAiMessage(`[ตอบกลับสตอรี่]: ${val}`);
+  }
+
   async function openStory(story: Story) {
     await action(async () => {
       const result = await api<{ story: Story }>(
@@ -1329,12 +1409,12 @@ export function FrostStoryApp() {
                       <div
                         className="fs-post-author"
                         onClick={() => {
-                          if (creator) void openChat(creator);
+                          if (creator) void openProfile(creator);
                         }}
                         role="button"
                         tabIndex={0}
                         onKeyDown={(e) => {
-                          if (e.key === 'Enter' && creator) void openChat(creator);
+                          if (e.key === 'Enter' && creator) void openProfile(creator);
                         }}
                       >
                         <div className="fs-avatar-ring">
@@ -1598,7 +1678,7 @@ export function FrostStoryApp() {
                 <article
                   className="fs-creator-dm-row"
                   key={creator.id}
-                  onClick={() => void openChat(creator)}
+                  onClick={() => void openProfile(creator)}
                 >
                   <div className="fs-creator-avatar-wrap">
                     <div className="fs-avatar fs-avatar-large">
@@ -1837,19 +1917,307 @@ export function FrostStoryApp() {
               )}
             </div>
 
+            {heartBurstPostId === `story-${selectedStory.id}` && (
+              <div className="fs-heart-burst">❤️</div>
+            )}
+            {storyToast && (
+              <div className="fs-story-reaction-toast">{storyToast}</div>
+            )}
+
             <div className="fs-story-bottom-bar">
-              <button
-                type="button"
-                className="fs-story-reply-btn"
-                onClick={() => {
-                  const creator = getCreator(selectedStory.creatorId);
-                  setSelectedStory(null);
-                  if (creator) void openChat(creator);
+              <div className="fs-story-reactions-row">
+                {['😍', '🔥', '❤️'].map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    className="fs-story-reaction-btn"
+                    onClick={() => void reactToStory(selectedStory, emoji)}
+                    aria-label={`Send reaction ${emoji}`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+              <form
+                className="fs-story-reply-form"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void submitStoryReply(selectedStory, storyReplyText);
                 }}
               >
-                <span>{t.replyStoryPlaceholder}</span>
-                <Send size={15} />
+                <input
+                  type="text"
+                  className="fs-story-reply-input"
+                  placeholder={`ส่งข้อความหา ${creatorName(selectedStory.creatorId)}…`}
+                  value={storyReplyText}
+                  onChange={(e) => setStoryReplyText(e.target.value)}
+                />
+                <button
+                  type="submit"
+                  className="fs-story-reply-send"
+                  disabled={!storyReplyText.trim()}
+                  aria-label="Send Story Reply"
+                >
+                  <Send size={15} />
+                </button>
+              </form>
+            </div>
+          </section>
+        </Modal>
+      )}
+
+      {/* Creator Profile Modal (Close Friends Vault & 3 Tabs - ADR 0012) */}
+      {profileCreator && (
+        <Modal labelledBy="fs-profile-title" onClose={closeProfile}>
+          <section className="fs-profile-modal">
+            <header className="fs-profile-top-bar">
+              <button
+                type="button"
+                className="fs-dm-back"
+                onClick={closeProfile}
+                aria-label="Back"
+              >
+                <ArrowLeft size={22} />
               </button>
+              <h2 id="fs-profile-title">
+                {profileCreator.name}
+                <IgVerified size={15} />
+              </h2>
+              <div style={{ width: 22 }} />
+            </header>
+
+            <div className="fs-profile-body">
+              {profileLoading || !profileData ? (
+                <div className="fs-dm-skeleton" role="status" aria-label="Loading profile">
+                  <span />
+                  <span />
+                  <span />
+                </div>
+              ) : (
+                <>
+                  <div className="fs-profile-hero">
+                    <div className="fs-profile-avatar-wrap">
+                      {profileData.creator.avatarKey ? (
+                        <img src={media(profileData.creator.avatarKey)} alt={profileData.creator.name} />
+                      ) : (
+                        <div className="fs-avatar-letter">{profileData.creator.name.slice(0, 1)}</div>
+                      )}
+                    </div>
+                    <div className="fs-profile-name-row">
+                      <h1>{profileData.creator.name}</h1>
+                      <IgVerified size={18} />
+                    </div>
+                    <span className="fs-profile-handle">
+                      @{profileData.creator.id === 'milin' ? 'milin.zip' : profileData.creator.id}
+                    </span>
+                    {profileData.creator.tagline && (
+                      <p className="fs-profile-tagline">{profileData.creator.tagline}</p>
+                    )}
+                    {profileData.creator.tags && profileData.creator.tags.length > 0 && (
+                      <div className="fs-profile-tags">
+                        {profileData.creator.tags.map((tag, i) => (
+                          <span key={i} className="fs-profile-tag">#{tag}</span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Relationship 3D Dimension Box */}
+                    <div className="fs-profile-rel-card">
+                      <div className="fs-profile-rel-top">
+                        <span className="fs-profile-level-badge">
+                          Lv. {profileData.creator.level || 1}
+                        </span>
+                        <span className="fs-profile-score-text">
+                          ความสัมพันธ์: {profileData.creator.relationship}/100
+                        </span>
+                      </div>
+                      <div className="fs-profile-dim-bars">
+                        <div className="fs-profile-dim-item">
+                          <span className="fs-profile-dim-label">
+                            <span>🤍 ใกล้ชิด</span>
+                            <span>{profileData.creator.closeness || 0}%</span>
+                          </span>
+                          <div className="fs-profile-dim-track">
+                            <div
+                              className="fs-profile-dim-fill"
+                              style={{ width: `${profileData.creator.closeness || 0}%` }}
+                            />
+                          </div>
+                        </div>
+                        <div className="fs-profile-dim-item">
+                          <span className="fs-profile-dim-label">
+                            <span>✨ ไว้ใจ</span>
+                            <span>{profileData.creator.trust || 0}%</span>
+                          </span>
+                          <div className="fs-profile-dim-track">
+                            <div
+                              className="fs-profile-dim-fill"
+                              style={{ width: `${profileData.creator.trust || 0}%` }}
+                            />
+                          </div>
+                        </div>
+                        <div className="fs-profile-dim-item">
+                          <span className="fs-profile-dim-label">
+                            <span>💖 โรแมนติก</span>
+                            <span>{profileData.creator.romance || 0}%</span>
+                          </span>
+                          <div className="fs-profile-dim-track">
+                            <div
+                              className="fs-profile-dim-fill"
+                              style={{ width: `${profileData.creator.romance || 0}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="fs-profile-dm-btn"
+                      onClick={() => {
+                        const c = profileCreator;
+                        closeProfile();
+                        void openChat(c);
+                      }}
+                    >
+                      <Sparkles size={16} /> ส่งข้อความ (DM)
+                    </button>
+                  </div>
+
+                  {/* 3 Tabs Navigation */}
+                  <div className="fs-profile-tabs" role="tablist">
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={profileTab === 'feed'}
+                      className={`fs-profile-tab-btn ${profileTab === 'feed' ? 'is-active' : ''}`}
+                      onClick={() => setProfileTab('feed')}
+                    >
+                      📸 โพสต์ ({profileData.posts.length})
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={profileTab === 'vault'}
+                      className={`fs-profile-tab-btn ${profileTab === 'vault' ? 'is-active' : ''}`}
+                      onClick={() => setProfileTab('vault')}
+                    >
+                      ⭐ Close Friends Vault ({profileData.vault.length})
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={profileTab === 'episodes'}
+                      className={`fs-profile-tab-btn ${profileTab === 'episodes' ? 'is-active' : ''}`}
+                      onClick={() => setProfileTab('episodes')}
+                    >
+                      📖 ตอนทั้งหมด ({profileData.episodes.length})
+                    </button>
+                  </div>
+
+                  {/* Tab 1: Posts Grid */}
+                  {profileTab === 'feed' && (
+                    <div className="fs-profile-posts-grid">
+                      {profileData.posts.length === 0 ? (
+                        <p className="fs-dm-empty" style={{ gridColumn: '1 / -1' }}>ยังไม่มีโพสต์</p>
+                      ) : (
+                        profileData.posts.map((p) => (
+                          <div key={p.id} className="fs-profile-post-thumb">
+                            {p.mediaKey ? (
+                              <img src={media(p.mediaKey)} alt="" loading="lazy" />
+                            ) : (
+                              <div className="fs-profile-post-quote">{p.caption.slice(0, 40)}…</div>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+
+                  {/* Tab 2: Close Friends Vault */}
+                  {profileTab === 'vault' && (
+                    <div className="fs-profile-vault-grid">
+                      {profileData.vault.length === 0 ? (
+                        <p className="fs-dm-empty" style={{ gridColumn: '1 / -1' }}>ยังไม่มีรางวัลในคลัง</p>
+                      ) : (
+                        profileData.vault.map((item) => (
+                          <div key={item.id} className="fs-vault-card">
+                            {item.unlocked ? (
+                              <>
+                                <img src={media(item.asset)} alt={item.name} className="fs-vault-img" />
+                                <div className="fs-vault-badge-unlocked">✨ {item.name}</div>
+                              </>
+                            ) : (
+                              <>
+                                <img src={media(item.asset)} alt={item.name} className="fs-vault-img is-blurred" />
+                                <div className="fs-vault-overlay">
+                                  <div className="fs-vault-lock-icon">🔒</div>
+                                  <p className="fs-vault-title">{item.name}</p>
+                                  <p className="fs-vault-req">ปลดล็อกที่ Lv.{item.minLevel} หรือ 3⚡</p>
+                                  <div className="fs-vault-btns">
+                                    <button
+                                      type="button"
+                                      className="fs-teaser-btn fs-teaser-btn-free"
+                                      onClick={async () => {
+                                        await unlockReward(item.asset, 'level');
+                                        if (profileCreator) void openProfile(profileCreator);
+                                      }}
+                                    >
+                                      ✨ ปลดตามเลเวล
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="fs-teaser-btn fs-teaser-btn-instant"
+                                      onClick={async () => {
+                                        await unlockReward(item.asset, 'energy');
+                                        if (profileCreator) void openProfile(profileCreator);
+                                      }}
+                                    >
+                                      ⚡ ทันที (3⚡)
+                                    </button>
+                                  </div>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+
+                  {/* Tab 3: Episodes List */}
+                  {profileTab === 'episodes' && (
+                    <div className="fs-profile-episodes-list">
+                      {profileData.episodes.length === 0 ? (
+                        <p className="fs-dm-empty">ยังไม่มีตอนในเนื้อเรื่อง</p>
+                      ) : (
+                        profileData.episodes.map((ep) => (
+                          <button
+                            key={ep.id}
+                            type="button"
+                            className="fs-profile-ep-card"
+                            disabled={!ep.accessible}
+                            onClick={() => {
+                              const c = profileCreator;
+                              closeProfile();
+                              void openChat(c);
+                            }}
+                          >
+                            <span className="fs-profile-ep-title">{ep.title}</span>
+                            <span
+                              className={`fs-profile-ep-status ${
+                                ep.completed ? 'is-done' : !ep.accessible ? 'is-locked' : ''
+                              }`}
+                            >
+                              {ep.completed ? '✨ จบแล้ว' : ep.accessible ? '▶️ เล่นได้' : '🔒 ล็อกอยู่'}
+                            </span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </section>
         </Modal>

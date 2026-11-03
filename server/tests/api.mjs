@@ -308,6 +308,11 @@ assert.equal((await call('/api/dev/test-models',{method:'POST',data:{models:['..
   assert.equal(energyUnlock.status, 200, 'unlock succeeds via instant energy');
   assert.equal(energyUnlock.payload.unlocked, true);
   assert.equal(energyUnlock.payload.energy.free, 6, '3 energy tokens spent for instant unlock (10 - 1 chat - 3 unlock = 6)');
+  const prof = await call('/api/creators/inj/profile', { sess: guest.sess });
+  assert.equal(prof.status, 200, 'creator profile endpoint returns 200');
+  assert.equal(prof.payload.creator.id, 'inj');
+  assert.equal(prof.payload.vault.length, 1);
+  assert.equal(prof.payload.vault[0].unlocked, true, 'unlocked reward reflected in vault');
  } finally { globalThis.fetch=saved; }
 }
 console.log('Worker API authentication, comments, stories, revision and deletion checks passed');

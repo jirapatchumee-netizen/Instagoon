@@ -339,13 +339,68 @@ async function player(req,env,user,path,now,ctx) {
  if(path==='/api/consent' && method==='POST'){const b=await body(req);await run(env,'UPDATE users SET age_verified_at=?,consent_version=? WHERE id=?',now,string(b.consentVersion,100),user.id);return json({ok:true});}
  if(!user.age_verified_at)return json({error:'age_consent_required'},403);
  if(path==='/api/creators'&&method==='GET'){const removed=new Set(await removedCreators(env));return json({creators:(await all(env,'SELECT c.*,COALESCE(r.score,0) AS relationship FROM creators c LEFT JOIN relationships r ON r.creator_id=c.id AND r.user_id=? ORDER BY c.name',user.id)).filter(c=>!removed.has(c.id)).map(c=>({id:c.id,name:c.name,bio:c.bio,avatarKey:c.avatar_key,relationship:c.relationship}))});}
+ let m=path.match(/^\/api\/creators\/([\w-]+)\/profile$/);
+ if(m&&method==='GET'){
+  const creatorId=id(m[1]);
+  const creator=await one(env,'SELECT * FROM creators WHERE id=?',creatorId);
+  if(!creator) return json({error:'not_found'},404);
+  const [relRes, defRes, unlocksRes, postsRes, epRes]=await env.DB.batch([
+   env.DB.prepare('SELECT score,closeness,trust,romance FROM relationships WHERE user_id=? AND creator_id=?').bind(user.id,creatorId),
+   env.DB.prepare('SELECT definition_json FROM npc_definitions WHERE creator_id=?').bind(creatorId),
+   env.DB.prepare('SELECT reward_key FROM reward_unlocks WHERE user_id=? AND creator_id=?').bind(user.id,creatorId),
+   env.DB.prepare(`SELECT p.*, (SELECT COUNT(*) FROM likes l WHERE l.post_id=p.id) likes, EXISTS(SELECT 1 FROM comment_claims x WHERE x.user_id=? AND x.post_id=p.id) claimed FROM posts p WHERE p.creator_id=? AND p.status='published' AND p.published_at<=? ORDER BY p.published_at DESC LIMIT 50`).bind(user.id,creatorId,now),
+   env.DB.prepare(`SELECT e.*, s.current_node_id, s.revision_id FROM episodes e LEFT JOIN chat_states s ON s.episode_id=e.id AND s.user_id=? WHERE e.creator_id=? AND EXISTS(SELECT 1 FROM revisions r WHERE r.episode_id=e.id AND r.status='published') ORDER BY e.position,e.id`).bind(user.id,creatorId)
+  ]);
+  const relRow=relRes.results[0]??null, defRow=defRes.results[0]??null;
+  const unlockedSet=new Set((unlocksRes.results||[]).map(r=>r.reward_key));
+  let npcDef=null;if(defRow?.definition_json){try{npcDef=JSON.parse(defRow.definition_json);}catch(e){}}
+  const cfg=relationshipConfig(npcDef);
+  const score=relRow?.score||0;
+  const currentLv=levelOf(cfg,score);
+  const vault=(npcDef?.rewards||[]).map(r=>({
+   id:r.id,
+   name:r.name,
+   asset:r.asset,
+   caption:r.caption||'',
+   message:r.message||'',
+   minLevel:r.conditions?.find(c=>c.field==='level')?.value||2,
+   unlocked:unlockedSet.has(r.asset)
+  }));
+  const episodeList=[];
+  for(const e of (epRes.results||[])){
+   let completed=false;
+   if(e.revision_id){
+    const pinned=await one(env,'SELECT nodes,status FROM revisions WHERE id=?',e.revision_id);
+    if(pinned&&pinned.status!=='suspended') completed=!!JSON.parse(pinned.nodes).find(n=>n.id===e.current_node_id)?.end;
+   }
+   episodeList.push({id:e.id,title:e.title,accessible:e.relationship_required<=score,completed});
+  }
+  return json({
+   creator:{
+    id:creator.id,
+    name:creator.name,
+    bio:creator.bio,
+    tagline:npcDef?.tagline||'',
+    avatarKey:creator.avatar_key,
+    tags:npcDef?.tags||[],
+    relationship:score,
+    closeness:relRow?.closeness||0,
+    trust:relRow?.trust||0,
+    romance:relRow?.romance||0,
+    level:currentLv
+   },
+   posts:(postsRes.results||[]).map(p=>({...postShape(p),comments:[]})),
+   vault,
+   episodes:episodeList
+  });
+ }
  if(path==='/api/feed'&&method==='GET'){
   const posts=await all(env,`SELECT p.*,c.name creator_name,(SELECT COUNT(*) FROM likes l WHERE l.post_id=p.id) likes,EXISTS(SELECT 1 FROM comment_claims x WHERE x.user_id=? AND x.post_id=p.id) claimed FROM posts p JOIN creators c ON c.id=p.creator_id LEFT JOIN relationships r ON r.creator_id=p.creator_id AND r.user_id=? WHERE p.status='published' AND p.published_at<=? AND COALESCE(r.score,0)>=p.relationship_required ORDER BY p.published_at DESC LIMIT 100`,user.id,user.id,now);
   for(const p of posts){p.comments=(await all(env,'SELECT id,user_id,content,created_at FROM comments WHERE post_id=? AND hidden=0 ORDER BY created_at LIMIT 100',p.id)).map(c=>({id:c.id,content:c.content,createdAt:c.created_at,own:c.user_id===user.id}));}
   await run(env,'INSERT INTO activity(user_id,kind,created_at) VALUES(?,?,?)',user.id,'feed',now);
   return json({posts:posts.map(p=>({...postShape(p),comments:p.comments}))});
  }
- let m=path.match(/^\/api\/posts\/([\w-]+)\/comments$/);
+ m=path.match(/^\/api\/posts\/([\w-]+)\/comments$/);
  if(m&&method==='POST'){
   const b=await body(req), pid=id(m[1]), requestId=id(b.requestId), content=string(b.content,1000);
   const previous=await one(env,'SELECT * FROM comments WHERE user_id=? AND request_id=?',user.id,requestId);
@@ -371,6 +426,19 @@ async function player(req,env,user,path,now,ctx) {
   let s=await visibleStory(env,user,id(m[1]),now);if(!s)return json({error:'not_found'},404);
   await run(env,'INSERT OR IGNORE INTO story_views(user_id,story_id,first_viewed_at) VALUES(?,?,?)',user.id,s.id,now);s=await visibleStory(env,user,s.id,now);if(!s)return json({error:'not_found'},404);
   await run(env,'INSERT INTO activity(user_id,kind,created_at) VALUES(?,?,?)',user.id,'story',now);return json({story:storyShape(s)});
+ }
+ m=path.match(/^\/api\/stories\/([\w-]+)\/react$/);
+ if(m&&method==='POST'){
+  const sid=id(m[1]), b=await body(req), reaction=string(b.reaction||'❤️', 10);
+  const s=await visibleStory(env,user,sid,now);
+  if(!s) return json({error:'not_found'},404);
+  await run(env,'INSERT INTO activity(user_id,kind,created_at) VALUES(?,?,?)',user.id,'story_reaction',now);
+  await env.DB.batch([
+   env.DB.prepare('INSERT OR IGNORE INTO relationships(user_id,creator_id) VALUES(?,?)').bind(user.id,s.creator_id),
+   env.DB.prepare('UPDATE relationships SET closeness=MIN(100,COALESCE(closeness,0)+1), score=MIN(100,COALESCE(score,0)+1) WHERE user_id=? AND creator_id=?').bind(user.id,s.creator_id)
+  ]);
+  const rel=await one(env,'SELECT score FROM relationships WHERE user_id=? AND creator_id=?',user.id,s.creator_id);
+  return json({ok:true,reaction,relationship:rel?.score||0});
  }
  m=path.match(/^\/api\/chats\/([\w-]+)\/memories(?:\/([^/]+))?$/);
  if(m){

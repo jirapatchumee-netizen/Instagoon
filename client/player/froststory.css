@@ -3121,6 +3121,556 @@ dialog.fs-overlay[open]::backdrop {
   -webkit-backdrop-filter: blur(4px);
 }
 
+/* Story Reactions & Story Reply (ADR 0012) */
+.fs-story-bottom-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: absolute;
+  bottom: 0;
+  inset-inline: 0;
+  z-index: 10;
+  padding: 24px 14px calc(14px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.92) 20%, rgba(0, 0, 0, 0.6) 70%, transparent);
+}
+
+.fs-story-reactions-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.fs-story-reaction-btn {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  font-size: 22px;
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.18s ease;
+}
+
+.fs-story-reaction-btn:hover {
+  transform: scale(1.22);
+  background: rgba(255, 79, 154, 0.35);
+  border-color: rgba(255, 79, 154, 0.7);
+}
+
+.fs-story-reaction-btn:active {
+  transform: scale(0.9);
+}
+
+.fs-story-reply-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.fs-story-reply-input {
+  flex: 1;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.82rem;
+  outline: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.fs-story-reply-input::placeholder {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.fs-story-reply-input:focus {
+  border-color: rgba(255, 79, 154, 0.8);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.fs-story-reply-send {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 0;
+  background: linear-gradient(135deg, #ff4f9a, #a855f7);
+  color: #ffffff;
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.fs-story-reply-send:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.fs-story-reaction-toast {
+  position: absolute;
+  top: 72px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  border-radius: 999px;
+  background: rgba(10, 6, 14, 0.88);
+  border: 1px solid rgba(255, 79, 154, 0.5);
+  color: #ffe4f0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  pointer-events: none;
+  animation: fs-toast-pop 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Creator Profile Modal & 3-Tab Close Friends Vault (ADR 0012) */
+.fs-profile-modal {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 600px;
+  max-height: 92vh;
+  background: #0f0a17;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 16px 48px -8px rgba(0, 0, 0, 0.85);
+  color: #fce7f3;
+}
+
+.fs-profile-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(15, 10, 23, 0.95);
+  backdrop-filter: blur(12px);
+}
+
+.fs-profile-top-bar h2 {
+  margin: 0;
+  font-size: 0.96rem;
+  font-weight: 700;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fs-profile-body {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px 16px calc(24px + env(safe-area-inset-bottom, 0px));
+}
+
+.fs-profile-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.fs-profile-avatar-wrap {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  padding: 3px;
+  background: linear-gradient(135deg, #ff4f9a, #a855f7, #3b82f6);
+  margin-bottom: 12px;
+}
+
+.fs-profile-avatar-wrap img,
+.fs-profile-avatar-wrap .fs-avatar-letter {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #0f0a17;
+}
+
+.fs-profile-avatar-wrap .fs-avatar-letter {
+  display: grid;
+  place-items: center;
+  background: #241434;
+  color: #fce7f3;
+  font-size: 32px;
+  font-weight: 700;
+}
+
+.fs-profile-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.fs-profile-name-row h1 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.fs-profile-handle {
+  font-size: 0.8rem;
+  color: #a1a1aa;
+  margin-bottom: 8px;
+}
+
+.fs-profile-tagline {
+  font-size: 0.86rem;
+  color: #fce7f3;
+  margin: 0 0 10px;
+  line-height: 1.4;
+  max-width: 440px;
+}
+
+.fs-profile-tags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.fs-profile-tag {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #f472b6;
+  background: rgba(244, 114, 182, 0.12);
+  border: 1px solid rgba(244, 114, 182, 0.3);
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+/* Relationship 3D Dimension Box */
+.fs-profile-rel-card {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 14px;
+  text-align: left;
+}
+
+.fs-profile-rel-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.fs-profile-level-badge {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #ffffff;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ff4f9a, #a855f7);
+  box-shadow: 0 2px 8px rgba(255, 79, 154, 0.35);
+}
+
+.fs-profile-score-text {
+  font-size: 0.8rem;
+  color: #e4e4e7;
+  font-weight: 600;
+}
+
+.fs-profile-dim-bars {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.fs-profile-dim-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fs-profile-dim-label {
+  font-size: 0.7rem;
+  color: #a1a1aa;
+  display: flex;
+  justify-content: space-between;
+}
+
+.fs-profile-dim-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.fs-profile-dim-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ff4f9a, #a855f7);
+  transition: width 0.3s ease;
+}
+
+.fs-profile-dm-btn {
+  width: 100%;
+  padding: 11px 20px;
+  border-radius: 12px;
+  border: 0;
+  background: linear-gradient(135deg, #ff4f9a, #a855f7);
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 16px rgba(255, 79, 154, 0.4);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.fs-profile-dm-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(255, 79, 154, 0.6);
+}
+
+/* 3 Tabs Navigation */
+.fs-profile-tabs {
+  display: flex;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 16px;
+}
+
+.fs-profile-tab-btn {
+  flex: 1;
+  padding: 10px 6px;
+  border: 0;
+  background: none;
+  color: #a1a1aa;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  position: relative;
+  transition: color 0.15s ease;
+}
+
+.fs-profile-tab-btn:hover {
+  color: #ffffff;
+}
+
+.fs-profile-tab-btn.is-active {
+  color: #f472b6;
+}
+
+.fs-profile-tab-btn.is-active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 20%;
+  right: 20%;
+  height: 2px;
+  background: #f472b6;
+  border-radius: 2px;
+}
+
+/* Tab 1: Posts Grid */
+.fs-profile-posts-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.fs-profile-post-thumb {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  background: #180d24;
+  overflow: hidden;
+  border-radius: 6px;
+}
+
+.fs-profile-post-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.fs-profile-post-quote {
+  width: 100%;
+  height: 100%;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 0.72rem;
+  color: #fce7f3;
+  background: rgba(255, 79, 154, 0.08);
+}
+
+/* Tab 2: Close Friends Vault Grid */
+.fs-profile-vault-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.fs-vault-card {
+  position: relative;
+  aspect-ratio: 9 / 16;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #180d24;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.fs-vault-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.fs-vault-img.is-blurred {
+  filter: blur(20px) brightness(0.65);
+  transform: scale(1.1);
+}
+
+.fs-vault-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  text-align: center;
+  background: rgba(10, 6, 14, 0.5);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
+.fs-vault-lock-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 79, 154, 0.25);
+  border: 1px solid rgba(255, 79, 154, 0.5);
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+
+.fs-vault-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 4px;
+}
+
+.fs-vault-req {
+  font-size: 0.72rem;
+  color: #fce7f3;
+  margin: 0 0 10px;
+  opacity: 0.9;
+}
+
+.fs-vault-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.fs-vault-badge-unlocked {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  right: 8px;
+  padding: 4px 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  border-radius: 8px;
+  text-align: center;
+  background: rgba(34, 197, 94, 0.9);
+  color: #ffffff;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* Tab 3: Episodes List */
+.fs-profile-episodes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fs-profile-ep-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #fce7f3;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.fs-profile-ep-card:hover:not(:disabled) {
+  background: rgba(255, 79, 154, 0.12);
+  border-color: rgba(255, 79, 154, 0.35);
+  transform: translateX(2px);
+}
+
+.fs-profile-ep-card:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.fs-profile-ep-title {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.fs-profile-ep-status {
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.fs-profile-ep-status.is-done {
+  color: #4ade80;
+}
+
+.fs-profile-ep-status.is-locked {
+  color: #a1a1aa;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .fs-dm-modal,
   dialog.fs-overlay[open]::backdrop,
