@@ -193,7 +193,7 @@ async function auth(req,env,url) {
    await env.DB.batch([
     env.DB.prepare("INSERT INTO users(id,email,google_id,age_verified_at,consent_version,created_at) VALUES(?,?,'demo_google_id',?,?,?)").bind(uid,demoEmail,now,'1.0',now),
     env.DB.prepare("INSERT INTO invites(email,status) VALUES(?,'active') ON CONFLICT(email) DO UPDATE SET status='active'").bind(demoEmail),
-    env.DB.prepare("INSERT INTO energy(user_id,free,purchased) VALUES(?,10,0) ON CONFLICT(user_id) DO UPDATE SET free=10").bind(uid),
+    env.DB.prepare("INSERT INTO energy(user_id,free,purchased) VALUES(?,30,0) ON CONFLICT(user_id) DO UPDATE SET free=30").bind(uid),
     env.DB.prepare("INSERT OR REPLACE INTO user_credentials(user_id,password_hash,salt,role,updated_at) VALUES(?,'DEMO','DEMO','admin',?)").bind(uid,now)
    ]);
    user={id:uid,email:demoEmail};
@@ -233,7 +233,7 @@ async function auth(req,env,url) {
  // Google verified this email, so an earlier account with the same email (pre-Google sign-up) is linked rather than duplicated.
  if(!user){user=await one(env,'SELECT * FROM users WHERE lower(email)=?',email); if(user) await run(env,'UPDATE users SET google_id=? WHERE id=?',profile.sub,user.id);}
  if(user && user.email.toLowerCase()!==email) { await run(env,'UPDATE users SET email=? WHERE id=?',email,user.id); }
- if(!user){const uid=crypto.randomUUID(); await env.DB.batch([env.DB.prepare('INSERT INTO users(id,email,google_id,created_at) VALUES(?,?,?,?)').bind(uid,email,profile.sub,now),env.DB.prepare('INSERT OR IGNORE INTO energy(user_id) VALUES(?)').bind(uid)]); user={id:uid};}
+ if(!user){const uid=crypto.randomUUID(); await env.DB.batch([env.DB.prepare('INSERT INTO users(id,email,google_id,created_at) VALUES(?,?,?,?)').bind(uid,email,profile.sub,now),env.DB.prepare('INSERT OR IGNORE INTO energy(user_id,free) VALUES(?,30)').bind(uid)]); user={id:uid};}
  const raw=token(); await run(env,'INSERT INTO sessions(id,user_id,expires_at) VALUES(?,?,?)',await hash(raw),user.id,now+604800000);
  return new Response(null,{status:302,headers:{location:'/', 'set-cookie':secureCookie('frost_session',raw,604800),'cache-control':'no-store'}});
 }
@@ -268,7 +268,7 @@ async function applyChoiceOutcome(env, userId, creator, rev, choice, now) {
 async function energy(env,uid,now) {
  // Refill then read back, in one round trip; the order inside batch() is sequential.
  const [, rowRes] = await env.DB.batch([
-  env.DB.prepare('UPDATE energy SET free=10,next_refill_at=NULL WHERE user_id=? AND next_refill_at IS NOT NULL AND next_refill_at<=?').bind(uid,now),
+  env.DB.prepare('UPDATE energy SET free=30,next_refill_at=NULL WHERE user_id=? AND next_refill_at IS NOT NULL AND next_refill_at<=?').bind(uid,now),
   env.DB.prepare('SELECT free,purchased,next_refill_at FROM energy WHERE user_id=?').bind(uid)
  ]);
  const row=rowRes.results[0]; return {free:row.free,purchased:row.purchased,nextRefillAt:row.next_refill_at};
