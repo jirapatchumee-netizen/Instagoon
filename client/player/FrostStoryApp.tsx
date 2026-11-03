@@ -477,12 +477,10 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
 function ChatComposer({
   placeholder,
   disabled,
-  suggestedReplies,
   onSend,
 }: {
   placeholder: string;
   disabled: boolean;
-  suggestedReplies?: string[];
   onSend: (text: string) => void;
 }) {
   const [text, setText] = useState('');
@@ -505,21 +503,6 @@ function ChatComposer({
 
   return (
     <div className="fs-dm-composer-wrap">
-      {suggestedReplies && suggestedReplies.length > 0 && (
-        <div className="fs-reply-pills-row" role="region" aria-label="Suggested Replies">
-          {suggestedReplies.map((pill, idx) => (
-            <button
-              key={idx}
-              type="button"
-              className="fs-reply-pill"
-              disabled={disabled}
-              onClick={() => onSend(pill)}
-            >
-              {pill}
-            </button>
-          ))}
-        </div>
-      )}
       <form
         className="fs-dm-input-form"
         onSubmit={(event) => {
@@ -856,7 +839,6 @@ export function FrostStoryApp() {
   const [aiDmTab, setAiDmTab] = useState<'ai' | 'story'>('ai');
   const [aiSending, setAiSending] = useState(false);
   const [pending, setPending] = useState<{ id: string; content: string; failed?: string }[]>([]);
-  const [suggestedReplies, setSuggestedReplies] = useState<string[]>([]);
   const [moodToast, setMoodToast] = useState<string | null>(null);
   const [unlockedRewards, setUnlockedRewards] = useState<string[]>([]);
   const moodToastTimerRef = useRef<number | null>(null);
@@ -879,15 +861,6 @@ export function FrostStoryApp() {
   useEffect(() => {
     setMemoryPanel({ open: false, items: [] });
     setMoodToast(null);
-    if (selectedCreator) {
-      setSuggestedReplies([
-        selectedCreator.id === 'milin' ? 'ทำงานเหนื่อยไหมน้า วันนี้เป็นไงบ้าง 🥺' : 'สวัสดีค่ะ วันนี้เป็นไงบ้าง ✨',
-        'มีเรื่องสนุกๆ เล่าให้ฟังหน่อยสิ 😏',
-        'แอบคิดถึงเลยแวะเข้ามาทักทาย 🤍'
-      ]);
-    } else {
-      setSuggestedReplies([]);
-    }
   }, [selectedCreator?.id]);
 
   async function toggleMemoryPanel() {
@@ -943,9 +916,6 @@ export function FrostStoryApp() {
       if (res.messages) setChat((prev) => (prev ? { ...prev, aiMessages: res.messages } : prev));
       if (res.energy) setEnergy(res.energy);
       if (res.unlockedRewards) setUnlockedRewards(res.unlockedRewards);
-      if (res.suggestedReplies && res.suggestedReplies.length > 0) {
-        setSuggestedReplies(res.suggestedReplies);
-      }
       if (res.moodToast) {
         if (moodToastTimerRef.current) clearTimeout(moodToastTimerRef.current);
         setMoodToast(res.moodToast);
@@ -1140,7 +1110,6 @@ export function FrostStoryApp() {
     setChat(null);
     setPending([]);
     setMoodToast(null);
-    setSuggestedReplies([]);
   }
 
   async function openProfile(creator: Creator) {
@@ -2559,7 +2528,6 @@ export function FrostStoryApp() {
               <ChatComposer
                 placeholder={`ส่งข้อความหา ${selectedCreator.name}…`}
                 disabled={!chat || aiSending}
-                suggestedReplies={suggestedReplies}
                 onSend={(text) => void sendAiMessage(text)}
               />
             ) : (

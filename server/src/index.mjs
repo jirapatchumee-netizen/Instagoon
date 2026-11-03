@@ -487,7 +487,7 @@ async function player(req,env,user,path,now,ctx) {
    // one of that creator's scripts to an end node (ADR 0008). Checked before the thread lock and before energy,
    // so a locked turn costs the player nothing. Creators without a script are untouched.
    const scripted = await one(env, "SELECT 1 AS x FROM episodes e WHERE e.creator_id=? AND EXISTS(SELECT 1 FROM revisions r WHERE r.episode_id=e.id AND r.status='published')", creator);
-   if(scripted){
+   if(scripted && (creator === 'tester' || env.REQUIRE_STORY_GATE === 'true')){
     const walks = await all(env, 'SELECT s.current_node_id AS node, rv.nodes AS nodes FROM chat_states s JOIN revisions rv ON rv.id=s.revision_id JOIN episodes ep ON ep.id=s.episode_id WHERE s.user_id=? AND ep.creator_id=?', user.id, creator);
     const finished = walks.some(w => { try { return !!JSON.parse(w.nodes).find(n => n.id === w.node)?.end; } catch (e) { return false; } });
     if(!finished) return json({error:'story_required'}, 403);
@@ -679,11 +679,6 @@ Empathy-First Bridge & Tone Rules (CRITICAL PRIORITY):
 - NEVER ignore the player's emotional state or situation to talk exclusively about yourself. Always address what they just did or feel before your own topics.
 - Conversational Momentum (Question Hooks): Keep the chat lively and engaging. In ~75% of your messages, end with a playful, open-ended question or charming hook (e.g. asking what they had for dinner, asking them to help choose something cute, or teasingly asking if they're thinking of ${npcName}) so the conversation never hits a dead end.
 - Pronoun Standard: Zero-Pronoun Natural Thai DM. Do NOT use stiff formal pronouns like 'คุณ' or 'นาย'. Refer to yourself as "${npcName}" or 'เค้า'. Drop user-referencing pronouns naturally like authentic Thai speech.
-- Contextual Reply Suggestions (CRITICAL): Provide exactly 3 short, natural Thai reply choices for the player in suggestedReplies:
-  1. Flirty / Romantic option (หยอดหรือชม)
-  2. Teasing / Playful banter option (กวนหรือแซวเล่น)
-  3. Thoughtful inquiry / Daily life question option (ใส่ใจหรือชวนคุยเรื่องชีวิตประจำวัน)
-  Keep each choice short (under 15 words) and natural for authentic Thai IG DM.
 - Emotional Reaction (moodToast): If the interaction meaningfully impacts your emotions, provide a short 1-line reaction in Thai with an emoji in moodToast (e.g. "${npcName}แอบยิ้มกับข้อความของคุณ 💕", "${npcName}รู้สึกไว้ใจคุณมากขึ้น ✨", "${npcName}กำลังแกล้งงอนคุณอยู่นะ 🙈"). Otherwise null.
 Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Instagram DM, STRICTLY NO 'คะ/ค่ะ').`;
    const playerTurn = JSON.stringify({
