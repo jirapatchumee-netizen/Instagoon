@@ -321,4 +321,21 @@ assert.equal((await call('/api/dev/test-models',{method:'POST',data:{models:['..
   assert.equal(prof.payload.vault[0].unlocked, true, 'unlocked reward reflected in vault');
  } finally { globalThis.fetch=saved; }
 }
+// Staging unlimited mode never consumes or refunds balances and works at zero.
+{
+ const gid=sql.prepare("SELECT id FROM users WHERE email='player1@gmail.com'").get().id;
+ sql.prepare('UPDATE energy SET free=0,purchased=0 WHERE user_id=?').run(gid);
+ sql.prepare("INSERT INTO creators(id,name,bio) VALUES('unlimited','Test','b')").run();
+ sql.prepare("INSERT INTO npc_definitions(creator_id,definition_json,updated_at) VALUES('unlimited',?,0)").run(JSON.stringify({name:'Test',rules:[],rewards:[{asset:'rewards/unlimited.webp',message:'R',conditions:[{field:'level',value:5}]}]}));
+ const stagingEnv={...env,STAGING_UNLIMITED_ENERGY:true,GEMINI_API_KEY:'fixture-only'};const saved=globalThis.fetch;
+ const ledgerBefore=sql.prepare('SELECT COUNT(*) n FROM token_ledger WHERE user_id=?').get(gid).n;
+ globalThis.fetch=async()=>Response.json({candidates:[{content:{parts:[{text:JSON.stringify({reply:'ok',matchedRuleIds:[],affectionDelta:0})}]}}]});
+ try{
+  const me=await call('/api/me',{sess:guest.sess,e:stagingEnv});assert.equal(me.payload.energy.unlimited,true);
+  for(let i=0;i<2;i++){const reply=await call('/api/chats/unlimited/message',{method:'POST',data:{message:'สวัสดี'},sess:guest.sess,e:stagingEnv});assert.equal(reply.status,200);assert.equal(reply.payload.energy.unlimited,true);}
+  const unlock=await call('/api/chats/unlimited/rewards/unlock',{method:'POST',data:{mediaKey:'rewards/unlimited.webp',method:'energy'},sess:guest.sess,e:stagingEnv});assert.equal(unlock.status,200);assert.equal(unlock.payload.energy.unlimited,true);
+  assert.deepEqual({...sql.prepare('SELECT free,purchased FROM energy WHERE user_id=?').get(gid)},{free:0,purchased:0});assert.equal(sql.prepare('SELECT COUNT(*) n FROM token_ledger WHERE user_id=?').get(gid).n,ledgerBefore);
+  const normal=await call('/api/chats/unlimited/message',{method:'POST',data:{message:'สวัสดี'},sess:guest.sess,e:{...env,GEMINI_API_KEY:'fixture-only'}});assert.equal(normal.status,402);
+ }finally{globalThis.fetch=saved;}
+}
 console.log('Worker API authentication, comments, stories, revision and deletion checks passed');

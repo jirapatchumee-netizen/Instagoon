@@ -373,7 +373,7 @@ export const TRANSLATIONS = {
   },
 };
 
-type Energy = { free: number; purchased: number; nextRefillAt: number | null };
+type Energy = { free: number; purchased: number; nextRefillAt: number | null; unlimited?: boolean };
 type User = {
   id: string;
   email: string;
@@ -1359,13 +1359,13 @@ export function FrostStoryApp() {
             <span
               className="fs-energy"
               title={
-                energy?.nextRefillAt
+                energy?.unlimited ? 'Staging: Energy ไม่จำกัด' : energy?.nextRefillAt
                   ? `${t.energyRefillPrefix} ${formatDateTime(energy.nextRefillAt, lang)}`
                   : t.energyRefillDefault
               }
             >
               <Zap size={13} className="fs-energy-icon" />
-              {energy ? `${energy.free} + ${energy.purchased}` : '–'}
+              {energy?.unlimited ? '∞' : energy ? `${energy.free} + ${energy.purchased}` : '–'}
             </span>
 
             {/* Official Instagram Heart (Activity / Notifications) */}

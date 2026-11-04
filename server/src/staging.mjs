@@ -39,7 +39,8 @@ export default {
    return new Response('Unauthorized', { status: 401, headers });
   }
   if (pathname.startsWith('/_content/') || pathname === '/studio' || pathname === '/studio.html' || pathname.startsWith('/api/admin/') || pathname.startsWith('/api/dev/') || pathname === '/auth/login' || pathname === '/auth/demo') return new Response('Not found', { status: 404, headers });
-  if (pathname.startsWith('/api/')) return app.fetch(req, env, ctx);
+  // Temporary staging-only testing mode; production never uses this wrapper.
+  if (pathname.startsWith('/api/')) return app.fetch(req, { ...env, STAGING_UNLIMITED_ENERGY: true }, ctx);
   if (req.method !== 'GET' && req.method !== 'HEAD') return new Response('Method not allowed', { status: 405, headers });
   const response = await env.ASSETS.fetch(req);
   const result = new Response(response.body, response);

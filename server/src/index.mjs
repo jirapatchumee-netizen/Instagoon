@@ -45,6 +45,7 @@ function modelsForVisit(pool, visitId) {
  return [...pool.slice(offset), ...pool.slice(0, offset)];
 }
 async function takeEnergy(env, uid, now) {
+ if(env.STAGING_UNLIMITED_ENERGY===true) return 'unlimited';
  await energy(env, uid, now);
  for(const bucket of ['free','purchased']){
   const taken = await run(env, `UPDATE energy SET ${bucket}=${bucket}-1 WHERE user_id=? AND ${bucket}>0`, uid);
@@ -56,6 +57,7 @@ async function takeEnergy(env, uid, now) {
  return null;
 }
 async function spendEnergy(env, uid, amount, reason, now) {
+ if(env.STAGING_UNLIMITED_ENERGY===true) return {ok:true,energy:await energy(env,uid,now)};
  await energy(env, uid, now);
  const cur = await one(env, 'SELECT free, purchased FROM energy WHERE user_id=?', uid);
  if(!cur || (cur.free + cur.purchased) < amount) return null;
@@ -266,6 +268,7 @@ async function applyChoiceOutcome(env, userId, creator, rev, choice, now) {
 }
 
 async function energy(env,uid,now) {
+ if(env.STAGING_UNLIMITED_ENERGY===true){const row=await one(env,'SELECT free,purchased,next_refill_at FROM energy WHERE user_id=?',uid);return {free:row?.free??0,purchased:row?.purchased??0,nextRefillAt:row?.next_refill_at??null,unlimited:true};}
  // Refill then read back, in one round trip; the order inside batch() is sequential.
  const [, rowRes] = await env.DB.batch([
   env.DB.prepare('UPDATE energy SET free=30,next_refill_at=NULL WHERE user_id=? AND next_refill_at IS NOT NULL AND next_refill_at<=?').bind(uid,now),
@@ -520,8 +523,9 @@ async function player(req,env,user,path,now,ctx) {
    }
    let visitId = 'none', energyBucket = null, charged = null;
    try {
-   energyBucket = await takeEnergy(env, user.id, now);
-   if(!energyBucket) return json({error:'energy_empty'}, 402);
+   const charge = await takeEnergy(env, user.id, now);
+   if(!charge) return json({error:'energy_empty'}, 402);
+   energyBucket = charge==='unlimited'?null:charge;
    charged = energyBucket;
    // These four reads never depend on each other, so they share one D1 round trip. Only reads are
    // batched: D1 batch() is not the transactional guarantee the writes further down rely on.
