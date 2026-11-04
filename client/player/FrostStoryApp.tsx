@@ -4,8 +4,8 @@ import {
   Check,
   ChevronDown,
   Globe,
-  Image as ImageIcon,
   LockKeyhole,
+  MessageSquareX,
   RotateCcw,
   Send,
   Sparkles,
@@ -186,6 +186,10 @@ export const TRANSLATIONS = {
     viewMore: 'ดูเพิ่มเติม',
     chatTab: 'แชท',
     storyTab: 'เนื้อเรื่อง',
+    resetChat: 'รีเซ็ตแชท',
+    resetChatConfirm: 'เริ่มบทสนทนาใหม่ (ล้างประวัติแชท AI) สำหรับตัวละครนี้ใช่หรือไม่?',
+    resetStory: 'รีเซ็ตเนื้อเรื่อง',
+    resetStoryConfirm: 'เริ่มเนื้อเรื่องใหม่สำหรับตัวละครนี้ใช่หรือไม่?',
     sendFailed: 'ส่งไม่สำเร็จ · แตะเพื่อลองใหม่',
     chatLoading: 'กำลังเปิดแชท',
   },
@@ -271,6 +275,10 @@ export const TRANSLATIONS = {
     viewMore: 'more',
     chatTab: 'Chat',
     storyTab: 'Story',
+    resetChat: 'Reset Chat',
+    resetChatConfirm: 'Reset AI chat history with this character?',
+    resetStory: 'Reset Story',
+    resetStoryConfirm: 'Restart the story for this character?',
     sendFailed: 'Not sent · Tap to retry',
     chatLoading: 'Opening chat',
   },
@@ -356,6 +364,10 @@ export const TRANSLATIONS = {
     viewMore: '続きを読む',
     chatTab: 'チャット',
     storyTab: 'ストーリー',
+    resetChat: 'チャットリセット',
+    resetChatConfirm: 'このキャラクターとのAIチャット履歴をリセットしますか？',
+    resetStory: 'ストーリーリセット',
+    resetStoryConfirm: 'このキャラクターのストーリーを最初からやり直しますか？',
     sendFailed: '送信できませんでした · タップして再送',
     chatLoading: 'チャットを開いています',
   },
@@ -1173,14 +1185,28 @@ export function FrostStoryApp() {
     }
   }
 
-  async function resetCurrentChat() {
+  async function resetCurrentStory() {
     if (!selectedCreator) return;
-    if (!window.confirm('เริ่มเนื้อเรื่องใหม่สำหรับตัวละครนี้ใช่หรือไม่?')) return;
+    if (!window.confirm(t.resetStoryConfirm)) return;
     try {
-      await api(`/api/chats/${encodeURIComponent(selectedCreator.id)}/reset`, { method: 'POST' });
+      await api(`/api/chats/${encodeURIComponent(selectedCreator.id)}/reset-story`, { method: 'POST' });
       const result = await api<{ chat: Chat }>(`/api/chats/${encodeURIComponent(selectedCreator.id)}`);
       setChat(result.chat);
       setUnlockedRewards(result.chat.unlockedRewards || []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t.genericError);
+    }
+  }
+
+  async function resetAiChat() {
+    if (!selectedCreator) return;
+    if (!window.confirm(t.resetChatConfirm)) return;
+    try {
+      await api(`/api/chats/${encodeURIComponent(selectedCreator.id)}/reset-chat`, { method: 'POST' });
+      const result = await api<{ chat: Chat }>(`/api/chats/${encodeURIComponent(selectedCreator.id)}`);
+      setChat(result.chat);
+      setPending([]);
+      setMemoryPanel({ open: false, items: [] });
     } catch (e) {
       setError(e instanceof Error ? e.message : t.genericError);
     }
@@ -2332,51 +2358,61 @@ export function FrostStoryApp() {
               <button className="fs-dm-back" aria-label="Back" onClick={closeChat}>
                 <ArrowLeft size={22} />
               </button>
-              <div className="fs-creator-avatar-wrap">
-                <div className="fs-avatar">
-                  {selectedCreator.avatarKey ? (
-                            <img src={media(selectedCreator.avatarKey)} alt={selectedCreator.name} />
-                          ) : (
-                            selectedCreator.name.slice(0, 1)
-                          )}
+              <div
+                className="fs-dm-header-author"
+                onClick={() => void openProfile(selectedCreator)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void openProfile(selectedCreator);
+                }}
+                title={`ดูโปรไฟล์ของ ${selectedCreator.name}`}
+              >
+                <div className="fs-creator-avatar-wrap">
+                  <div className="fs-avatar">
+                    {selectedCreator.avatarKey ? (
+                      <img src={media(selectedCreator.avatarKey)} alt={selectedCreator.name} />
+                    ) : (
+                      selectedCreator.name.slice(0, 1)
+                    )}
+                  </div>
+                  <span className="fs-online-dot" />
                 </div>
-                <span className="fs-online-dot" />
-              </div>
-              <div className="fs-dm-header-text">
-                <div className="fs-dm-title-row">
-                  <h2 id="fs-chat-title">{selectedCreator.name}</h2>
-                  <IgVerified size={14} />
-                  {selectedCreator.relationship >= 100 && (
-                    <span className="fs-top-fan-badge" title="คุณคือแฟนตัวยง (ความสัมพันธ์ครบ 100)">
-                      💎 แฟนตัวยง
-                    </span>
-                  )}
+                <div className="fs-dm-header-text">
+                  <div className="fs-dm-title-row">
+                    <h2 id="fs-chat-title">{selectedCreator.name}</h2>
+                    <IgVerified size={14} />
+                    {selectedCreator.relationship >= 100 && (
+                      <span className="fs-top-fan-badge" title="คุณคือแฟนตัวยง (ความสัมพันธ์ครบ 100)">
+                        💎 แฟนตัวยง
+                      </span>
+                    )}
+                  </div>
+                  <span className="fs-dm-status">
+                    {t.online} · {selectedCreator.relationship >= 100 ? '💎 แฟนตัวยง (100/100)' : `ความสัมพันธ์ ${selectedCreator.relationship}/100`}
+                  </span>
                 </div>
-                <span className="fs-dm-status">
-                  {t.online} · {selectedCreator.relationship >= 100 ? '💎 แฟนตัวยง (100/100)' : `ความสัมพันธ์ ${selectedCreator.relationship}/100`}
-                </span>
               </div>
-              <div className="fs-dm-header-actions" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div className="fs-dm-header-actions">
                 <button
                   type="button"
-                  className="fs-dm-gallery-btn"
-                  aria-label="Character Gallery Vault"
-                  title={`คลังรูปภาพของ ${selectedCreator.name}`}
-                  onClick={() => {
-                    void openProfile(selectedCreator, 'vault');
-                  }}
+                  className="fs-dm-action-btn fs-dm-reset-chat-btn"
+                  aria-label={t.resetChat}
+                  title={t.resetChat}
+                  onClick={resetAiChat}
                 >
-                  <ImageIcon size={16} />
-                  <span className="fs-dm-gallery-label">คลังรูป</span>
+                  <MessageSquareX size={15} />
+                  <span className="fs-dm-action-label">{t.resetChat}</span>
                 </button>
                 <button
                   type="button"
-                  className="fs-dm-back"
-                  aria-label="Restart Story"
-                  title="เริ่มเรื่องใหม่"
-                  onClick={resetCurrentChat}
+                  className="fs-dm-action-btn fs-dm-reset-story-btn"
+                  aria-label={t.resetStory}
+                  title={t.resetStory}
+                  onClick={resetCurrentStory}
                 >
-                  <RotateCcw size={18} />
+                  <RotateCcw size={15} />
+                  <span className="fs-dm-action-label">{t.resetStory}</span>
                 </button>
               </div>
             </header>

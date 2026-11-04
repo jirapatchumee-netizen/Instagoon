@@ -476,9 +476,17 @@ async function player(req,env,user,path,now,ctx) {
   await run(env,'INSERT INTO reward_unlocks(user_id,creator_id,reward_key,unlocked_at) VALUES(?,?,?,?)',user.id,creator,mediaKey,now);
   return json({ok:true,unlocked:true,energy:await energy(env,user.id,now)});
  }
- m=path.match(/^\/api\/chats\/([\w-]+)\/reset$/);
+ m=path.match(/^\/api\/chats\/([\w-]+)\/(reset|reset-story|reset-chat)$/);
  if(m&&method==='POST'){
-  const creator=id(m[1]);
+  const creator=id(m[1]), action=m[2];
+  if(action==='reset-chat'){
+   await env.DB.batch([
+    env.DB.prepare('DELETE FROM ai_chat_messages WHERE user_id=? AND creator_id=?').bind(user.id,creator),
+    env.DB.prepare('DELETE FROM player_memories WHERE user_id=? AND creator_id=?').bind(user.id,creator),
+    env.DB.prepare('DELETE FROM dm_threads WHERE user_id=? AND creator_id=?').bind(user.id,creator)
+   ]);
+   return json({ok:true});
+  }
   await env.DB.batch([
    env.DB.prepare('DELETE FROM chat_states WHERE user_id=? AND episode_id IN (SELECT id FROM episodes WHERE creator_id=?)').bind(user.id,creator),
    env.DB.prepare('DELETE FROM chat_history WHERE user_id=? AND episode_id IN (SELECT id FROM episodes WHERE creator_id=?)').bind(user.id,creator),

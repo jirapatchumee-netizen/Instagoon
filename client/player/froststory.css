@@ -2595,29 +2595,91 @@ dialog.fs-overlay[open]::backdrop {
   opacity: 0.85;
 }
 
-/* DM Header Gallery Button */
-.fs-dm-gallery-btn {
+/* DM Header Author (clickable profile link) */
+.fs-dm-header-author {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  cursor: pointer;
+  padding: 4px 6px;
+  margin: -4px -6px;
+  border-radius: 12px;
+  transition: background 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
+}
+
+.fs-dm-header-author:hover {
+  background: rgba(255, 255, 255, 0.08);
+  opacity: 0.92;
+}
+
+.fs-dm-header-author:active {
+  transform: scale(0.98);
+}
+
+.fs-dm-header-author:focus-visible {
+  outline: 2px solid #ec4899;
+  outline-offset: 2px;
+}
+
+/* DM Header Actions & Reset Buttons */
+.fs-dm-header-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.fs-dm-action-btn {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #f4e9ff;
   border-radius: 999px;
-  padding: 4px 10px;
-  font-size: 0.78rem;
-  font-weight: 500;
+  padding: 5px 9px;
+  font-size: 0.72rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  white-space: nowrap;
+  transition: all 0.16s ease;
 }
 
-.fs-dm-gallery-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
+.fs-dm-action-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.32);
+  color: #ffffff;
   transform: translateY(-1px);
 }
 
-.fs-dm-gallery-label {
+.fs-dm-action-btn:active {
+  transform: translateY(0);
+}
+
+.fs-dm-reset-chat-btn:hover {
+  background: rgba(236, 72, 153, 0.22);
+  border-color: rgba(236, 72, 153, 0.45);
+}
+
+.fs-dm-reset-story-btn:hover {
+  background: rgba(168, 85, 247, 0.22);
+  border-color: rgba(168, 85, 247, 0.45);
+}
+
+.fs-dm-action-label {
   line-height: 1;
+}
+
+@media (max-width: 440px) {
+  .fs-dm-action-btn .fs-dm-action-label {
+    display: none;
+  }
+  .fs-dm-action-btn {
+    padding: 7px;
+    border-radius: 50%;
+  }
 }
 
 /* Lightbox / Fullscreen Image Viewer */

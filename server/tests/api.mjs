@@ -69,6 +69,10 @@ result=await request('/api/chats/c/episode',{method:'POST',data:{episodeId:'ep1'
 sql.prepare("UPDATE revisions SET status='suspended' WHERE id='r1'").run();assert.equal((await request('/api/chats/c')).status,403);
 result=await request('/api/chats/c/reset',{method:'POST'});assert.equal(result.status,200,'player can restart a story');
 result=await request('/api/chats/c');assert.equal(result.status,200);assert.equal(result.payload.chat.revisionId,'r2','restart recovers from suspended content');assert.equal(result.payload.chat.history.length,0);assert.equal(result.payload.chat.score,2,'restart keeps relationship progress');
+sql.prepare("INSERT INTO ai_chat_messages(id,user_id,creator_id,role,content,created_at) VALUES('m1','u','c','user','hi',?)").run(now);
+sql.prepare("INSERT INTO player_memories(user_id,creator_id,key,value,created_at) VALUES('u','c','k','v',?)").run(now);
+result=await request('/api/chats/c/reset-chat',{method:'POST'});assert.equal(result.status,200,'player can reset ai chat');
+result=await request('/api/chats/c');assert.equal(result.status,200);assert.equal(result.payload.chat.aiMessages.length,0,'reset-chat clears ai messages');assert.equal(result.payload.chat.memories.length,0,'reset-chat clears player memories');
 const pair=await crypto.subtle.generateKey({name:'RSASSA-PKCS1-v1_5',modulusLength:2048,publicExponent:new Uint8Array([1,0,1]),hash:'SHA-256'},true,['sign','verify']);
 const jwk=await crypto.subtle.exportKey('jwk',pair.publicKey);jwk.kid='test';
 const enc=value=>Buffer.from(JSON.stringify(value)).toString('base64url');
