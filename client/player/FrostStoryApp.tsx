@@ -4,6 +4,7 @@ import {
   Check,
   ChevronDown,
   Globe,
+  Image as ImageIcon,
   LockKeyhole,
   RotateCcw,
   Send,
@@ -557,56 +558,123 @@ function Media({
   );
 }
 
-function renderBubbleContent(text: string) {
+function renderBubbleContent(text: string, onExpandMedia?: (key: string) => void) {
   if (!text) return null;
+
+  let thought: string | null = null;
+  let visual: string | null = null;
+  let bodyText = text;
+
+  const thoughtMatch = bodyText.match(/^\[thought:\s*([\s\S]*?)\]\n?/);
+  if (thoughtMatch) {
+    thought = thoughtMatch[1].trim();
+    bodyText = bodyText.substring(thoughtMatch[0].length);
+  }
+
+  const visualMatch =
+    bodyText.match(/^\[(?:visual|action):\s*([\s\S]*?)\]\n?/) ||
+    bodyText.match(/^\*\[?([\s\S]*?)\]?\*\n?/);
+  if (visualMatch) {
+    visual = visualMatch[1].trim();
+    bodyText = bodyText.substring(visualMatch[0].length);
+  }
+
   const imgRegex = /\[img:([^\]]+)\]/g;
-  if (!imgRegex.test(text)) {
-    return text;
-  }
-  imgRegex.lastIndex = 0;
-  const parts: (string | { type: 'img'; key: string })[] = [];
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
+  let bodyNodes: React.ReactNode;
+  if (!imgRegex.test(bodyText)) {
+    bodyNodes = (
+      <span className="fs-bubble-text">
+        {bodyText.split('\n').map((line, lineIdx, arr) => (
+          <Fragment key={lineIdx}>
+            {line}
+            {lineIdx < arr.length - 1 && <br />}
+          </Fragment>
+        ))}
+      </span>
+    );
+  } else {
+    imgRegex.lastIndex = 0;
+    const parts: (string | { type: 'img'; key: string })[] = [];
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
 
-  while ((match = imgRegex.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(text.substring(lastIndex, match.index));
+    while ((match = imgRegex.exec(bodyText)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push(bodyText.substring(lastIndex, match.index));
+      }
+      parts.push({ type: 'img', key: match[1].trim() });
+      lastIndex = imgRegex.lastIndex;
     }
-    parts.push({ type: 'img', key: match[1].trim() });
-    lastIndex = imgRegex.lastIndex;
-  }
-  if (lastIndex < text.length) {
-    parts.push(text.substring(lastIndex));
+    if (lastIndex < bodyText.length) {
+      parts.push(bodyText.substring(lastIndex));
+    }
+
+    bodyNodes = (
+      <>
+        {parts.map((part, i) => {
+          if (typeof part === 'string') {
+            return (
+              <span key={i} className="fs-bubble-text">
+                {part.split('\n').map((line, lineIdx, arr) => (
+                  <Fragment key={`${i}-${lineIdx}`}>
+                    {line}
+                    {lineIdx < arr.length - 1 && <br />}
+                  </Fragment>
+                ))}
+              </span>
+            );
+          }
+          return (
+            <div
+              key={`img-${i}`}
+              className={`fs-bubble-image-wrap${onExpandMedia ? ' is-clickable' : ''}`}
+              role={onExpandMedia ? 'button' : undefined}
+              tabIndex={onExpandMedia ? 0 : undefined}
+              title={onExpandMedia ? 'แตะเพื่อดูภาพขนาดเต็ม' : undefined}
+              onClick={() => onExpandMedia?.(part.key)}
+              onKeyDown={(e) => {
+                if (onExpandMedia && (e.key === 'Enter' || e.key === ' ')) {
+                  onExpandMedia(part.key);
+                }
+              }}
+            >
+              <img
+                src={media(part.key)}
+                alt="Sent photo"
+                className="fs-bubble-image"
+                loading="lazy"
+              />
+              {onExpandMedia && (
+                <div className="fs-bubble-image-expand-hint">🔍 แตะเพื่อขยาย</div>
+              )}
+            </div>
+          );
+        })}
+      </>
+    );
   }
 
-  return (
-    <>
-      {parts.map((part, i) => {
-        if (typeof part === 'string') {
-          return (
-            <span key={i} className="fs-bubble-text">
-              {part.split('\n').map((line, lineIdx, arr) => (
-                <Fragment key={`${i}-${lineIdx}`}>
-                  {line}
-                  {lineIdx < arr.length - 1 && <br />}
-                </Fragment>
-              ))}
-            </span>
-          );
-        }
-        return (
-          <div key={`img-${i}`} className="fs-bubble-image-wrap">
-            <img
-              src={media(part.key)}
-              alt="Sent photo"
-              className="fs-bubble-image"
-              loading="lazy"
-            />
+  if (thought || visual) {
+    return (
+      <div className="fs-bubble-with-meta">
+        {thought && (
+          <div className="fs-thought-box" title="ความคิดในใจ">
+            <span className="fs-thought-icon">💭</span>
+            <span className="fs-thought-text">{thought}</span>
           </div>
-        );
-      })}
-    </>
-  );
+        )}
+        {visual && (
+          <div className="fs-visual-box" title="ภาพเหตุการณ์ / กิริยาท่าทาง">
+            <span className="fs-visual-icon">🎬</span>
+            <span className="fs-visual-text">{visual}</span>
+          </div>
+        )}
+        {bodyNodes}
+      </div>
+    );
+  }
+
+  return bodyNodes;
 }
 
 const formatDateTime = (value: number, lang: Lang) =>
@@ -850,6 +918,13 @@ export function FrostStoryApp() {
     episodeTitle?: string;
   }>({ open: false, creatorName: '' });
 
+  // Lightbox / Fullscreen Image Viewer Modal (constrained to app screen)
+  const [expandedMedia, setExpandedMedia] = useState<{
+    mediaKey: string;
+    title?: string;
+    caption?: string;
+  } | null>(null);
+
   // Creator Profile & Close Friends Vault State (ADR 0012)
   const [profileCreator, setProfileCreator] = useState<Creator | null>(null);
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
@@ -922,6 +997,12 @@ export function FrostStoryApp() {
         moodToastTimerRef.current = window.setTimeout(() => setMoodToast(null), 4500);
       }
       if (typeof res.relationship === 'number') {
+        const prevRel = selectedCreator.relationship || 0;
+        if (prevRel < 100 && res.relationship >= 100) {
+          if (moodToastTimerRef.current) clearTimeout(moodToastTimerRef.current);
+          setMoodToast(`🎉 ยินดีด้วย! ความสัมพันธ์ครบ 100 คุณได้รับตรา "💎 แฟนตัวยง" ของ ${selectedCreator.name} แล้ว!`);
+          moodToastTimerRef.current = window.setTimeout(() => setMoodToast(null), 6000);
+        }
         setSelectedCreator((prev) => (prev ? { ...prev, relationship: res.relationship } : prev));
         setCreators((prev) =>
           prev.map((c) => (c.id === selectedCreator.id ? { ...c, relationship: res.relationship } : c))
@@ -1112,9 +1193,9 @@ export function FrostStoryApp() {
     setMoodToast(null);
   }
 
-  async function openProfile(creator: Creator) {
+  async function openProfile(creator: Creator, defaultTab: 'feed' | 'vault' | 'episodes' = 'feed') {
     setProfileCreator(creator);
-    setProfileTab('feed');
+    setProfileTab(defaultTab);
     setProfileLoading(true);
     try {
       const res = await api<ProfileData>(`/api/creators/${encodeURIComponent(creator.id)}/profile`);
@@ -1422,9 +1503,9 @@ export function FrostStoryApp() {
                           <div className="fs-post-author-row">
                             <strong>{post.creatorName}</strong>
                             <IgVerified size={15} />
-                            {creator && (
-                              <span className="fs-rel-pill">
-                                Lv.{creator.relationship}
+                            {creator && creator.relationship >= 100 && (
+                              <span className="fs-top-fan-pill" title="คุณคือแฟนตัวยง (ความสัมพันธ์ครบ 100)">
+                                💎 แฟนตัวยง
                               </span>
                             )}
                           </div>
@@ -1569,6 +1650,11 @@ export function FrostStoryApp() {
                             <div className="fs-comment-item" key={comment.id}>
                               <strong className="fs-comment-author">
                                 {comment.own ? t.you : t.player}
+                                {comment.own && creator && creator.relationship >= 100 && (
+                                  <span className="fs-comment-topfan-badge" title="คุณคือแฟนตัวยง">
+                                    💎 แฟนตัวยง
+                                  </span>
+                                )}
                               </strong>{' '}
                               <span className="fs-comment-txt">{comment.content}</span>
                               {comment.own ? (
@@ -1687,9 +1773,15 @@ export function FrostStoryApp() {
                     <div className="fs-creator-title-row">
                       <h2>{creator.name}</h2>
                       <IgVerified size={15} />
-                      <span className="fs-rel-pill">
-                        {t.relationship} {creator.relationship}
-                      </span>
+                      {creator.relationship >= 100 ? (
+                        <span className="fs-top-fan-pill" title="คุณคือแฟนตัวยง (ความสัมพันธ์ครบ 100)">
+                          💎 แฟนตัวยง
+                        </span>
+                      ) : (
+                        <span className="fs-rel-pill">
+                          {creator.relationship}/100
+                        </span>
+                      )}
                     </div>
                     <p>{creator.bio}</p>
                   </div>
@@ -2013,14 +2105,20 @@ export function FrostStoryApp() {
                       </div>
                     )}
 
-                    {/* Relationship 3D Dimension Box */}
+                    {/* Relationship 3D Dimension Box & Top Fan Status */}
                     <div className="fs-profile-rel-card">
                       <div className="fs-profile-rel-top">
-                        <span className="fs-profile-level-badge">
-                          Lv. {profileData.creator.level || 1}
-                        </span>
+                        {(profileData.creator.relationship ?? 0) >= 100 ? (
+                          <span className="fs-profile-topfan-badge" title="คุณคือแฟนตัวยง (ความสัมพันธ์ครบ 100)">
+                            💎 แฟนตัวยง (TOP FAN)
+                          </span>
+                        ) : (
+                          <span className="fs-profile-topfan-target">
+                            สะสมครบ 100 เพื่อรับตราแฟนตัวยง
+                          </span>
+                        )}
                         <span className="fs-profile-score-text">
-                          ความสัมพันธ์: {profileData.creator.relationship}/100
+                          ความสัมพันธ์: {profileData.creator.relationship || 0}/100
                         </span>
                       </div>
                       <div className="fs-profile-dim-bars">
@@ -2135,37 +2233,48 @@ export function FrostStoryApp() {
                         profileData.vault.map((item) => (
                           <div key={item.id} className="fs-vault-card">
                             {item.unlocked ? (
-                              <>
+                              <div
+                                className="fs-vault-card-inner is-clickable"
+                                role="button"
+                                tabIndex={0}
+                                title="แตะเพื่อดูภาพขนาดเต็ม"
+                                onClick={() =>
+                                  setExpandedMedia({
+                                    mediaKey: item.asset,
+                                    title: item.name,
+                                    caption: item.caption || item.message,
+                                  })
+                                }
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' || e.key === ' ') {
+                                    setExpandedMedia({
+                                      mediaKey: item.asset,
+                                      title: item.name,
+                                      caption: item.caption || item.message,
+                                    });
+                                  }
+                                }}
+                              >
                                 <img src={media(item.asset)} alt={item.name} className="fs-vault-img" />
-                                <div className="fs-vault-badge-unlocked">✨ {item.name}</div>
-                              </>
+                                <div className="fs-vault-badge-unlocked">✨ {item.name} · แตะขยาย 🔍</div>
+                              </div>
                             ) : (
                               <>
                                 <img src={media(item.asset)} alt={item.name} className="fs-vault-img is-blurred" />
                                 <div className="fs-vault-overlay">
                                   <div className="fs-vault-lock-icon">🔒</div>
                                   <p className="fs-vault-title">{item.name}</p>
-                                  <p className="fs-vault-req">ปลดล็อกที่ Lv.{item.minLevel} หรือ 3⚡</p>
+                                  <p className="fs-vault-req">ใช้ 3⚡ ปลดล็อกดูภาพส่วนตัว</p>
                                   <div className="fs-vault-btns">
-                                    <button
-                                      type="button"
-                                      className="fs-teaser-btn fs-teaser-btn-free"
-                                      onClick={async () => {
-                                        await unlockReward(item.asset, 'level');
-                                        if (profileCreator) void openProfile(profileCreator);
-                                      }}
-                                    >
-                                      ✨ ปลดตามเลเวล
-                                    </button>
                                     <button
                                       type="button"
                                       className="fs-teaser-btn fs-teaser-btn-instant"
                                       onClick={async () => {
                                         await unlockReward(item.asset, 'energy');
-                                        if (profileCreator) void openProfile(profileCreator);
+                                        if (profileCreator) void openProfile(profileCreator, 'vault');
                                       }}
                                     >
-                                      ⚡ ทันที (3⚡)
+                                      ⚡ ปลดล็อกทันที (3⚡)
                                     </button>
                                   </div>
                                 </div>
@@ -2237,21 +2346,39 @@ export function FrostStoryApp() {
                 <div className="fs-dm-title-row">
                   <h2 id="fs-chat-title">{selectedCreator.name}</h2>
                   <IgVerified size={14} />
+                  {selectedCreator.relationship >= 100 && (
+                    <span className="fs-top-fan-badge" title="คุณคือแฟนตัวยง (ความสัมพันธ์ครบ 100)">
+                      💎 แฟนตัวยง
+                    </span>
+                  )}
                 </div>
                 <span className="fs-dm-status">
-                  {t.online} · Lv.{selectedCreator.relationship}
+                  {t.online} · {selectedCreator.relationship >= 100 ? '💎 แฟนตัวยง (100/100)' : `ความสัมพันธ์ ${selectedCreator.relationship}/100`}
                 </span>
               </div>
-              <button
-                type="button"
-                className="fs-dm-back"
-                style={{ marginLeft: 'auto' }}
-                aria-label="Restart Story"
-                title="เริ่มเรื่องใหม่"
-                onClick={resetCurrentChat}
-              >
-                <RotateCcw size={18} />
-              </button>
+              <div className="fs-dm-header-actions" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <button
+                  type="button"
+                  className="fs-dm-gallery-btn"
+                  aria-label="Character Gallery Vault"
+                  title={`คลังรูปภาพของ ${selectedCreator.name}`}
+                  onClick={() => {
+                    void openProfile(selectedCreator, 'vault');
+                  }}
+                >
+                  <ImageIcon size={16} />
+                  <span className="fs-dm-gallery-label">คลังรูป</span>
+                </button>
+                <button
+                  type="button"
+                  className="fs-dm-back"
+                  aria-label="Restart Story"
+                  title="เริ่มเรื่องใหม่"
+                  onClick={resetCurrentChat}
+                >
+                  <RotateCcw size={18} />
+                </button>
+              </div>
             </header>
 
             {moodToast && (
@@ -2382,13 +2509,41 @@ export function FrostStoryApp() {
                           )}
                         </div>
                         <div className="fs-dm-msg-col">
-                          <div className="fs-bubble">{renderBubbleContent(msg.content)}</div>
+                          <div className="fs-bubble">
+                            {renderBubbleContent(msg.content, (k) =>
+                              setExpandedMedia({
+                                mediaKey: k,
+                                title: `ภาพจาก ${selectedCreator.name}`,
+                              })
+                            )}
+                          </div>
                           {msg.mediaKey && (
                             <div className="fs-blurred-teaser-card">
                               {unlockedRewards.includes(msg.mediaKey) ? (
-                                <div className="fs-teaser-media-wrap is-unlocked">
+                                <div
+                                  className="fs-teaser-media-wrap is-unlocked is-clickable"
+                                  role="button"
+                                  tabIndex={0}
+                                  title="แตะเพื่อดูภาพขนาดเต็ม"
+                                  onClick={() =>
+                                    setExpandedMedia({
+                                      mediaKey: msg.mediaKey!,
+                                      title: `ภาพพิเศษจาก ${selectedCreator.name}`,
+                                      caption: 'Exclusive Photo · ปลดล็อกแล้ว',
+                                    })
+                                  }
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                      setExpandedMedia({
+                                        mediaKey: msg.mediaKey!,
+                                        title: `ภาพพิเศษจาก ${selectedCreator.name}`,
+                                        caption: 'Exclusive Photo · ปลดล็อกแล้ว',
+                                      });
+                                    }
+                                  }}
+                                >
                                   <img src={media(msg.mediaKey)} alt="Exclusive photo" className="fs-teaser-img" />
-                                  <div className="fs-teaser-badge fs-badge-unlocked">✨ ปลดล็อกแล้ว</div>
+                                  <div className="fs-teaser-badge fs-badge-unlocked">✨ ปลดล็อกแล้ว · แตะขยาย 🔍</div>
                                 </div>
                               ) : (
                                 <div className="fs-teaser-media-wrap is-locked">
@@ -2397,13 +2552,6 @@ export function FrostStoryApp() {
                                     <div className="fs-teaser-lock-icon">🔒</div>
                                     <p className="fs-teaser-hint">รูปถ่ายส่วนตัวจาก {selectedCreator.name}</p>
                                     <div className="fs-teaser-actions">
-                                      <button
-                                        type="button"
-                                        className="fs-teaser-btn fs-teaser-btn-free"
-                                        onClick={() => void unlockReward(msg.mediaKey!, 'level')}
-                                      >
-                                        ✨ ปลดล็อกฟรี (ตามเลเวล)
-                                      </button>
                                       <button
                                         type="button"
                                         className="fs-teaser-btn fs-teaser-btn-instant"
@@ -2473,7 +2621,14 @@ export function FrostStoryApp() {
                           )}
                         </div>
                         <div className="fs-dm-msg-col">
-                          <div className="fs-bubble">{renderBubbleContent(entry.text)}</div>
+                          <div className="fs-bubble">
+                            {renderBubbleContent(entry.text, (k) =>
+                              setExpandedMedia({
+                                mediaKey: k,
+                                title: `ภาพจาก ${selectedCreator.name}`,
+                              })
+                            )}
+                          </div>
                         </div>
                       </div>
                       {entry.choiceText && (
@@ -2492,7 +2647,14 @@ export function FrostStoryApp() {
                           )}
                     </div>
                     <div className="fs-dm-msg-col">
-                      <div className="fs-bubble">{renderBubbleContent(node.text)}</div>
+                      <div className="fs-bubble">
+                        {renderBubbleContent(node.text, (k) =>
+                          setExpandedMedia({
+                            mediaKey: k,
+                            title: `ภาพจาก ${selectedCreator.name}`,
+                          })
+                        )}
+                      </div>
                     </div>
                   </div>
                 </>
@@ -2637,6 +2799,43 @@ export function FrostStoryApp() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Lightbox / Fullscreen Image Viewer Modal (constrained to app screen) */}
+      {expandedMedia && (
+        <Modal labelledBy="fs-lightbox-title" onClose={() => setExpandedMedia(null)}>
+          <section className="fs-lightbox-modal">
+            <header className="fs-lightbox-header">
+              <button
+                type="button"
+                className="fs-lightbox-back-btn"
+                aria-label="ย้อนกลับไปหน้าแชท"
+                onClick={() => setExpandedMedia(null)}
+              >
+                <ArrowLeft size={18} />
+                <span>ย้อนกลับไปหน้าแชท</span>
+              </button>
+              {expandedMedia.title && (
+                <span id="fs-lightbox-title" className="fs-lightbox-title">
+                  {expandedMedia.title}
+                </span>
+              )}
+            </header>
+            <div className="fs-lightbox-body" onClick={() => setExpandedMedia(null)}>
+              <img
+                src={media(expandedMedia.mediaKey)}
+                alt={expandedMedia.title || 'Expanded Photo'}
+                className="fs-lightbox-img"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+            {expandedMedia.caption && (
+              <footer className="fs-lightbox-footer">
+                <p>{expandedMedia.caption}</p>
+              </footer>
+            )}
+          </section>
+        </Modal>
       )}
 
       {/* Dev Tools Telemetry Drawer */}

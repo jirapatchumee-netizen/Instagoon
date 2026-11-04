@@ -36,9 +36,14 @@
 Repo นี้เก็บเฉพาะกติกา ส่วนเครื่องมือ render (ComfyUI workflow, scripts/render_zimage_turbo.py (art pipeline บนเครื่อง),
 สำเนา workflow) อยู่ใน art pipeline ของเครื่อง ไม่ได้ขึ้น GitHub
 
+- **แนวทางสไตล์หลัก (Art Style Standard)**: **Modern Korean Romance Manhwa (Semi-Realistic 2.5D)** ดูรายละเอียดฉบับเต็มใน [DESIGN.md](DESIGN.md#2-instagoon-visual--art-style-system--modern-korean-romance-manhwa-semi-realistic-25d)
+- **ภาพต้นแบบอ้างอิง (Golden Master Reference)**: [`Milin_Fitting_Chic_Golden_Master_Final.png`](content/media/assets/Milin_Fitting_Chic_Golden_Master_Final.png) / [`Milin_Fitting_Chic_Golden_00001_.png`](content/media/assets/Milin_Fitting_Chic_Golden_00001_.png) / [`Milin_Outfit_Ref_00001_.png`](content/media/assets/Milin_Outfit_Ref_00001_.png) / [`milin_silk_nightwear.png`](content/media/assets/milin_silk_nightwear.png)
 - **ขนาดภาพมาตรฐาน**: 544×960 (9:16 Portrait สไตล์ Webtoon/Instagram Post & Story)
-- **Engine & Settings**: Z-Image Turbo + Untwisting RoPE (`beta: 2.5`), `RFInversion` (flowturbo_pc, gamma 0.5, decoupled style conditioning cache), `AnimeLora3` strength **0.5**, Sampler **`er_sde`** **8 steps**, CFG **1.0**
-- **Style Reference**: `webtoon_style_reference.png` (เก็บใน art pipeline)
+- **Engine & Settings**: Z-Image Turbo + Untwisting RoPE (`beta: 2.5`), `RFInversion` (flowturbo_pc, gamma 0.5, decoupled style conditioning cache), `AnimeLora3` strength **0.5**, Sampler **`er_sde`** **8 steps**, CFG **1.0** (Preferred seed baseline: **101**)
+- **Style Reference**: `milin_fitting_chic_golden_master.png` หรือ `webtoon_style_reference.png` (เก็บใน art pipeline / ComfyUI input)
+- **มาตรฐานการจัดแสงและทรวดทรง (Lighting & Silhouette)**: ใช้ Soft diffused wrapping light ร่วมกับการไล่เฉดเงา (Gradient Shading) รอบเอวและสะโพก หลีกเลี่ยงเงาตัดขอบแข็ง เพื่อให้เห็นสรีระนาฬิกาทรายโค้งมนมีมิติ 3D นุ่มนวล
+- **มาตรฐานมิติใบหน้า (Face Dimension Rule)**: ต้องรักษามิติพวงแก้ม 3D ด้วยไฮไลต์สะท้อนแสงนวลๆ และเงาหลืบใต้ริมฝีปากล่าง (Labiomental groove shadow) ขับปลายคางมนรูปหัวใจให้เด่นชัด แยกจากลำคอด้วยเงาตกกระทบนุ่มใต้คาง
+- **มาตรฐานรูปปากและสีหน้า (Expression & Mouth Rule)**: ใช้ `sweet blushing smile, closed mouth, soft natural lips` เป็นค่าเริ่มต้น ห้ามใช้ `smirk` หรือ `teasing` ลอยๆ โดยไม่ล็อก `closed mouth` เพื่อป้องกันปัญหาภาพอ้าปาก/แลบลิ้น (Blep) โดยไม่ได้ตั้งใจ
 - **Asset เข้าเกม**: ภาพที่ render เสร็จแล้วต้องถูกคัดลอกไปที่ `content/media/{assets|avatars|posts|stories}` แล้ว commit (ADR-0007) — ตัว pipeline/ไฟล์กลางไม่ต้อง commit
 - *Character Consistency Standard*: ต้องมี `content/creators/{creator}/visual_bible.json` เพื่อล็อก Face DNA, ทรงผม, สีผม, สัดส่วนอายุ และสไตล์เสื้อผ้า ห้ามพิมพ์ Prompt หน้าตาตัวละครแบบ Ad-hoc เด็ดขาด
 

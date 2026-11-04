@@ -12,7 +12,7 @@
     "type": "unlockable",
     "media": "assets/Milin_Outfit_00001_.png",
     "publishedAt": "2026-11-01T22:30:00+07:00",
-    "relationshipRequired": 15,
+    "relationshipRequired": 0,
     "status": "published"
   },
   {
@@ -20,7 +20,7 @@
     "type": "unlockable",
     "media": "assets/milin_silk_nightwear.png",
     "publishedAt": "2026-11-02T23:45:00+07:00",
-    "relationshipRequired": 60,
+    "relationshipRequired": 0,
     "status": "published"
   }
 ]

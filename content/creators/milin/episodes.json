@@ -142,7 +142,7 @@
       },
       {
         "id": "n4",
-        "text": "แมวไม่มีหรอก มีแต่คนนี้นี่แหละ เพิ่งลองใส่ชุดคอสเพลย์แมวเล่นๆ คนเดียว แต่งตัวเก้อเลย... ดูสิ เซ็กซี่พอมั้ยน้า? หรือยังไม่พอให้ใจสั่น? 🙈✨\n\n[img:assets/milin_cat_cosplay.png]",
+        "text": "แมวไม่มีหรอก มีแต่คนนี้นี่แหละ แต่งคอสเพลย์แมวเล่นคนเดียว... ดูสิ เซ็กซี่พอมั้ยน้า? หรือยังไม่พอให้ใจสั่น? 🙈✨\n\n[img:assets/milin_cat_cosplay.png]",
         "choices": [],
         "end": true,
         "effects": {
@@ -160,7 +160,7 @@
   {
     "id": "ep_milin_02",
     "title": "ชวนมาช่วยเลือกชุด",
-    "relationshipRequired": 15,
+    "relationshipRequired": 0,
     "position": 2,
     "nodes": [
       {
@@ -270,7 +270,7 @@
   {
     "id": "ep_milin_03",
     "title": "เกมตอบคำถามตอนดึก",
-    "relationshipRequired": 40,
+    "relationshipRequired": 0,
     "position": 3,
     "nodes": [
       {
@@ -385,7 +385,7 @@
   {
     "id": "ep_milin_04",
     "title": "รีวิวชุดนอนไม่ได้นอน",
-    "relationshipRequired": 60,
+    "relationshipRequired": 0,
     "position": 4,
     "nodes": [
       {
@@ -494,7 +494,7 @@
   {
     "id": "ep_milin_05",
     "title": "คืนนี้ระเบียงมีที่ว่าง",
-    "relationshipRequired": 80,
+    "relationshipRequired": 0,
     "position": 5,
     "nodes": [
       {

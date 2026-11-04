@@ -9,8 +9,10 @@ export const RuleSchema = z.object({ id, name: text.min(1), description: text, k
 export const ConditionSchema = z.object({ field: z.enum(['level', 'closeness', 'trust', 'romance', 'event', 'turns']), value: z.number().min(0).max(100000), eventId: z.string().max(100) }).strict();
 export const RewardSchema = z.object({ id, name: text.min(1), asset, caption: text, message: text, conditions: z.array(ConditionSchema).min(1).max(30) }).strict();
 export const KnowledgeEntrySchema = z.object({ id, title:z.string().min(1).max(200), aliases:z.array(z.string().min(1).max(200)).max(30), content:z.string().min(1).max(4000), source:z.string().max(1000).refine(v=>!v||/^https?:\/\//i.test(v),'ที่มาต้องเป็น URL http หรือ https'), checkedAt:z.string().max(30) }).strict();
+export const SensoryPropsSchema = z.object({ scent: text.optional(), clothing: text.optional(), props: text.optional() }).strict();
 export const NpcObjectSchema = z.object({
   schemaVersion: z.literal('1.0'), id, name: text.min(1).max(120), handle: z.string().min(1).max(100), tagline: text, avatar: asset, color: z.string().regex(/^#[a-fA-F0-9]{6}$/), tags: z.array(z.string().max(80)).max(30), age: text, biography: text, personality: text, world: text, occupation: text, likes: text, dislikes: text, goals: text, immutableFacts: z.array(text).max(100), knowledgeBoundary: text,
+  userRole: text.optional(), precedingIncident: text.optional(), appearanceDetail: text.optional(), sensoryProps: SensoryPropsSchema.optional(),
   secrets: z.array(z.object({ id, content: text, minLevel: z.number().int().min(1).max(5) }).strict()).max(100), initialMemories: z.array(text).max(100),
   knowledge:z.array(KnowledgeEntrySchema).max(100).optional(), knowledgeEnabled:z.boolean().optional(), webSearchEnabled:z.boolean().optional(),
   style: z.object({ language: text, pronouns: text, tone: text, length: z.enum(['short', 'medium', 'long']), emoji: z.enum(['none', 'some', 'often']), examples: text, fallback: text.min(1), levelStyles: z.array(text).length(5) }).strict(),

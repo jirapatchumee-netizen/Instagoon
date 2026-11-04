@@ -75,7 +75,7 @@
   {
     "id": "ep_noey_02",
     "title": "ลายเซ็นที่เนยไม่อยากเซ็น",
-    "relationshipRequired": 20,
+    "relationshipRequired": 0,
     "position": 2,
     "nodes": [
       {
