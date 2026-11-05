@@ -38,6 +38,14 @@ export function buildContent(contentDir, distDir) {
     else if (!mediaSet.has(k)) err(where, `missing file content/media/${k}`);
   };
   for (const k of media) if (statSync(join(mediaDir, k)).size > MAX_FILE) err(`media/${k}`, 'larger than 25 MiB');
+  // This repo is public and media is served as-is: generator metadata (ComfyUI embeds the full workflow + prompt
+  // in PNG text chunks) would publish the private art pipeline. Strip it before committing.
+  for (const k of media) if (/\.png$/i.test(k) && pngTextKeys(readFileSync(join(mediaDir, k))).length) err(`media/${k}`, `PNG carries metadata (${pngTextKeys(readFileSync(join(mediaDir, k))).join(', ')}); strip it before committing`);
+  // Render recipes and prompt templates stay in the local art pipeline, never in this public repo.
+  for (const folder of readdirSync(join(contentDir, 'creators'))) for (const name of ['visual_bible.json', 'production_manifest.json']) {
+    const file = join(contentDir, 'creators', folder, name);
+    if (existsSync(file) && /masterPromptTemplate|renderRecipe|promptAnchor|negativePrompt|"prompt"/.test(readFileSync(file, 'utf8'))) err(`creators/${folder}/${name}`, 'contains private render recipe/prompt; keep it in the local art pipeline');
+  }
 
   const ids = new Set();
   const uniqueId = (where, id) => {
@@ -178,6 +186,18 @@ export function buildContent(contentDir, distDir) {
     ].join('\n'));
   }
   return bundle;
+}
+
+// Keywords of tEXt/zTXt/iTXt chunks in a PNG (where generators store prompts/workflows).
+function pngTextKeys(buf) {
+  const keys = [];
+  for (let i = 8; i + 8 <= buf.length;) {
+    const len = buf.readUInt32BE(i), type = buf.toString('latin1', i + 4, i + 8);
+    if (type === 'tEXt' || type === 'zTXt' || type === 'iTXt') { const d = buf.subarray(i + 8, i + 8 + len); keys.push(d.toString('latin1', 0, Math.max(0, d.indexOf(0)))); }
+    if (type === 'IEND') break;
+    i += 12 + len;
+  }
+  return keys;
 }
 
 function walk(dir) {
