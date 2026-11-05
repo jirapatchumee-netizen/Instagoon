@@ -49,6 +49,8 @@ const extractSpokenDialogue = text => {
     .replace(/\s+/g, ' ')
     .trim();
 };
+// One-time free energy per new account: 30 by default, FREE_ENERGY_GRANT overrides it (staging uses 100).
+const freeEnergyGrant = env => Number.parseInt(env.FREE_ENERGY_GRANT, 10) || 30;
 const MEMORY_KEY = /^player\.[\w.-]{1,60}$/;
 // Words that only appear when a reply talks about the AI behind the character or quotes its
 // instructions. Such a reply is discarded like an empty one and the next model is tried.
@@ -68,7 +70,6 @@ function modelsForVisit(pool, visitId) {
  return [...pool.slice(offset), ...pool.slice(0, offset)];
 }
 async function takeEnergy(env, uid, now, reason = 'ai_chat') {
- if(env.STAGING_UNLIMITED_ENERGY===true) return 'unlimited';
  await energy(env, uid, now);
  for(const bucket of ['free','purchased']){
   const taken = await run(env, `UPDATE energy SET ${bucket}=${bucket}-1 WHERE user_id=? AND ${bucket}>0`, uid);
@@ -80,7 +81,6 @@ async function takeEnergy(env, uid, now, reason = 'ai_chat') {
  return null;
 }
 async function spendEnergy(env, uid, amount, reason, now) {
- if(env.STAGING_UNLIMITED_ENERGY===true) return {ok:true,energy:await energy(env,uid,now)};
  await energy(env, uid, now);
  const cur = await one(env, 'SELECT free, purchased FROM energy WHERE user_id=?', uid);
  if(!cur || (cur.free + cur.purchased) < amount) return null;
@@ -258,7 +258,7 @@ async function auth(req,env,url) {
  // Google verified this email, so an earlier account with the same email (pre-Google sign-up) is linked rather than duplicated.
  if(!user){user=await one(env,'SELECT * FROM users WHERE lower(email)=?',email); if(user) await run(env,'UPDATE users SET google_id=? WHERE id=?',profile.sub,user.id);}
  if(user && user.email.toLowerCase()!==email) { await run(env,'UPDATE users SET email=? WHERE id=?',email,user.id); }
- if(!user){const uid=crypto.randomUUID(); await env.DB.batch([env.DB.prepare('INSERT INTO users(id,email,google_id,created_at) VALUES(?,?,?,?)').bind(uid,email,profile.sub,now),env.DB.prepare('INSERT OR IGNORE INTO energy(user_id,free) VALUES(?,30)').bind(uid)]); user={id:uid};}
+ if(!user){const uid=crypto.randomUUID(); await env.DB.batch([env.DB.prepare('INSERT INTO users(id,email,google_id,created_at) VALUES(?,?,?,?)').bind(uid,email,profile.sub,now),env.DB.prepare('INSERT OR IGNORE INTO energy(user_id,free) VALUES(?,?)').bind(uid,freeEnergyGrant(env))]); user={id:uid};}
  const raw=token(); await run(env,'INSERT INTO sessions(id,user_id,expires_at) VALUES(?,?,?)',await hash(raw),user.id,now+604800000);
  return new Response(null,{status:302,headers:{location:'/', 'set-cookie':secureCookie('frost_session',raw,604800),'cache-control':'no-store'}});
 }
@@ -293,7 +293,6 @@ async function applyChoiceOutcome(env, userId, creator, rev, choice, now) {
 async function energy(env,uid,now) {
  // Free energy is a one-time grant of 30 per account (migration 0009): it never refills.
  const row=await one(env,'SELECT free,purchased FROM energy WHERE user_id=?',uid);
- if(env.STAGING_UNLIMITED_ENERGY===true) return {free:row?.free??0,purchased:row?.purchased??0,nextRefillAt:null,unlimited:true};
  return {free:row.free,purchased:row.purchased,nextRefillAt:null};
 }
 const postShape = p=>({id:p.id,creatorId:p.creator_id,creatorName:p.creator_name,caption:p.caption,mediaKey:p.media_key,publishedAt:p.published_at,relationshipRequired:p.relationship_required,simulatedLikes:p.simulated_likes,likes:p.likes,firstCommentUsed:!!p.claimed});
@@ -641,7 +640,7 @@ async function player(req,env,user,path,now,ctx) {
    try {
    const charge = await takeEnergy(env, user.id, now);
    if(!charge) return json({error:'energy_empty'}, 402);
-   energyBucket = charge==='unlimited'?null:charge;
+   energyBucket = charge;
    charged = energyBucket;
    // These four reads never depend on each other, so they share one D1 round trip. Only reads are
    // batched: D1 batch() is not the transactional guarantee the writes further down rely on.

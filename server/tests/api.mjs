@@ -361,22 +361,14 @@ assert.equal((await call('/api/dev/test-models',{method:'POST',data:{models:['..
   assert.equal(prof.payload.vault[0].unlocked, true, 'unlocked reward reflected in vault');
  } finally { globalThis.fetch=saved; }
 }
-// Staging unlimited mode never consumes or refunds balances and works at zero.
+// A new account gets 30 free energy once; FREE_ENERGY_GRANT (staging: 100) overrides the amount.
 {
- const gid=sql.prepare("SELECT id FROM users WHERE email='player1@gmail.com'").get().id;
- sql.prepare('UPDATE energy SET free=0,purchased=0 WHERE user_id=?').run(gid);
- sql.prepare("INSERT INTO creators(id,name,bio) VALUES('unlimited','Test','b')").run();
- sql.prepare("INSERT INTO npc_definitions(creator_id,definition_json,updated_at) VALUES('unlimited',?,0)").run(JSON.stringify({name:'Test',rules:[],rewards:[{asset:'rewards/unlimited.webp',message:'R',conditions:[{field:'level',value:5}]}]}));
- const stagingEnv={...env,STAGING_UNLIMITED_ENERGY:true,GEMINI_API_KEY:'fixture-only'};const saved=globalThis.fetch;
- const ledgerBefore=sql.prepare('SELECT COUNT(*) n FROM token_ledger WHERE user_id=?').get(gid).n;
- globalThis.fetch=async()=>Response.json({candidates:[{content:{parts:[{text:JSON.stringify({reply:'ok',matchedRuleIds:[],affectionDelta:0})}]}}]});
- try{
-  const me=await call('/api/me',{sess:guest.sess,e:stagingEnv});assert.equal(me.payload.energy.unlimited,true);
-  for(let i=0;i<2;i++){const reply=await call('/api/chats/unlimited/message',{method:'POST',data:{message:'สวัสดี'},sess:guest.sess,e:stagingEnv});assert.equal(reply.status,200);assert.equal(reply.payload.energy.unlimited,true);}
-  const unlock=await call('/api/chats/unlimited/rewards/unlock',{method:'POST',data:{mediaKey:'rewards/unlimited.webp',method:'energy'},sess:guest.sess,e:stagingEnv});assert.equal(unlock.status,200);assert.equal(unlock.payload.energy.unlimited,true);
-  assert.deepEqual({...sql.prepare('SELECT free,purchased FROM energy WHERE user_id=?').get(gid)},{free:0,purchased:0});assert.equal(sql.prepare('SELECT COUNT(*) n FROM token_ledger WHERE user_id=?').get(gid).n,ledgerBefore);
-  const normal=await call('/api/chats/unlimited/message',{method:'POST',data:{message:'สวัสดี'},sess:guest.sess,e:{...env,GEMINI_API_KEY:'fixture-only'}});assert.equal(normal.status,402);
- }finally{globalThis.fetch=saved;}
+ const freeOf=email=>sql.prepare('SELECT e.free f FROM energy e JOIN users u ON u.id=e.user_id WHERE u.email=?').get(email).f;
+ gEnv.FREE_ENERGY_GRANT='100';
+ try{assert.equal((await googleLogin('tester100@gmail.com','sub-tester100')).status,302);}finally{delete gEnv.FREE_ENERGY_GRANT;}
+ assert.equal(freeOf('tester100@gmail.com'),100,'staging grant');
+ assert.equal((await googleLogin('tester30@gmail.com','sub-tester30')).status,302);
+ assert.equal(freeOf('tester30@gmail.com'),30,'default grant');
 }
 // ElevenLabs Dynamic TTS Endpoint tests
 {
