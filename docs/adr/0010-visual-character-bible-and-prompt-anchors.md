@@ -1,3 +1,5 @@
+> **อัปเดต 5 พ.ย. 2026:** ค่าเรนเดอร์ของมิลินในเอกสารนี้ (544×960, `webtoon_style_reference.png`, LoRA 0.5) ถูกแทนที่ด้วยมาตรฐาน v4.2 Golden Master: 512×640, reference `milin_gm_ref_512x640.png`, LoRA 0.25, adain 0.6 ดู `content/creators/milin/visual_bible.json` → `renderRecipe` หลักการ visual bible + prompt anchor ในเอกสารนี้ยังใช้อยู่
+
 # ADR 0010: Visual Character Bible & Prompt Anchoring for Instagoon Image Consistency
 
 - **สถานะ:** Accepted

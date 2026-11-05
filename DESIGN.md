@@ -42,8 +42,8 @@ All icons are custom-crafted vector SVGs reproducing native Instagram geometries
 > **Official Art Standard**: ทุก Asset ภาพในเกม Instagoon (Feed Posts, Stories, DM Unlockables, Avatars) ต้องยึดถือมาตรฐานงานภาพ **Modern Korean Webtoon / Romance Manhwa Style** (เกรดพรีเมียมแบบเดียวกับภาพคัตซีนเกม Dating Sim ชั้นนำของเกาหลี)
 
 ### 2.1 Golden Master Reference (ภาพมาตรฐานอ้างอิง)
-- **ภาพต้นแบบอ้างอิงสูงสุดของระบบ (Supreme Golden Master):** [`Milin_Fitting_Chic_Golden_Master_Final.png`](content/media/assets/Milin_Fitting_Chic_Golden_Master_Final.png) / [`Milin_Fitting_Chic_Golden_00001_.png`](content/media/assets/Milin_Fitting_Chic_Golden_00001_.png)
-- **ภาพต้นแบบเสริม:** [`Milin_Outfit_Ref_00001_.png`](content/media/assets/Milin_Outfit_Ref_00001_.png) / [`milin_silk_nightwear.png`](content/media/assets/milin_silk_nightwear.png)
+- **ภาพต้นแบบอ้างอิงสูงสุดของระบบ (Supreme Golden Master):** [`docs/art/milin_golden_master.png`](docs/art/milin_golden_master.png) (ภาพเดรสครีมที่เจ้าของอนุมัติ 5 พ.ย. 2026)
+- **สูตรเรนเดอร์ (v4.2):** `content/creators/milin/visual_bible.json` → `renderRecipe` (reference `milin_gm_ref_512x640.png`, LoRA 0.25, adain 0.6)
 - **สัดส่วนภาพและขนาด Canvas:** 512×640 (4:5 Vertical Portrait สำหรับ Instagram Feed & Game Assets)
 
 ### 2.2 เสาหลักของงานภาพ (Core Aesthetic Pillars)
@@ -59,7 +59,7 @@ All icons are custom-crafted vector SVGs reproducing native Instagram geometries
    - การแสดงออกทางสีหน้าตามมาตรฐานต้องใช้ **`sweet pleasant smile, closed mouth, soft natural lips`** เป็นค่าเริ่มต้น
    - หลีกเลี่ยงการใช้คำว่า `smirk` หรือ `teasing smile` โดยไม่มีการล็อกรูปปาก เพราะโมเดลจะกระตุ้น Trope อนิเมะจนเกิดอาการอ้าปากหรือปลายลิ้นโผล่โดยไม่ตั้งใจ หากต้องการสื่ออารมณ์ขี้เล่น ให้ถ่ายทอดผ่านแววตา (`playful expressive eyes`) แทน
 5. **Balanced Oval Face & 3D Cheek Dimension (มิติพวงแก้มและรูปหน้าสมส่วน):**
-   - ใช้โครงหน้ารูปไข่ไอดอลสมส่วน (`well-proportioned oval manhwa idol face shape, natural rounded chin contour:1.1`) หลีกเลี่ยง `heart-shaped face` หรือเงาคางหนักเกินไปเพื่อป้องกันรูปหน้าสั้นหรือยืดผิดรูป
+   - โครงหน้าใช้คำตาม `masterPromptTemplate` v4.2 (`three-dimensional sculpted heart-shaped face` + คางมนมีเงาใต้คาง) ซึ่งเป็นคำที่ใช้สร้าง golden master
    - มีมิติพวงแก้มกลมนูนนวลตา (Apples of the cheeks) พร้อมไฮไลต์สะท้อนแสงนุ่มๆ และเฉดเงาบางเบาใต้โหนกแก้ม
    - มีเงาใต้คาง/แนวกราม (Under-chin occlusion) แยกรูปหน้าออกจากลำคออย่างเป็นธรรมชาติ ไม่ตัดเส้นขอบแข็ง
 6. **Soft Diffused Wrapping Light & Gradient Silhouette (แสงนุ่มโอบล้อมเรือนร่าง):**
