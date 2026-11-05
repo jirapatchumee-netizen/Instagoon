@@ -42,8 +42,7 @@ All icons are custom-crafted vector SVGs reproducing native Instagram geometries
 > **Official Art Standard**: ทุก Asset ภาพในเกม Instagoon (Feed Posts, Stories, DM Unlockables, Avatars) ต้องยึดถือมาตรฐานงานภาพ **Modern Korean Webtoon / Romance Manhwa Style** (เกรดพรีเมียมแบบเดียวกับภาพคัตซีนเกม Dating Sim ชั้นนำของเกาหลี)
 
 ### 2.1 Golden Master Reference (ภาพมาตรฐานอ้างอิง)
-- **ภาพต้นแบบอ้างอิงสูงสุดของระบบ (Supreme Golden Master):** [`Milin_Fitting_Chic_Golden_Master_Final.png`](content/media/assets/Milin_Fitting_Chic_Golden_Master_Final.png) / [`Milin_Fitting_Chic_Golden_00001_.png`](content/media/assets/Milin_Fitting_Chic_Golden_00001_.png)
-- **ภาพต้นแบบเสริม:** [`Milin_Outfit_Ref_00001_.png`](content/media/assets/Milin_Outfit_Ref_00001_.png) / [`milin_silk_nightwear.png`](content/media/assets/milin_silk_nightwear.png)
+- **ภาพต้นแบบอ้างอิงสูงสุดของระบบ (Supreme Golden Master):** เก็บใน art pipeline บนเครื่อง (`projects/Instagoon/golden_master/`) ไม่อยู่ใน repo สาธารณะนี้ ดูตัวอย่างผลงานจริงได้จาก `content/media/posts/`
 - **สัดส่วนภาพและขนาด Canvas:** 512×640 (4:5 Vertical Portrait สำหรับ Instagram Feed & Game Assets)
 
 ### 2.2 เสาหลักของงานภาพ (Core Aesthetic Pillars)
