@@ -55,6 +55,20 @@ sql.prepare("INSERT INTO posts(id,creator_id,caption,published_at,relationship_r
 assert.equal((await request('/api/posts/locked/comments',{method:'POST',data:{requestId:'request-locked',content:'peek'}})).status,404,'no comments on a post the player cannot see');
 for(let i=0;i<8;i++)assert.equal((await request('/api/posts/p/comments',{method:'POST',data:{requestId:'burst'+i,content:'spam'+i}})).status,200);
 assert.equal((await request('/api/posts/p/comments',{method:'POST',data:{requestId:'burst-over',content:'too many'}})).status,429,'at most 10 comments a minute');
+// Free energy is a one-time grant (0009): a comment does not start a refill timer, and the database
+// itself still refuses comments the API would refuse, even if a request slipped past the API checks.
+assert.equal(sql.prepare("SELECT next_refill_at t FROM energy WHERE user_id='u'").get().t,null,'a comment does not start a refill timer');
+const rawComment=(rid,pid)=>()=>sql.prepare("INSERT INTO comments(id,request_id,user_id,post_id,content,created_at) VALUES(?,?,'u',?,'raw',?)").run(rid,rid,pid,Date.now());
+assert.throws(rawComment('raw-locked','locked'),/post_unavailable/);
+assert.throws(rawComment('raw-burst','p'),/rate_limit/);
+{
+ const saved={...sql.prepare("SELECT free,next_refill_at FROM energy WHERE user_id='u'").get()};
+ sql.prepare("UPDATE energy SET free=0,next_refill_at=? WHERE user_id='u'").run(Date.now()-1000);
+ const me=await request('/api/me');
+ assert.equal(me.payload.energy.free,0,'free energy never refills, even with an old timer in the row');
+ assert.equal(me.payload.energy.nextRefillAt,null);
+ sql.prepare("UPDATE energy SET free=?,next_refill_at=? WHERE user_id='u'").run(saved.free,saved.next_refill_at);
+}
 sql.prepare("UPDATE comments SET created_at=created_at-120000 WHERE user_id='u'").run();
 objects.set('av.webp',{body:'img',httpMetadata:{contentType:'image/svg+xml'}});sql.prepare("UPDATE creators SET avatar_key='av.webp' WHERE id='c'").run();
 {const r=await worker.fetch(new Request(env.PUBLIC_ORIGIN+'/api/media/av.webp',{headers:{cookie:`frost_session=${raw}`}}),env);assert.equal(r.status,200);assert.match(r.headers.get('content-security-policy'),/sandbox/,'media cannot run script');}
