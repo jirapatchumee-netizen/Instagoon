@@ -19,6 +19,11 @@ jobs:
   staging:
     name: Deploy staging (automatic)
     runs-on: ubuntu-latest
+    # Cloudflare secrets live in the staging/production environments, which only accept main,
+    # so a workflow pushed on any other branch cannot read them.
+    environment:
+      name: staging
+      url: https://staging.instagoon.app
     concurrency:
       group: instagoon-staging
       cancel-in-progress: false
