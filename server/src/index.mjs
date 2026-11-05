@@ -268,13 +268,10 @@ async function applyChoiceOutcome(env, userId, creator, rev, choice, now) {
 }
 
 async function energy(env,uid,now) {
- if(env.STAGING_UNLIMITED_ENERGY===true){const row=await one(env,'SELECT free,purchased,next_refill_at FROM energy WHERE user_id=?',uid);return {free:row?.free??0,purchased:row?.purchased??0,nextRefillAt:row?.next_refill_at??null,unlimited:true};}
- // Refill then read back, in one round trip; the order inside batch() is sequential.
- const [, rowRes] = await env.DB.batch([
-  env.DB.prepare('UPDATE energy SET free=30,next_refill_at=NULL WHERE user_id=? AND next_refill_at IS NOT NULL AND next_refill_at<=?').bind(uid,now),
-  env.DB.prepare('SELECT free,purchased,next_refill_at FROM energy WHERE user_id=?').bind(uid)
- ]);
- const row=rowRes.results[0]; return {free:row.free,purchased:row.purchased,nextRefillAt:row.next_refill_at};
+ // Free energy is a one-time grant of 30 per account (migration 0009): it never refills.
+ const row=await one(env,'SELECT free,purchased FROM energy WHERE user_id=?',uid);
+ if(env.STAGING_UNLIMITED_ENERGY===true) return {free:row?.free??0,purchased:row?.purchased??0,nextRefillAt:null,unlimited:true};
+ return {free:row.free,purchased:row.purchased,nextRefillAt:null};
 }
 const postShape = p=>({id:p.id,creatorId:p.creator_id,creatorName:p.creator_name,caption:p.caption,mediaKey:p.media_key,publishedAt:p.published_at,relationshipRequired:p.relationship_required,simulatedLikes:p.simulated_likes,likes:p.likes,firstCommentUsed:!!p.claimed});
 const storyShape = s=>({id:s.id,creatorId:s.creator_id,type:s.type,mediaKey:s.media_key,publishedAt:s.published_at,expiresAt:s.type==='broadcast'?s.published_at+86400000:s.first_viewed_at==null?null:s.first_viewed_at+86400000,firstViewedAt:s.first_viewed_at});

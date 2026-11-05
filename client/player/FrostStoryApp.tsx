@@ -138,8 +138,7 @@ export const TRANSLATIONS = {
     account: 'โปรไฟล์',
     yourStory: 'เรื่องราวของคุณ',
     todayStories: 'เรื่องราววันนี้',
-    energyRefillPrefix: 'พลังเติม',
-    energyRefillDefault: 'พลังฟรีเติมทุก 4 ชั่วโมง',
+    energyRefillDefault: 'พลังงานฟรี 30 แต้มต่อบัญชี ไม่เติมคืน',
     noPosts: 'ยังไม่มีโพสต์ใหม่ในขณะนี้',
     sendMessage: 'ส่งข้อความ',
     likesCount: (n: number) => `ถูกใจ ${n.toLocaleString()} คน`,
@@ -229,8 +228,7 @@ export const TRANSLATIONS = {
     account: 'Profile',
     yourStory: 'Your story',
     todayStories: "Today's Stories",
-    energyRefillPrefix: 'Refills at',
-    energyRefillDefault: 'Free energy refills every 4 hours',
+    energyRefillDefault: 'Free energy: 30 per account, no refills',
     noPosts: 'No new posts right now',
     sendMessage: 'Message',
     likesCount: (n: number) => `${n.toLocaleString()} likes`,
@@ -320,8 +318,7 @@ export const TRANSLATIONS = {
     account: 'プロフィール',
     yourStory: 'ストーリーズ',
     todayStories: '今日のストーリーズ',
-    energyRefillPrefix: '次の回復',
-    energyRefillDefault: '無料エネルギーは4時間ごとに回復します',
+    energyRefillDefault: '無料エネルギーはアカウントごとに30(回復なし)',
     noPosts: '新しい投稿はまだありません',
     sendMessage: 'メッセージ',
     likesCount: (n: number) => `「いいね！」${n.toLocaleString()}件`,
@@ -1394,9 +1391,7 @@ export function FrostStoryApp() {
             <span
               className="fs-energy"
               title={
-                energy?.unlimited ? 'Staging: Energy ไม่จำกัด' : energy?.nextRefillAt
-                  ? `${t.energyRefillPrefix} ${formatDateTime(energy.nextRefillAt, lang)}`
-                  : t.energyRefillDefault
+                energy?.unlimited ? 'Staging: Energy ไม่จำกัด' : t.energyRefillDefault
               }
             >
               <Zap size={13} className="fs-energy-icon" />
