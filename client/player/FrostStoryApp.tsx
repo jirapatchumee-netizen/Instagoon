@@ -577,9 +577,16 @@ function Media({
 function renderBubbleContent(text: string, onExpandMedia?: (key: string) => void) {
   if (!text) return null;
 
+  let mood: string | null = null;
   let thought: string | null = null;
   let visual: string | null = null;
   let bodyText = text;
+
+  const moodMatch = bodyText.match(/^\[(?:mood|reaction|toast):\s*([\s\S]*?)\]\n?/);
+  if (moodMatch) {
+    mood = moodMatch[1].trim();
+    bodyText = bodyText.substring(moodMatch[0].length);
+  }
 
   const thoughtMatch = bodyText.match(/^\[thought:\s*([\s\S]*?)\]\n?/);
   if (thoughtMatch) {
@@ -670,9 +677,15 @@ function renderBubbleContent(text: string, onExpandMedia?: (key: string) => void
     );
   }
 
-  if (thought || visual) {
+  if (mood || thought || visual) {
     return (
       <div className="fs-bubble-with-meta">
+        {mood && (
+          <div className="fs-mood-box" title="ความรู้สึกของตัวละคร">
+            <span className="fs-mood-icon">💕</span>
+            <span className="fs-mood-text">{mood}</span>
+          </div>
+        )}
         {thought && (
           <div className="fs-thought-box" title="ความคิดในใจ">
             <span className="fs-thought-icon">💭</span>
@@ -925,9 +938,7 @@ export function FrostStoryApp() {
   const dmMenuRef = useRef<HTMLDivElement | null>(null);
   const [aiSending, setAiSending] = useState(false);
   const [pending, setPending] = useState<{ id: string; content: string; failed?: string }[]>([]);
-  const [moodToast, setMoodToast] = useState<string | null>(null);
   const [unlockedRewards, setUnlockedRewards] = useState<string[]>([]);
-  const moodToastTimerRef = useRef<number | null>(null);
   const [memoryPanel, setMemoryPanel] = useState<{ open: boolean; items: { key: string; value: string }[] }>({ open: false, items: [] });
   const [unlockedStoryModal, setUnlockedStoryModal] = useState<{
     open: boolean;
@@ -963,7 +974,6 @@ export function FrostStoryApp() {
 
   useEffect(() => {
     setMemoryPanel({ open: false, items: [] });
-    setMoodToast(null);
   }, [selectedCreator?.id]);
 
   async function toggleMemoryPanel() {
@@ -1019,17 +1029,10 @@ export function FrostStoryApp() {
       if (res.messages) setChat((prev) => (prev ? { ...prev, aiMessages: res.messages } : prev));
       if (res.energy) setEnergy(res.energy);
       if (res.unlockedRewards) setUnlockedRewards(res.unlockedRewards);
-      if (res.moodToast) {
-        if (moodToastTimerRef.current) clearTimeout(moodToastTimerRef.current);
-        setMoodToast(res.moodToast);
-        moodToastTimerRef.current = window.setTimeout(() => setMoodToast(null), 4500);
-      }
       if (typeof res.relationship === 'number') {
         const prevRel = selectedCreator.relationship || 0;
         if (prevRel < 100 && res.relationship >= 100) {
-          if (moodToastTimerRef.current) clearTimeout(moodToastTimerRef.current);
-          setMoodToast(`🎉 ยินดีด้วย! ความสัมพันธ์ครบ 100 คุณได้รับตรา "💎 แฟนตัวยง" ของ ${selectedCreator.name} แล้ว!`);
-          moodToastTimerRef.current = window.setTimeout(() => setMoodToast(null), 6000);
+          alert(`🎉 ยินดีด้วย! ความสัมพันธ์ครบ 100 คุณได้รับตรา "💎 แฟนตัวยง" ของ ${selectedCreator.name} แล้ว!`);
         }
         setSelectedCreator((prev) => (prev ? { ...prev, relationship: res.relationship } : prev));
         setCreators((prev) =>
@@ -1063,9 +1066,6 @@ export function FrostStoryApp() {
       if (res.unlocked) {
         setUnlockedRewards((prev) => (prev.includes(mediaKey) ? prev : [...prev, mediaKey]));
         if (res.energy) setEnergy(res.energy);
-        if (moodToastTimerRef.current) clearTimeout(moodToastTimerRef.current);
-        setMoodToast(`ปลดล็อกรูปภาพของ ${selectedCreator.name} สำเร็จแล้ว! ✨`);
-        moodToastTimerRef.current = window.setTimeout(() => setMoodToast(null), 4000);
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -1233,7 +1233,6 @@ export function FrostStoryApp() {
     setSelectedCreator(null);
     setChat(null);
     setPending([]);
-    setMoodToast(null);
     setDmMenuOpen(false);
   }
 
@@ -2450,12 +2449,6 @@ export function FrostStoryApp() {
                 )}
               </div>
             </header>
-
-            {moodToast && (
-              <div className="fs-mood-toast-banner" role="status">
-                <span>{moodToast}</span>
-              </div>
-            )}
 
             <div className="fs-dm-mode-toggle" role="tablist" data-active={aiDmTab}>
               <span className="fs-dm-mode-thumb" aria-hidden="true" />

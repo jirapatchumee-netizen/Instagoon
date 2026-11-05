@@ -2491,6 +2491,34 @@ dialog.fs-overlay[open]::backdrop {
   width: 100%;
 }
 
+.fs-mood-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  padding: 4px 10px;
+  background: linear-gradient(135deg, rgba(255, 79, 154, 0.22), rgba(168, 85, 247, 0.18));
+  border: 1px solid rgba(255, 79, 154, 0.45);
+  border-radius: 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #fce7f3;
+  box-shadow: 0 2px 8px rgba(255, 79, 154, 0.16);
+  width: fit-content;
+  max-width: 100%;
+}
+
+.fs-mood-icon {
+  font-size: 0.85rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.fs-mood-text {
+  line-height: 1.35;
+  letter-spacing: 0.01em;
+}
+
 .fs-thought-box {
   display: inline-flex;
   align-items: flex-start;
