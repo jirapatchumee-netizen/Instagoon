@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   Check,
   ChevronDown,
+  Flame,
   Globe,
   LockKeyhole,
   MessageSquareX,
@@ -191,6 +192,7 @@ export const TRANSLATIONS = {
     resetChatConfirm: 'เริ่มบทสนทนาใหม่ (ล้างประวัติแชท AI) สำหรับตัวละครนี้ใช่หรือไม่?',
     resetStory: 'รีเซ็ตเนื้อเรื่อง',
     resetStoryConfirm: 'เริ่มเนื้อเรื่องใหม่สำหรับตัวละครนี้ใช่หรือไม่?',
+    fiftyShades: 'โหมด Fifty Shades',
     chatSettings: 'ตั้งค่าแชท',
     sendFailed: 'ส่งไม่สำเร็จ · แตะเพื่อลองใหม่',
     chatLoading: 'กำลังเปิดแชท',
@@ -281,6 +283,7 @@ export const TRANSLATIONS = {
     resetChatConfirm: 'Reset AI chat history with this character?',
     resetStory: 'Reset Story',
     resetStoryConfirm: 'Restart the story for this character?',
+    fiftyShades: 'Fifty Shades Mode',
     chatSettings: 'Chat settings',
     sendFailed: 'Not sent · Tap to retry',
     chatLoading: 'Opening chat',
@@ -371,6 +374,7 @@ export const TRANSLATIONS = {
     resetChatConfirm: 'このキャラクターとのAIチャット履歴をリセットしますか？',
     resetStory: 'ストーリーリセット',
     resetStoryConfirm: 'このキャラクターのストーリーを最初からやり直しますか？',
+    fiftyShades: 'フィフティ・シェイズ モード',
     chatSettings: 'チャット設定',
     sendFailed: '送信できませんでした · タップして再送',
     chatLoading: 'チャットを開いています',
@@ -936,6 +940,20 @@ export function FrostStoryApp() {
   const [aiDmTab, setAiDmTab] = useState<'ai' | 'story'>('ai');
   const [dmMenuOpen, setDmMenuOpen] = useState(false);
   const dmMenuRef = useRef<HTMLDivElement | null>(null);
+  const [fiftyShadesMode, setFiftyShadesMode] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('fs_fiftyshades_mode') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('fs_fiftyshades_mode', String(fiftyShadesMode));
+    } catch {}
+  }, [fiftyShadesMode]);
+
   const [aiSending, setAiSending] = useState(false);
   const [pending, setPending] = useState<{ id: string; content: string; failed?: string }[]>([]);
   const [unlockedRewards, setUnlockedRewards] = useState<string[]>([]);
@@ -1023,7 +1041,7 @@ export function FrostStoryApp() {
         unlockedRewards?: string[];
         relationship: number;
         energy: Energy;
-      }>(`/api/chats/${encodeURIComponent(selectedCreator.id)}/message`, json({ message: text }));
+      }>(`/api/chats/${encodeURIComponent(selectedCreator.id)}/message`, json({ message: text, fiftyShades: fiftyShadesMode }));
 
       setPending((prev) => prev.filter((item) => item.id !== id));
       if (res.messages) setChat((prev) => (prev ? { ...prev, aiMessages: res.messages } : prev));
@@ -2410,17 +2428,32 @@ export function FrostStoryApp() {
               <div className="fs-dm-header-actions" ref={dmMenuRef}>
                 <button
                   type="button"
-                  className="fs-dm-gear-btn"
+                  className={`fs-dm-gear-btn${fiftyShadesMode ? ' has-fiftyshades' : ''}`}
                   aria-label={t.chatSettings}
-                  title={t.chatSettings}
+                  title={fiftyShadesMode ? `${t.chatSettings} (${t.fiftyShades} ON 🔥)` : t.chatSettings}
                   aria-haspopup="menu"
                   aria-expanded={dmMenuOpen}
                   onClick={() => setDmMenuOpen((open) => !open)}
                 >
-                  <Settings size={18} />
+                  {fiftyShadesMode ? <Flame size={18} /> : <Settings size={18} />}
                 </button>
                 {dmMenuOpen && (
                   <div className="fs-dm-menu" role="menu">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className={`fs-dm-menu-item fs-dm-fiftyshades-btn${fiftyShadesMode ? ' is-active' : ''}`}
+                      onClick={() => setFiftyShadesMode((on) => !on)}
+                    >
+                      <div className="fs-dm-menu-item-left">
+                        <Flame size={15} className={fiftyShadesMode ? 'is-flame-lit' : ''} />
+                        <span>{t.fiftyShades}</span>
+                      </div>
+                      <span className={`fs-dm-toggle-pill ${fiftyShadesMode ? 'is-on' : 'is-off'}`}>
+                        {fiftyShadesMode ? 'เปิด' : 'ปิด'}
+                      </span>
+                    </button>
+                    <div className="fs-dm-menu-divider" />
                     <button
                       type="button"
                       role="menuitem"
