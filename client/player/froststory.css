@@ -2485,6 +2485,73 @@ dialog.fs-overlay[open]::backdrop {
   color: #f4ecfa;
 }
 
+.fs-dm-bubble-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  max-width: 100%;
+}
+
+.fs-tts-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: #a1a1aa;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.18s ease;
+  flex-shrink: 0;
+  margin-bottom: 2px;
+}
+
+.fs-tts-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: scale(1.08);
+}
+
+.fs-tts-btn.is-playing {
+  background: rgba(236, 72, 153, 0.25);
+  border-color: rgba(236, 72, 153, 0.65);
+  color: #f472b6;
+  animation: fs-tts-pulse 1.4s infinite ease-in-out;
+}
+
+.fs-tts-btn.is-loading {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.fs-spin {
+  animation: fs-spin-anim 0.9s linear infinite;
+}
+
+@keyframes fs-spin-anim {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes fs-tts-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(236, 72, 153, 0.5);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 10px 2px rgba(236, 72, 153, 0.6);
+    transform: scale(1.06);
+  }
+}
+
 .fs-bubble-with-thought {
   display: flex;
   flex-direction: column;
