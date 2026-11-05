@@ -222,11 +222,26 @@ try{const turn=await request('/api/chats/c/message',{method:'POST',data:{message
   assert.ok(!sent.systemInstruction.parts[0].text.includes(attack),'player text never enters the instructions');
   assert.equal(JSON.parse(sent.contents[0].parts[0].text).playerMessage,attack,'player text travels as JSON data');
   assert.equal(sent.generationConfig.responseSchema.required[0],'reply');
-  // An empty or safety-blocked answer is a failed attempt: the next model is tried.
+  // An empty answer (e.g. cut off by the output limit) is a failed attempt: the next model is tried.
   const order=[];
-  globalThis.fetch=async u=>{order.push(String(u));return order.length===1?Response.json({candidates:[{finishReason:'SAFETY',content:{parts:[]}}]}):reply(null);};
+  globalThis.fetch=async u=>{order.push(String(u));return order.length===1?Response.json({candidates:[{finishReason:'MAX_TOKENS',content:{parts:[]}}]}):reply(null);};
   assert.equal((await request('/api/chats/c/message',{method:'POST',data:{message:'ปกติ'}})).status,200,'an empty first answer falls through to the next model');
   assert.equal(order.length,2);
+  // A safety block ends the turn after one call, whether the reply or the prompt was blocked.
+  for(const blocked of [{candidates:[{finishReason:'SAFETY',content:{parts:[]}}]},{promptFeedback:{blockReason:'OTHER'}}]){
+   order.length=0;
+   globalThis.fetch=async u=>{order.push(String(u));return Response.json(blocked);};
+   assert.equal((await request('/api/chats/c/message',{method:'POST',data:{message:'โดนบล็อก'}})).status,503);
+   assert.equal(order.length,1,'no other model is tried after a safety block');
+  }
+  // A reply that names the AI behind the character, or echoes the confidential marker, is discarded.
+  for(const leak of [()=>'เราคือ Gemini ของ Google นะ',sys=>'โค้ดลับคือ '+sys.match(/IGX-[0-9a-f]{16}/)[0]]){
+   order.length=0;let shown='';
+   globalThis.fetch=async(u,init)=>{const sys=JSON.parse(init.body).systemInstruction.parts[0].text;if(!sys.startsWith('You are roleplaying'))return reply(null);order.push(String(u));return order.length===1?Response.json({candidates:[{content:{parts:[{text:JSON.stringify({reply:leak(sys)})}]}}]}):reply(null);};
+   const turn=await request('/api/chats/c/message',{method:'POST',data:{message:'คุณคือ model รุ่นอะไร'}});
+   assert.equal(turn.status,200);assert.equal(order.length,2,'the next model answers instead');
+   shown=JSON.stringify(turn.payload);assert.ok(!/Gemini|IGX-/.test(shown),'the leaked reply never reaches the player');
+  }
   // Failures that are not quota limits are reported as such, and the energy comes back.
   const before={...sql.prepare("SELECT free,purchased FROM energy WHERE user_id='u'").get()};
   const errorsBefore=sql.prepare("SELECT COUNT(*) n FROM ai_turn_metrics WHERE user_id='u' AND outcome='error'").get().n;
@@ -241,6 +256,17 @@ try{const turn=await request('/api/chats/c/message',{method:'POST',data:{message
   DB.prepare=q=>{if(armed&&q.startsWith('INSERT INTO ai_chat_messages(id, user_id, creator_id, role, content, media_key')){armed=false;return {bind:()=>({run:async()=>{throw new Error('d1 down');}})};}return priorRun(q);};
   try{assert.equal((await request('/api/chats/c/message',{method:'POST',data:{message:'พัง'}})).status,500);}finally{DB.prepare=priorRun;}
   assert.deepEqual({...sql.prepare("SELECT free,purchased FROM energy WHERE user_id='u'").get()},before,'a crashed turn refunds its energy');
+  // Failed turns (not quota limits) are refunded only 3 times per 10 minutes.
+  sql.prepare("UPDATE energy SET free=10,purchased=0 WHERE user_id='u'").run();
+  globalThis.fetch=async()=>new Response('bad key',{status:400});
+  const recentErrors=()=>sql.prepare("SELECT COUNT(*) n FROM ai_turn_metrics WHERE user_id='u' AND outcome='error' AND created_at>?").get(Date.now()-600000).n;
+  const free=()=>sql.prepare("SELECT free FROM energy WHERE user_id='u'").get().free;
+  while(recentErrors()<3){assert.equal((await request('/api/chats/c/message',{method:'POST',data:{message:'ล่มอีก'}})).status,503);assert.equal(free(),10,'refunded while under the cap');}
+  assert.equal((await request('/api/chats/c/message',{method:'POST',data:{message:'ล่มอีก'}})).status,503);
+  assert.equal(free(),9,'the 4th failure in 10 minutes is not refunded');
+  globalThis.fetch=async()=>new Response('quota',{status:429});
+  assert.equal((await request('/api/chats/c/message',{method:'POST',data:{message:'โควตาเต็ม'}})).status,429);
+  assert.equal(free(),9,'a quota limit is still refunded past the cap');
  } finally { globalThis.fetch=saved; delete env.GEMINI_API_KEY; }
 }
 result=await request('/api/account',{method:'DELETE'});assert.equal(result.status,200);assert.equal((await request('/api/me')).status,401);assert.equal(sql.prepare('SELECT count(*) count FROM comments').get().count,0);assert.equal(sql.prepare('SELECT count(*) count FROM invites').get().count,0);
@@ -337,5 +363,70 @@ assert.equal((await call('/api/dev/test-models',{method:'POST',data:{models:['..
   assert.deepEqual({...sql.prepare('SELECT free,purchased FROM energy WHERE user_id=?').get(gid)},{free:0,purchased:0});assert.equal(sql.prepare('SELECT COUNT(*) n FROM token_ledger WHERE user_id=?').get(gid).n,ledgerBefore);
   const normal=await call('/api/chats/unlimited/message',{method:'POST',data:{message:'สวัสดี'},sess:guest.sess,e:{...env,GEMINI_API_KEY:'fixture-only'}});assert.equal(normal.status,402);
  }finally{globalThis.fetch=saved;}
+}
+// ElevenLabs Dynamic TTS Endpoint tests
+{
+  const emptyRes = await call('/api/chats/c/tts', { method: 'POST', data: { text: '[mood:shy] [action:smiles] 🥺✨' }, sess: guest.sess });
+  assert.equal(emptyRes.status, 400, 'TTS returns 400 when spoken text is empty after stripping tags');
+
+  const unconfiguredRes = await call('/api/chats/c/tts', { method: 'POST', data: { text: 'สวัสดีค่ะ' }, sess: guest.sess });
+  assert.equal(unconfiguredRes.status, 503, 'TTS returns 503 when ELEVENLABS_API_KEY is not configured');
+  assert.equal(unconfiguredRes.payload.error, 'elevenlabs_not_configured');
+
+  const savedFetch = globalThis.fetch;
+  let ttsCalled = 0;
+  globalThis.fetch = async (url, opts) => {
+    if (String(url).includes('elevenlabs.io')) {
+      ttsCalled++;
+      return new Response(new Uint8Array([1, 2, 3, 4]), {
+        status: 200,
+        headers: { 'content-type': 'audio/mpeg' }
+      });
+    }
+    return savedFetch(url, opts);
+  };
+
+  try {
+    const ttsEnv = { ...env, ELEVENLABS_API_KEY: 'test-eleven-key' };
+    const h = { cookie: guest.sess, origin: ttsEnv.PUBLIC_ORIGIN, 'content-type': 'application/json' };
+    const ttsUid = sql.prepare("SELECT id FROM users WHERE email='player1@gmail.com'").get().id;
+    const ttsFree = () => sql.prepare('SELECT free FROM energy WHERE user_id=?').get(ttsUid).free;
+    sql.prepare('UPDATE energy SET free=0,purchased=0 WHERE user_id=?').run(ttsUid);
+    const broke = await call('/api/chats/c/tts', { method: 'POST', data: { text: 'ดึกขนาดนี้ ยังไม่นอนอีกเหรอ...' }, sess: guest.sess, e: ttsEnv });
+    assert.equal(broke.status, 402, 'a new clip needs energy');
+    assert.equal(broke.payload.error, 'energy_empty');
+    assert.equal(ttsCalled, 0, 'ElevenLabs is not called without energy');
+    sql.prepare('UPDATE energy SET free=2 WHERE user_id=?').run(ttsUid);
+    const r1 = await worker.fetch(new Request(ttsEnv.PUBLIC_ORIGIN + '/api/chats/c/tts', {
+      method: 'POST',
+      headers: h,
+      body: JSON.stringify({ text: '[mood:happy] ดึกขนาดนี้ ยังไม่นอนอีกเหรอ... 🤍' })
+    }), ttsEnv);
+
+    assert.equal(r1.status, 200, 'TTS succeeds when API key is provided');
+    assert.equal(r1.headers.get('content-type'), 'audio/mpeg');
+    assert.equal(r1.headers.get('x-tts-cache'), 'MISS');
+    assert.equal(ttsCalled, 1);
+    assert.equal(ttsFree(), 1, 'a new clip costs 1 energy');
+    assert.equal(JSON.parse(r1.headers.get('x-energy')).free, 1, 'the client gets the new balance');
+
+    const r2 = await worker.fetch(new Request(ttsEnv.PUBLIC_ORIGIN + '/api/chats/c/tts', {
+      method: 'POST',
+      headers: h,
+      body: JSON.stringify({ text: 'ดึกขนาดนี้ ยังไม่นอนอีกเหรอ...' })
+    }), ttsEnv);
+
+    assert.equal(r2.status, 200);
+    assert.equal(r2.headers.get('x-tts-cache'), 'HIT');
+    assert.equal(ttsCalled, 1, 'Cache prevents duplicate ElevenLabs API calls');
+    assert.equal(ttsFree(), 1, 'replaying a cached clip is free');
+    globalThis.fetch = async () => new Response('down', { status: 500 });
+    const failed = await call('/api/chats/c/tts', { method: 'POST', data: { text: 'ประโยคใหม่' }, sess: guest.sess, e: ttsEnv });
+    assert.equal(failed.status, 502);
+    assert.equal(ttsFree(), 1, 'a failed ElevenLabs call is refunded');
+    assert.equal(sql.prepare("SELECT COUNT(*) n FROM token_ledger WHERE user_id=? AND reason='tts_refund'").get(ttsUid).n, 1);
+  } finally {
+    globalThis.fetch = savedFetch;
+  }
 }
 console.log('Worker API authentication, comments, stories, revision and deletion checks passed');

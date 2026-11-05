@@ -5,6 +5,7 @@ import {
   ChevronDown,
   Flame,
   Globe,
+  Loader2,
   LockKeyhole,
   MessageSquareX,
   RotateCcw,
@@ -12,6 +13,8 @@ import {
   Settings,
   Sparkles,
   User as UserIcon,
+  Volume2,
+  VolumeX,
   X,
   Zap,
 } from 'lucide-react';
@@ -578,6 +581,22 @@ function Media({
   );
 }
 
+function hasSpokenDialogue(text: string): boolean {
+  if (!text) return false;
+  const stripped = text
+    .replace(/^\[(?:mood|reaction|toast):\s*[\s\S]*?\]\n?/gi, '')
+    .replace(/^\[thought:\s*[\s\S]*?\]\n?/gi, '')
+    .replace(/\[thought:\s*[\s\S]*?\]/gi, '')
+    .replace(/^\[(?:visual|action):\s*[\s\S]*?\]\n?/gi, '')
+    .replace(/\[(?:visual|action):\s*[\s\S]*?\]/gi, '')
+    .replace(/^\*\[?[\s\S]*?\]?\*\n?/g, '')
+    .replace(/\*\[?[\s\S]*?\]?\*/g, '')
+    .replace(/\[img:[^\]]+\]/g, '')
+    .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1FA00}-\u{1FAFF}\u{FE00}-\u{FE0F}]/gu, '')
+    .trim();
+  return stripped.length > 0;
+}
+
 function renderBubbleContent(text: string, onExpandMedia?: (key: string) => void) {
   if (!text) return null;
 
@@ -935,6 +954,89 @@ export function FrostStoryApp() {
   const handleEpisodesMouseUpOrLeave = () => {
     isDraggingEpisodesRef.current = false;
   };
+
+  // Voice TTS State
+  const [ttsPlayingId, setTtsPlayingId] = useState<string | null>(null);
+  const [ttsLoadingId, setTtsLoadingId] = useState<string | null>(null);
+  const ttsAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (ttsAudioRef.current) {
+        ttsAudioRef.current.pause();
+        ttsAudioRef.current = null;
+      }
+    };
+  }, []);
+
+  const handlePlayVoice = useCallback(async (messageId: string, rawText: string, creatorId: string) => {
+    if (ttsPlayingId === messageId) {
+      if (ttsAudioRef.current) {
+        ttsAudioRef.current.pause();
+        ttsAudioRef.current.currentTime = 0;
+      }
+      setTtsPlayingId(null);
+      return;
+    }
+
+    if (ttsAudioRef.current) {
+      ttsAudioRef.current.pause();
+      ttsAudioRef.current = null;
+    }
+    setTtsPlayingId(null);
+    setTtsLoadingId(messageId);
+
+    try {
+      const response = await fetch(`/api/chats/${encodeURIComponent(creatorId)}/tts`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messageId, text: rawText }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        if (errorData.error === 'elevenlabs_not_configured') {
+          alert('ยังไม่ได้ตั้งค่า ELEVENLABS_API_KEY ในเซิร์ฟเวอร์ (.dev.vars หรือ Worker Secrets)');
+          setTtsLoadingId(null);
+          return;
+        }
+        if (errorData.error === 'energy_empty') {
+          alert('พลังงานไม่พอสำหรับฟังเสียง');
+          setTtsLoadingId(null);
+          return;
+        }
+        throw new Error(errorData.error || response.statusText);
+      }
+      const energyHeader = response.headers.get('x-energy');
+      if (energyHeader) setEnergy(JSON.parse(energyHeader));
+
+      const blob = await response.blob();
+      const audioUrl = URL.createObjectURL(blob);
+      const audio = new Audio(audioUrl);
+      ttsAudioRef.current = audio;
+
+      audio.onplay = () => {
+        setTtsLoadingId(null);
+        setTtsPlayingId(messageId);
+      };
+      audio.onended = () => {
+        setTtsPlayingId((curr) => (curr === messageId ? null : curr));
+        URL.revokeObjectURL(audioUrl);
+      };
+      audio.onerror = () => {
+        setTtsLoadingId(null);
+        setTtsPlayingId(null);
+        URL.revokeObjectURL(audioUrl);
+      };
+
+      await audio.play();
+    } catch (err) {
+      console.error('Failed to play voice:', err);
+      setTtsLoadingId(null);
+      setTtsPlayingId(null);
+    }
+  }, [ttsPlayingId]);
 
   // AI Free-Text DM Chat State
   const [aiDmTab, setAiDmTab] = useState<'ai' | 'story'>('ai');
@@ -2605,12 +2707,31 @@ export function FrostStoryApp() {
                           )}
                         </div>
                         <div className="fs-dm-msg-col">
-                          <div className="fs-bubble">
-                            {renderBubbleContent(msg.content, (k) =>
-                              setExpandedMedia({
-                                mediaKey: k,
-                                title: `ภาพจาก ${selectedCreator.name}`,
-                              })
+                          <div className="fs-dm-bubble-row">
+                            <div className="fs-bubble">
+                              {renderBubbleContent(msg.content, (k) =>
+                                setExpandedMedia({
+                                  mediaKey: k,
+                                  title: `ภาพจาก ${selectedCreator.name}`,
+                                })
+                              )}
+                            </div>
+                            {hasSpokenDialogue(msg.content) && (
+                              <button
+                                type="button"
+                                className={`fs-tts-btn${ttsPlayingId === msg.id ? ' is-playing' : ''}${ttsLoadingId === msg.id ? ' is-loading' : ''}`}
+                                title={ttsPlayingId === msg.id ? 'หยุดเสียง' : 'ฟังเสียงตัวละคร'}
+                                aria-label="ฟังเสียงตัวละคร"
+                                onClick={() => handlePlayVoice(msg.id, msg.content, selectedCreator.id)}
+                              >
+                                {ttsLoadingId === msg.id ? (
+                                  <Loader2 size={13} className="fs-spin" />
+                                ) : ttsPlayingId === msg.id ? (
+                                  <VolumeX size={13} />
+                                ) : (
+                                  <Volume2 size={13} />
+                                )}
+                              </button>
                             )}
                           </div>
                           {msg.mediaKey && (
@@ -2717,12 +2838,31 @@ export function FrostStoryApp() {
                           )}
                         </div>
                         <div className="fs-dm-msg-col">
-                          <div className="fs-bubble">
-                            {renderBubbleContent(entry.text, (k) =>
-                              setExpandedMedia({
-                                mediaKey: k,
-                                title: `ภาพจาก ${selectedCreator.name}`,
-                              })
+                          <div className="fs-dm-bubble-row">
+                            <div className="fs-bubble">
+                              {renderBubbleContent(entry.text, (k) =>
+                                setExpandedMedia({
+                                  mediaKey: k,
+                                  title: `ภาพจาก ${selectedCreator.name}`,
+                                })
+                              )}
+                            </div>
+                            {hasSpokenDialogue(entry.text) && (
+                              <button
+                                type="button"
+                                className={`fs-tts-btn${ttsPlayingId === entry.id ? ' is-playing' : ''}${ttsLoadingId === entry.id ? ' is-loading' : ''}`}
+                                title={ttsPlayingId === entry.id ? 'หยุดเสียง' : 'ฟังเสียงตัวละคร'}
+                                aria-label="ฟังเสียงตัวละคร"
+                                onClick={() => handlePlayVoice(entry.id, entry.text, selectedCreator.id)}
+                              >
+                                {ttsLoadingId === entry.id ? (
+                                  <Loader2 size={13} className="fs-spin" />
+                                ) : ttsPlayingId === entry.id ? (
+                                  <VolumeX size={13} />
+                                ) : (
+                                  <Volume2 size={13} />
+                                )}
+                              </button>
                             )}
                           </div>
                         </div>
@@ -2743,12 +2883,31 @@ export function FrostStoryApp() {
                           )}
                     </div>
                     <div className="fs-dm-msg-col">
-                      <div className="fs-bubble">
-                        {renderBubbleContent(node.text, (k) =>
-                          setExpandedMedia({
-                            mediaKey: k,
-                            title: `ภาพจาก ${selectedCreator.name}`,
-                          })
+                      <div className="fs-dm-bubble-row">
+                        <div className="fs-bubble">
+                          {renderBubbleContent(node.text, (k) =>
+                            setExpandedMedia({
+                              mediaKey: k,
+                              title: `ภาพจาก ${selectedCreator.name}`,
+                            })
+                          )}
+                        </div>
+                        {hasSpokenDialogue(node.text) && (
+                          <button
+                            type="button"
+                            className={`fs-tts-btn${ttsPlayingId === node.id ? ' is-playing' : ''}${ttsLoadingId === node.id ? ' is-loading' : ''}`}
+                            title={ttsPlayingId === node.id ? 'หยุดเสียง' : 'ฟังเสียงตัวละคร'}
+                            aria-label="ฟังเสียงตัวละคร"
+                            onClick={() => handlePlayVoice(node.id, node.text, selectedCreator.id)}
+                          >
+                            {ttsLoadingId === node.id ? (
+                              <Loader2 size={13} className="fs-spin" />
+                            ) : ttsPlayingId === node.id ? (
+                              <VolumeX size={13} />
+                            ) : (
+                              <Volume2 size={13} />
+                            )}
+                          </button>
                         )}
                       </div>
                     </div>
