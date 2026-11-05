@@ -1,25 +1,30 @@
 {
   "creatorId": "milin",
   "name": "มิลิน",
-  "version": "3.0",
+  "version": "3.1",
   "identity": {
     "ageVisual": "20yo youthful cute idol (ดูเด็ก สดใส วัย 20 ปี)",
     "hairDna": "long wavy honey-brown hair, soft curtain bangs, warm golden-brown undertones (ผมยาวลอนสีน้ำตาลคาราเมลประกายทอง มีหน้าม้าปัดข้าง)",
     "faceDna": "small heart-shaped face, big glassy expressive amber-brown eyes, cute aegyo-sal, defined 3D nose bridge, subtle contoured cheekbone volume with luminous peach blush on cheek apples, beautifully defined rounded chin with soft labiomental groove shadow and delicate under-chin shading, glossy plump soft natural lips, closed mouth, youthful innocent look",
     "bodyDna": "slender feminine hourglass figure, fair porcelain skin, delicate collarbone, graceful shoulders (รูปร่างเพรียว ผิวขาวออร่า ไหปลาร้าสวย)",
-    "styleTheme": "Modern Korean Webtoon / Manhwa Adult Romance Art Style (ลายเส้นบางคมชัด แอร์บรัชดิจิทัลไล่เฉด ผิวฉ่ำวาว ไฮไลต์เรืองแสง ริมไลท์ละมุน ฝุ่นประกายแสง)"
+    "styleTheme": "Modern Korean Romance Manhwa (Semi-Realistic 2.5D Digital Airbrush Art Style) - Sculpted facial depth, realistic 3D nose bridge, aegyo-sal, volumetric cheeks, soft subsurface scattering porcelain skin"
   },
   "goldenMasterSeeds": [101],
   "referenceImage": "milin_golden_master_final.png",
+  "cameraRules": {
+    "framingStandard": "MANDATORY Close-up Portrait (40-50% face frame) or Medium Close-up. NEVER use full-length or distant body shots as it reduces facial latent resolution and collapses into flat 2D anime.",
+    "lightingStandard": "Soft wrapping diffused light with warm ambient fill (sunset golden hour, fairy lights, or indoor warm lamps). Avoid pure dark midnight voids.",
+    "negativeGuard": "Must ban flat 2D anime, flat cell shading, simplistic cartoon face to preserve 2.5D sculpted facial volume."
+  },
   "lightingPillars": {
     "soft_wrapping_gradient": "soft diffused wrapping light, smooth delicate gradient shading defining feminine hourglass curves and waist silhouette, smooth tonal transitions without harsh shadows, three-dimensional depth, luminous ultra-smooth porcelain skin",
     "sculpted_face_profile": "sculpted 3D facial depth, defined 3D nose bridge, subtle contoured cheekbone volume with luminous peach blush on cheek apples, beautifully defined rounded chin with soft labiomental groove shadow and delicate under-chin shading, three-dimensional sculpted heart-shaped face"
   },
-  "styleAnchor": "(masterpiece, best quality:1.2), modern korean webtoon style, authentic manhwa art, delicate colored lineart, smooth digital airbrush shading, luminous porcelain skin with rosy blush, glossy highlights, volumetric rim lighting, soft glowing ambient particles, vibrant manhwa coloring",
+  "styleAnchor": "(masterpiece, best quality:1.2), modern korean webtoon romance manhwa style, semi-realistic 2.5D manhwa art, smooth digital airbrush volumetric shading, luminous porcelain skin with rosy blush, realistic dimensional facial depth, glossy highlights, volumetric rim lighting, soft glowing ambient particles, vibrant manhwa coloring",
   "characterAnchor": "(solo, 1girl, 20yo youthful Korean-Thai beauty, Milin:1.3), (long wavy honey-brown hair, soft curtain bangs, big glassy expressive amber-brown eyes, cute aegyo-sal, flushed blushing cheeks:1.2), (defined 3D nose bridge, subtle contoured cheekbone volume, defined rounded chin with soft labiomental groove shadow:1.1), glossy plump soft natural lips, (slender feminine hourglass figure, defined collarbone, graceful shoulders:1.1)",
-  "promptAnchor": "(masterpiece, best quality:1.2), modern korean webtoon style, authentic manhwa art, delicate colored lineart, smooth digital airbrush shading, luminous porcelain skin with rosy blush, glossy highlights, volumetric rim lighting, soft glowing ambient particles, vibrant manhwa coloring, (solo, 1girl, 20yo youthful Korean-Thai beauty, Milin:1.3), (long wavy honey-brown hair, soft curtain bangs, big glassy expressive amber-brown eyes, cute aegyo-sal, flushed blushing cheeks:1.2), (defined 3D nose bridge, subtle contoured cheekbone volume, defined rounded chin with soft labiomental groove shadow:1.1), glossy plump soft natural lips, (slender feminine hourglass figure, defined collarbone, graceful shoulders:1.1)",
-  "negativePrompt": "western comic, 3d render, photorealistic, harsh black lines, harsh shadow cutoffs, flat lighting, dull colors, heavy mature wrinkles, masculine, deformed anatomy, bad hands, open mouth, tongue, text, speech bubble, watermark",
-  "masterPromptTemplate": "(masterpiece, best quality:1.2), modern korean webtoon style, authentic manhwa art, delicate colored lineart, smooth digital airbrush shading, luminous porcelain skin with rosy blush, glossy highlights, volumetric rim lighting, soft glowing ambient particles, vibrant manhwa coloring, (solo, 1girl, 20yo youthful Korean-Thai beauty, Milin:1.3), (long wavy honey-brown hair, soft curtain bangs, big glassy expressive amber-brown eyes, cute aegyo-sal, flushed blushing cheeks:1.2), (defined 3D nose bridge, subtle contoured cheekbone volume, defined rounded chin with soft labiomental groove shadow:1.1), glossy plump soft natural lips, (slender feminine hourglass figure, defined collarbone, graceful shoulders:1.1), wearing ({WARDROBE_PRIMARY}:1.2), {POSE_PRIMARY}, no clothes hanger, soft diffused wrapping light, smooth delicate gradient shading defining her feminine hourglass curves, sculpted 3D facial depth, subtle contoured cheekbone volume with luminous peach blush on cheek apples, beautifully defined rounded chin with soft labiomental groove shadow and delicate under-chin shading, three-dimensional sculpted heart-shaped face, {ACTION_CONTEXT}, {WARDROBE_SHORT}, {EXPRESSION_GAZE}, soft diffused wrapping light, smooth delicate gradient shading defining hourglass waist and hip curves, sculpted 3D cheek and chin depth, luxury bedroom, masterpiece",
+  "promptAnchor": "(masterpiece, best quality:1.2), modern korean webtoon romance manhwa style, semi-realistic 2.5D manhwa art, smooth digital airbrush volumetric shading, luminous porcelain skin with rosy blush, realistic dimensional facial depth, glossy highlights, volumetric rim lighting, soft glowing ambient particles, vibrant manhwa coloring, (solo, 1girl, 20yo youthful Korean-Thai beauty, Milin:1.3), (long wavy honey-brown hair, soft curtain bangs, big glassy expressive amber-brown eyes, cute aegyo-sal, flushed blushing cheeks:1.2), (defined 3D nose bridge, subtle contoured cheekbone volume, defined rounded chin with soft labiomental groove shadow:1.1), glossy plump soft natural lips, (slender feminine hourglass figure, defined collarbone, graceful shoulders:1.1)",
+  "negativePrompt": "flat 2D anime, flat cell shading, simplistic cartoon face, 2D line drawing face, flat sticker art, low detail anime eyes, western comic, photorealistic, harsh black lines, harsh shadow cutoffs, flat lighting, dull colors, heavy mature wrinkles, masculine, deformed anatomy, bad hands, open mouth, tongue, text, speech bubble, watermark",
+  "masterPromptTemplate": "(masterpiece, best quality:1.2), modern korean webtoon romance manhwa style, semi-realistic 2.5D manhwa art, smooth digital airbrush volumetric shading, luminous porcelain skin with rosy blush, realistic dimensional facial depth, glossy highlights, volumetric rim lighting, soft glowing ambient particles, vibrant manhwa coloring, (solo, 1girl, 20yo youthful Korean-Thai beauty, Milin:1.3), (long wavy honey-brown hair, soft curtain bangs, big glassy expressive amber-brown eyes, cute aegyo-sal, flushed blushing cheeks:1.2), (defined 3D nose bridge, subtle contoured cheekbone volume, defined rounded chin with soft labiomental groove shadow:1.1), glossy plump soft natural lips, (slender feminine hourglass figure, defined collarbone, graceful shoulders:1.1), wearing ({WARDROBE_PRIMARY}:1.2), {POSE_PRIMARY}, no clothes hanger, soft diffused wrapping light, smooth delicate gradient shading defining her feminine hourglass curves, sculpted 3D facial depth, subtle contoured cheekbone volume with luminous peach blush on cheek apples, beautifully defined rounded chin with soft labiomental groove shadow and delicate under-chin shading, three-dimensional sculpted heart-shaped face, {ACTION_CONTEXT}, {WARDROBE_SHORT}, {EXPRESSION_GAZE}, masterpiece",
   "defaults": {
     "posePrimary": "close-up portrait shot, arms naturally resting at sides, empty bare hands",
     "actionContext": "close-up portrait shot in front of wardrobe mirror, empty bare hands",
@@ -44,8 +49,8 @@
       "short": "black lace lingerie set"
     },
     "balcony_chic": {
-      "primary": "elegant black slip dress with subtle slit, delicate silver pendant, lightly wrapped in sheer shawl, bare shoulders and graceful collarbone, minimalist clean aesthetic",
-      "short": "elegant fitted black slip dress"
+      "primary": "elegant black slip dress with subtle slit, delicate silver pendant, lightly wrapped in sheer shawl, bare shoulders and graceful collarbone, soft warm ambient light spilling from condo interior, sunset golden hour ambient glow, minimalist clean aesthetic",
+      "short": "elegant fitted black slip dress, sunset golden hour glow"
     }
   }
 }
