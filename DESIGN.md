@@ -44,7 +44,7 @@ All icons are custom-crafted vector SVGs reproducing native Instagram geometries
 ### 2.1 Golden Master Reference (ภาพมาตรฐานอ้างอิง)
 - **ภาพต้นแบบอ้างอิงสูงสุดของระบบ (Supreme Golden Master):** [`Milin_Fitting_Chic_Golden_Master_Final.png`](content/media/assets/Milin_Fitting_Chic_Golden_Master_Final.png) / [`Milin_Fitting_Chic_Golden_00001_.png`](content/media/assets/Milin_Fitting_Chic_Golden_00001_.png)
 - **ภาพต้นแบบเสริม:** [`Milin_Outfit_Ref_00001_.png`](content/media/assets/Milin_Outfit_Ref_00001_.png) / [`milin_silk_nightwear.png`](content/media/assets/milin_silk_nightwear.png)
-- **สัดส่วนภาพและขนาด Canvas:** 544×960 (9:16 Vertical Portrait สำหรับจอมือถือและ Instagram Feed/Story)
+- **สัดส่วนภาพและขนาด Canvas:** 512×640 (4:5 Vertical Portrait สำหรับ Instagram Feed & Game Assets)
 
 ### 2.2 เสาหลักของงานภาพ (Core Aesthetic Pillars)
 1. **Delicate Colored Lineart (เส้นบางเฉียบย้อมสี):**
@@ -56,11 +56,12 @@ All icons are custom-crafted vector SVGs reproducing native Instagram geometries
    - ผิวขาวนวลสไตล์ Glass Skin มีไฮไลต์ฉ่ำวาวบริเวณโหนกแก้ม สันจมูก ไหปลาร้า และหัวไหล่
    - แต้มบลัชออนสีพีชระเรื่อบนพวงแก้มและจุดข้อต่ออย่างเป็นธรรมชาติ
 4. **Natural Expression & Closed Mouth Standard (มาตรฐานรอยยิ้มธรรมชาติ ปากปิดสนิท):**
-   - การแสดงออกทางสีหน้าตามมาตรฐานต้องใช้ **`sweet blushing smile, closed mouth, soft natural lips`** เป็นค่าเริ่มต้น
+   - การแสดงออกทางสีหน้าตามมาตรฐานต้องใช้ **`sweet pleasant smile, closed mouth, soft natural lips`** เป็นค่าเริ่มต้น
    - หลีกเลี่ยงการใช้คำว่า `smirk` หรือ `teasing smile` โดยไม่มีการล็อกรูปปาก เพราะโมเดลจะกระตุ้น Trope อนิเมะจนเกิดอาการอ้าปากหรือปลายลิ้นโผล่โดยไม่ตั้งใจ หากต้องการสื่ออารมณ์ขี้เล่น ให้ถ่ายทอดผ่านแววตา (`playful expressive eyes`) แทน
-5. **3D Sculpted Cheek & Chin Dimension (มิติพวงแก้มและคาง 3D):**
+5. **Balanced Oval Face & 3D Cheek Dimension (มิติพวงแก้มและรูปหน้าสมส่วน):**
+   - ใช้โครงหน้ารูปไข่ไอดอลสมส่วน (`well-proportioned oval manhwa idol face shape, natural rounded chin contour:1.1`) หลีกเลี่ยง `heart-shaped face` หรือเงาคางหนักเกินไปเพื่อป้องกันรูปหน้าสั้นหรือยืดผิดรูป
    - มีมิติพวงแก้มกลมนูนนวลตา (Apples of the cheeks) พร้อมไฮไลต์สะท้อนแสงนุ่มๆ และเฉดเงาบางเบาใต้โหนกแก้ม
-   - มีรอยหลืบเงาอ่อนๆ ใต้ริมฝีปากล่าง (Labiomental groove shadow) ขับให้ปลายคางมนรูปหัวใจดูนูนเป็น 3 มิติ และมีเงาใต้คาง/แนวกราม (Under-chin occlusion) แยกรูปหน้าออกจากลำคออย่างหมดจด
+   - มีเงาใต้คาง/แนวกราม (Under-chin occlusion) แยกรูปหน้าออกจากลำคออย่างเป็นธรรมชาติ ไม่ตัดเส้นขอบแข็ง
 6. **Soft Diffused Wrapping Light & Gradient Silhouette (แสงนุ่มโอบล้อมเรือนร่าง):**
    - หลีกเลี่ยงเงาตัดขอบแข็งกระด้าง (No harsh shadow cutoffs)
    - ใช้แสงกระจายรอบทิศทางแบบนุ่มนวล (Soft diffused wrapping light) ร่วมกับการไล่เฉดเงา (Gradient Shading) รอบเอวคอด สะโพก และรอยย่นของเนื้อผ้า เพื่อขับเน้นสรีระทรงนาฬิกาทรายและวอลลุ่มแบบ 3D อย่างเป็นธรรมชาติ

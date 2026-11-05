@@ -899,7 +899,16 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
    ]);
    if(!scoreFromDimensions) rel = scoreRes.results[0]?.score ?? rel;
 
+
+
+   if(!moodToast && (delta.romance > 0 || delta.closeness > 0 || delta.trust > 0 || scoreDelta > 1)) {
+     if (delta.romance > 0) moodToast = `${npcName}รู้สึกใจเต้นกับข้อความของคุณ 💕`;
+     else if (delta.trust > 0) moodToast = `${npcName}เริ่มไว้ใจคุณมากขึ้น ✨`;
+     else moodToast = `${npcName}สนิทกับคุณมากขึ้น 🤍`;
+   }
+
    const parts = [];
+   if (moodToast) parts.push(`[mood:${moodToast}]`);
    if (innerThought) parts.push(`[thought:${innerThought}]`);
    if (actionText) parts.push(`[action:${actionText}]`);
    parts.push(replyText);
@@ -919,11 +928,7 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
        `วันนี้ทำงานเหนื่อยไหม เป็นไงบ้าง 🤍`
      ];
    }
-   if(!moodToast && (delta.romance > 0 || delta.closeness > 0 || delta.trust > 0 || scoreDelta > 1)) {
-     if (delta.romance > 0) moodToast = `${npcName}รู้สึกใจเต้นกับข้อความของคุณ 💕`;
-     else if (delta.trust > 0) moodToast = `${npcName}เริ่มไว้ใจคุณมากขึ้น ✨`;
-     else moodToast = `${npcName}สนิทกับคุณมากขึ้น 🤍`;
-   }
+
 
    return json({
      ok: true,
