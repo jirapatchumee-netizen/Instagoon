@@ -141,7 +141,7 @@ export const TRANSLATIONS = {
     account: 'โปรไฟล์',
     yourStory: 'เรื่องราวของคุณ',
     todayStories: 'เรื่องราววันนี้',
-    energyRefillDefault: 'พลังงานฟรี 30 แต้มต่อบัญชี ไม่เติมคืน',
+    energyRefillDefault: 'พลังงานฟรีได้ครั้งเดียวต่อบัญชี ไม่เติมคืน',
     noPosts: 'ยังไม่มีโพสต์ใหม่ในขณะนี้',
     sendMessage: 'ส่งข้อความ',
     likesCount: (n: number) => `ถูกใจ ${n.toLocaleString()} คน`,
@@ -231,7 +231,7 @@ export const TRANSLATIONS = {
     account: 'Profile',
     yourStory: 'Your story',
     todayStories: "Today's Stories",
-    energyRefillDefault: 'Free energy: 30 per account, no refills',
+    energyRefillDefault: 'Free energy is a one-time grant per account, no refills',
     noPosts: 'No new posts right now',
     sendMessage: 'Message',
     likesCount: (n: number) => `${n.toLocaleString()} likes`,
@@ -321,7 +321,7 @@ export const TRANSLATIONS = {
     account: 'プロフィール',
     yourStory: 'ストーリーズ',
     todayStories: '今日のストーリーズ',
-    energyRefillDefault: '無料エネルギーはアカウントごとに30(回復なし)',
+    energyRefillDefault: '無料エネルギーはアカウントごとに一度だけ(回復なし)',
     noPosts: '新しい投稿はまだありません',
     sendMessage: 'メッセージ',
     likesCount: (n: number) => `「いいね！」${n.toLocaleString()}件`,
@@ -381,7 +381,7 @@ export const TRANSLATIONS = {
   },
 };
 
-type Energy = { free: number; purchased: number; nextRefillAt: number | null; unlimited?: boolean };
+type Energy = { free: number; purchased: number; nextRefillAt: number | null };
 type User = {
   id: string;
   email: string;
@@ -1493,11 +1493,11 @@ export function FrostStoryApp() {
             <span
               className="fs-energy"
               title={
-                energy?.unlimited ? 'Staging: Energy ไม่จำกัด' : t.energyRefillDefault
+                t.energyRefillDefault
               }
             >
               <Zap size={13} className="fs-energy-icon" />
-              {energy?.unlimited ? '∞' : energy ? `${energy.free} + ${energy.purchased}` : '–'}
+              {energy ? `${energy.free} + ${energy.purchased}` : '–'}
             </span>
 
             {/* Official Instagram Heart (Activity / Notifications) */}
