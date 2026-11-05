@@ -2,7 +2,7 @@
   {
     "id": "story_milin_01",
     "type": "broadcast",
-    "media": "assets/milin_cat_cosplay.png",
+    "media": "stories/story_milin_01.png",
     "publishedAt": "2026-11-01T20:30:00+07:00",
     "relationshipRequired": 0,
     "status": "published"
@@ -10,7 +10,7 @@
   {
     "id": "story_milin_02",
     "type": "unlockable",
-    "media": "assets/Milin_Outfit_00001_.png",
+    "media": "stories/story_milin_02.png",
     "publishedAt": "2026-11-01T22:30:00+07:00",
     "relationshipRequired": 0,
     "status": "published"
@@ -18,8 +18,16 @@
   {
     "id": "story_milin_03",
     "type": "unlockable",
-    "media": "assets/milin_silk_nightwear.png",
+    "media": "stories/story_milin_03.png",
     "publishedAt": "2026-11-02T23:45:00+07:00",
+    "relationshipRequired": 0,
+    "status": "published"
+  },
+  {
+    "id": "story_milin_04",
+    "type": "broadcast",
+    "media": "stories/story_milin_04.png",
+    "publishedAt": "2026-11-03T12:00:00+07:00",
     "relationshipRequired": 0,
     "status": "published"
   }

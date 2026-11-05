@@ -8,6 +8,7 @@ import {
   MessageSquareX,
   RotateCcw,
   Send,
+  Settings,
   Sparkles,
   User as UserIcon,
   X,
@@ -190,6 +191,7 @@ export const TRANSLATIONS = {
     resetChatConfirm: 'เริ่มบทสนทนาใหม่ (ล้างประวัติแชท AI) สำหรับตัวละครนี้ใช่หรือไม่?',
     resetStory: 'รีเซ็ตเนื้อเรื่อง',
     resetStoryConfirm: 'เริ่มเนื้อเรื่องใหม่สำหรับตัวละครนี้ใช่หรือไม่?',
+    chatSettings: 'ตั้งค่าแชท',
     sendFailed: 'ส่งไม่สำเร็จ · แตะเพื่อลองใหม่',
     chatLoading: 'กำลังเปิดแชท',
   },
@@ -279,6 +281,7 @@ export const TRANSLATIONS = {
     resetChatConfirm: 'Reset AI chat history with this character?',
     resetStory: 'Reset Story',
     resetStoryConfirm: 'Restart the story for this character?',
+    chatSettings: 'Chat settings',
     sendFailed: 'Not sent · Tap to retry',
     chatLoading: 'Opening chat',
   },
@@ -368,6 +371,7 @@ export const TRANSLATIONS = {
     resetChatConfirm: 'このキャラクターとのAIチャット履歴をリセットしますか？',
     resetStory: 'ストーリーリセット',
     resetStoryConfirm: 'このキャラクターのストーリーを最初からやり直しますか？',
+    chatSettings: 'チャット設定',
     sendFailed: '送信できませんでした · タップして再送',
     chatLoading: 'チャットを開いています',
   },
@@ -917,6 +921,8 @@ export function FrostStoryApp() {
 
   // AI Free-Text DM Chat State
   const [aiDmTab, setAiDmTab] = useState<'ai' | 'story'>('ai');
+  const [dmMenuOpen, setDmMenuOpen] = useState(false);
+  const dmMenuRef = useRef<HTMLDivElement | null>(null);
   const [aiSending, setAiSending] = useState(false);
   const [pending, setPending] = useState<{ id: string; content: string; failed?: string }[]>([]);
   const [moodToast, setMoodToast] = useState<string | null>(null);
@@ -929,6 +935,16 @@ export function FrostStoryApp() {
     avatarKey?: string | null;
     episodeTitle?: string;
   }>({ open: false, creatorName: '' });
+
+  // Reset menu lives behind the gear icon; dismiss on any click outside it.
+  useEffect(() => {
+    if (!dmMenuOpen) return;
+    function dismiss(event: MouseEvent) {
+      if (!dmMenuRef.current?.contains(event.target as Node)) setDmMenuOpen(false);
+    }
+    document.addEventListener('mousedown', dismiss);
+    return () => document.removeEventListener('mousedown', dismiss);
+  }, [dmMenuOpen]);
 
   // Lightbox / Fullscreen Image Viewer Modal (constrained to app screen)
   const [expandedMedia, setExpandedMedia] = useState<{
@@ -1164,6 +1180,7 @@ export function FrostStoryApp() {
     setError('');
     setChat(null);
     setPending([]);
+    setDmMenuOpen(false);
     setSelectedCreator(creator);
     chatOpenedAtRef.current = Date.now();
     try {
@@ -1217,6 +1234,7 @@ export function FrostStoryApp() {
     setChat(null);
     setPending([]);
     setMoodToast(null);
+    setDmMenuOpen(false);
   }
 
   async function openProfile(creator: Creator, defaultTab: 'feed' | 'vault' | 'episodes' = 'feed') {
@@ -2388,32 +2406,48 @@ export function FrostStoryApp() {
                       </span>
                     )}
                   </div>
-                  <span className="fs-dm-status">
-                    {t.online} · {selectedCreator.relationship >= 100 ? '💎 แฟนตัวยง (100/100)' : `ความสัมพันธ์ ${selectedCreator.relationship}/100`}
-                  </span>
                 </div>
               </div>
-              <div className="fs-dm-header-actions">
+              <div className="fs-dm-header-actions" ref={dmMenuRef}>
                 <button
                   type="button"
-                  className="fs-dm-action-btn fs-dm-reset-chat-btn"
-                  aria-label={t.resetChat}
-                  title={t.resetChat}
-                  onClick={resetAiChat}
+                  className="fs-dm-gear-btn"
+                  aria-label={t.chatSettings}
+                  title={t.chatSettings}
+                  aria-haspopup="menu"
+                  aria-expanded={dmMenuOpen}
+                  onClick={() => setDmMenuOpen((open) => !open)}
                 >
-                  <MessageSquareX size={15} />
-                  <span className="fs-dm-action-label">{t.resetChat}</span>
+                  <Settings size={18} />
                 </button>
-                <button
-                  type="button"
-                  className="fs-dm-action-btn fs-dm-reset-story-btn"
-                  aria-label={t.resetStory}
-                  title={t.resetStory}
-                  onClick={resetCurrentStory}
-                >
-                  <RotateCcw size={15} />
-                  <span className="fs-dm-action-label">{t.resetStory}</span>
-                </button>
+                {dmMenuOpen && (
+                  <div className="fs-dm-menu" role="menu">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="fs-dm-menu-item fs-dm-reset-chat-btn"
+                      onClick={() => {
+                        setDmMenuOpen(false);
+                        void resetAiChat();
+                      }}
+                    >
+                      <MessageSquareX size={15} />
+                      {t.resetChat}
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="fs-dm-menu-item fs-dm-reset-story-btn"
+                      onClick={() => {
+                        setDmMenuOpen(false);
+                        void resetCurrentStory();
+                      }}
+                    >
+                      <RotateCcw size={15} />
+                      {t.resetStory}
+                    </button>
+                  </div>
+                )}
               </div>
             </header>
 

@@ -190,7 +190,11 @@
       "caption": "ชุดคอสเพลย์แมวเซ็กซี่ที่มิลินแอบใส่เล่นในห้อง",
       "message": "ส่งรูปชุดคอสเพลย์แมวให้ดูคนเดียวน้า ห้ามเอาไปเปิดเผยที่ไหนล่ะ 🐱✨",
       "conditions": [
-        { "field": "level", "value": 2, "eventId": "" }
+        {
+          "field": "level",
+          "value": 2,
+          "eventId": ""
+        }
       ]
     },
     {
@@ -200,7 +204,11 @@
       "caption": "ภาพเซลฟี่บนเตียงยามดึกในห้องนอน",
       "message": "นอนไม่หลับเลย... แอบถ่ายรูปบนเตียงส่งมาอ้อน เผื่อมีคนใจดีมากล่อม 🥺🤍",
       "conditions": [
-        { "field": "level", "value": 3, "eventId": "" }
+        {
+          "field": "level",
+          "value": 3,
+          "eventId": ""
+        }
       ]
     },
     {
@@ -210,7 +218,11 @@
       "caption": "ชุดนอนผ้าซาตินแชมเปญสายเดี่ยวตัวโปรด",
       "message": "ชุดนอนตัวโปรดที่เพิ่งสั่งมา สวยไหมน้า? มิลินใส่ให้ดูเป็นคนแรกเลย 🙈✨",
       "conditions": [
-        { "field": "level", "value": 4, "eventId": "" }
+        {
+          "field": "level",
+          "value": 4,
+          "eventId": ""
+        }
       ]
     },
     {
@@ -220,7 +232,81 @@
       "caption": "ยืนรับลมดูดาวที่ระเบียงคอนโดวิวเมือง",
       "message": "บรรยากาศที่ระเบียงคืนนี้ดีจัง... ถ้ามีเธอยืนข้างๆ คงอุ่นกว่านี้เนอะ 🤍",
       "conditions": [
-        { "field": "level", "value": 5, "eventId": "" }
+        {
+          "field": "level",
+          "value": 5,
+          "eventId": ""
+        }
+      ]
+    },
+    {
+      "id": "milin-vault-lv1-cat",
+      "name": "ภาพลับ Lv.1 · ชุดแมวขี้เล่น",
+      "asset": "assets/vault_milin_lv1_cat.png",
+      "caption": "รูปเซตส่วนตัว Lv.1 คีย์เวิร์ด secret-cat-cosplay",
+      "message": "ชูสองนิ้วให้ดูคนเดียวน้า... ห้ามบอกใครเด็ดขาดเลยนะ 🐱✌️",
+      "conditions": [
+        {
+          "field": "level",
+          "value": 1,
+          "eventId": ""
+        }
+      ]
+    },
+    {
+      "id": "milin-vault-lv2-fitting",
+      "name": "ภาพลับ Lv.2 · ช่วยเลือกชุดหน่อย",
+      "asset": "assets/vault_milin_lv2_fitting.png",
+      "caption": "รูปเซตส่วนตัว Lv.2 คีย์เวิร์ด outfit_fitting_chic",
+      "message": "ชุดนี้ใส่ไปถ่ายแบบพรุ่งนี้ ช่วยเลือกให้หน่อยสิ ถ้าเลือกชุดนี้แสดงว่าชอบนะ? 👗",
+      "conditions": [
+        {
+          "field": "level",
+          "value": 2,
+          "eventId": ""
+        }
+      ]
+    },
+    {
+      "id": "milin-vault-lv3-bed",
+      "name": "ภาพลับ Lv.3 · เขินจนนอนไม่หลับ",
+      "asset": "assets/vault_milin_lv3_bed.png",
+      "caption": "รูปเซตส่วนตัว Lv.3 คีย์เวิร์ด secret-truth-dare-crush",
+      "message": "เกมตอบคำถามเมื่อวานยังเขินอยู่เลย... อย่าล้อเราบ่อยนะ 🙈",
+      "conditions": [
+        {
+          "field": "level",
+          "value": 3,
+          "eventId": ""
+        }
+      ]
+    },
+    {
+      "id": "milin-vault-lv4-silk",
+      "name": "ภาพลับ Lv.4 · ชุดนอนตัวโปรด",
+      "asset": "assets/vault_milin_lv4_silk.png",
+      "caption": "รูปเซตส่วนตัว Lv.4 คีย์เวิร์ด secret-silk-nightwear",
+      "message": "ชุดนอนตัวโปรดที่เพิ่งได้มา ใส่ให้ดูเป็นคนแรกเลยนะ ✨",
+      "conditions": [
+        {
+          "field": "level",
+          "value": 4,
+          "eventId": ""
+        }
+      ]
+    },
+    {
+      "id": "milin-vault-lv5-balcony",
+      "name": "ภาพลับ Lv.5 · ยื่นมือให้",
+      "asset": "assets/vault_milin_lv5_balcony.png",
+      "caption": "รูปเซตส่วนตัว Lv.5 คีย์เวิร์ด secret-balcony-confession",
+      "message": "ตีสองที่ระเบียง... ยื่นมือไปให้แล้วนะ ถ้ากล้าจับก็ลงมาหาสิ 🤍",
+      "conditions": [
+        {
+          "field": "level",
+          "value": 5,
+          "eventId": ""
+        }
       ]
     }
   ]

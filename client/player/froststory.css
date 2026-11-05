@@ -1409,12 +1409,6 @@ dialog.fs-overlay::backdrop {
   color: #ffffff;
 }
 
-.fs-dm-status {
-  display: block;
-  font-size: 0.68rem;
-  color: #a1a1aa;
-}
-
 .fs-episodes {
   display: flex;
   gap: 6px;
@@ -2360,11 +2354,6 @@ dialog.fs-overlay[open]::backdrop {
   font-weight: 700;
 }
 
-.fs-dm-status {
-  font-size: 0.75rem;
-  margin-top: 1px;
-}
-
 /* Segmented control with a thumb that slides to the chosen tab */
 .fs-dm-mode-toggle {
   position: relative;
@@ -2622,64 +2611,90 @@ dialog.fs-overlay[open]::backdrop {
   outline-offset: 2px;
 }
 
-/* DM Header Actions & Reset Buttons */
+/* DM header gear + reset popover */
 .fs-dm-header-actions {
   margin-left: auto;
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: flex-end;
   flex-shrink: 0;
 }
 
-.fs-dm-action-btn {
+.fs-dm-gear-btn {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.16);
   color: #f4e9ff;
-  border-radius: 999px;
-  padding: 5px 9px;
-  font-size: 0.72rem;
-  font-weight: 600;
   cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.16s ease;
+  transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
 }
 
-.fs-dm-action-btn:hover {
+.fs-dm-gear-btn:hover {
   background: rgba(255, 255, 255, 0.18);
   border-color: rgba(255, 255, 255, 0.32);
   color: #ffffff;
-  transform: translateY(-1px);
 }
 
-.fs-dm-action-btn:active {
-  transform: translateY(0);
+.fs-dm-gear-btn:active {
+  transform: scale(0.96);
+}
+
+.fs-dm-gear-btn[aria-expanded='true'] {
+  background: rgba(236, 72, 153, 0.22);
+  border-color: rgba(236, 72, 153, 0.45);
+  color: #ffffff;
+}
+
+.fs-dm-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  min-width: 190px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: rgba(16, 10, 22, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 14px;
+  box-shadow: 0 18px 40px -12px rgba(0, 0, 0, 0.85);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  animation: fs-fade-in 0.14s ease;
+}
+
+.fs-dm-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: #f4e9ff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.14s ease, border-color 0.14s ease;
 }
 
 .fs-dm-reset-chat-btn:hover {
-  background: rgba(236, 72, 153, 0.22);
-  border-color: rgba(236, 72, 153, 0.45);
+  background: rgba(236, 72, 153, 0.18);
+  border-color: rgba(236, 72, 153, 0.4);
 }
 
 .fs-dm-reset-story-btn:hover {
-  background: rgba(168, 85, 247, 0.22);
-  border-color: rgba(168, 85, 247, 0.45);
-}
-
-.fs-dm-action-label {
-  line-height: 1;
-}
-
-@media (max-width: 440px) {
-  .fs-dm-action-btn .fs-dm-action-label {
-    display: none;
-  }
-  .fs-dm-action-btn {
-    padding: 7px;
-    border-radius: 50%;
-  }
+  background: rgba(168, 85, 247, 0.18);
+  border-color: rgba(168, 85, 247, 0.4);
 }
 
 /* Lightbox / Fullscreen Image Viewer */
