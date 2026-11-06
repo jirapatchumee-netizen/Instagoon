@@ -49,6 +49,51 @@ const extractSpokenDialogue = text => {
     .replace(/\s+/g, ' ')
     .trim();
 };
+let googleTtsTokenCache = null;
+async function getGoogleTtsToken(serviceAccountJson) {
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (googleTtsTokenCache && googleTtsTokenCache.expiresAt > nowSec + 60) {
+    return googleTtsTokenCache.token;
+  }
+  const sa = typeof serviceAccountJson === 'string' ? JSON.parse(serviceAccountJson) : serviceAccountJson;
+  const b64Key = sa.private_key.replace(/-----[^\n]+-----/g, '').replace(/\s+/g, '');
+  const binaryKey = Uint8Array.from(atob(b64Key), c => c.charCodeAt(0));
+  const cryptoKey = await crypto.subtle.importKey(
+    'pkcs8',
+    binaryKey,
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const header = { alg: 'RS256', typ: 'JWT' };
+  const payload = {
+    iss: sa.client_email,
+    scope: 'https://www.googleapis.com/auth/cloud-platform',
+    aud: 'https://oauth2.googleapis.com/token',
+    exp: nowSec + 3600,
+    iat: nowSec
+  };
+  const enc = new TextEncoder();
+  const unsigned = base64url(enc.encode(JSON.stringify(header))) + '.' + base64url(enc.encode(JSON.stringify(payload)));
+  const sig = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', cryptoKey, enc.encode(unsigned));
+  const jwt = unsigned + '.' + base64url(sig);
+
+  const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'grant_type=' + encodeURIComponent('urn:ietf:params:oauth:grant-type:jwt-bearer') + '&assertion=' + encodeURIComponent(jwt)
+  });
+  if (!tokenRes.ok) {
+    const err = await tokenRes.text();
+    throw new Error('google_token_failed: ' + err.slice(0, 200));
+  }
+  const tokenData = await tokenRes.json();
+  googleTtsTokenCache = {
+    token: tokenData.access_token,
+    expiresAt: nowSec + (tokenData.expires_in || 3600)
+  };
+  return tokenData.access_token;
+}
 // One-time free energy per new account: 30 by default, FREE_ENERGY_GRANT overrides it (staging uses 100).
 const freeEnergyGrant = env => Number.parseInt(env.FREE_ENERGY_GRANT, 10) || 30;
 const MEMORY_KEY = /^player\.[\w.-]{1,60}$/;
@@ -524,6 +569,87 @@ async function player(req,env,user,path,now,ctx) {
 
   const creatorData = await one(env, 'SELECT * FROM creators WHERE id=?', creator);
   if(!creatorData) return json({error:'not_found'}, 404);
+
+  // Primary engine: Google Cloud Text-to-Speech (100% native Thai Neural2 voice)
+  if(env.GOOGLE_SERVICE_ACCOUNT_KEY) {
+    const googleVoice = env['GOOGLE_TTS_VOICE_' + creator.toUpperCase()] || 'th-TH-Neural2-C';
+    const speakingRate = creator === 'mook' ? 1.02 : 1.05;
+    const pitch = creator === 'mook' ? -0.8 : 0.6;
+
+    const cacheKey = 'tts/google/' + (await hash(googleVoice + ':' + cleanText)) + '.mp3';
+    const cached = await mediaStore(env).get(cacheKey);
+    if(cached?.body) {
+      return new Response(cached.body, {
+        headers: {
+          'content-type': 'audio/mpeg',
+          'cache-control': 'public, max-age=86400',
+          'x-tts-engine': 'google-cloud-neural2',
+          'x-tts-cache': 'HIT'
+        }
+      });
+    }
+
+    const ttsBucket = await takeEnergy(env, user.id, now, 'tts');
+    if(!ttsBucket) return json({error:'energy_empty'}, 402);
+    const refundTts = () => refundEnergy(env, user.id, ttsBucket, now, 'tts_refund');
+
+    try {
+      const token = await getGoogleTtsToken(env.GOOGLE_SERVICE_ACCOUNT_KEY);
+      const gRes = await fetch('https://texttospeech.googleapis.com/v1/text:synthesize', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          input: { text: cleanText },
+          voice: {
+            languageCode: 'th-TH',
+            name: googleVoice
+          },
+          audioConfig: {
+            audioEncoding: 'MP3',
+            speakingRate,
+            pitch
+          }
+        })
+      });
+
+      if(!gRes.ok) {
+        await refundTts();
+        const errText = await gRes.text();
+        console.error('Google Cloud TTS failed:', gRes.status, errText.slice(0, 300));
+        return json({ error: 'tts_api_failed', status: gRes.status }, 502);
+      }
+
+      const gData = await gRes.json();
+      const audioBytes = Uint8Array.from(atob(gData.audioContent), c => c.charCodeAt(0));
+
+      if(env.MEDIA?.put) {
+        try { await env.MEDIA.put(cacheKey, audioBytes, { httpMetadata: { contentType: 'audio/mpeg' } }); } catch (e) { console.error('R2 cache write failed', e); }
+      } else if(env.DB) {
+        try {
+          await env.DB.prepare('INSERT INTO media_blobs(key, content_type, bytes, size, uploaded_at) VALUES(?,?,?,?,?) ON CONFLICT(key) DO UPDATE SET bytes=excluded.bytes, size=excluded.size').bind(cacheKey, 'audio/mpeg', audioBytes, audioBytes.byteLength, now).run();
+        } catch (e) {
+          console.error('D1 cache write failed', e);
+        }
+      }
+
+      return new Response(audioBytes, {
+        headers: {
+          'content-type': 'audio/mpeg',
+          'cache-control': 'public, max-age=86400',
+          'x-tts-engine': 'google-cloud-neural2',
+          'x-tts-cache': 'MISS',
+          'x-energy': JSON.stringify(await energy(env, user.id, now))
+        }
+      });
+    } catch(e) {
+      await refundTts();
+      console.error('Google TTS error:', e);
+      return json({ error: 'google_tts_error' }, 500);
+    }
+  }
 
   let voiceId = env['ELEVENLABS_VOICE_' + creator.toUpperCase()] || creatorData.voice_id;
   if(!voiceId) {
