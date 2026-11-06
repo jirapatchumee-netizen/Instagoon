@@ -5,8 +5,7 @@
 > 🌐 **Instagoon Multi-Agent Sync Contract:** อ่านข้อตกลงการพัฒนาขนานและการซิงก์ Git ที่ [docs/MULTI_AGENT_SYNC_CONTRACT.md](docs/MULTI_AGENT_SYNC_CONTRACT.md)  
 > 📖 **Instagoon GDD:** อ่านวิสัยทัศน์และระบบเกมได้ที่ [docs/INSTAGOON_GDD.md](docs/INSTAGOON_GDD.md)  
 > 🧠 **AI Chat & Memory Design:** อ่านสถาปัตยกรรม DM Chatbot และหน่วยความจำที่ [docs/AI_CHAT_MEMORY_DESIGN.md](docs/AI_CHAT_MEMORY_DESIGN.md)  
-> 🎭 **AI Creator Persona & Banter Guideline:** อ่านคู่มือสร้างบุคลิก AI "รู้ทันมุก" ไม่ตอบทื่อที่ [docs/AI_CREATOR_PERSONA_GUIDELINE.md](docs/AI_CREATOR_PERSONA_GUIDELINE.md)  
-> 🔥 **Literary Romance & Safety Compliance Architecture:** อ่านสถาปัตยกรรมการเขียนบทโรแมนซ์ผู้ใหญ่ การพรรณนาโวหารเชิงผัสสะ และโหมดเนื้อหาเข้มข้นที่สอดคล้องกับ Safety Policy ได้ที่ [docs/ROMANCE_NARRATIVE_AND_SAFETY_ARCHITECTURE.md](docs/ROMANCE_NARRATIVE_AND_SAFETY_ARCHITECTURE.md)
+> 🎭 **AI Creator Persona & Banter Guideline:** อ่านคู่มือสร้างบุคลิก AI "รู้ทันมุก" ไม่ตอบทื่อที่ [docs/AI_CREATOR_PERSONA_GUIDELINE.md](docs/AI_CREATOR_PERSONA_GUIDELINE.md)
 
 ---
 
