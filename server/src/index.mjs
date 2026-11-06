@@ -534,10 +534,10 @@ async function player(req,env,user,path,now,ctx) {
   }
   if(!voiceId) {
     const defaultVoices = {
-      milin: 'ThT5KcBeYPX3keUQqHPh',
+      milin: 'cgSgspJ2msm6clMCkdW9', // Jessica (warm, pleasant female voice)
       mook: 'EXAVITQu4vr4xnSDxMaL',
     };
-    voiceId = defaultVoices[creator] || env.ELEVENLABS_DEFAULT_VOICE || '21m00Tcm4TlvDq8ikWAM';
+    voiceId = defaultVoices[creator] || env.ELEVENLABS_DEFAULT_VOICE || 'cgSgspJ2msm6clMCkdW9';
   }
 
   const cacheKey = 'tts/' + (await hash(voiceId + ':' + cleanText)) + '.mp3';
