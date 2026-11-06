@@ -64,8 +64,11 @@ Standalone Web Visual Novel เดิม (Overtime Secrets) พักการ�
 git config core.hooksPath .githooks
 ```
 
-- `scripts/guard-commit.mjs` คือตัวตรวจจริง `pre-commit` เรียกมันบนไฟล์ที่ staged และ CI เรียกซ้ำด้วย `--base origin/main` บน diff ของ PR (ข้าม hook ด้วย `--no-verify` ได้ แต่ CI ยังจับ)
+- `scripts/guard-commit.mjs` คือตัวตรวจจริง `pre-commit` เรียกมันบนไฟล์ที่ staged ส่วน CI เรียก **สำเนาของ guard บน commit ต้นทาง** (`git show origin/<base>:scripts/guard-commit.mjs`) ตรวจ **ทุก commit** ของ PR ไม่ใช่แค่ผลสุทธิ — PR จึงลบ checker ของตัวเองไม่ได้ และไฟล์ secret ที่ใส่แล้วลบทิ้งก็ยังโดนจับเพราะมันอยู่ใน history
 - **ห้ามขึ้น repo:** `.env`/`.dev.vars`/service-account key/private key, `private-docs/`, `docs/art/`, PNG ที่มี ComfyUI metadata, ไฟล์ที่มี `masterPromptTemplate`/`renderRecipe` หรือโครง ComfyUI workflow — ถ้า guard ปฏิเสธ ให้แก้ที่ไฟล์ (ลบ/ย้าย/strip) ไม่ใช่ `--no-verify`
-- **พื้นที่ล็อกเจ้าของ (ADR-0013):** `server/src/ai/protected/` และ `GEMINI_MODEL`/`SUMMARY_MODEL` ใน `server/wrangler*.toml` Agent ห้ามแก้เอง เจ้าของเท่านั้น (owner อนุมัติแล้วจึง commit ด้วย `--no-verify` และเขียนบอกใน commit message) ค่า model/thinking budget ถูก pin hash ไว้ใน `server/tests/protected-zone.test.mjs` แก้แล้วเทสแดง
+- **พื้นที่ล็อกเจ้าของ (ADR-0013):** `server/src/ai/protected/`, ค่า `GEMINI_MODEL`/`SUMMARY_MODEL` ใน `server/wrangler*.toml` และ **ไฟล์ที่เป็นกลไกป้องกันตัวเอง** (`scripts/guard-commit.mjs`, `.githooks/`, `.github/workflows/`, `.claude/settings.json`, `server/tests/guard-commit.test.mjs`, `server/tests/protected-zone.test.mjs`, ADR-0013) — Agent ห้ามแก้เอง เจ้าของเท่านั้น (owner อนุมัติแล้วจึง commit ด้วย `--no-verify` และเขียนบอกใน commit message)
+- ค่าในไฟล์ zone ถูก pin hash ไว้ใน `server/tests/protected-zone.test.mjs` แก้แล้วเทสแดง แต่ค่าใน `wrangler*.toml` **ไม่ได้ pin hash** (ตรวจแค่ diff) และ vars ที่ตั้งบน Cloudflare dashboard มองจาก repo ไม่เห็น
+- **ประตูจริงของไฟล์พวกนี้คือรีวิวของเจ้าของ** (`.github/CODEOWNERS` + required review ที่ต้องเปิดใน branch protection เอง) ไม่ใช่ CI: ใน CI การแตะ zone/กลไกเป็นแค่ `::notice` เพราะมันมาอยู่ใน PR ที่เจ้าของกำลังอ่านอยู่แล้ว
+- ตอน merge / cherry-pick / revert guard ผ่อนผันเฉพาะพื้นที่ล็อก+กลไกให้เป็น annotation (tree ที่ staged มี commit ของคนอื่นปน) ส่วน secret / ไฟล์ art pipeline ยัง fail เสมอ
 - `.claude/settings.json` (commit ได้) deny ไฟล์ secret/art pipeline/zone ไว้ชั้น tool ส่วน `.claude/settings.local.json` ของแต่ละคนอย่า commit (gitignore แล้ว)
 - ตรวจงานก่อนส่ง: `pnpm test` (ถ้า `pnpm install` ใน worktree ใหม่ติด `ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY` ให้รันตรง ๆ ว่า `node --experimental-strip-types --test server/tests/*.test.mjs`)

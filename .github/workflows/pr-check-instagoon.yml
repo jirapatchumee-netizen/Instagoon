@@ -25,8 +25,14 @@ jobs:
           node-version: 22
           cache: 'pnpm'
       - name: Guardrail check (secrets, private art pipeline, AI zone)
-        # The same rules as .githooks/pre-commit, so a skipped local hook cannot reach main.
-        run: node scripts/guard-commit.mjs --base "origin/${{ github.base_ref }}"
+        # Judged by the guard as it exists on the base commit, so a PR cannot rewrite the checker that
+        # reviews it. Same rules as .githooks/pre-commit, so a skipped local hook cannot reach main.
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git show "origin/$BASE_REF:scripts/guard-commit.mjs" > "$RUNNER_TEMP/guard.mjs"
+          node "$RUNNER_TEMP/guard.mjs" --base "origin/$BASE_REF"
       - run: pnpm install --no-frozen-lockfile
       - name: Worker tests (gameplay purity, NPC bundle, API)
         run: |

@@ -1,0 +1,14 @@
+# ADR-0013: these files decide what the AI sends to players and what the guard may let into a public repo.
+# Enabling the file is not enough — the owner must turn on "require review from CODEOWNERS" in branch
+# protection for main (Settings > Branches and protection > rule for main > Include administrators).
+/server/src/ai/protected/ @jirapatchumee-netizen
+/scripts/guard-commit.mjs @jirapatchumee-netizen
+/.githooks/ @jirapatchumee-netizen
+/.github/workflows/ @jirapatchumee-netizen
+/.claude/settings.json @jirapatchumee-netizen
+/server/tests/protected-zone.test.mjs @jirapatchumee-netizen
+/server/tests/guard-commit.test.mjs @jirapatchumee-netizen
+/docs/adr/0013-owner-locked-ai-config-zone.md @jirapatchumee-netizen
+/server/wrangler.toml @jirapatchumee-netizen
+/server/wrangler.staging.toml @jirapatchumee-netizen
+/server/wrangler.local-staging.toml @jirapatchumee-netizen

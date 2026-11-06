@@ -10,5 +10,5 @@ the generation and safety settings sent with each request, and the Fifty Shades 
 - `server/tests/protected-zone.test.mjs` pins the behaviour by SHA-256. A change the owner approved updates
   the pinned hash in the same commit, and the commit message says who approved it and when.
 - The production Fifty Shades prompt lives in the `FIFTY_SHADES_SECRET_PROMPT` Cloudflare secret, never in git.
-- Reviews and audits: the safety settings and the adult prompt are owner decisions. Report them only if
-  their text or a credential could reach a player's browser or the public repository.
+- Reviews and audits: report what you find, including the safety settings and the adult prompt. Whether
+  `BLOCK_NONE` is right is the owner's decision, but that is never a reason to leave a finding out.

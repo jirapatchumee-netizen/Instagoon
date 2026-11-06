@@ -19,7 +19,13 @@
       "Bash(git commit --no-verify*)",
       "Bash(git commit * --no-verify*)",
       "Bash(git commit -n*)",
-      "Bash(git config core.hooksPath *)"
+      "Bash(git config core.hooksPath *)",
+      "Bash(git commit *--no-verify*)",
+      "Bash(git -c core.hooksPath *)",
+      "Bash(git config --unset core.hooksPath*)",
+      "Bash(git push *+HEAD:main*)",
+      "Bash(git push *+main*)",
+      "Bash(git rebase -i*)"
     ],
     "ask": [
       "Bash(*wrangler deploy*--env production*)",
@@ -34,7 +40,17 @@
     "SessionStart": [
       {
         "hooks": [
-          { "type": "command", "command": "git", "args": ["-C", "${CLAUDE_PROJECT_DIR}", "config", "core.hooksPath", ".githooks"] }
+          {
+            "type": "command",
+            "command": "git",
+            "args": [
+              "-C",
+              "${CLAUDE_PROJECT_DIR}",
+              "config",
+              "core.hooksPath",
+              ".githooks"
+            ]
+          }
         ]
       }
     ]

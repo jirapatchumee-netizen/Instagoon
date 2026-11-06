@@ -27,20 +27,23 @@
 |---|---|---|
 | 1 | `.claude/settings.json` deny `server/src/ai/protected/**`, secret paths, art pipeline | ห้อง agent ที่อ่าน config จาก repo |
 | 2 | `scripts/guard-commit.mjs` ผ่าน `.githooks/pre-commit` บนไฟล์ staged | ทุก commit ใน clone ที่เปิด hook |
-| 3 | job `Guardrail check` ใน `pr-check-instagoon.yml` รัน guard เดียวกันด้วย `--base origin/<base>` | ทุก PR — ปิดช่อง `--no-verify` และ clone ที่ไม่เปิด hook |
-| 4 | `server/tests/protected-zone.test.mjs` pin hash ของค่าใน zone + ทดสอบว่า `Object.freeze` จริง | ทุกครั้งที่รัน test — แก้ zone แล้วเทสแดงทันที |
+| 3 | job `Guardrail check` ใน `pr-check-instagoon.yml` รัน **สำเนาของ guard บน base commit** ตรวจ **ทุก commit** ของ PR (`git rev-list` + `git diff-tree`) | ทุก PR — PR ลดระดับ checker ของตัวเองไม่ได้ และ secret ที่ใส่แล้วลบทิ้งยังโดนจับเพราะอยู่ใน history |
+| 4 | `server/tests/protected-zone.test.mjs` pin hash ของค่าใน zone + ทดสอบว่า `Object.freeze` จริง + assert ว่าทุก call site ของ Gemini ดึง generationConfig จาก zone | ทุกครั้งที่รัน test — แก้ zone หรือแอบใส่ config เองใน `index.mjs` แล้วเทสแดงทันที |
 
-- guard ชั้น 3 ทำตัวแบบ `ci`: เรื่อง **secret / ไฟล์ art pipeline / PNG metadata** = fail เสมอ (ลบย้อนหลังไม่ได้) ส่วน **การแตะ zone** = annotation (`::notice`) ไม่ fail เพราะการมาถึง CI หมายความว่าเจ้าของกำลัง review PR นั้นอยู่แล้ว
-- `.gitignore` เพิ่มรายการต้องห้าม (`*.env`, `.env.*` ยกเว้น `.env.example`, service-account key, `private-docs/`, `.claude/settings.local.json`) เป็นแนวแรก และ guard เป็นแนวสอง
+- guard ชั้น 3 ทำตัวแบบ `ci`: **secret / ไฟล์ art pipeline / generator metadata** = fail เสมอ (ลบย้อนหลังไม่ได้) ส่วน **การแตะ zone และแตะไฟล์กลไกป้องกันตัวเอง** = annotation (`::notice`) ไม่ fail เพราะการมาถึง CI หมายความว่าเจ้าของกำลัง review PR นั้นอยู่แล้ว
+- **ชั้น 3 ไม่ได้หมายความว่ามีอะไรทำ fail แทนรีวิวของเจ้าของ**: ประตูจริงของ zone/กลไกคือ `.github/CODEOWNERS` + required review ที่เจ้าของต้องเปิดใน branch protection เอง (รวม "include administrators") — ถ้าไม่เปิด ไฟล์พวกนี้ยัง merge ได้โดยไม่ต้องมีคนเห็นด้วย
+- ค่า `GEMINI_MODEL`/`SUMMARY_MODEL` ใน `wrangler*.toml` ตรวจแค่ diff ไม่ได้ pin hash; vars ที่ตั้งบน Cloudflare dashboard หรือผ่าน `--var` มองจาก repo ไม่เห็น
+- `.gitignore` เพิ่มรายการต้องห้าม (`*.env`, `.env.*` ยกเว้น example/sample/template, service-account key, `private-docs/`, `.claude/settings.local.json`) เป็นแนวแรก และ guard เป็นแนวสอง
 
 ## 3. ผลที่ตามมา (Consequences)
 
-**ได้:** คนเดียวที่เปลี่ยนคำตอบของ AI ได้คือเจ้าของ; ความตั้งใจนั้นเห็นได้ใน git history; Agent ตัวใหม่克隆 repo แล้วทำงานต่อได้ถูกกติกาเพราะกติกาอยู่ใน repo ไม่ใช่ในเครื่องใคร
+**ได้:** คนเดียวที่เปลี่ยนคำตอบของ AI ได้คือเจ้าของ; ความตั้งใจนั้นเห็นได้ใน git history; Agent ตัวใหม่ clone repo แล้วทำงานต่อได้ถูกกติกาเพราะกติกาอยู่ใน repo ไม่ใช่ในเครื่องใคร
 
-**แลก:** Agent ต้องรอเจ้าของเรื่อง model/thinking เสมอ (เปิด issue/runbook ไว้ก่อนได้); zone ใหม่ออนเดอร์ ต้องอัปเดต hash ใน `server/tests/protected-zone.test.mjs` พร้อมกัน ไม่งั้น CI แดง; `fetch-depth: 0` ใน workflow ทำให้ checkout ช้าขึ้นเล็กน้อย (repo นี้ยังรับได้)
+**แลก:** Agent ต้องรอเจ้าของเรื่อง model/thinking/ไฟล์กลไกเสมอ (เปิด issue/runbook ไว้ก่อนได้); zone ใหม่ต้องอัปเดต hash ใน `server/tests/protected-zone.test.mjs` พร้อมกัน ไม่งั้นเทสแดง; `fetch-depth: 0` ทำให้ checkout ช้าขึ้นเล็กน้อย (repo นี้ยังรับได้); การแก้ guard/CI/settings ต้องให้เจ้าของ commit เอง ซึ่งทำให้ "PR ปรับปรุง guardrail" ช้ากว่าเดิมหนึ่งรอบรีวิว
 
 ## 4. หลักฐานการตรวจรับ (Verification)
 
-- `node --experimental-strip-types --test server/tests/*.test.mjs` → `# pass 26 / # fail 0` (รวม `guard-commit.test.mjs` ที่ตรวจทั้ง case ต้องห้าม และ case คล้ายแต่ต้องปล่อยผ่าน)
+- `node --experimental-strip-types --test server/tests/*.test.mjs` → `# tests 27 / # pass 27 / # fail 0` (ภาค `guard-commit.test.mjs` มี case ต้องห้าม + case คล้ายที่ต้องปล่อยผ่าน + repo ปลอม 2 commit พิสูจน์ว่า mode `--base` จับไฟล์ secret ที่ใส่แล้วลบทิ้ง; `protected-zone.test.mjs` pin hash + freeze + นับ call site ของ Gemini)
 - mutation test: เปลี่ยน `thinkingBudget: 0` → `240` ใน zone แล้ว `protected-zone.test.mjs` fail, revert แล้วผ่าน
-- รัน guard จริง: `node scripts/guard-commit.mjs --base origin/main` บน branch นี้ → exit 0 พร้อม 3 notice ของไฟล์ zone
+- proof จริงของ hook: stage `server/.dev.vars` แล้ว commit → `Commit refused … Wrangler dev secrets` exit 1 ไม่มี commit เกิดขึ้น (ดู log งาน cleanup 2026-11-07)
+- ผลจากรound review แรก (independent, `VERDICT: FIX`) ถูกแก้นำใน commit ถัดไป: CI รัน guard จาก base copy, สแกนทุก commit, เลิกเดาจากนามสกุลไฟล์, case-insensitive, ไม่ fail-open เมื่อรันผ่าน symlink, และตัดข้อความใน README ที่ชี้ให้ auditor ไม่รายงาน safety settings/adult prompt

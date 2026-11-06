@@ -51,4 +51,9 @@ test('the worker takes every zone value from the zone, never inline', () => {
   const src = readFileSync(new URL('../src/index.mjs', import.meta.url), 'utf8');
   for (const re of [/BLOCK_NONE|BLOCK_MEDIUM_AND_ABOVE|HARM_CATEGORY_/, /thinkingBudget|thinkingConfig|thinkingLevel/, /FIFTY_SHADES_SECRET_PROMPT/, /['"`]gemini-[0-9]/])
     assert.ok(!re.test(src), `server/src/index.mjs must not contain ${re}`);
+  // A new call site that builds its own generationConfig would silently escape the zone.
+  const calls = (src.match(/:generateContent/g) || []).length;
+  const fromZone = (src.match(/\b(chat|rewrite|summary|modelTest)GenerationConfig\(/g) || []).length;
+  assert.equal(calls, 4, 'unexpected number of Gemini call sites in server/src/index.mjs');
+  assert.equal(fromZone, calls, 'every Gemini call site must take generationConfig from the zone');
 });
