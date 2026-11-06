@@ -47,6 +47,40 @@
 * ปฏิกิริยาอารมณ์ของตัวละคร (`moodToast` / `[mood:...]`) ความคิดในใจ (`[thought:...]`) และการกระทำ (`[action:...]`) ต้องถูกจัดเก็บลงใน `storedContent` และเรนเดอร์ผ่าน `renderBubbleContent()` ใน `client/player/FrostStoryApp.tsx` ให้อยู่ภายในกรอบ Bubble เดียวกัน
 * **ห้ามสร้าง Floating Banner ลอยทับแถบเมนูด้านบน** เพื่อไม่ให้บดบังปุ่มสลับแท็บ (*แชท / เนื้อเรื่อง*) หรือเมนูตั้งค่า
 
+### 2.7 Gemini API Safety Configuration (`BLOCK_NONE` Standard for Fiction Climax)
+* **กับดักของ `BLOCK_ONLY_HIGH`:** ใน Google Gemini API ค่า `BLOCK_ONLY_HIGH` หมายถึง *"บล็อกทันทีหากความน่าจะเป็นเข้าข่ายระดับ HIGH (Block when probability is HIGH)"* เมื่อบทสนทนาเข้าสู่ฉาก Climax เร่าร้อนที่มีการบรรยายสัมผัสทางกายและการเคลื่อนไหวที่ลึกซึ้ง Gemini จะประเมินระดับ `SEXUALLY_EXPLICIT` เป็น **HIGH** เสมอ หากใช้ `BLOCK_ONLY_HIGH` จะส่งผลให้โมเดลตัดบทด้วย `finishReason: 'SAFETY'`
+* **มาตรฐานการตั้งค่าที่ถูกต้อง:** ใน `server/src/index.mjs` (ทั้งรอบแชทหลักและรอบ Knowledge Rewrite) ต้องกำหนดเป็น `BLOCK_NONE` สำหรับ 2 หมวดโรแมนซ์ และคงความปลอดภัยในชีวิตจริงไว้เข้มงวด:
+  ```javascript
+  safetySettings: [
+    { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+    { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+    { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+    { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' }
+  ]
+  ```
+* **คำสั่ง `break` ในลูปโมเดล:** หากมี AI Agent ท่านอื่นมาปรับปรุงระบบ Cyber Security ต้องระวังไม่ให้การตรวจจับ Safety ตัดสิทธิ์โมเดลอื่นโดยไม่จำเป็น หรือหากใช้คำสั่งตัดบท (`break`) ต้องมั่นใจว่า `safetySettings` ด้านบนถูกตั้งเป็น `BLOCK_NONE` ไว้อย่างถูกต้องเพื่อไม่ให้เกิด False-Positive กับนิยายผู้ใหญ่
+
+---
+
+## 🔍 5. Troubleshooting Runbook เมื่อพบปัญหาแชทติด Error
+
+หากพบอาการ: **ผู้เล่นส่งข้อความแล้วขึ้น "AI ตอบไม่ได้ชั่วคราว คืนพลังงานให้แล้ว" (503 `ai_unavailable`)**
+
+1. **ตรวจสอบ Log ในฐานข้อมูล D1 ทันที:**
+   ```bash
+   npx wrangler d1 execute instagoon-staging --remote --command "SELECT created_at, outcome, model, tokens_in, tokens_out, fallback_count FROM ai_turn_metrics ORDER BY created_at DESC LIMIT 5"
+   ```
+   - หากพบว่า `tokens_in > 0` แต่ `tokens_out = 0` และ `fallback_count = 1` แสดงว่า **ติด Safety Finish ของ Gemini API**
+2. **ตรวจสอบ `safetySettings` ใน `server/src/index.mjs`:**
+   - ตรวจดูบรรทัด ~913 (รอบ Generate หลัก) และบรรทัด ~1020 (รอบ Rewrite)
+   - ตรวจสอบว่ามีใครเผลอไปเปลี่ยน `HARM_CATEGORY_SEXUALLY_EXPLICIT` หรือ `HARM_CATEGORY_HARASSMENT` กลับไปเป็น `BLOCK_MEDIUM_AND_ABOVE` หรือ `BLOCK_ONLY_HIGH` หรือไม่
+   - หากมี ให้เปลี่ยนกลับเป็น `BLOCK_NONE` ทันที
+3. **ทดสอบความเข้ากันได้ด้วยชุดทดสอบ:**
+   ```bash
+   pnpm test:worker && node server/tests/api.mjs && pnpm build:staging
+   ```
+
+
 ---
 
 ## 🛠️ 3. ตำแหน่งไฟล์อ้างอิงในระบบ (Codebase Map)
