@@ -47,7 +47,7 @@
 
 ## 4. วิธีแก้ไข (Implemented Fix)
 
-ในไฟล์ [server/src/index.mjs](file:///Users/macminim4pro/FrostNova/FrostNovaWorkspace/projects/Instagoon/Instagoon-app/server/src/index.mjs):
+ในไฟล์ [server/src/index.mjs](../server/src/index.mjs):
 
 ### 4.1 จุดเรียกแชทหลัก (Primary Turn)
 ```javascript
