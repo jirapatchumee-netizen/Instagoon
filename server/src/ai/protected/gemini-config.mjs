@@ -32,7 +32,11 @@ export const pickLiteModel = configured => {
   return ALLOWED_GEMINI_MODELS.includes(model) ? model : DEFAULT_LITE_MODEL;
 };
 
-const thinkingFor = model => model.includes('2.5-flash') ? { thinkingConfig: { thinkingBudget: 0 } } : {};
+// Replies should come fast, not think long. 2.5 Flash has no "minimal" level, so its budget is 0; the 3.x
+// models take a thinking level instead (Gemini thinking docs, read 2026-11-07).
+const thinkingFor = model => model.includes('2.5-flash')
+  ? { thinkingConfig: { thinkingBudget: 0 } }
+  : { thinkingConfig: { thinkingLevel: 'minimal' } };
 
 export const chatGenerationConfig = (model, responseSchema) => ({
   responseMimeType: 'application/json',
@@ -42,3 +46,5 @@ export const chatGenerationConfig = (model, responseSchema) => ({
 });
 export const rewriteGenerationConfig = model => ({ responseMimeType: 'application/json', temperature: 0.7, ...thinkingFor(model) });
 export const summaryGenerationConfig = model => ({ responseMimeType: 'application/json', maxOutputTokens: 1024, ...thinkingFor(model) });
+// The admin model test thinks the way a chat turn does, so its timings match what players get.
+export const modelTestGenerationConfig = model => ({ ...thinkingFor(model) });

@@ -1,7 +1,7 @@
 import { selectKnowledge } from './knowledge.mjs';
 import { ensureContent, bundledMedia, removedCreators } from './content.mjs';
 import { relationshipConfig, overallScore, levelOf, matchKeywordRules, secretsFor, levelStyle, applyRules, pickReward } from './gameplay/index.mjs';
-import { ALLOWED_GEMINI_MODELS, SAFETY_SETTINGS, modelsForVisit, pickLiteModel, chatGenerationConfig, rewriteGenerationConfig, summaryGenerationConfig } from './ai/protected/gemini-config.mjs';
+import { ALLOWED_GEMINI_MODELS, SAFETY_SETTINGS, modelsForVisit, pickLiteModel, chatGenerationConfig, rewriteGenerationConfig, summaryGenerationConfig, modelTestGenerationConfig } from './ai/protected/gemini-config.mjs';
 import { fiftyShadesPrompt as buildFiftyShadesPrompt } from './ai/protected/fifty-shades.mjs';
 
 const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), {status, headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store',...headers}});
@@ -374,7 +374,8 @@ async function player(req,env,user,path,now,ctx) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
         body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: 'ช่วยตอบภาษาไทย 1 ประโยคสั้นๆ แนะนำตัวเองว่าคุณคือโมเดลอะไรครับ' }] }]
+          contents: [{ role: 'user', parts: [{ text: 'ช่วยตอบภาษาไทย 1 ประโยคสั้นๆ แนะนำตัวเองว่าคุณคือโมเดลอะไรครับ' }] }],
+          generationConfig: modelTestGenerationConfig(m)
         })
       });
       const durationMs = Date.now() - start;

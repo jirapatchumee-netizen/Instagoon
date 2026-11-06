@@ -11,11 +11,12 @@ const PINNED = {
   models: '6be924fed02c7dfb56828d6ca980913da8c23dd42f5c76f7e86f75999975e0d5',
   defaultLite: '9a9f0bb7d45d033b80d2c4894621c0d5ca110ed6d006afc9ed6701ad1e83d371',
   safety: 'e5818ff1091c6d23229f84fd8b23d52d1d2efe513664cb3808e8033d65e5c810',
-  chat: '8c7cbaef0f5eed98f15496941844f2d348abae54d2212de0c727104a04c2776f',
-  rewrite: '1dbfc94b694bc1a7251738ebff670911282dea8162da1ffde9a263c31ce338d7',
-  summary: 'ed5e1024aa773cdc7854308cf1e05a4466e2002518113af88d5f5614354bb4cc',
+  chat: 'a72f693558de62e1a7108052396176e93ca1b986710f8942237ad3de2fb8b720',
+  rewrite: '33a45bcbcfc2b062fac76a7ed4bddd2b9cffee8c6af0c9c5b6953e7a3fe2ee1f',
+  summary: 'd78748fdcc35d82c69cb9701a620ac62470160df0b3eea38ec6a6fdffc7c517f',
   pick: '4427df6f073d7de3954f89b41accf6cd12d223e3e227ac683b29557eb285bdbe',
   order: '5d5d64d173dd826c29e7059d69414c96f8aa4642e2870f46757ef663562fa863',
+  modelTest: '3b1a32871b7073b5ddcdcc115176a5796f04328a48e975cc20ee450550418bd6',
   fifty: 'd19066b3660c13972234e4ed226bc5d45376446fda1dff6706195933e206847f'
 };
 const sha = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -29,6 +30,7 @@ test('owner-locked AI config matches its pinned behaviour', () => {
     chat: sha(models.map(m => zone.chatGenerationConfig(m, { type: 'OBJECT' }))),
     rewrite: sha(models.map(zone.rewriteGenerationConfig)),
     summary: sha(models.map(zone.summaryGenerationConfig)),
+    modelTest: sha(models.map(zone.modelTestGenerationConfig)),
     pick: sha([undefined, '', 'models/gemini-2.5-flash', 'gemini-3.1-flash-lite', 'gemini-9-ultra'].map(zone.pickLiteModel)),
     order: sha(['', 'a', 'visit-1', '00000000-0000-4000-8000-000000000001'].map(v => zone.modelsForVisit(models, v))),
     fifty: sha([
