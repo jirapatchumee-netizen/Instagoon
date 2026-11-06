@@ -534,10 +534,10 @@ async function player(req,env,user,path,now,ctx) {
   }
   if(!voiceId) {
     const defaultVoices = {
-      milin: 'cgSgspJ2msm6clMCkdW9', // Jessica (warm, pleasant female voice)
-      mook: 'EXAVITQu4vr4xnSDxMaL',
+      milin: 'Xb7hH8MSUJpSbSDYk0k2', // Alice (softer, clearer Thai pronunciation on free tier)
+      mook: 'EXAVITQu4vr4xnSDxMaL',  // Bella (confident, expressive)
     };
-    voiceId = defaultVoices[creator] || env.ELEVENLABS_DEFAULT_VOICE || 'cgSgspJ2msm6clMCkdW9';
+    voiceId = defaultVoices[creator] || env.ELEVENLABS_DEFAULT_VOICE || 'Xb7hH8MSUJpSbSDYk0k2';
   }
 
   const cacheKey = 'tts/' + (await hash(voiceId + ':' + cleanText)) + '.mp3';
@@ -564,7 +564,7 @@ async function player(req,env,user,path,now,ctx) {
   if(!ttsBucket) return json({error:'energy_empty'}, 402);
   const refundTts = () => refundEnergy(env, user.id, ttsBucket, now, 'tts_refund');
 
-  const modelId = env.ELEVENLABS_MODEL_ID || 'eleven_multilingual_v2';
+  const modelId = env.ELEVENLABS_MODEL_ID || 'eleven_turbo_v2_5';
   const elRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}`, {
     method: 'POST',
     headers: {
@@ -576,9 +576,9 @@ async function player(req,env,user,path,now,ctx) {
       text: cleanText,
       model_id: modelId,
       voice_settings: {
-        stability: 0.5,
-        similarity_boost: 0.75,
-        style: 0.0,
+        stability: 0.4,
+        similarity_boost: 0.8,
+        style: 0.05,
         use_speaker_boost: true
       }
     })
