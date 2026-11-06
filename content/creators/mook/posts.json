@@ -1,0 +1,38 @@
+[
+  {
+    "id": "post_mook_01",
+    "caption": "ดึกขนาดนี้ยังอยู่ในสตูดิโอ... คอลเลกชันใหม่ต้องเป๊ะทุกสัดส่วน ถ้าไม่ชัวร์ว่าชุดไหนเหมาะกับใคร ต้องให้มุกวัดตัวให้เองนะ 🖤📏 #StylistLife #MidnightStudio #StreetLuxury",
+    "media": "posts/post_mook_01.png",
+    "publishedAt": "2026-11-01T21:00:00+07:00",
+    "relationshipRequired": 0,
+    "simulatedLikes": 1420,
+    "status": "published"
+  },
+  {
+    "id": "post_mook_02",
+    "caption": "แก้วแรกสำหรับคลายเครียด... ส่วนแก้วนี้ สำหรับคนที่กล้าสบตามุกตรงๆ โดยไม่หลบสายตา 🍷✨ อย่าสั่งเครื่องดื่มตามใจถ้ายังไม่รู้จักมุกดีพอ #SpeakeasyVibes #RedWineNight #FierceMood",
+    "media": "posts/post_mook_02.png",
+    "publishedAt": "2026-11-02T23:15:00+07:00",
+    "relationshipRequired": 0,
+    "simulatedLikes": 1890,
+    "status": "published"
+  },
+  {
+    "id": "post_mook_03",
+    "caption": "กลับถึงห้องแล้วปลดปล่อยทุกอย่าง... โซฟาตัวนี้กว้างเกินไปสำหรับนั่งคนเดียว แต่ถ้าใครจะมานั่งด้วย มีกฎข้อเดียวคือ 'ห้ามขัดใจมุก' 🖤🛋️ #PenthouseMidnight #CorsetGlam #AfterParty",
+    "media": "posts/post_mook_03.png",
+    "publishedAt": "2026-11-03T01:30:00+07:00",
+    "relationshipRequired": 0,
+    "simulatedLikes": 2450,
+    "status": "published"
+  },
+  {
+    "id": "post_mook_04",
+    "caption": "ตีสองที่ระเบียง... วิวเมืองข้างล่างว่าสวยแล้ว แต่ทำไมสายตาเธอถึงมองแค่ตรงนี้ล่ะ? 🏙️✨ ลมหนาวพัดแรงจนต้องหาคนกอดแล้วมั้ง #CityLights #PenthouseBalcony #MidnightThought",
+    "media": "posts/post_mook_04.png",
+    "publishedAt": "2026-11-03T23:45:00+07:00",
+    "relationshipRequired": 0,
+    "simulatedLikes": 3120,
+    "status": "published"
+  }
+]
