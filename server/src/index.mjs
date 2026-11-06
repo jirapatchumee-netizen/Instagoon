@@ -11,7 +11,7 @@ const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(d
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), {status}); };
 const token = () => Array.from(crypto.getRandomValues(new Uint8Array(32)), n => n.toString(16).padStart(2,'0')).join('');
 const hash = async value => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))), n=>n.toString(16).padStart(2,'0')).join('');
-const base64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+const base64url = bytes => btoa(String.fromCharCode(...(bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes)))).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
 const cookie = (req, name) => req.headers.get('cookie')?.split(';').map(x=>x.trim()).find(x=>x.startsWith(name+'='))?.slice(name.length+1);
 const one = (env, sql, ...values) => env.DB.prepare(sql).bind(...values).first();
 const all = async (env, sql, ...values) => (await env.DB.prepare(sql).bind(...values).all()).results;
@@ -76,7 +76,7 @@ async function getGoogleTtsToken(serviceAccountJson) {
   const enc = new TextEncoder();
   const unsigned = base64url(enc.encode(JSON.stringify(header))) + '.' + base64url(enc.encode(JSON.stringify(payload)));
   const sig = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', cryptoKey, enc.encode(unsigned));
-  const jwt = unsigned + '.' + base64url(sig);
+  const jwt = unsigned + '.' + base64url(new Uint8Array(sig));
 
   const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
