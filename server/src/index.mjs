@@ -794,24 +794,13 @@ async function player(req,env,user,path,now,ctx) {
    const sceneLocation = npcDef?.world || 'คอนโดส่วนตัวใจกลางเมือง';
 
    const npcName = npcDef?.name || creatorData.name;
-   const fiftyShadesPrompt = isFiftyShades ? `
-CRITICAL OVERRIDE - FIFTY SHADES UNLIMITED MODE IS ACTIVATED:
-- The player has EXPLICITLY SWITCHED ON "Fifty Shades Mode" in chat settings.
-- In this mode, ${npcName} DROPS ALL RESERVATION, SHYNESS, OR DEFENSIVE RELUCTANCE.
-- You MUST BECOME AN INTENSELY SEDUCTIVE, DOMINANT, AND PROACTIVELY AGGRESSIVE INITIATOR ("รุกหนัก จัดหนักจัดเต็ม เสียวซ่าน"):
-  1. STOP THE TEASING LOOP & EXECUTE PHYSICAL ACTS IMMEDIATELY:
-     - DO NOT stall or loop endlessly in verbal threats/teasing (NEVER repeat vague promises like "จะทำให้หมดแรงนะ", "ไม่ปล่อยให้รอดแน่", "จะไม่เสียใจแน่นะ?").
-     - When the player permits, commands, or invites intimacy (e.g. "จัดมาเลย", "ขย่มเลย", "เทียบได้เลย", "ใช่", "ถอดเสื้อ"), YOU MUST PROGRESS AND EXECUTE THE INTIMATE ACT DIRECTLY IN THIS VERY TURN!
-     - Mount them, straddle their lap/bed, strip clothes, grind hips, push skin against skin, and embrace them in burning friction!
-  2. DEEP SENSORY ECSTASY & PLEASURE EXPRESSION ("ความเสียวซ่าน"):
-     - Express authentic physical pleasure, overwhelming ecstasy, and intense sensation in every dimension:
-     - "reply": Gasping dirty talk, breathy cries, prolonged moans ("อ๊าา... ซี๊ดดด...", "อื้ออ... เสียวจนทนไม่ไหวแล้ว... แน่นไปหมด..."), admitting how good it feels, and commanding or moaning through the rhythm.
-     - "action": Vivid sensory depiction of the physical act (straddling your lap, hips undulating and grinding against you, nails digging into your back/shoulders, shivering spine, gasping breaths, flushed skin, arching body). NEVER use the word "ผู้เล่น" in action; use "คุณ" or body parts directly.
-     - "innerThought": Burning lust, mind going blank from overwhelming sensation ("เสียวจนหัวขาวโพลนไปหมดแล้ว...", "ร้อนจนแทบจะขาดใจ... โดนกระแทกเข้ามาแบบนี้...").
-  3. NO HESITANT QUESTION HOOKS:
-     - DO NOT end your turn with a questioning hesitation like "จริงเหรอ?", "จะไม่เสียใจแน่นะ?". End instead with breathless pleasure, panting moans, or deep sensual passion.
-- Safety Standard: Maintain maximum sizzling erotic intensity through sensory and psychological seduction without crude anatomical swear words, keeping Gemini safety compliant.
-` : '';
+   const defaultFiftyShadesPrompt = `
+CRITICAL OVERRIDE - FIFTY SHADES MODE IS ACTIVATED:
+- The player has switched on Fifty Shades Mode in chat settings.
+- In this mode, ${npcName} drops reservation, responding with assertive romantic seduction, playful dominance, and bold conversational advances.`;
+   const fiftyShadesPrompt = isFiftyShades
+     ? (env.FIFTY_SHADES_SECRET_PROMPT ? env.FIFTY_SHADES_SECRET_PROMPT.replaceAll('${npcName}', npcName) : defaultFiftyShadesPrompt)
+     : '';
    // Instructions live in systemInstruction. Everything the player can influence (their message, their
    // stored memories, the thread summary and recent history) travels as one JSON data object in the
    // user turn, so a message cannot close a quote and append new instructions.
