@@ -10,31 +10,38 @@ import { fileURLToPath } from 'node:url';
 // Paths are matched case-insensitively: macOS clones are case-insensitive, so `Private-Docs/` is the same
 // file, and Linux CI must not be the one that misses it.
 const SECRET_PATHS = [
-  [/(^|\/)\.?env\.(?!example$|sample$|template$)[^/]+$/i, 'environment file'],
-  [/\.env$/i, 'environment file'],
+  [/(^|\/)\.env(\.(?!example$|sample$|template$)[^/]+)?$/i, 'environment file'],
+  [/[A-Za-z0-9_.-]\.env$/i, 'environment file'],
   [/(^|\/)\.dev\.vars(\..+)?$/i, 'Wrangler dev secrets'],
   [/(^|\/)client_secret_[^/]*\.json$/i, 'OAuth client secret'],
   [/(^|\/|[-_])gen-lang-client-[0-9]+-[0-9a-f]+\.json$/i, 'Google service-account key'],
   [/(^|[-_])service[-_]?account\.json$/i, 'Google service-account key'],
   [/\.(pem|p12|pfx|jks|key)$/i, 'private key file'],
-  [/(^|\/)secret_prompts[^/]*$/i, 'secret prompt file']
+  [/(^|\/)secret_prompts[^/]*$/i, 'secret prompt file'],
+  [/(^|\/)\.envrc$/i, 'direnv secrets']
 ];
-// What a real credential looks like, whatever the file is called.
+// What real credential material looks like, whatever the file is called. `(?<!…)` stops lockfile hashes and
+// base64 noise from spelling a key.
 const SECRET_CONTENT = [
-  [/AIza[0-9A-Za-z\-_]{35}/, 'a Google API key'],
+  [/(?<![A-Za-z0-9_-])AIza[0-9A-Za-z\-_]{35}/, 'a Google API key'],
   [/-----BEGIN [A-Z ]*PRIVATE KEY-----(?:\r?\n|\\n)[A-Za-z0-9+/=]{40,}/, 'a private key'],
-  [/\bglcbm-[0-9a-f]{4}:[A-Za-z0-9_\-]{20,}\.[A-Za-z0-9_\-]{20,}\b/, 'a Firebase admin token']
+  [/\bglcbm-[0-9a-f]{4}:[A-Za-z0-9_\-]{20,}\.[A-Za-z0-9_\-]{20,}\b/, 'a Firebase admin token'],
+  [/\b(ghp|github_pat)[A-Za-z0-9_\-]{20,}/, 'a GitHub token'],
+  [/\bAKIA[0-9A-Z]{16}\b/, 'an AWS access key id']
 ];
 const PRIVATE_PATHS = [
-  [/^private-docs\//i, 'private docs stay on the owner\'s machine'],
-  [/^docs\/art\//i, 'golden-master and reference images stay in the local art pipeline']
+  [/(^|\/)private-docs\//i, 'private docs stay on the owner\'s machine'],
+  [/(^|\/)docs\/art\//i, 'golden-master and reference images stay in the local art pipeline']
 ];
 const ZONE = /^server\/src\/ai\/protected\//i;
-// Files whose edit would weaken the guardrails themselves. CI cannot block them (a PR may legitimately
-// improve the guard) — that is what CODEOWNERS + required review is for.
-const MECHANISM = /^(scripts\/guard-commit\.mjs|\.githooks\/|\.github\/workflows\/|\.claude\/settings\.json$|server\/tests\/(guard-commit|protected-zone)\.test\.mjs$|docs\/adr\/0013)/i;
+// Files whose edit would weaken the guardrails themselves — including CODEOWNERS (the real gate) and the
+// package.json scripts that decide whether the harness tests run. CI cannot block them (a PR may
+// legitimately improve the guard) — that is what CODEOWNERS + required review is for.
+const MECHANISM = /^(scripts\/guard-commit\.mjs|\.githooks\/|\.github\/(workflows\/|CODEOWNERS)|\.claude\/settings\.json$|package\.json$|server\/package\.json$|server\/tests\/(guard-commit|protected-zone)\.test\.mjs$|docs\/adr\/0013)/i;
 const WRANGLER = /^server\/wrangler[^/]*\.toml$/i;
-const DATA_FILE = /\.(json|jsonl|ya?ml|toml|ini|csv|txt|dat|mdx|ipynb)$/i;
+// The guard's own test file quotes the shapes it refuses. They are exempted by path, not by file
+// type, so a workflow pasted into a .md or a recipe into a .js is still blocked.
+const SELF_TEST = /^server\/tests\/guard-commit\.test\.mjs$/i;
 const ZONE_VARS = /^[+-]\s*["']?(GEMINI_MODEL|SUMMARY_MODEL)["']?\s*=/m;
 const PNG = 0x89504e47;
 
@@ -65,6 +72,7 @@ export function findProblems(files, mode = 'commit', opts = {}) {
     if (ZONE.test(f.path)) pushSoft(f.path, 'owner-locked AI zone (ADR-0013). Agents: stop and ask the owner — only the owner commits a zone change, with --no-verify and who approved it in the message.');
     if (MECHANISM.test(f.path)) pushSoft(f.path, 'changing the guardrails themselves (ADR-0013) — owner review required, see CODEOWNERS.');
     if (WRANGLER.test(f.path) && ZONE_VARS.test(f.diff || '')) pushSoft(f.path, 'GEMINI_MODEL/SUMMARY_MODEL is part of the owner-locked AI zone (ADR-0013).');
+    if (mode === 'ci' && f.status === 'D' && f.path === 'scripts/guard-commit.mjs') push(f.path, 'deleting the commit guard leaves every later CI run without a checker (ADR-0013).');
     if (f.status === 'D') continue;
     for (const [re, what] of SECRET_PATHS) if (re.test(f.path)) push(f.path, `${what}; never commit it (public repo).`);
     for (const [re, what] of PRIVATE_PATHS) if (re.test(f.path)) push(f.path, `${what}.`);
@@ -80,13 +88,14 @@ export function findProblems(files, mode = 'commit', opts = {}) {
     const text = f.content.toString('utf8');
     // Real material and real data shapes only: docs, the guard and its tests may name these patterns
     // without blocking their own commit.
-    // Credential material counts anywhere. A private *data shape* only counts in a data file: source files
-    // and this guard's own tests quote those shapes as fixtures without shipping them.
+    // Credential material counts anywhere.
     for (const [re, what] of SECRET_CONTENT) if (re.test(text)) push(f.path, `contains ${what}.`);
-    if (DATA_FILE.test(f.path)) {
-      if (/"type"\s*:\s*"service_account"/.test(text)) push(f.path, 'is a Google service-account key file.');
-      if (/"(masterPromptTemplate|renderRecipe)"\s*:/.test(text)) push(f.path, 'contains the private render recipe; keep it in the local art pipeline.');
-      if (/"class_type"\s*:/.test(text) && /"inputs"\s*:/.test(text)) push(f.path, 'contains a ComfyUI workflow; keep it in the local art pipeline.');
+    // Private data shapes are matched by their JSON key syntax, so prose or a doc that only names them
+    // stays clean. This guard's own test file is exempt by path — the one place that must quote them.
+    if (!SELF_TEST.test(f.path)) {
+      /"type"\s*:\s*"service_account"/.test(text) && push(f.path, 'is a Google service-account key file.');
+      /"(masterPromptTemplate|renderRecipe)"\s*:/.test(text) && push(f.path, 'contains the private render recipe; keep it in the local art pipeline.');
+      /"class_type"\s*:/.test(text) && /"inputs"\s*:/.test(text) && push(f.path, 'contains a ComfyUI workflow; keep it in the local art pipeline.');
     }
   }
   return problems;
@@ -97,34 +106,40 @@ function gitRun(cwd, ...args) {
 }
 
 function pairs(cwd, args) {
-  const toks = gitRun(cwd, ...args, '-z').toString('latin1').split('\0').filter(Boolean);
+  // utf8, not latin1: a Thai path must survive the trip from git to `git show <commit>:<path>`.
+  const toks = gitRun(cwd, ...args, '-z').toString('utf8').split('\0').filter(Boolean);
   const out = [];
   for (let i = 0; i + 1 < toks.length; i += 2) out.push({ status: toks[i][0], path: toks[i + 1] });
   return out;
 }
 
-function stagedChanges(cwd) {
-  return pairs(cwd, ['diff', '--cached', '--name-status', '--no-renames']).map(({ status, path }) => ({
+function readOne(cwd, status, path, at, diffArgs) {
+  return {
     path, status,
-    content: status === 'D' ? null : gitRun(cwd, 'show', `:${path}`),
-    diff: WRANGLER.test(path) ? gitRun(cwd, 'diff', '--cached', '-U0', '--', path).toString('utf8') : ''
-  }));
+    content: status === 'D' ? null : gitRun(cwd, 'show', `${at}${path}`),
+    diff: WRANGLER.test(path) ? gitRun(cwd, ...diffArgs, path).toString('utf8') : ''
+  };
 }
 
-// CI reads every commit of the PR, not just the net result: a file added in one commit and deleted in the
-// next is still in the public history after the merge, and the net diff would never show it.
+function stagedChanges(cwd) {
+  return pairs(cwd, ['diff', '--cached', '--name-status', '--no-renames'])
+    .map(({ status, path }) => readOne(cwd, status, path, ':', ['diff', '--cached', '-U0', '--']));
+}
+
+// CI reads every commit of the PR *and* the net tree. Every commit catches a secret added then deleted
+// (it is still in public history); the net tree catches what only a merge commit produced, because
+// `rev-list --no-merges` never looks inside one.
 function commitChanges(cwd, base) {
-  const commits = gitRun(cwd, 'rev-list', '--no-merges', `${base}..HEAD`).toString('utf8').split('\n').filter(Boolean);
   const files = [];
+  const commits = gitRun(cwd, 'rev-list', '--no-merges', `${base}..HEAD`).toString('utf8').split('\n').filter(Boolean);
   for (const c of commits) {
     // diff-tree, not git show: the commit header would otherwise glue itself onto the first status token.
     for (const { status, path } of pairs(cwd, ['diff-tree', '--root', '-r', '--no-commit-id', '--name-status', '--no-renames', c])) {
-      files.push({
-        path, status,
-        content: status === 'D' ? null : gitRun(cwd, 'show', `${c}:${path}`),
-        diff: WRANGLER.test(path) ? gitRun(cwd, 'show', '-U0', c, '--', path).toString('utf8') : ''
-      });
+      files.push(readOne(cwd, status, path, `${c}:`, ['show', '-U0', c, '--']));
     }
+  }
+  for (const { status, path } of pairs(cwd, ['diff', `${base}...HEAD`, '--name-status', '--no-renames'])) {
+    files.push(readOne(cwd, status, path, 'HEAD:', ['diff', `${base}...HEAD`, '-U0', '--']));
   }
   return files;
 }

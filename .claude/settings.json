@@ -25,7 +25,22 @@
       "Bash(git config --unset core.hooksPath*)",
       "Bash(git push *+HEAD:main*)",
       "Bash(git push *+main*)",
-      "Bash(git rebase -i*)"
+      "Bash(git rebase -i*)",
+      "Read(/**/.env)",
+      "Read(/**/.env.*)",
+      "Read(/**/.dev.vars*)",
+      "Read(./private-docs/**)",
+      "Edit(./private-docs/**)",
+      "Write(./private-docs/**)",
+      "Edit(./docs/art/**)",
+      "Write(./docs/art/**)",
+      "Read(./docs/art/**)",
+      "Edit(/.github/CODEOWNERS)",
+      "Write(/.github/CODEOWNERS)",
+      "Edit(/package.json)",
+      "Write(/package.json)",
+      "Edit(/server/package.json)",
+      "Write(/server/package.json)"
     ],
     "ask": [
       "Bash(*wrangler deploy*--env production*)",

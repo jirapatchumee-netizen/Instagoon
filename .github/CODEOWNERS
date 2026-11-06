@@ -5,6 +5,9 @@
 /scripts/guard-commit.mjs @jirapatchumee-netizen
 /.githooks/ @jirapatchumee-netizen
 /.github/workflows/ @jirapatchumee-netizen
+/.github/CODEOWNERS @jirapatchumee-netizen
+/package.json @jirapatchumee-netizen
+/server/package.json @jirapatchumee-netizen
 /.claude/settings.json @jirapatchumee-netizen
 /server/tests/protected-zone.test.mjs @jirapatchumee-netizen
 /server/tests/guard-commit.test.mjs @jirapatchumee-netizen

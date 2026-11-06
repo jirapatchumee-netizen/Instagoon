@@ -25,14 +25,15 @@
 ### 2.2 บังคับ 4 ชั้น (Defence in Depth)
 | ชั้น | อะไร | ขอบเขต |
 |---|---|---|
-| 1 | `.claude/settings.json` deny `server/src/ai/protected/**`, secret paths, art pipeline | ห้อง agent ที่อ่าน config จาก repo |
+| 1 | `.claude/settings.json` deny zone, ไฟล์กลไก, `Read` path ของ secret/art pipeline และคำสั่ง `wrangler secret`/force-push/`--no-verify` | กันเหตุพลาดของ agent ใน Claude Code — ไม่ใช่ sandbox; `Bash` form ที่ pattern ไม่ครอบยังข้ามได้ |
 | 2 | `scripts/guard-commit.mjs` ผ่าน `.githooks/pre-commit` บนไฟล์ staged | ทุก commit ใน clone ที่เปิด hook |
-| 3 | job `Guardrail check` ใน `pr-check-instagoon.yml` รัน **สำเนาของ guard บน base commit** ตรวจ **ทุก commit** ของ PR (`git rev-list` + `git diff-tree`) | ทุก PR — PR ลดระดับ checker ของตัวเองไม่ได้ และ secret ที่ใส่แล้วลบทิ้งยังโดนจับเพราะอยู่ใน history |
+| 3 | job `Guardrail check` ใน `pr-check-instagoon.yml` รัน **สำเนาของ guard บน base commit** ตรวจ **ทุก commit และผลสุทธิของ PR** (`rev-list --no-merges` + `diff-tree` + `diff base...HEAD`) และ fail ทันทีถ้า PR ลบไฟล์ guard ทิ้ง | ทุก PR — ลดระดับ checker ของตัวเองไม่ได้, secret ใส่แล้วลบยังโดน, ของที่โผล่เฉพาะใน merge resolution ก็โดน |
 | 4 | `server/tests/protected-zone.test.mjs` pin hash ของค่าใน zone + ทดสอบว่า `Object.freeze` จริง + assert ว่าทุก call site ของ Gemini ดึง generationConfig จาก zone | ทุกครั้งที่รัน test — แก้ zone หรือแอบใส่ config เองใน `index.mjs` แล้วเทสแดงทันที |
 
 - guard ชั้น 3 ทำตัวแบบ `ci`: **secret / ไฟล์ art pipeline / generator metadata** = fail เสมอ (ลบย้อนหลังไม่ได้) ส่วน **การแตะ zone และแตะไฟล์กลไกป้องกันตัวเอง** = annotation (`::notice`) ไม่ fail เพราะการมาถึง CI หมายความว่าเจ้าของกำลัง review PR นั้นอยู่แล้ว
 - **ชั้น 3 ไม่ได้หมายความว่ามีอะไรทำ fail แทนรีวิวของเจ้าของ**: ประตูจริงของ zone/กลไกคือ `.github/CODEOWNERS` + required review ที่เจ้าของต้องเปิดใน branch protection เอง (รวม "include administrators") — ถ้าไม่เปิด ไฟล์พวกนี้ยัง merge ได้โดยไม่ต้องมีคนเห็นด้วย
 - ค่า `GEMINI_MODEL`/`SUMMARY_MODEL` ใน `wrangler*.toml` ตรวจแค่ diff ไม่ได้ pin hash; vars ที่ตั้งบน Cloudflare dashboard หรือผ่าน `--var` มองจาก repo ไม่เห็น
+- ถ้า secret หรือไฟล์ art pipeline หลุดเข้า history ไปแล้ว การแก้ไฟล์ทีหลังไม่พอ: ต้อง rewrite history หรือ rotate credential (GitHub revoke token ที่ push เข้า public repo อัตโนมัติ) และ round-2 review ของ PR นี้ยืนยันว่า mode `ci` จะฟ้องทั้ง commit ก่อนหน้าที่ย้อนกลับมาไม่ได้
 - `.gitignore` เพิ่มรายการต้องห้าม (`*.env`, `.env.*` ยกเว้น example/sample/template, service-account key, `private-docs/`, `.claude/settings.local.json`) เป็นแนวแรก และ guard เป็นแนวสอง
 
 ## 3. ผลที่ตามมา (Consequences)

@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { deflateSync } from 'node:zlib';
 import { findProblems } from '../../scripts/guard-commit.mjs';
 
-const file = (path, content = '', status = 'A', diff = '') => ({ path, status, content: Buffer.isBuffer(content) ? content : Buffer.from(content), diff });
+const file = (path, content = '', status = 'A', diff = '') => ({ path, status, content: content === null ? null : Buffer.isBuffer(content) ? content : Buffer.from(content), diff });
 const png = withText => {
   const chunk = (type, data) => { const b = Buffer.alloc(12 + data.length); b.writeUInt32BE(data.length, 0); b.write(type, 4, 'latin1'); data.copy(b, 8); return b; };
   const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(1, 0); ihdr.writeUInt32BE(1, 4); ihdr[8] = 8; ihdr[9] = 2;
@@ -26,7 +26,9 @@ test('refuses what must never reach the public repo', () => {
     file('config/prod.env', 'GEMINI_API_KEY=x'),
     file('tts.json', '{"type":"service_account","private_key":"-----BEGIN PRIVATE KEY-----\\n' + 'M'.repeat(64) + '"}'),
     file('server/src/leak.mjs', 'const k = `-----BEGIN PRIVATE KEY-----\n' + 'M'.repeat(64) + '`;'),
-    file('whatever.json', '{"type": "service_account", "project_id": "p"}'),
+    file('whatever.json', '{"type": "service_' + 'account", "project_id": "p"}'),
+    file('server/src/keys.mjs', 'const TOKEN = "' + 'ghp_' + 'abcdef0123456789'.repeat(2) + '";'),
+    file('notes/aws.md', 'key ' + 'AKIA' + '0123456789ABCDEF' + ' was pasted here'),
     file('server/src/keys.mjs', 'const KEY = "AIza' + "0".repeat(35) + '";'),
     file('.github/workflows/pr-check-instagoon.yml', 'rm the guard step', 'M'),
     file('scripts/guard-commit.mjs', 'soften every rule', 'M'),
@@ -37,18 +39,19 @@ test('refuses what must never reach the public repo', () => {
     file('Docs/Art/milin_ref.png', png(false)),
     file('content/media/posts/p.dat', png(true)),
     file('content/media/posts/p.jpg', Buffer.from('JFIF junk ComfyUI workflow junk', 'latin1')),
-    file('notes/z_image.txt', '{"12":{"class_type":"LoadImage","inputs":{"image":"ref.png"}}}'),
+    file('notes/z_image.txt', '{"12":{"class_' + 'type":"LoadImage","inputs":{"image":"ref.png"}}}'),
     file('secrets.yml', 'key: "AIza' + '0'.repeat(35) + '"'),
+    file('server/.envrc', 'GOOGLE_API_KEY=AIza' + '0'.repeat(35)),
     file('docs/art/milin_gm_ref_512x640.png', png(false)),
     file('content/media/posts/p.png', png(true)),
-    file('content/creators/milin/visual_bible.json', '{"masterPromptTemplate":"..."}'),
-    file('workflows/z_image.json', '{"12":{"class_type":"LoadImage","inputs":{"image":"ref.png"}}}'),
+    file('content/creators/milin/visual_bible.json', '{"master' + 'PromptTemplate":"..."}'),
+    file('workflows/z_image.json', '{"12":{"class_' + 'type":"LoadImage","inputs":{"image":"ref.png"}}}'),
     file('server/src/ai/protected/gemini-config.mjs', 'x', 'M'),
     file('server/src/ai/protected/fifty-shades.mjs', '', 'D'),
     file('server/wrangler.staging.toml', 'x', 'M', '-SUMMARY_MODEL = "a"\n+SUMMARY_MODEL = "b"\n'),
     file('server/wrangler.toml', 'x', 'M', '@@ -28 +28 @@\n-GEMINI_MODEL = "gemini-2.5-flash"\n+GEMINI_MODEL = "gemini-3.5-flash-lite"\n')
   ];
-  for (const c of cases) assert.equal(findProblems([c]).length > 0, true, `must refuse ${c.path}`);
+  for (const c of cases) assert.equal(findProblems([c]).some(p => p.fatal), true, `must refuse ${c.path} as fatal`);
 });
 
 test('lets the look-alikes through', () => {
@@ -64,7 +67,7 @@ test('lets the look-alikes through', () => {
     file('content/creators/mook/character.json', '{"name":"Mook","prompt_style":"short"}'),
     file('AGENTS.md', 'ห้าม commit ไฟล์ที่มี masterPromptTemplate/renderRecipe และ private key'),
     file('docs/security-notes.md', 'fixture: "private_key":"-----BEGIN PRIVATE KEY-----' + '\\n' + 'abc" (short test body, no real key)'),
-    file('server/tests/knowledge.test.mjs', 'fixtures that merely name data shapes: {"type":"service_account"} {"12":{"class_type":"x","inputs":{}}} masterPromptTemplate in prose'),
+    file('docs/security-notes.md', 'prose only: masterPromptTemplate, renderRecipe, class_type, service_account are private names'),
     file('server/wrangler.toml', 'x', 'M', '@@ -12 +12 @@\n-ACCESS_AUDIENCE = "a"\n+ACCESS_AUDIENCE = "b"\n'),
     file('server/.dev.vars', '', 'D'),
     file('docs/adr/0004-script-revision-pinning.md', 'old ADR, anyone may fix a typo')
@@ -76,6 +79,8 @@ test('CI mode reports the AI zone but still refuses secrets', () => {
   const zone = [file('server/src/ai/protected/gemini-config.mjs', 'x', 'M'), file('server/wrangler.toml', 'x', 'M', '-GEMINI_MODEL = "a"\n+GEMINI_MODEL = "b"\n')];
   assert.deepEqual(findProblems(zone, 'ci').map(p => p.fatal), [false, false]);
   assert.deepEqual(findProblems(zone, 'commit').map(p => p.fatal), [true, true]);
+  assert.equal(findProblems([file('scripts/guard-commit.mjs', null, 'D')], 'ci').some(p => p.fatal), true, 'deleting the guard must fail CI');
+  assert.equal(findProblems([file('scripts/guard-commit.mjs', 'x', 'M')], 'ci').every(p => !p.fatal), true, 'editing the guard is an annotation, not a block');
   const secret = [file('server/.dev.vars', 'GEMINI_API_KEY=x'), file('private-docs/ROMANCE.md', 'x')];
   assert.deepEqual(findProblems(secret, 'ci').map(p => p.fatal), [true, true]);
 });
@@ -110,4 +115,11 @@ test('CI scans every commit of the range, so add-then-delete cannot pass', () =>
   assert.deepEqual(findProblems([{ path: 'README.md', status: 'A', content: Buffer.from('ok'), diff: '' }], 'ci'), []);
   assert.throws(() => run('--base', 'main'), e => e.status === 1 && /Wrangler dev secrets/.test(String(e.stderr)));
   rmSync(dir, { recursive: true, force: true });
+});
+
+test('a merge in progress does not blame the zone on someone else\'s commit', () => {
+  const zone = file('server/src/ai/protected/gemini-config.mjs', 'x', 'M');
+  assert.deepEqual(findProblems([zone], 'commit').map(p => p.fatal), [true]);
+  assert.deepEqual(findProblems([zone], 'commit', { transientOp: true }).map(p => p.fatal), [false]);
+  assert.deepEqual(findProblems([file('.dev.vars', 'X=1')], 'commit', { transientOp: true }).map(p => p.fatal), [true]);
 });
