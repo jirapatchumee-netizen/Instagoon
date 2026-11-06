@@ -31,7 +31,14 @@ jobs:
         env:
           BASE_REF: ${{ github.base_ref }}
         run: |
-          git show "origin/$BASE_REF:scripts/guard-commit.mjs" > "$RUNNER_TEMP/guard.mjs"
+          if [ -n "$(git ls-tree origin/$BASE_REF -- scripts/guard-commit.mjs)" ]; then
+            git show "origin/$BASE_REF:scripts/guard-commit.mjs" > "$RUNNER_TEMP/guard.mjs"
+          else
+            # This PR introduces the guard, so the base has no copy to trust. Judged by the PR's own rules —
+            # from the next PR onward the base copy is always used.
+            cp scripts/guard-commit.mjs "$RUNNER_TEMP/guard.mjs"
+            echo "::notice title=Guardrail::base commit has no scripts/guard-commit.mjs; judged by this PR's copy"
+          fi
           node "$RUNNER_TEMP/guard.mjs" --base "origin/$BASE_REF"
       - run: pnpm install --no-frozen-lockfile
       - name: Worker tests (gameplay purity, NPC bundle, API)
