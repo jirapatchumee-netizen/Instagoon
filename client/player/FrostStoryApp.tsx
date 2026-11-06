@@ -1088,6 +1088,7 @@ export function FrostStoryApp() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [storyToast, setStoryToast] = useState<string | null>(null);
   const [storyReplyText, setStoryReplyText] = useState('');
+  const [queuedStoryReply, setQueuedStoryReply] = useState<{ creatorId: string; text: string } | null>(null);
 
   useEffect(() => {
     setMemoryPanel({ open: false, items: [] });
@@ -1347,6 +1348,7 @@ export function FrostStoryApp() {
   }
 
   function closeChat() {
+    setQueuedStoryReply(null);
     setSelectedCreator(null);
     setChat(null);
     setPending([]);
@@ -1397,9 +1399,18 @@ export function FrostStoryApp() {
     if (!creator) return;
     setSelectedStory(null);
     setStoryReplyText('');
+    setAiDmTab('ai');
+    setQueuedStoryReply({ creatorId: creator.id, text: `[ตอบกลับสตอรี่]: ${val}` });
     await openChat(creator);
-    void sendAiMessage(`[ตอบกลับสตอรี่]: ${val}`);
   }
+
+  // sendAiMessage needs the chat state committed by openChat, so the reply is sent once that render lands.
+  useEffect(() => {
+    if (!queuedStoryReply || !chat || aiSending) return;
+    if (selectedCreator?.id !== queuedStoryReply.creatorId) return;
+    setQueuedStoryReply(null);
+    void sendAiMessage(queuedStoryReply.text);
+  }, [queuedStoryReply, chat, selectedCreator?.id, aiSending]);
 
   async function openStory(story: Story) {
     await action(async () => {
@@ -2162,11 +2173,10 @@ export function FrostStoryApp() {
             {heartBurstPostId === `story-${selectedStory.id}` && (
               <div className="fs-heart-burst">❤️</div>
             )}
-            {storyToast && (
-              <div className="fs-story-reaction-toast">{storyToast}</div>
-            )}
-
             <div className="fs-story-bottom-bar">
+              {storyToast && (
+                <div className="fs-story-reaction-toast" role="status">{storyToast}</div>
+              )}
               <div className="fs-story-reactions-row">
                 {['😍', '🔥', '❤️'].map((emoji) => (
                   <button
