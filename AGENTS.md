@@ -53,3 +53,19 @@ Standalone Web Visual Novel เดิม (Overtime Secrets) พักการ�
 
 - เอกสารเดิม (`DESIGN_VN.md`, `GLOSSARY_VN.md`, `ARCHITECTURE_PLAN.md`, ADR เดิม) และ branch `archive/overtime` (commit `eb44447`) เก็บไว้เฉพาะบนเครื่อง + mirror ของประวัติ git เดิม
 - ถ้าต้อง resurrect ให้เปิด repo แยก อย่าเอากลับเข้า repo เกม
+
+---
+
+## 🛡️ 4. Guardrail ของ repo (repo เป็น public — กติกาพวกนี้มีผลกับ Agent ทุกตัว)
+
+เปิด hook ต่อ clone ครั้งแรก (ค่านี้เก็บใน `.git/config` ไม่ได้มากับ repo):
+
+```sh
+git config core.hooksPath .githooks
+```
+
+- `scripts/guard-commit.mjs` คือตัวตรวจจริง `pre-commit` เรียกมันบนไฟล์ที่ staged และ CI เรียกซ้ำด้วย `--base origin/main` บน diff ของ PR (ข้าม hook ด้วย `--no-verify` ได้ แต่ CI ยังจับ)
+- **ห้ามขึ้น repo:** `.env`/`.dev.vars`/service-account key/private key, `private-docs/`, `docs/art/`, PNG ที่มี ComfyUI metadata, ไฟล์ที่มี `masterPromptTemplate`/`renderRecipe` หรือโครง ComfyUI workflow — ถ้า guard ปฏิเสธ ให้แก้ที่ไฟล์ (ลบ/ย้าย/strip) ไม่ใช่ `--no-verify`
+- **พื้นที่ล็อกเจ้าของ (ADR-0013):** `server/src/ai/protected/` และ `GEMINI_MODEL`/`SUMMARY_MODEL` ใน `server/wrangler*.toml` Agent ห้ามแก้เอง เจ้าของเท่านั้น (owner อนุมัติแล้วจึง commit ด้วย `--no-verify` และเขียนบอกใน commit message) ค่า model/thinking budget ถูก pin hash ไว้ใน `server/tests/protected-zone.test.mjs` แก้แล้วเทสแดง
+- `.claude/settings.json` (commit ได้) deny ไฟล์ secret/art pipeline/zone ไว้ชั้น tool ส่วน `.claude/settings.local.json` ของแต่ละคนอย่า commit (gitignore แล้ว)
+- ตรวจงานก่อนส่ง: `pnpm test` (ถ้า `pnpm install` ใน worktree ใหม่ติด `ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY` ให้รันตรง ๆ ว่า `node --experimental-strip-types --test server/tests/*.test.mjs`)
