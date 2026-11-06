@@ -570,20 +570,21 @@ async function player(req,env,user,path,now,ctx) {
   const creatorData = await one(env, 'SELECT * FROM creators WHERE id=?', creator);
   if(!creatorData) return json({error:'not_found'}, 404);
 
-  // Primary engine: Google Cloud Text-to-Speech (100% native Thai Neural2 voice)
+  // Primary engine: Google Cloud Text-to-Speech (Chirp 3 HD generative voices)
   if(env.GOOGLE_SERVICE_ACCOUNT_KEY) {
-    const googleVoice = env['GOOGLE_TTS_VOICE_' + creator.toUpperCase()] || 'th-TH-Neural2-C';
-    const speakingRate = creator === 'mook' ? 1.02 : 1.05;
-    const pitch = creator === 'mook' ? -0.8 : 0.6;
+    const isChirp = (v) => v.includes('Chirp');
+    const defaultVoice = creator === 'mook' ? 'th-TH-Chirp3-HD-Despina' : 'th-TH-Chirp3-HD-Aoede';
+    const googleVoice = env['GOOGLE_TTS_VOICE_' + creator.toUpperCase()] || defaultVoice;
+    const speakingRate = creator === 'mook' ? 1.0 : 1.0;
 
-    const cacheKey = 'tts/google/' + (await hash(googleVoice + ':' + cleanText)) + '.mp3';
+    const cacheKey = 'tts/google/v3/' + (await hash(googleVoice + ':' + cleanText)) + '.mp3';
     const cached = await mediaStore(env).get(cacheKey);
     if(cached?.body) {
       return new Response(cached.body, {
         headers: {
           'content-type': 'audio/mpeg',
           'cache-control': 'public, max-age=86400',
-          'x-tts-engine': 'google-cloud-neural2',
+          'x-tts-engine': isChirp(googleVoice) ? 'google-cloud-chirp3-hd' : 'google-cloud-neural2',
           'x-tts-cache': 'HIT'
         }
       });
@@ -595,6 +596,14 @@ async function player(req,env,user,path,now,ctx) {
 
     try {
       const token = await getGoogleTtsToken(env.GOOGLE_SERVICE_ACCOUNT_KEY);
+      const audioConfig = {
+        audioEncoding: 'MP3',
+        speakingRate
+      };
+      if(!isChirp(googleVoice)) {
+        audioConfig.pitch = creator === 'mook' ? -0.8 : 0.6;
+      }
+
       const gRes = await fetch('https://texttospeech.googleapis.com/v1/text:synthesize', {
         method: 'POST',
         headers: {
@@ -607,11 +616,7 @@ async function player(req,env,user,path,now,ctx) {
             languageCode: 'th-TH',
             name: googleVoice
           },
-          audioConfig: {
-            audioEncoding: 'MP3',
-            speakingRate,
-            pitch
-          }
+          audioConfig
         })
       });
 
@@ -639,7 +644,7 @@ async function player(req,env,user,path,now,ctx) {
         headers: {
           'content-type': 'audio/mpeg',
           'cache-control': 'public, max-age=86400',
-          'x-tts-engine': 'google-cloud-neural2',
+          'x-tts-engine': isChirp(googleVoice) ? 'google-cloud-chirp3-hd' : 'google-cloud-neural2',
           'x-tts-cache': 'MISS',
           'x-energy': JSON.stringify(await energy(env, user.id, now))
         }
