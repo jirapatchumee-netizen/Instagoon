@@ -11,7 +11,7 @@ const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(d
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), {status}); };
 const token = () => Array.from(crypto.getRandomValues(new Uint8Array(32)), n => n.toString(16).padStart(2,'0')).join('');
 const hash = async value => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))), n=>n.toString(16).padStart(2,'0')).join('');
-const base64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+const base64url = bytes => btoa(String.fromCharCode(...(bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes)))).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
 const cookie = (req, name) => req.headers.get('cookie')?.split(';').map(x=>x.trim()).find(x=>x.startsWith(name+'='))?.slice(name.length+1);
 const one = (env, sql, ...values) => env.DB.prepare(sql).bind(...values).first();
 const all = async (env, sql, ...values) => (await env.DB.prepare(sql).bind(...values).all()).results;
@@ -49,6 +49,51 @@ const extractSpokenDialogue = text => {
     .replace(/\s+/g, ' ')
     .trim();
 };
+let googleTtsTokenCache = null;
+async function getGoogleTtsToken(serviceAccountJson) {
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (googleTtsTokenCache && googleTtsTokenCache.expiresAt > nowSec + 60) {
+    return googleTtsTokenCache.token;
+  }
+  const sa = typeof serviceAccountJson === 'string' ? JSON.parse(serviceAccountJson) : serviceAccountJson;
+  const b64Key = sa.private_key.replace(/-----[^\n]+-----/g, '').replace(/\s+/g, '');
+  const binaryKey = Uint8Array.from(atob(b64Key), c => c.charCodeAt(0));
+  const cryptoKey = await crypto.subtle.importKey(
+    'pkcs8',
+    binaryKey,
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const header = { alg: 'RS256', typ: 'JWT' };
+  const payload = {
+    iss: sa.client_email,
+    scope: 'https://www.googleapis.com/auth/cloud-platform',
+    aud: 'https://oauth2.googleapis.com/token',
+    exp: nowSec + 3600,
+    iat: nowSec
+  };
+  const enc = new TextEncoder();
+  const unsigned = base64url(enc.encode(JSON.stringify(header))) + '.' + base64url(enc.encode(JSON.stringify(payload)));
+  const sig = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', cryptoKey, enc.encode(unsigned));
+  const jwt = unsigned + '.' + base64url(new Uint8Array(sig));
+
+  const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'grant_type=' + encodeURIComponent('urn:ietf:params:oauth:grant-type:jwt-bearer') + '&assertion=' + encodeURIComponent(jwt)
+  });
+  if (!tokenRes.ok) {
+    const err = await tokenRes.text();
+    throw new Error('google_token_failed: ' + err.slice(0, 200));
+  }
+  const tokenData = await tokenRes.json();
+  googleTtsTokenCache = {
+    token: tokenData.access_token,
+    expiresAt: nowSec + (tokenData.expires_in || 3600)
+  };
+  return tokenData.access_token;
+}
 // One-time free energy per new account: 30 by default, FREE_ENERGY_GRANT overrides it (staging uses 100).
 const freeEnergyGrant = env => Number.parseInt(env.FREE_ENERGY_GRANT, 10) || 30;
 const MEMORY_KEY = /^player\.[\w.-]{1,60}$/;
@@ -525,6 +570,92 @@ async function player(req,env,user,path,now,ctx) {
   const creatorData = await one(env, 'SELECT * FROM creators WHERE id=?', creator);
   if(!creatorData) return json({error:'not_found'}, 404);
 
+  // Primary engine: Google Cloud Text-to-Speech (Chirp 3 HD generative voices)
+  if(env.GOOGLE_SERVICE_ACCOUNT_KEY) {
+    const isChirp = (v) => v.includes('Chirp');
+    const defaultVoice = creator === 'mook' ? 'th-TH-Chirp3-HD-Despina' : 'th-TH-Chirp3-HD-Aoede';
+    const googleVoice = env['GOOGLE_TTS_VOICE_' + creator.toUpperCase()] || defaultVoice;
+    const speakingRate = creator === 'mook' ? 1.0 : 1.0;
+
+    const cacheKey = 'tts/google/v3/' + (await hash(googleVoice + ':' + cleanText)) + '.mp3';
+    const cached = await mediaStore(env).get(cacheKey);
+    if(cached?.body) {
+      return new Response(cached.body, {
+        headers: {
+          'content-type': 'audio/mpeg',
+          'cache-control': 'public, max-age=86400',
+          'x-tts-engine': isChirp(googleVoice) ? 'google-cloud-chirp3-hd' : 'google-cloud-neural2',
+          'x-tts-cache': 'HIT'
+        }
+      });
+    }
+
+    const ttsBucket = await takeEnergy(env, user.id, now, 'tts');
+    if(!ttsBucket) return json({error:'energy_empty'}, 402);
+    const refundTts = () => refundEnergy(env, user.id, ttsBucket, now, 'tts_refund');
+
+    try {
+      const token = await getGoogleTtsToken(env.GOOGLE_SERVICE_ACCOUNT_KEY);
+      const audioConfig = {
+        audioEncoding: 'MP3',
+        speakingRate
+      };
+      if(!isChirp(googleVoice)) {
+        audioConfig.pitch = creator === 'mook' ? -0.8 : 0.6;
+      }
+
+      const gRes = await fetch('https://texttospeech.googleapis.com/v1/text:synthesize', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          input: { text: cleanText },
+          voice: {
+            languageCode: 'th-TH',
+            name: googleVoice
+          },
+          audioConfig
+        })
+      });
+
+      if(!gRes.ok) {
+        await refundTts();
+        const errText = await gRes.text();
+        console.error('Google Cloud TTS failed:', gRes.status, errText.slice(0, 300));
+        return json({ error: 'tts_api_failed', status: gRes.status }, 502);
+      }
+
+      const gData = await gRes.json();
+      const audioBytes = Uint8Array.from(atob(gData.audioContent), c => c.charCodeAt(0));
+
+      if(env.MEDIA?.put) {
+        try { await env.MEDIA.put(cacheKey, audioBytes, { httpMetadata: { contentType: 'audio/mpeg' } }); } catch (e) { console.error('R2 cache write failed', e); }
+      } else if(env.DB) {
+        try {
+          await env.DB.prepare('INSERT INTO media_blobs(key, content_type, bytes, size, uploaded_at) VALUES(?,?,?,?,?) ON CONFLICT(key) DO UPDATE SET bytes=excluded.bytes, size=excluded.size').bind(cacheKey, 'audio/mpeg', audioBytes, audioBytes.byteLength, now).run();
+        } catch (e) {
+          console.error('D1 cache write failed', e);
+        }
+      }
+
+      return new Response(audioBytes, {
+        headers: {
+          'content-type': 'audio/mpeg',
+          'cache-control': 'public, max-age=86400',
+          'x-tts-engine': isChirp(googleVoice) ? 'google-cloud-chirp3-hd' : 'google-cloud-neural2',
+          'x-tts-cache': 'MISS',
+          'x-energy': JSON.stringify(await energy(env, user.id, now))
+        }
+      });
+    } catch(e) {
+      await refundTts();
+      console.error('Google TTS error:', e);
+      return json({ error: 'google_tts_error' }, 500);
+    }
+  }
+
   let voiceId = env['ELEVENLABS_VOICE_' + creator.toUpperCase()] || creatorData.voice_id;
   if(!voiceId) {
     const defRow = await one(env, 'SELECT definition_json FROM npc_definitions WHERE creator_id=?', creator);
@@ -534,10 +665,10 @@ async function player(req,env,user,path,now,ctx) {
   }
   if(!voiceId) {
     const defaultVoices = {
-      milin: 'ThT5KcBeYPX3keUQqHPh',
-      mook: 'EXAVITQu4vr4xnSDxMaL',
+      milin: 'Xb7hH8MSUJpSbSDYk0k2', // Alice (softer, clearer Thai pronunciation on free tier)
+      mook: 'EXAVITQu4vr4xnSDxMaL',  // Bella (confident, expressive)
     };
-    voiceId = defaultVoices[creator] || env.ELEVENLABS_DEFAULT_VOICE || '21m00Tcm4TlvDq8ikWAM';
+    voiceId = defaultVoices[creator] || env.ELEVENLABS_DEFAULT_VOICE || 'Xb7hH8MSUJpSbSDYk0k2';
   }
 
   const cacheKey = 'tts/' + (await hash(voiceId + ':' + cleanText)) + '.mp3';
@@ -564,7 +695,7 @@ async function player(req,env,user,path,now,ctx) {
   if(!ttsBucket) return json({error:'energy_empty'}, 402);
   const refundTts = () => refundEnergy(env, user.id, ttsBucket, now, 'tts_refund');
 
-  const modelId = env.ELEVENLABS_MODEL_ID || 'eleven_multilingual_v2';
+  const modelId = env.ELEVENLABS_MODEL_ID || 'eleven_turbo_v2_5';
   const elRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}`, {
     method: 'POST',
     headers: {
@@ -576,9 +707,9 @@ async function player(req,env,user,path,now,ctx) {
       text: cleanText,
       model_id: modelId,
       voice_settings: {
-        stability: 0.5,
-        similarity_boost: 0.75,
-        style: 0.0,
+        stability: 0.4,
+        similarity_boost: 0.8,
+        style: 0.05,
         use_speaker_boost: true
       }
     })

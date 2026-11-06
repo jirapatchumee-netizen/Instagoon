@@ -1,0 +1,13 @@
+{
+  "creatorId": "mook",
+  "name": "มุก",
+  "version": "1.0",
+  "note": "Public stub. This repo is public: the prompt template, render recipe, reference images and shot prompts are private and live only in the local art pipeline (instagoon-workbench/art-pipeline/creators/mook/). Do not add them here; build-content rejects them.",
+  "identity": {
+    "age": "adult, 23 years old",
+    "hair": "chic textured blunt bob haircut with airy wispy bangs, glossy ink-black hair",
+    "eyes": "sharp foxy almond eyes, cat-wing eyeliner",
+    "style": "Modern Korean webtoon, semi-realistic 2.5D, fierce girl crush"
+  },
+  "wardrobe": ["vest_chic", "crop_leather", "corset_glam", "nightwear", "casual_denim"]
+}
