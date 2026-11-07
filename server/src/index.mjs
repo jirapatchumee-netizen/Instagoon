@@ -3,7 +3,7 @@ import { ensureContent, bundledMedia, removedCreators } from './content.mjs';
 import { relationshipConfig, overallScore, levelOf, matchKeywordRules, secretsFor, levelStyle, applyRules, pickReward } from './gameplay/index.mjs';
 import { ALLOWED_GEMINI_MODELS, SAFETY_SETTINGS, modelsForVisit, pickLiteModel, chatGenerationConfig, rewriteGenerationConfig, summaryGenerationConfig, modelTestGenerationConfig } from './ai/protected/gemini-config.mjs';
 import { fiftyShadesPrompt as buildFiftyShadesPrompt } from './ai/protected/fifty-shades.mjs';
-import { narrativeEnabled, ensureNarrativeStorage, readNarrativeState, narrativeHistory, narrativePrompt, narrativeSchema, decodeNarrative, serializeNarrative, selectNarrativeMemories, narrativeSceneMetadata } from './narrative.mjs';
+import { narrativeEnabled, ensureNarrativeStorage, readNarrativeState, narrativeHistory, narrativePrompt, narrativeSchema, decodeNarrative, serializeNarrative, selectNarrativeMemories, narrativeSceneMetadata, ensureNarrativeOpening } from './narrative.mjs';
 
 const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), {status, headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store',...headers}});
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), {status}); };
@@ -789,7 +789,11 @@ async function player(req,env,user,path,now,ctx) {
    let sceneState = null, narrativeResult = null;
    if (sceneMode) {
      await ensureNarrativeStorage(env.DB);
-     const saved = await one(env, 'SELECT state_json FROM npc_scene_states WHERE user_id=? AND creator_id=?', user.id, creator);
+     let saved = await one(env, 'SELECT state_json FROM npc_scene_states WHERE user_id=? AND creator_id=?', user.id, creator);
+     if (!saved && npcDef.narrative.opening) {
+       await ensureNarrativeOpening(env.DB, user.id, npcDef, now);
+       saved = await one(env, 'SELECT state_json FROM npc_scene_states WHERE user_id=? AND creator_id=?', user.id, creator);
+     }
      sceneState = readNarrativeState(npcDef, saved?.state_json);
    }
 
@@ -1243,7 +1247,7 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
     env.DB.prepare('SELECT definition_json FROM npc_definitions WHERE creator_id=?').bind(creator),
     env.DB.prepare('SELECT reward_key FROM reward_unlocks WHERE user_id=? AND creator_id=?').bind(user.id, creator)
   ]);
-  const allAiMessages = messagesRes.results;
+  let allAiMessages = messagesRes.results;
   const memList = memRes.results;
   const relRow = relRes.results[0] ?? null;
   const npcDefRow = npcRes.results[0] ?? null;
@@ -1255,6 +1259,10 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
   const score = relRow?.score || 0;
 
   if(!episodes || episodes.length === 0){
+    if (method === 'GET' && !m[2] && allAiMessages.length === 0 && narrativeEnabled(npcDef) && npcDef.narrative.opening) {
+      await ensureNarrativeOpening(env.DB, user.id, npcDef, now);
+      allAiMessages = await all(env, 'SELECT id, role, content, media_key mediaKey, affection_delta affectionDelta, created_at createdAt FROM ai_chat_messages WHERE user_id=? AND creator_id=? ORDER BY created_at ASC LIMIT 100', user.id, creator);
+    }
     const dummyNode = { id: 'start', text: narrativeEnabled(npcDef) ? npcDef.narrative.openingLine || `${npcDef.name}อยู่ที่${npcDef.narrative.openingLocation.name}` : 'สวัสดีค่ะ! คุยสดกับ AI ได้เลยนะคะ 💕', choices: [], end: true };
     return json({
       chat: {
