@@ -26,6 +26,11 @@ export function hasNarrativeActions(text: string) {
   return /\[(?:action|visual):/i.test(text) || /^\s*(?:action|visual)\s*:/im.test(text);
 }
 
+export function quoteDialogue(text: string) {
+  const value = text.trim();
+  return /^["“「«]/.test(value) ? value : `“${value}”`;
+}
+
 export function splitNarrativeBody(text: string): NarrativeSegment[] {
   // Older model replies sometimes include a bare Action: label in the text itself.
   const normalized = text.replace(/^\s*(?:action|visual)\s*:\s*(.+)$/gim, '[action:$1]');

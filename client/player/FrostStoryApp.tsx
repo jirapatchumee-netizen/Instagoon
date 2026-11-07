@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useState, useRef, type FormEvent, type ReactNode } from 'react';
-import { readSceneHeader, sceneHeaderLabels, hasNarrativeActions, splitNarrativeBody } from './message-format';
+import { readSceneHeader, sceneHeaderLabels, hasNarrativeActions, splitNarrativeBody, quoteDialogue } from './message-format';
 import {
   ArrowLeft,
   Check,
@@ -633,12 +633,12 @@ export function renderBubbleContent(text: string, onExpandMedia?: (key: string) 
     bodyNodes = <div className="fs-narrative-beats">{splitNarrativeBody(bodyText).map((part, index) => {
       return part.kind === 'action'
         ? <div key={index} className="fs-visual-box"><span className="fs-visual-text">{part.text}</span></div>
-        : <div key={index} className="fs-bubble-text">{part.text}</div>;
+        : <div key={index} className="fs-bubble-text">{quoteDialogue(part.text)}</div>;
     })}</div>;
   } else if (!imgRegex.test(bodyText)) {
     bodyNodes = (
       <span className="fs-bubble-text">
-        {bodyText.split('\n').map((line, lineIdx, arr) => (
+        {(scene ? quoteDialogue(bodyText) : bodyText).split('\n').map((line, lineIdx, arr) => (
           <Fragment key={lineIdx}>
             {line}
             {lineIdx < arr.length - 1 && <br />}
@@ -712,13 +712,12 @@ export function renderBubbleContent(text: string, onExpandMedia?: (key: string) 
     return (
       <div className="fs-bubble-with-meta">
         {sceneLabels && (
-          <div className="fs-scene-header" aria-label="วัน เวลา และสถานที่ของฉาก">
-            <div>📅 {sceneLabels.date}</div>
-            <div>🕒 เวลา: {sceneLabels.time} น.</div>
-            <div>📍 สถานที่: {sceneLabels.location}</div>
+          <div className="fs-scene-header" aria-label="เวลาและสถานที่ของฉาก">
+            <div title={sceneLabels.date}>⏰ เวลา : {sceneLabels.time} น.</div>
+            <div>📍 สถานที่ : {sceneLabels.location}</div>
           </div>
         )}
-        {mood && (
+        {mood && !thought && (
           <div className="fs-mood-box" title="ความรู้สึกของตัวละคร">
             <span className="fs-mood-icon">💕</span>
             <span className="fs-mood-text">{mood}</span>
@@ -727,7 +726,7 @@ export function renderBubbleContent(text: string, onExpandMedia?: (key: string) 
         {thought && (
           <div className="fs-thought-box" title="ความคิดในใจ">
             <span className="fs-thought-icon">💭</span>
-            <span className="fs-thought-text">{thought}</span>
+            <span className="fs-thought-text">ความคิดในใจ : {thought}</span>
           </div>
         )}
         {visual && (

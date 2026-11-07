@@ -2590,17 +2590,17 @@ dialog.fs-overlay[open]::backdrop {
   display: inline-flex;
   align-items: flex-start;
   gap: 7px;
-  margin-bottom: 7px;
-  padding: 5px 11px;
+  margin: 0;
+  padding: 8px 11px;
   background: rgba(168, 85, 247, 0.12);
   border: 1px dashed rgba(168, 85, 247, 0.45);
   border-radius: 12px;
-  font-size: 0.81rem;
-  color: #e9d5ff;
+  font-size: 0.85rem;
+  font-weight: 400;
   font-style: italic;
-  backdrop-filter: blur(8px);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
-  width: fit-content;
+  color: #e9d5ff;
+  box-sizing: border-box;
+  width: 100%;
   max-width: 100%;
 }
 
@@ -2611,25 +2611,31 @@ dialog.fs-overlay[open]::backdrop {
 }
 
 .fs-thought-text {
-  line-height: 1.4;
+  line-height: 1.8;
   letter-spacing: 0.01em;
 }
 
 .fs-bubble-with-meta {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 12px;
+  font-family: 'Mitr', sans-serif;
+  font-weight: 400;
 }
 
 .fs-visual-box {
   display: inline-flex;
   align-items: flex-start;
-  padding: 2px 0;
+  padding: 8px 12px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.38);
+  border-radius: 12px;
+  box-sizing: border-box;
   font-family: 'Mitr', sans-serif;
   font-size: 0.9rem;
   font-weight: 300;
-  color: #b7adca;
-  width: fit-content;
+  color: #fef3c7;
+  width: 100%;
   max-width: 100%;
 }
 
@@ -2647,20 +2653,18 @@ dialog.fs-overlay[open]::backdrop {
 }
 
 .fs-bubble-text {
-  font-weight: 500;
+  font-family: 'Mitr', sans-serif;
+  font-weight: 400;
 }
 
 .fs-scene-header {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  margin-bottom: 7px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid rgba(218, 199, 238, 0.16);
-  font-size: 0.82rem;
+  gap: 10px;
+  font-size: inherit;
   font-weight: 400;
-  line-height: 1.6;
-  color: #d5cbe2;
+  line-height: 1.8;
+  color: inherit;
 }
 
 /* Clickable Images & Expand Hint */
@@ -4235,6 +4239,6 @@ dialog.fs-overlay[open]::backdrop {
 .fs-narrative-beats {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 18px;
   white-space: pre-wrap;
 }

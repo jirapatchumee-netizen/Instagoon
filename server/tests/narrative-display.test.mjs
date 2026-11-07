@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readSceneHeader, sceneHeaderLabels, splitNarrativeBody } from '../../client/player/message-format.ts';
+import { readSceneHeader, sceneHeaderLabels, splitNarrativeBody, quoteDialogue } from '../../client/player/message-format.ts';
 import { initialNarrativeState, narrativeSceneMetadata, decodeNarrative, serializeNarrative } from '../src/narrative.mjs';
 import { readFileSync } from 'node:fs';
 
@@ -24,6 +24,8 @@ test('legacy and mixed-case action labels are removed without changing dialogue 
   assert.equal(segments[1].text, 'เชียร์วางแก้วลง');
   assert.equal(segments[3].text, 'เธอยิ้ม');
   assert.ok(segments.every(s => !/action:/i.test(s.text)));
+  assert.equal(quoteDialogue(segments[0].text), '“เริ่มพูด”');
+  assert.equal(quoteDialogue('“พูดไว้แล้ว”'), '“พูดไว้แล้ว”', 'existing quotes are not doubled');
 });
 
 test('server normalizes model-authored labels and displays only the committed current location', () => {
