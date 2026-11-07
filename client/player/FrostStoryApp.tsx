@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useState, useRef, type FormEvent, type ReactNode } from 'react';
+import { readSceneHeader, sceneHeaderLabels, hasNarrativeActions, splitNarrativeBody, quoteDialogue } from './message-format';
 import {
   ArrowLeft,
   Check,
@@ -581,6 +582,7 @@ function Media({
 function hasSpokenDialogue(text: string): boolean {
   if (!text) return false;
   const stripped = text
+    .replace(/\[scene:[^\]]*\]\n?/gi, '')
     .replace(/^\[(?:mood|reaction|toast):\s*[\s\S]*?\]\n?/gi, '')
     .replace(/^\[thought:\s*[\s\S]*?\]\n?/gi, '')
     .replace(/\[thought:\s*[\s\S]*?\]/gi, '')
@@ -594,13 +596,15 @@ function hasSpokenDialogue(text: string): boolean {
   return stripped.length > 0;
 }
 
-function renderBubbleContent(text: string, onExpandMedia?: (key: string) => void) {
+export function renderBubbleContent(text: string, onExpandMedia?: (key: string) => void) {
   if (!text) return null;
 
   let mood: string | null = null;
   let thought: string | null = null;
   let visual: string | null = null;
-  let bodyText = text;
+  const { scene, body } = readSceneHeader(text);
+  const sceneLabels = scene ? sceneHeaderLabels(scene) : null;
+  let bodyText = body;
 
   const moodMatch = bodyText.match(/^\[(?:mood|reaction|toast):\s*([\s\S]*?)\]\n?/);
   if (moodMatch) {
@@ -615,27 +619,26 @@ function renderBubbleContent(text: string, onExpandMedia?: (key: string) => void
   }
 
   const visualMatch =
-    bodyText.match(/^\[(?:visual|action):\s*([\s\S]*?)\]\n?/) ||
+    bodyText.match(/^\[(?:visual|action):\s*([\s\S]*?)\]\n?/i) ||
     bodyText.match(/^\*\[?([\s\S]*?)\]?\*\n?/);
   if (visualMatch) {
-    visual = visualMatch[1].trim();
+    visual = visualMatch[1].trim().replace(/^(?:action|visual)\s*:\s*/i, '');
     bodyText = bodyText.substring(visualMatch[0].length);
   }
 
   const imgRegex = /\[img:([^\]]+)\]/g;
   let bodyNodes: React.ReactNode;
-  if (bodyText.includes('[action:')) {
+  if (hasNarrativeActions(bodyText)) {
     // Scene replies retain the order of dialogue and character-owned gestures.
-    bodyNodes = <div className="fs-narrative-beats">{bodyText.split(/(\[action:[\s\S]*?\])/g).filter(part => part.trim()).map((part, index) => {
-      const action = part.match(/^\[action:([\s\S]*?)\]$/);
-      return action
-        ? <div key={index} className="fs-visual-box"><span className="fs-visual-text">{action[1]}</span></div>
-        : <div key={index} className="fs-bubble-text">{part}</div>;
+    bodyNodes = <div className="fs-narrative-beats">{splitNarrativeBody(bodyText).map((part, index) => {
+      return part.kind === 'action'
+        ? <div key={index} className="fs-visual-box"><span className="fs-visual-text">{part.text}</span></div>
+        : <div key={index} className="fs-bubble-text">{quoteDialogue(part.text)}</div>;
     })}</div>;
   } else if (!imgRegex.test(bodyText)) {
     bodyNodes = (
       <span className="fs-bubble-text">
-        {bodyText.split('\n').map((line, lineIdx, arr) => (
+        {(scene ? quoteDialogue(bodyText) : bodyText).split('\n').map((line, lineIdx, arr) => (
           <Fragment key={lineIdx}>
             {line}
             {lineIdx < arr.length - 1 && <br />}
@@ -705,10 +708,16 @@ function renderBubbleContent(text: string, onExpandMedia?: (key: string) => void
     );
   }
 
-  if (mood || thought || visual) {
+  if (sceneLabels || mood || thought || visual) {
     return (
       <div className="fs-bubble-with-meta">
-        {mood && (
+        {sceneLabels && (
+          <div className="fs-scene-header" aria-label="เวลาและสถานที่ของฉาก">
+            <div title={sceneLabels.date}>⏰ เวลา : {sceneLabels.time} น.</div>
+            <div>📍 สถานที่ : {sceneLabels.location}</div>
+          </div>
+        )}
+        {mood && !thought && (
           <div className="fs-mood-box" title="ความรู้สึกของตัวละคร">
             <span className="fs-mood-icon">💕</span>
             <span className="fs-mood-text">{mood}</span>
@@ -717,12 +726,11 @@ function renderBubbleContent(text: string, onExpandMedia?: (key: string) => void
         {thought && (
           <div className="fs-thought-box" title="ความคิดในใจ">
             <span className="fs-thought-icon">💭</span>
-            <span className="fs-thought-text">{thought}</span>
+            <span className="fs-thought-text">ความคิดในใจ : {thought}</span>
           </div>
         )}
         {visual && (
           <div className="fs-visual-box" title="ภาพเหตุการณ์ / กิริยาท่าทาง">
-            <span className="fs-visual-icon">🎬</span>
             <span className="fs-visual-text">{visual}</span>
           </div>
         )}

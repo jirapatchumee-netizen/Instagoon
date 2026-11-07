@@ -384,6 +384,7 @@ assert.equal((await call('/api/dev/test-models',{method:'POST',data:{models:['..
   globalThis.fetch = async (url, opts) => {
     if (String(url).includes('elevenlabs.io')) {
       ttsCalled++;
+      assert.equal(JSON.parse(opts.body).text, 'ดึกขนาดนี้ ยังไม่นอนอีกเหรอ...', 'scene metadata and action narration are not sent to speech');
       return new Response(new Uint8Array([1, 2, 3, 4]), {
         status: 200,
         headers: { 'content-type': 'audio/mpeg' }
@@ -406,7 +407,7 @@ assert.equal((await call('/api/dev/test-models',{method:'POST',data:{models:['..
     const r1 = await worker.fetch(new Request(ttsEnv.PUBLIC_ORIGIN + '/api/chats/c/tts', {
       method: 'POST',
       headers: h,
-      body: JSON.stringify({ text: '[mood:happy] ดึกขนาดนี้ ยังไม่นอนอีกเหรอ... 🤍' })
+      body: JSON.stringify({ text: '[scene:{"at":1794046800000,"location":"โรงอาหาร"}]\n[mood:happy]\n[thought:แอบเป็นห่วง]\n[action:เชียร์วางแก้วลง]\nดึกขนาดนี้ ยังไม่นอนอีกเหรอ... 🤍' })
     }), ttsEnv);
 
     assert.equal(r1.status, 200, 'TTS succeeds when API key is provided');

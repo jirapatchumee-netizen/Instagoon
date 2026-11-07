@@ -3,7 +3,7 @@ import { ensureContent, bundledMedia, removedCreators } from './content.mjs';
 import { relationshipConfig, overallScore, levelOf, matchKeywordRules, secretsFor, levelStyle, applyRules, pickReward } from './gameplay/index.mjs';
 import { ALLOWED_GEMINI_MODELS, SAFETY_SETTINGS, modelsForVisit, pickLiteModel, chatGenerationConfig, rewriteGenerationConfig, summaryGenerationConfig, modelTestGenerationConfig } from './ai/protected/gemini-config.mjs';
 import { fiftyShadesPrompt as buildFiftyShadesPrompt } from './ai/protected/fifty-shades.mjs';
-import { narrativeEnabled, ensureNarrativeStorage, readNarrativeState, narrativeHistory, narrativePrompt, narrativeSchema, decodeNarrative, serializeNarrative, selectNarrativeMemories } from './narrative.mjs';
+import { narrativeEnabled, ensureNarrativeStorage, readNarrativeState, narrativeHistory, narrativePrompt, narrativeSchema, decodeNarrative, serializeNarrative, selectNarrativeMemories, narrativeSceneMetadata } from './narrative.mjs';
 
 const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), {status, headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store',...headers}});
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), {status}); };
@@ -35,6 +35,7 @@ const cleanTrailingSlang = text => typeof text === 'string' ? text.replace(/([�
 const extractSpokenDialogue = text => {
   if (!text || typeof text !== 'string') return '';
   return text
+    .replace(/\[scene:[^\]]*\]\n?/gi, '')
     .replace(/^\[(?:mood|reaction|toast):\s*[\s\S]*?\]\n?/gi, '')
     .replace(/^\[thought:\s*[\s\S]*?\]\n?/gi, '')
     .replace(/\[thought:\s*[\s\S]*?\]/gi, '')
@@ -991,7 +992,7 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
      knownFactsAboutPlayer: memText,
      storySoFar: threadSummary || 'ยังไม่มี',
      recentHistory,
-     ...(sceneMode ? { scene: sceneState, relevantMemories: selectNarrativeMemories(sceneState, userText), contextTruncated: historyContext.truncatedUnsummarized,
+     ...(sceneMode ? { scene: sceneState, replyTime: { at: now, timeZone: 'Asia/Bangkok' }, relevantMemories: selectNarrativeMemories(sceneState, userText), contextTruncated: historyContext.truncatedUnsummarized,
        relationship: { closeness, trust, romance, level: currentLv } } : {})
    });
    const responseSchema = sceneMode ? narrativeSchema(semanticRules) : {
@@ -1179,6 +1180,8 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
    }
 
    const parts = [];
+   const sceneMetadata = narrativeResult ? narrativeSceneMetadata(narrativeResult.nextState, now) : null;
+   if (sceneMetadata) parts.push(`[scene:${JSON.stringify(sceneMetadata)}]`);
    if (moodToast) parts.push(`[mood:${moodToast}]`);
    if (innerThought) parts.push(`[thought:${innerThought}]`);
    if (actionText && !narrativeResult) parts.push(`[action:${actionText}]`);
@@ -1210,7 +1213,7 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
      reply: replyText,
      innerThought,
      action: actionText,
-     ...(narrativeResult ? { beats: narrativeResult.beats } : {}),
+     ...(narrativeResult ? { beats: narrativeResult.beats, scene: sceneMetadata } : {}),
      suggestedReplies,
      moodToast,
      knowledgeResult:{entries:entries.map(({title,source,checkedAt})=>({title,source,checkedAt})),applied:knowledgeApplied,search:{status:search.status,sources:search.sources,queries:search.queries,usage:search.usage}},

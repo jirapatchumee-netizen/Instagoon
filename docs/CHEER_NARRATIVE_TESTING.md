@@ -6,6 +6,8 @@ The pilot uses the current Worker chat route, per-player state in D1, a larger r
 
 The response uses the existing generation budget. The prompt requests compact scene updates and 3–5 short beats; it is not an unlimited prose mode. Fictional character thoughts are optional output, not private model reasoning. Examples guide voice and turn-taking; they are not injected as real player memories.
 
+New scene replies also store timestamp/location metadata. The timestamp is the server's actual reply time, displayed in Asia/Bangkok; the location is the committed current scene, never a pending destination. The visible order is time, location, fictional inner thought, then alternating gestures and quoted spoken dialogue. The full Thai Buddhist date is available in the time row's title. Historical headers retain their original timestamp after reload. Older replies without metadata are left unchanged. Action text uses a lighter 300-weight italic font versus 400-weight dialogue. The original purple thought frame and amber action frames are retained for readability; internal action labels are hidden. Scene headers and actions are excluded from spoken text-to-speech.
+
 ## Try on staging
 
 Use Cheer's **reset chat** action if you want a clean comparison; this clears that player's messages, memories, summary, and narrative state. It does not reset relationship progress or another player's conversation. Existing conversations are otherwise kept. The first narrative turn establishes the configured opening scene; an older conversation that used a different setting should be reset for this pilot.
