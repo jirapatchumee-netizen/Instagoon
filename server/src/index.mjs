@@ -3,6 +3,7 @@ import { ensureContent, bundledMedia, removedCreators } from './content.mjs';
 import { relationshipConfig, overallScore, levelOf, matchKeywordRules, secretsFor, levelStyle, applyRules, pickReward } from './gameplay/index.mjs';
 import { ALLOWED_GEMINI_MODELS, SAFETY_SETTINGS, modelsForVisit, pickLiteModel, chatGenerationConfig, rewriteGenerationConfig, summaryGenerationConfig, modelTestGenerationConfig } from './ai/protected/gemini-config.mjs';
 import { fiftyShadesPrompt as buildFiftyShadesPrompt } from './ai/protected/fifty-shades.mjs';
+import { narrativeEnabled, ensureNarrativeStorage, readNarrativeState, narrativeHistory, narrativePrompt, narrativeSchema, decodeNarrative, serializeNarrative, selectNarrativeMemories } from './narrative.mjs';
 
 const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), {status, headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store',...headers}});
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), {status}); };
@@ -145,7 +146,7 @@ async function bumpThread(env, ctx, uid, creator, name, messages) {
   env.DB.prepare('SELECT messages_since_summary n FROM dm_threads WHERE user_id=? AND creator_id=?').bind(uid, creator)
  ]);
  const thread = countRes.results[0] ?? null;
- if(thread?.n >= SUMMARY_EVERY) defer(ctx, summarizeThread(env, uid, creator, name));
+ if(thread?.n >= SUMMARY_EVERY && !ALLOWED_GEMINI_MODELS.includes(env.EVAL_MODEL)) defer(ctx, summarizeThread(env, uid, creator, name));
 }
 // Folds messages newer than summarized_through into the Thread Summary; a failure keeps the previous summary.
 async function summarizeThread(env, uid, creator, name) {
@@ -347,10 +348,12 @@ async function player(req,env,user,path,now,ctx) {
  if(path==='/api/dev/reset' && method==='POST'){
   if(!isAdminUser(env,user)) return json({error:'forbidden'}, 403);
   const b=await body(req), creatorId=id(b.creatorId);
+  await ensureNarrativeStorage(env.DB);
   await env.DB.batch([
     env.DB.prepare('DELETE FROM ai_chat_messages WHERE user_id=? AND creator_id=?').bind(user.id, creatorId),
     env.DB.prepare('DELETE FROM player_memories WHERE user_id=? AND creator_id=?').bind(user.id, creatorId),
     env.DB.prepare('DELETE FROM dm_threads WHERE user_id=? AND creator_id=?').bind(user.id, creatorId),
+    env.DB.prepare('DELETE FROM npc_scene_states WHERE user_id=? AND creator_id=?').bind(user.id, creatorId),
     env.DB.prepare('DELETE FROM reward_unlocks WHERE user_id=? AND creator_id=?').bind(user.id, creatorId),
     env.DB.prepare('DELETE FROM relationships WHERE user_id=? AND creator_id=?').bind(user.id, creatorId),
     env.DB.prepare('DELETE FROM chat_states WHERE user_id=? AND episode_id IN (SELECT id FROM episodes WHERE creator_id=?)').bind(user.id, creatorId),
@@ -536,10 +539,12 @@ async function player(req,env,user,path,now,ctx) {
  if(m&&method==='POST'){
   const creator=id(m[1]), action=m[2];
   if(action==='reset-chat'){
+   await ensureNarrativeStorage(env.DB);
    await env.DB.batch([
     env.DB.prepare('DELETE FROM ai_chat_messages WHERE user_id=? AND creator_id=?').bind(user.id,creator),
     env.DB.prepare('DELETE FROM player_memories WHERE user_id=? AND creator_id=?').bind(user.id,creator),
-    env.DB.prepare('DELETE FROM dm_threads WHERE user_id=? AND creator_id=?').bind(user.id,creator)
+    env.DB.prepare('DELETE FROM dm_threads WHERE user_id=? AND creator_id=?').bind(user.id,creator),
+    env.DB.prepare('DELETE FROM npc_scene_states WHERE user_id=? AND creator_id=?').bind(user.id,creator)
    ]);
    return json({ok:true});
   }
@@ -765,7 +770,7 @@ async function player(req,env,user,path,now,ctx) {
    // These four reads never depend on each other, so they share one D1 round trip. Only reads are
    // batched: D1 batch() is not the transactional guarantee the writes further down rely on.
    const [threadRes, npcDefRes, relRes, unlockRes] = await env.DB.batch([
-     env.DB.prepare('SELECT last_message_at, current_visit_id, summary FROM dm_threads WHERE user_id=? AND creator_id=?').bind(user.id, creator),
+     env.DB.prepare('SELECT last_message_at, current_visit_id, summary, summarized_through FROM dm_threads WHERE user_id=? AND creator_id=?').bind(user.id, creator),
      env.DB.prepare('SELECT definition_json FROM npc_definitions WHERE creator_id=?').bind(creator),
      env.DB.prepare('SELECT score, closeness, trust, romance, turns, events_json, rule_uses_json FROM relationships WHERE user_id=? AND creator_id=?').bind(user.id, creator),
      env.DB.prepare('SELECT reward_key FROM reward_unlocks WHERE user_id=? AND creator_id=?').bind(user.id, creator)
@@ -778,6 +783,14 @@ async function player(req,env,user,path,now,ctx) {
    const npcDefRow = npcDefRes.results[0] ?? null;
    let npcDef = null;
    if(npcDefRow?.definition_json){try{npcDef=JSON.parse(npcDefRow.definition_json);}catch(e){}}
+
+   const sceneMode = narrativeEnabled(npcDef);
+   let sceneState = null, narrativeResult = null;
+   if (sceneMode) {
+     await ensureNarrativeStorage(env.DB);
+     const saved = await one(env, 'SELECT state_json FROM npc_scene_states WHERE user_id=? AND creator_id=?', user.id, creator);
+     sceneState = readNarrativeState(npcDef, saved?.state_json);
+   }
 
    const relRow = relRes.results[0] ?? null;
    let closeness = relRow?.closeness || 0, trust = relRow?.trust || 0, romance = relRow?.romance || 0, turnCount = (relRow?.turns || 0) + 1;
@@ -870,14 +883,15 @@ async function player(req,env,user,path,now,ctx) {
 
    const [memRes, recentRes] = await env.DB.batch([
      env.DB.prepare('SELECT key, value FROM player_memories WHERE user_id=? AND creator_id=?').bind(user.id, creator),
-     env.DB.prepare('SELECT id, role, content FROM ai_chat_messages WHERE user_id=? AND creator_id=? ORDER BY created_at DESC LIMIT 7').bind(user.id, creator)
+     env.DB.prepare(sceneMode ? 'SELECT id, role, content, created_at FROM ai_chat_messages WHERE user_id=? AND creator_id=? ORDER BY created_at DESC LIMIT 121' : 'SELECT id, role, content FROM ai_chat_messages WHERE user_id=? AND creator_id=? ORDER BY created_at DESC LIMIT 7').bind(user.id, creator)
    ]);
    const memRows = memRes.results;
    const memText = memRows.length > 0 ? memRows.map(m => `${m.key}: ${m.value}`).join(', ') : 'ยังไม่มีข้อมูลพิเศษ';
    // The player's own row was inserted before this read, so it is dropped here: otherwise the same
    // line reaches the model twice, once in Recent DM history and once in Player says.
    const recentRows = recentRes.results.filter(r => r.id !== userMessageId).slice(0, 6).reverse();
-   const recentHistory = recentRows.map(r => `${r.role === 'user' ? 'Player' : (npcDef?.name || creatorData.name)}: ${r.content}`).join('\n');
+   const historyContext = sceneMode ? narrativeHistory(recentRes.results, thread?.summarized_through || 0, userMessageId, npcDef.name) : null;
+   const recentHistory = historyContext?.recentHistory ?? recentRows.map(r => `${r.role === 'user' ? 'Player' : (npcDef?.name || creatorData.name)}: ${r.content}`).join('\n');
 
    const matchedRuleIds = matchKeywordRules(npcDef, userText);
 
@@ -919,7 +933,7 @@ async function player(req,env,user,path,now,ctx) {
    // stored memories, the thread summary and recent history) travels as one JSON data object in the
    // user turn, so a message cannot close a quote and append new instructions.
    const canary = 'IGX-' + token().slice(0, 16);
-   const systemPrompt = `You are roleplaying as "${npcName}", an authentic idol/creator chatting on instagoon private DM.
+   const systemPrompt = sceneMode ? narrativePrompt(npcDef, currentStyle, secretsPrompt, rulesPrompt, canary) : `You are roleplaying as "${npcName}", an authentic idol/creator chatting on instagoon private DM.
 Tagline: "${npcDef?.tagline || ''}".
 Bio: "${npcDef?.biography || creatorData.bio}".
 Personality: "${npcDef?.personality || ''}".
@@ -976,9 +990,11 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
      fiftyShadesMode: isFiftyShades,
      knownFactsAboutPlayer: memText,
      storySoFar: threadSummary || 'ยังไม่มี',
-     recentHistory
+     recentHistory,
+     ...(sceneMode ? { scene: sceneState, relevantMemories: selectNarrativeMemories(sceneState, userText), contextTruncated: historyContext.truncatedUnsummarized,
+       relationship: { closeness, trust, romance, level: currentLv } } : {})
    });
-   const responseSchema = {
+   const responseSchema = sceneMode ? narrativeSchema(semanticRules) : {
      type: 'OBJECT',
      properties: {
        reply: { type: 'STRING' },
@@ -998,7 +1014,7 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
    let sawRateLimit = false;
    if (env.GEMINI_API_KEY && !replyText) {
      // Strictly use ONLY the 3 authorized economical & fastest models
-     const candidateModels = modelsForVisit(ALLOWED_GEMINI_MODELS, visitId);
+     const candidateModels = ALLOWED_GEMINI_MODELS.includes(env.EVAL_MODEL) ? [env.EVAL_MODEL] : modelsForVisit(ALLOWED_GEMINI_MODELS, visitId);
      for (const geminiModel of candidateModels) {
        if (replyText) break;
        try {
@@ -1022,7 +1038,12 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
            tokensIn += data.usageMetadata?.promptTokenCount || 0;
            tokensOut += data.usageMetadata?.candidatesTokenCount || 0;
            const raw = data.candidates?.[0]?.content?.parts?.find(p => typeof p.text === 'string' && !p.thought)?.text;
-           const parsed = raw ? JSON.parse(raw) : null;
+           let parsed = raw ? JSON.parse(raw) : null;
+           let decodedScene = null;
+           if (sceneMode && parsed) {
+             decodedScene = decodeNarrative(parsed, sceneState, userText);
+             parsed = decodedScene;
+           }
            if(typeof parsed?.reply !== 'string' || !parsed.reply.trim()) {
              // A reply cut off by the output limit is a failed attempt: the next model may answer. A safety
              // block ends the turn, so a message written to be blocked cannot buy three model calls.
@@ -1032,13 +1053,14 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
              if(data.promptFeedback?.blockReason || SAFETY_FINISH.has(blockReason)) break;
              continue;
            }
-           const visible = [parsed.reply, parsed.innerThought, parsed.action, parsed.moodToast, ...(Array.isArray(parsed.suggestedReplies) ? parsed.suggestedReplies : [])].filter(s => typeof s === 'string').join('\n');
+           const visible = [parsed.reply, parsed.innerThought, parsed.action, parsed.moodToast, ...(decodedScene ? [...decodedScene.beats.map(b => b.text), JSON.stringify(decodedScene.sceneUpdate)] : []), ...(Array.isArray(parsed.suggestedReplies) ? parsed.suggestedReplies : [])].filter(s => typeof s === 'string').join('\n');
            if(leaksInternals(visible, canary)) {
              console.error('Gemini reply leaked internals on', geminiModel);
              fallbackCount++;
              continue;
            }
            replyText = cleanTrailingSlang(parsed.reply.trim());
+           narrativeResult = decodedScene;
            if(typeof parsed?.innerThought === 'string' && parsed.innerThought.trim()) {
              innerThought = cleanTrailingSlang(parsed.innerThought.trim());
            }
@@ -1098,7 +1120,7 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
    const entries=selectKnowledge(npcDef,userText);
    const search={status:npcDef?.webSearchEnabled?'unavailable':'off',summary:'',sources:[],queries:npcDef?.webSearchEnabled?null:0,usage:null};
    const knowledgeResult={entries,search};let knowledgeApplied=false;
-   if(entries.length&&env.GEMINI_API_KEY){
+   if(entries.length&&env.GEMINI_API_KEY&&!sceneMode){
     // This call only polishes the reply that already exists, so it receives a short tone brief,
     // the question, the draft and the reference material — never the classifier prompt, its
     // scoring schema or the rule list.
@@ -1138,12 +1160,15 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
    const delta = { closeness: closeness - before.closeness, trust: trust - before.trust, romance: romance - before.romance };
    const scoreFromDimensions = !!npcDef?.rules;
    // Create-then-increment-then-read-back rides one round trip, in this order.
-   const [, , scoreRes] = await env.DB.batch([
+   const relationshipStatements = [
      env.DB.prepare('INSERT OR IGNORE INTO relationships(user_id, creator_id) VALUES(?,?)').bind(user.id, creator),
      env.DB.prepare('UPDATE relationships SET closeness=MIN(100, MAX(0, COALESCE(closeness,0)+?)), trust=MIN(100, MAX(0, COALESCE(trust,0)+?)), romance=MIN(100, MAX(0, COALESCE(romance,0)+?)), turns=COALESCE(turns,0)+1, events_json=?, rule_uses_json=?, score=CASE WHEN ? THEN ? ELSE MIN(100, score+?) END WHERE user_id=? AND creator_id=?').bind(delta.closeness, delta.trust, delta.romance, JSON.stringify(events), JSON.stringify(ruleUses), scoreFromDimensions ? 1 : 0, rel, scoreDelta, user.id, creator),
      env.DB.prepare('SELECT score FROM relationships WHERE user_id=? AND creator_id=?').bind(user.id, creator)
-   ]);
-   if(!scoreFromDimensions) rel = scoreRes.results[0]?.score ?? rel;
+   ];
+   if (!narrativeResult) {
+     const [, , scoreRes] = await env.DB.batch(relationshipStatements);
+     if(!scoreFromDimensions) rel = scoreRes.results[0]?.score ?? rel;
+   }
 
 
 
@@ -1156,10 +1181,14 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
    const parts = [];
    if (moodToast) parts.push(`[mood:${moodToast}]`);
    if (innerThought) parts.push(`[thought:${innerThought}]`);
-   if (actionText) parts.push(`[action:${actionText}]`);
-   parts.push(replyText);
+   if (actionText && !narrativeResult) parts.push(`[action:${actionText}]`);
+   parts.push(narrativeResult ? serializeNarrative(narrativeResult.beats) : replyText);
    const storedContent = parts.join('\n');
-   await run(env, 'INSERT INTO ai_chat_messages(id, user_id, creator_id, role, content, media_key, affection_delta, created_at) VALUES(?,?,?,?,?,?,?,?)', crypto.randomUUID(), user.id, creator, 'assistant', storedContent, rewardMediaKey, scoreDelta, now + 1);
+   const replyStatement = env.DB.prepare('INSERT INTO ai_chat_messages(id, user_id, creator_id, role, content, media_key, affection_delta, created_at) VALUES(?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(), user.id, creator, 'assistant', storedContent, rewardMediaKey, scoreDelta, now + 1);
+   if (narrativeResult) {
+     // The reply and its continuity state commit together under the existing per-thread lease.
+     await env.DB.batch([...relationshipStatements, replyStatement, env.DB.prepare('INSERT INTO npc_scene_states(user_id,creator_id,state_json,updated_at) VALUES(?,?,?,?) ON CONFLICT(user_id,creator_id) DO UPDATE SET state_json=excluded.state_json,updated_at=excluded.updated_at').bind(user.id, creator, JSON.stringify(narrativeResult.nextState), now)]);
+   } else await replyStatement.run();
    charged = null; // the reply is stored: the energy has been spent
    await recordTurn(env, {userId:user.id, creatorId:creator, visitId, now, outcome:'ok', model:usedModel, latencyMs:Date.now() - aiStartedAt, tokensIn, tokensOut, fallbackCount, energyBucket, delta, levelAfter:currentLv, matchedRuleIds:finalDetectedRules});
    await bumpThread(env, ctx, user.id, creator, npcDef?.name || creatorData.name, 2);
@@ -1181,6 +1210,7 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
      reply: replyText,
      innerThought,
      action: actionText,
+     ...(narrativeResult ? { beats: narrativeResult.beats } : {}),
      suggestedReplies,
      moodToast,
      knowledgeResult:{entries:entries.map(({title,source,checkedAt})=>({title,source,checkedAt})),applied:knowledgeApplied,search:{status:search.status,sources:search.sources,queries:search.queries,usage:search.usage}},
@@ -1222,7 +1252,7 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
   const score = relRow?.score || 0;
 
   if(!episodes || episodes.length === 0){
-    const dummyNode = { id: 'start', text: 'สวัสดีค่ะ! คุยสดกับ AI ได้เลยนะคะ 💕', choices: [], end: true };
+    const dummyNode = { id: 'start', text: narrativeEnabled(npcDef) ? npcDef.narrative.openingLine || `${npcDef.name}อยู่ที่${npcDef.narrative.openingLocation.name}` : 'สวัสดีค่ะ! คุยสดกับ AI ได้เลยนะคะ 💕', choices: [], end: true };
     return json({
       chat: {
         episodeId: 'free_ai_chat',
