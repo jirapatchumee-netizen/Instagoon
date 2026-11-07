@@ -38,6 +38,17 @@ test('build rejects broken content with a readable reason', () => {
   assert.throws(() => buildContent(content, dist), /missing file content\/media\/missing\.webp[\s\S]*invalid publishedAt/);
 });
 
+test('explicit reset requests affect the content version and cannot target a published creator', () => {
+  const { content, dist } = fixture();
+  const before = buildContent(content, dist);
+  writeFileSync(join(content, 'creator-resets.json'), JSON.stringify([{ id: 'reset-old', creatorId: 'retired' }]));
+  const after = buildContent(content, dist);
+  assert.notEqual(before.version, after.version);
+  assert.equal(after.creatorResets[0].creatorId, 'retired');
+  writeFileSync(join(content, 'creator-resets.json'), JSON.stringify([{ id: 'reset-active', creatorId: 'tester' }]));
+  assert.throws(() => buildContent(content, dist), /cannot reset a published creator/);
+});
+
 test('no content folder means no bundle and the worker skips sync', async () => {
   const root = mkdtempSync(join(tmpdir(), 'empty-'));
   assert.equal(buildContent(join(root, 'content'), join(root, 'dist')), null);
