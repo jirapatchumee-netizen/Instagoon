@@ -281,6 +281,34 @@ try{const turn=await request('/api/chats/c/message',{method:'POST',data:{message
   globalThis.fetch=async()=>new Response('quota',{status:429});
   assert.equal((await request('/api/chats/c/message',{method:'POST',data:{message:'โควตาเต็ม'}})).status,429);
   assert.equal(free(),9,'a quota limit is still refunded past the cap');
+  // Cloudflare Workers AI fallback: when Gemini fails but env.AI is present, turn succeeds using Workers AI
+  env.AI = {
+   async run(model, opts) {
+    return {
+     response: JSON.stringify({
+      reply: 'เราอยู่นี่แล้ว ไม่ต้องห่วงนะ',
+      innerThought: 'ดีใจที่ได้คุยกัน',
+      action: 'ยิ้มเบาๆ ให้',
+      affectionDelta: 2,
+      moodToast: 'รู้สึกอบอุ่นหัวใจ 💕'
+     }),
+     usage: { prompt_tokens: 15, completion_tokens: 20 }
+    };
+   }
+  };
+  try {
+   globalThis.fetch=async()=>new Response('Gemini 503 Outage',{status:503});
+   const fallbackRes=await request('/api/chats/c/message',{method:'POST',data:{message:'ยังมีใครอยู่มั้ย'}});
+   assert.equal(fallbackRes.status,200,'turn succeeds via Cloudflare Workers AI fallback when Gemini is 503');
+   assert.equal(fallbackRes.payload.reply,'เราอยู่นี่แล้ว ไม่ต้องห่วงนะ');
+   assert.equal(fallbackRes.payload.innerThought,'ดีใจที่ได้คุยกัน');
+   assert.equal(fallbackRes.payload.action,'ยิ้มเบาๆ ให้');
+   const latestTurn = sql.prepare("SELECT model, outcome FROM ai_turn_metrics WHERE user_id='u' ORDER BY created_at DESC LIMIT 1").get();
+   assert.equal(latestTurn.outcome, 'ok');
+   assert.equal(latestTurn.model, '@cf/meta/llama-3.1-8b-instruct');
+  } finally {
+   delete env.AI;
+  }
  } finally { globalThis.fetch=saved; delete env.GEMINI_API_KEY; }
 }
 result=await request('/api/account',{method:'DELETE'});assert.equal(result.status,200);assert.equal((await request('/api/me')).status,401);assert.equal(sql.prepare('SELECT count(*) count FROM comments').get().count,0);assert.equal(sql.prepare('SELECT count(*) count FROM invites').get().count,0);
