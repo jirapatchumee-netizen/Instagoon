@@ -82,7 +82,7 @@ test('invalid variant or missing compiled contract fails before charging or call
 
 test('build compiler loads only the bounded Cheer Markdown, never a supplied compiled override', () => {
   const dir = mkdtempSync(join(tmpdir(), 'cheer-contract-'));
-  writeFileSync(join(dir, 'response-contract.md'), '# Runtime\nAnswer the current point.\n');
+  writeFileSync(join(dir, 'response-contract.md'), '# Runtime\r\nAnswer the current point.\r\n');
   const compiled = loadResponseContract(structuredClone(sourceNpc), dir);
   assert.equal(compiled.chatExperiment.responseContract.text, '# Runtime\nAnswer the current point.');
   assert.equal(NpcSchema.safeParse(compiled).success, true);
