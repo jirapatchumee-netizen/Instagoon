@@ -4,7 +4,7 @@ import { relationshipConfig, overallScore, levelOf, matchKeywordRules, secretsFo
 import { ALLOWED_GEMINI_MODELS, SAFETY_SETTINGS, modelsForVisit, pickLiteModel, chatGenerationConfig, rewriteGenerationConfig, summaryGenerationConfig, modelTestGenerationConfig } from './ai/protected/gemini-config.mjs';
 import { fiftyShadesPrompt as buildFiftyShadesPrompt } from './ai/protected/fifty-shades.mjs';
 import { narrativeEnabled, ensureNarrativeStorage, readNarrativeState, narrativeHistory, narrativePrompt, narrativeSchema, decodeNarrative, serializeNarrative, selectNarrativeMemories, narrativeSceneMetadata, ensureNarrativeOpening } from './narrative.mjs';
-import { interpretNarrativeTurn } from './narrative-interaction.mjs';
+import { narrativeTurnContext, restoreLegacyInteraction } from './narrative-interaction.mjs';
 
 const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), {status, headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store',...headers}});
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), {status}); };
@@ -896,6 +896,8 @@ async function player(req,env,user,path,now,ctx) {
    // The player's own row was inserted before this read, so it is dropped here: otherwise the same
    // line reaches the model twice, once in Recent DM history and once in Player says.
    const recentRows = recentRes.results.filter(r => r.id !== userMessageId).slice(0, 6).reverse();
+   if (sceneMode) sceneState = restoreLegacyInteraction(sceneState, recentRes.results.filter(r => r.id !== userMessageId),
+     recentRes.results.some(r => r.id.startsWith('opening_')) || (recentRes.results.length < 121 && !(thread?.summarized_through > 0)));
    const historyContext = sceneMode ? narrativeHistory(recentRes.results, thread?.summarized_through || 0, userMessageId, npcDef.name) : null;
    const recentHistory = historyContext?.recentHistory ?? recentRows.map(r => `${r.role === 'user' ? 'Player' : (npcDef?.name || creatorData.name)}: ${r.content}`).join('\n');
 
@@ -997,7 +999,7 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
      knownFactsAboutPlayer: memText,
      storySoFar: threadSummary || 'ยังไม่มี',
      recentHistory,
-     ...(sceneMode ? { scene: sceneState, playerTurnContext: interpretNarrativeTurn(sceneState, userText), replyTime: { at: now, timeZone: 'Asia/Bangkok' }, relevantMemories: selectNarrativeMemories(sceneState, userText), contextTruncated: historyContext.truncatedUnsummarized,
+     ...(sceneMode ? { scene: sceneState, playerTurnContext: narrativeTurnContext(sceneState, userText), replyTime: { at: now, timeZone: 'Asia/Bangkok' }, relevantMemories: selectNarrativeMemories(sceneState, userText), contextTruncated: historyContext.truncatedUnsummarized,
        relationship: { closeness, trust, romance, level: currentLv } } : {})
    });
    const responseSchema = sceneMode ? narrativeSchema(semanticRules) : {

@@ -15,6 +15,7 @@ export const NpcObjectSchema = z.object({
   userRole: text.optional(), precedingIncident: text.optional(), appearanceDetail: text.optional(), sensoryProps: SensoryPropsSchema.optional(),
   narrative: z.object({
     enabled: z.boolean(),
+    courtshipStyle: z.enum(['competitive', 'reserved']).optional(),
     openingLocation: z.object({ id: z.string().regex(/^[a-zA-Z0-9_-]{1,60}$/), name: z.string().min(1).max(100), description: z.string().max(300) }).strict(),
     openingActivity: z.string().min(1).max(200),
     openingGoal: z.string().min(1).max(200),
