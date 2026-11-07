@@ -5,6 +5,7 @@ import { ALLOWED_GEMINI_MODELS, SAFETY_SETTINGS, modelsForVisit, pickLiteModel, 
 import { fiftyShadesPrompt as buildFiftyShadesPrompt } from './ai/protected/fifty-shades.mjs';
 import { narrativeEnabled, ensureNarrativeStorage, readNarrativeState, narrativeHistory, narrativePrompt, narrativeSchema, decodeNarrative, serializeNarrative, selectNarrativeMemories, narrativeSceneMetadata, ensureNarrativeOpening } from './narrative.mjs';
 import { narrativeTurnContext, restoreLegacyInteraction } from './narrative-interaction.mjs';
+import { characterOnlyEnabled, characterOnlyChat } from './character-only-chat.mjs';
 
 const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), {status, headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store',...headers}});
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), {status}); };
@@ -403,6 +404,12 @@ async function player(req,env,user,path,now,ctx) {
  // A retired character must not remain reachable through a saved profile/chat URL.
  const creatorRoute = path.match(/^\/api\/(?:creators|chats)\/([\w-]+)(?:\/|$)/);
  if (creatorRoute && (await removedCreators(env)).includes(creatorRoute[1])) return json({error:'not_found'},404);
+ const experimentRoute = path.match(/^\/api\/chats\/([\w-]+)(?:\/(message|reset-chat|memories))?$/);
+ if (experimentRoute) {
+  const row = await one(env, 'SELECT definition_json FROM npc_definitions WHERE creator_id=?', experimentRoute[1]);
+  let definition; try { definition = JSON.parse(row?.definition_json || 'null'); } catch {}
+  if (characterOnlyEnabled(definition)) return characterOnlyChat(req, env, user, definition, experimentRoute[2], now, { json, takeEnergy, refundEnergy, energy, recordTurn });
+ }
  if(path==='/api/creators'&&method==='GET'){const removed=new Set(await removedCreators(env));return json({creators:(await all(env,'SELECT c.*,COALESCE(r.score,0) AS relationship FROM creators c LEFT JOIN relationships r ON r.creator_id=c.id AND r.user_id=? ORDER BY c.name',user.id)).filter(c=>!removed.has(c.id)).map(c=>({id:c.id,name:c.name,bio:c.bio,avatarKey:c.avatar_key,relationship:c.relationship}))});}
  let m=path.match(/^\/api\/creators\/([\w-]+)\/profile$/);
  if(m&&method==='GET'){

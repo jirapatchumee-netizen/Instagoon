@@ -165,9 +165,10 @@ export function buildContent(contentDir, distDir) {
   else {
     const seen = new Set();
     for (const reset of creatorResets) {
-      if (!reset || Object.keys(reset).some(k => !['id', 'creatorId'].includes(k)) || !ID.test(reset.id || '') || !ID.test(reset.creatorId || '')) err('creator-resets.json', 'invalid reset id or creatorId');
+      const active = creators.find(c => c.id === reset?.creatorId);
+      if (!reset || Object.keys(reset).some(k => !['id', 'creatorId', 'allowWithCharacterOnly'].includes(k)) || !ID.test(reset.id || '') || !ID.test(reset.creatorId || '') || (reset.allowWithCharacterOnly !== undefined && typeof reset.allowWithCharacterOnly !== 'boolean')) err('creator-resets.json', 'invalid reset id or creatorId');
       else if (seen.has(reset.id)) err('creator-resets.json', 'duplicate reset id');
-      else if (creators.some(c => c.id === reset.creatorId)) err('creator-resets.json', 'cannot reset a published creator; remove its reset request before republishing');
+      else if (active && !(reset.allowWithCharacterOnly === true && active.definition.chatExperiment?.mode === 'character-only')) err('creator-resets.json', 'cannot reset a published creator; remove its reset request before republishing');
       seen.add(reset?.id);
     }
   }

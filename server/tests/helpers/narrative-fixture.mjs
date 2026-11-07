@@ -39,10 +39,10 @@ export async function narrativeFixture({ apiKey = 'test-placeholder', model = AL
   // exercised directly. No background model call should contaminate a pinned-model comparison.
   const deferred = [];
   return { sql, npc, env, deferred,
-    async request(message, { uid = 'one', action = 'message', path } = {}) {
+    async request(message, { uid = 'one', action = 'message', path, data } = {}) {
       const response = await worker.fetch(new Request(path ? env.PUBLIC_ORIGIN + path : `${env.PUBLIC_ORIGIN}/api/chats/${npc.id}${action ? '/' + action : ''}`, {
         method: action ? 'POST' : 'GET', headers: { cookie: `frost_session=${sessions[uid]}`, origin: env.PUBLIC_ORIGIN, 'content-type': 'application/json' },
-        ...(action ? { body: JSON.stringify(action === 'message' ? { message } : {}) } : {})
+        ...(action ? { body: JSON.stringify(data ?? (action === 'message' ? { message } : {})) } : {})
       }), env, { waitUntil: promise => deferred.push(promise) });
       return { status: response.status, payload: await response.json() };
     },
