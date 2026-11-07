@@ -13,6 +13,13 @@ export const SensoryPropsSchema = z.object({ scent: text.optional(), clothing: t
 export const NpcObjectSchema = z.object({
   schemaVersion: z.literal('1.0'), id, name: text.min(1).max(120), handle: z.string().min(1).max(100), tagline: text, avatar: asset, color: z.string().regex(/^#[a-fA-F0-9]{6}$/), tags: z.array(z.string().max(80)).max(30), age: text, biography: text, personality: text, world: text, occupation: text, likes: text, dislikes: text, goals: text, immutableFacts: z.array(text).max(100), knowledgeBoundary: text,
   userRole: text.optional(), precedingIncident: text.optional(), appearanceDetail: text.optional(), sensoryProps: SensoryPropsSchema.optional(),
+  narrative: z.object({
+    enabled: z.boolean(),
+    openingLocation: z.object({ id: z.string().regex(/^[a-zA-Z0-9_-]{1,60}$/), name: z.string().min(1).max(100), description: z.string().max(300) }).strict(),
+    openingActivity: z.string().min(1).max(200),
+    openingGoal: z.string().min(1).max(200),
+    openingLine: z.string().min(1).max(400).optional()
+  }).strict().optional(),
   secrets: z.array(z.object({ id, content: text, minLevel: z.number().int().min(1).max(5) }).strict()).max(100), initialMemories: z.array(text).max(100),
   knowledge:z.array(KnowledgeEntrySchema).max(100).optional(), knowledgeEnabled:z.boolean().optional(), webSearchEnabled:z.boolean().optional(),
   style: z.object({ language: text, pronouns: text, tone: text, length: z.enum(['short', 'medium', 'long']), emoji: z.enum(['none', 'some', 'often']), examples: text, fallback: text.min(1), levelStyles: z.array(text).length(5) }).strict(),

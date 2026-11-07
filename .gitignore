@@ -27,3 +27,4 @@ gen-lang-client-*.json
 private-docs/
 .claude/settings.local.json
 node_modules
+.eval/
