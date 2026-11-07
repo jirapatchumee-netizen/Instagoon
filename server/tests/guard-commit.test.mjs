@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, mkdirSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -138,4 +138,21 @@ test('a merge in progress does not blame the zone on someone else\'s commit', ()
   assert.deepEqual(findProblems([zone], 'commit').map(p => p.fatal), [true]);
   assert.deepEqual(findProblems([zone], 'commit', { transientOp: true }).map(p => p.fatal), [false]);
   assert.deepEqual(findProblems([file('.dev.vars', 'X=1')], 'commit', { transientOp: true }).map(p => p.fatal), [true]);
+});
+
+test('no tracked file trips a content rule', () => {
+  // The guard documents itself in AGENTS.md and the ADR, so prose can accidentally match a content rule
+  // (it did: writing the JSON form of the seeds key in AGENTS.md made that file uncommittable). Zone and
+  // mechanism paths are exempt - those are the intentional owner-review annotations.
+  const root = fileURLToPath(new URL('../../', import.meta.url));
+  const exempt = /^(server\/src\/ai\/protected\/|scripts\/guard-commit\.mjs$|\.githooks\/|\.github\/(workflows\/|CODEOWNERS$)|\.claude\/settings\.json$|package\.json$|server\/package\.json$|server\/tests\/(guard-commit|protected-zone)\.test\.mjs$|docs\/adr\/0013)/i;
+  const tracked = execFileSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' }).trim().split('\n');
+  const bad = [];
+  for (const f of tracked) {
+    if (exempt.test(f)) continue;
+    let content; try { content = readFileSync(join(root, f)); } catch { continue; }
+    const hits = findProblems([{ path: f, status: 'A', content, diff: '' }], 'commit').filter(p => p.fatal);
+    if (hits.length) bad.push(`${f}: ${hits.map(h => h.message).join('; ')}`);
+  }
+  assert.deepEqual(bad, [], `tracked files must not trip a content rule:\n${bad.join('\n')}`);
 });
