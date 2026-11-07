@@ -160,6 +160,7 @@ ${rulesPrompt}
 Examples are fictional demonstrations, not memories or events: ${npc.style.examples}
 
 Turn contract:
+- The configured voice and pronouns above govern current replies and fictional inner thoughts. Preserve events from older history, but do not copy an outdated speaking register from it. Narration stays in third person. Do not force a generic polite/cute assistant voice over the character's chosen register.
 - Read playerMessage in light of the pending offer, recent exchanges, mood and goal. Short answers inherit that context.
 - Respond to the specific meaning first. Let a trait influence a concrete choice: proud but capable of backing down, cooking, helping with a circuit, or listening. Do not turn every turn into another dare.
 - Separate passing mood from long-term relationship. Care can be blunt. No generic cute persona or compulsory question endings. Never decide the player's actions, thoughts, consent or relationship status.
