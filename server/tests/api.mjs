@@ -309,6 +309,40 @@ try{const turn=await request('/api/chats/c/message',{method:'POST',data:{message
   } finally {
    delete env.AI;
   }
+  // DeepSeek primary provider mode
+  env.DEEPSEEK_API_KEY = 'test-deepseek-key';
+  env.PRIMARY_AI_PROVIDER = 'deepseek';
+  try {
+   globalThis.fetch = async (url) => {
+    if (String(url).includes('api.deepseek.com')) {
+     return Response.json({
+      choices: [{
+       message: {
+        content: JSON.stringify({
+         reply: 'DeepSeek ตอบกลับแล้วน้า',
+         innerThought: 'คุยกับผู้เล่นสนุกดี',
+         action: 'ส่งสายตาวิบวับ',
+         affectionDelta: 2,
+         moodToast: 'รู้สึกประทับใจ ✨'
+        })
+       }
+      }],
+      usage: { prompt_tokens: 30, completion_tokens: 40 }
+     });
+    }
+    return new Response('Not DeepSeek', { status: 500 });
+   };
+   const dsRes = await request('/api/chats/c/message', { method: 'POST', data: { message: 'ทดสอบดีพซีค' } });
+   assert.equal(dsRes.status, 200, 'turn succeeds via DeepSeek primary');
+   assert.equal(dsRes.payload.reply, 'DeepSeek ตอบกลับแล้วน้า');
+   assert.equal(dsRes.payload.action, 'ส่งสายตาวิบวับ');
+   const dsTurn = sql.prepare("SELECT model, outcome FROM ai_turn_metrics WHERE user_id='u' ORDER BY created_at DESC LIMIT 1").get();
+   assert.equal(dsTurn.outcome, 'ok');
+   assert.equal(dsTurn.model, 'deepseek-flash');
+  } finally {
+   delete env.DEEPSEEK_API_KEY;
+   delete env.PRIMARY_AI_PROVIDER;
+  }
  } finally { globalThis.fetch=saved; delete env.GEMINI_API_KEY; }
 }
 result=await request('/api/account',{method:'DELETE'});assert.equal(result.status,200);assert.equal((await request('/api/me')).status,401);assert.equal(sql.prepare('SELECT count(*) count FROM comments').get().count,0);assert.equal(sql.prepare('SELECT count(*) count FROM invites').get().count,0);

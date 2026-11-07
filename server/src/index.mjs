@@ -1021,6 +1021,47 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
 
    let sawRateLimit = false;
 
+   function applyParsedAi(parsed, modelName, providerName) {
+     let decodedScene = null;
+     if (sceneMode && parsed) {
+       try {
+         decodedScene = decodeNarrative(parsed, sceneState, userText);
+         parsed = decodedScene;
+       } catch (err) {
+         console.error(providerName, 'decodeNarrative error:', String(err));
+         return false;
+       }
+     }
+     if (typeof parsed?.reply === 'string' && parsed.reply.trim()) {
+       const visible = [parsed.reply, parsed.innerThought, parsed.action, parsed.moodToast, ...(decodedScene ? [...decodedScene.beats.map(b => b.text), JSON.stringify(decodedScene.sceneUpdate)] : []), ...(Array.isArray(parsed.suggestedReplies) ? parsed.suggestedReplies : [])].filter(s => typeof s === 'string').join('\n');
+       if (!leaksInternals(visible, canary)) {
+         replyText = cleanTrailingSlang(parsed.reply.trim());
+         narrativeResult = decodedScene;
+         if (typeof parsed?.innerThought === 'string' && parsed.innerThought.trim()) {
+           innerThought = cleanTrailingSlang(parsed.innerThought.trim());
+         }
+         if (typeof parsed?.action === 'string' && parsed.action.trim()) {
+           actionText = cleanTrailingSlang(parsed.action.trim());
+         }
+         if (Array.isArray(parsed.matchedRuleIds)) detectedRuleIds.push(...parsed.matchedRuleIds.filter(rid => semanticRules.some(r => r.id === rid)));
+         if (parsed.affectionDelta) scoreDelta = Math.min(3, Math.max(1, Math.round(Number(parsed.affectionDelta)) || 1));
+         const lm = parsed.learnedMemory;
+         if (typeof lm?.key === 'string' && typeof lm?.value === 'string' && MEMORY_KEY.test(lm.key) && lm.value.trim() && lm.value.length <= 200) newMem = { key: lm.key, value: lm.value.trim() };
+         if (Array.isArray(parsed.suggestedReplies) && parsed.suggestedReplies.length > 0) {
+           suggestedReplies = parsed.suggestedReplies.filter(s => typeof s === 'string' && s.trim()).slice(0, 3).map(s => s.trim());
+         }
+         if (typeof parsed.moodToast === 'string' && parsed.moodToast.trim()) {
+           moodToast = parsed.moodToast.trim();
+         }
+         sawRateLimit = false;
+         aiDebug = { success: true, model: modelName, provider: providerName };
+         usedModel = modelName;
+         return true;
+       }
+     }
+     return false;
+   }
+
    async function callWorkersAi() {
      if (!env.AI || replyText) return;
      try {
@@ -1046,59 +1087,75 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
        } else {
          const rawAi = typeof aiRes?.response === 'string' ? aiRes.response : (typeof aiRes === 'string' ? aiRes : null);
          if (rawAi) {
-           try {
-             parsed = JSON.parse(rawAi);
-           } catch {
+           try { parsed = JSON.parse(rawAi); }
+           catch {
              const m = rawAi.match(/\{[\s\S]*\}/);
-             if (m) {
-               try { parsed = JSON.parse(m[0]); } catch {}
-             }
+             if (m) { try { parsed = JSON.parse(m[0]); } catch {} }
            }
          }
        }
-       let decodedScene = null;
-       if (sceneMode && parsed) {
-         try {
-           decodedScene = decodeNarrative(parsed, sceneState, userText);
-           parsed = decodedScene;
-         } catch (err) {
-           console.error('CF Workers AI decodeNarrative error:', String(err));
-           parsed = null;
-         }
-       }
-       if (typeof parsed?.reply === 'string' && parsed.reply.trim()) {
-         const visible = [parsed.reply, parsed.innerThought, parsed.action, parsed.moodToast, ...(decodedScene ? [...decodedScene.beats.map(b => b.text), JSON.stringify(decodedScene.sceneUpdate)] : []), ...(Array.isArray(parsed.suggestedReplies) ? parsed.suggestedReplies : [])].filter(s => typeof s === 'string').join('\n');
-         if (!leaksInternals(visible, canary)) {
-           replyText = cleanTrailingSlang(parsed.reply.trim());
-           narrativeResult = decodedScene;
-           if (typeof parsed?.innerThought === 'string' && parsed.innerThought.trim()) {
-             innerThought = cleanTrailingSlang(parsed.innerThought.trim());
-           }
-           if (typeof parsed?.action === 'string' && parsed.action.trim()) {
-             actionText = cleanTrailingSlang(parsed.action.trim());
-           }
-           if (Array.isArray(parsed.matchedRuleIds)) detectedRuleIds.push(...parsed.matchedRuleIds.filter(rid => semanticRules.some(r => r.id === rid)));
-           if (parsed.affectionDelta) scoreDelta = Math.min(3, Math.max(1, Math.round(Number(parsed.affectionDelta)) || 1));
-           const lm = parsed.learnedMemory;
-           if (typeof lm?.key === 'string' && typeof lm?.value === 'string' && MEMORY_KEY.test(lm.key) && lm.value.trim() && lm.value.length <= 200) newMem = { key: lm.key, value: lm.value.trim() };
-           if (Array.isArray(parsed.suggestedReplies) && parsed.suggestedReplies.length > 0) {
-             suggestedReplies = parsed.suggestedReplies.filter(s => typeof s === 'string' && s.trim()).slice(0, 3).map(s => s.trim());
-           }
-           if (typeof parsed.moodToast === 'string' && parsed.moodToast.trim()) {
-             moodToast = parsed.moodToast.trim();
-           }
-           sawRateLimit = false;
-           aiDebug = { success: true, model: cfModel, provider: 'workers-ai' };
-           usedModel = cfModel;
-         }
-       }
+       if (parsed) applyParsedAi(parsed, cfModel, 'workers-ai');
      } catch (e) {
        console.error('Cloudflare Workers AI exception:', String(e));
        aiDebug = { ...(aiDebug || {}), cfAiError: String(e) };
      }
    }
 
-   if (env.PRIMARY_AI_PROVIDER === 'workers-ai') {
+   async function callDeepSeek() {
+     if (!env.DEEPSEEK_API_KEY || replyText) return;
+     try {
+       const dsModel = env.DEEPSEEK_MODEL || 'deepseek-flash';
+       const aiPrompt = systemPrompt + `\n\nCRITICAL OUTPUT REQUIREMENT: You MUST output a single valid JSON object matching this schema:\n${JSON.stringify(responseSchema)}\nOutput ONLY valid JSON.`;
+       const res = await fetch('https://api.deepseek.com/chat/completions', {
+         method: 'POST',
+         headers: {
+           'Content-Type': 'application/json',
+           'Authorization': `Bearer ${env.DEEPSEEK_API_KEY}`
+         },
+         body: JSON.stringify({
+           model: dsModel,
+           messages: [
+             { role: 'system', content: aiPrompt },
+             { role: 'user', content: playerTurn }
+           ],
+           response_format: { type: 'json_object' },
+           max_tokens: 1024,
+           temperature: 0.7
+         }),
+         signal: AbortSignal.timeout(15000)
+       });
+       if (res.ok) {
+         const data = await res.json();
+         if (data?.usage) {
+           tokensIn += data.usage.prompt_tokens || 0;
+           tokensOut += data.usage.completion_tokens || 0;
+         }
+         const raw = data?.choices?.[0]?.message?.content;
+         let parsed = null;
+         if (raw) {
+           try { parsed = JSON.parse(raw); }
+           catch {
+             const m = raw.match(/\{[\s\S]*\}/);
+             if (m) { try { parsed = JSON.parse(m[0]); } catch {} }
+           }
+         }
+         if (parsed) applyParsedAi(parsed, dsModel, 'deepseek');
+       } else {
+         const errText = await res.text();
+         console.error('DeepSeek API error:', res.status, errText.slice(0, 300));
+         aiDebug = { status: res.status, provider: 'deepseek' };
+         fallbackCount++;
+       }
+     } catch (e) {
+       console.error('DeepSeek fetch exception:', String(e));
+       aiDebug = { ...(aiDebug || {}), deepseekError: String(e) };
+       fallbackCount++;
+     }
+   }
+
+   if (env.PRIMARY_AI_PROVIDER === 'deepseek') {
+     await callDeepSeek();
+   } else if (env.PRIMARY_AI_PROVIDER === 'workers-ai') {
      await callWorkersAi();
    }
 
@@ -1184,12 +1241,15 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
          fallbackCount++;
        }
      }
-   } else if (!env.GEMINI_API_KEY) {
+   } else if (!env.GEMINI_API_KEY && !replyText) {
      aiDebug = { error: 'GEMINI_API_KEY is not configured in env' };
    }
 
-   // Cloudflare Workers AI fallback if Gemini failed or is unavailable
-   if (!replyText && env.AI) {
+   // DeepSeek & Cloudflare Workers AI fallbacks if primary failed or is unavailable
+   if (!replyText && env.DEEPSEEK_API_KEY && env.PRIMARY_AI_PROVIDER !== 'deepseek') {
+     await callDeepSeek();
+   }
+   if (!replyText && env.AI && env.PRIMARY_AI_PROVIDER !== 'workers-ai') {
      await callWorkersAi();
    }
 
