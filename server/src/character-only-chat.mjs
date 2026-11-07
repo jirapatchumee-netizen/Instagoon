@@ -1,9 +1,9 @@
-// Isolated experiment. An optional presentation contract formats output without adding persona,
-// few-shot examples, summaries, scoring, knowledge rewrite or provider fallback.
+// Isolated experiment with optional presentation and Cheer-only response variants.
 import { SCENE_FORMAT_VERSION, SCENE_FORMAT_INSTRUCTION, decodeExperimentScene, serializeExperimentScene } from './experiment-scene-format.mjs';
 import { fiftyShadesPrompt } from './ai/protected/fifty-shades.mjs';
 export const characterOnlyEnabled = npc => npc?.chatExperiment?.mode === 'character-only';
-export const EXPERIMENT_GENERATION = Object.freeze({ max_tokens: 1024, temperature: 0.7, reasoning_effort: 'none' });
+import { EXPERIMENT_GENERATION, buildExperimentRequest, responseContractFor } from './experiment-request.mjs';
+export { EXPERIMENT_GENERATION } from './experiment-request.mjs';
 const ready = new WeakMap();
 export async function ensureExperimentStorage(db) {
   if (!ready.has(db)) {
@@ -28,7 +28,7 @@ export async function ensureExperimentStorage(db) {
   await ready.get(db);
 }
 const hash = async text => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))), n => n.toString(16).padStart(2, '0')).join('');
-export async function characterOnlyIdentity(npc, { modePrompt = '' } = {}) {
+export async function characterOnlyIdentity(npc, { modePrompt = '', responseVariant } = {}) {
   const profile = npc.biography;
   const model = npc.chatExperiment?.model;
   if (typeof profile !== 'string' || !profile.trim() || model !== 'deepseek-flash') throw new Error('invalid_character_experiment');
@@ -37,8 +37,11 @@ export async function characterOnlyIdentity(npc, { modePrompt = '' } = {}) {
   const formatIdentity = presentation === SCENE_FORMAT_VERSION ? { presentation, formatHash: await hash(SCENE_FORMAT_INSTRUCTION) } : {};
   const openingIdentity = npc.chatExperiment.opening ? { openingHash: await hash(JSON.stringify(npc.chatExperiment.opening)) } : {};
   const modeIdentity = modePrompt ? { optionalMode: 'fifty-shades', modeHash: await hash(modePrompt) } : {};
-  const experimentKey = await hash(JSON.stringify({ sourceHash, model, generation: EXPERIMENT_GENERATION, runId: npc.chatExperiment.runId, ...formatIdentity, ...openingIdentity, ...modeIdentity }));
-  return { sourceHash, experimentKey, model, presentation };
+  const response = responseContractFor(npc, responseVariant);
+  const responseIdentity = response.text ? { responseContract: response.id, responseContractHash: await hash(response.text) } : {};
+  // Baseline adds no identity fields, preserving the exact pre-contract history key.
+  const experimentKey = await hash(JSON.stringify({ sourceHash, model, generation: EXPERIMENT_GENERATION, runId: npc.chatExperiment.runId, ...formatIdentity, ...openingIdentity, ...modeIdentity, ...responseIdentity }));
+  return { sourceHash, experimentKey, model, presentation, response, ...responseIdentity };
 }
 
 async function ensureExperimentOpening(db, npc, scope, now) {
@@ -67,10 +70,16 @@ export async function characterOnlyChat(req, env, user, npc, action, now, servic
   const requestedMode = body.fiftyShades === true || new URL(req.url).searchParams.get('fiftyShades') === '1';
   const modeEnabled = npc.chatExperiment.allowFiftyShades === true && requestedMode;
   const modePrompt = modeEnabled ? fiftyShadesPrompt({ enabled: true, npcName: npc.name, env }) : '';
-  const identity = await characterOnlyIdentity(npc, { modePrompt });
+  const requestedVariant = body.responseVariant ?? new URL(req.url).searchParams.get('responseVariant') ?? undefined;
+  let identity;
+  try { identity = await characterOnlyIdentity(npc, { modePrompt, responseVariant: requestedVariant }); }
+  catch (error) {
+    if (['invalid_response_variant', 'invalid_response_contract'].includes(error.message)) return json({ error: error.message }, error.message === 'invalid_response_variant' ? 400 : 503);
+    throw error;
+  }
   const scope = [user.id, npc.id, identity.experimentKey];
   const sceneMode = identity.presentation === SCENE_FORMAT_VERSION;
-  const experiment = { mode: 'character-only', provider: 'deepseek', model: identity.model, sourceHash: identity.sourceHash, runId: npc.chatExperiment.runId, allowFiftyShades: npc.chatExperiment.allowFiftyShades === true, activeMode: modeEnabled ? 'fifty-shades' : 'normal', ...(sceneMode ? { presentation: identity.presentation } : {}) };
+  const experiment = { mode: 'character-only', provider: 'deepseek', model: identity.model, sourceHash: identity.sourceHash, runId: npc.chatExperiment.runId, allowFiftyShades: npc.chatExperiment.allowFiftyShades === true, activeMode: modeEnabled ? 'fifty-shades' : 'normal', ...(sceneMode ? { presentation: identity.presentation } : {}), ...(identity.response.available ? { responseVariant: identity.response.variant, responseVariants: ['baseline', 'contract'], contractVersion: identity.response.id, contractHash: identity.responseContractHash || null } : {}) };
   const rows = async () => (await env.DB.prepare('SELECT m.id,m.role,m.content,m.created_at createdAt,d.presentation_json displayJson FROM experiment_chat_messages m LEFT JOIN experiment_chat_displays d ON d.message_id=m.id WHERE m.user_id=? AND m.creator_id=? AND m.experiment_key=? ORDER BY m.created_at,m.id').bind(...scope).all()).results;
   const list = async () => (await rows()).map(({ displayJson, ...m }) => ({ ...m, content: displayJson ? serializeExperimentScene(JSON.parse(displayJson)) : m.content, mediaKey: null, affectionDelta: 0 }));
   const blank = { memories: [], unlockedRewards: [], closeness: 0, trust: 0, romance: 0, score: 0 };
@@ -106,9 +115,7 @@ export async function characterOnlyChat(req, env, user, npc, action, now, servic
     if (!charged) return json({ error: 'energy_empty' }, 402);
     const response = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.DEEPSEEK_API_KEY}` },
-      body: JSON.stringify({ model: identity.model, ...EXPERIMENT_GENERATION,
-        ...(sceneMode ? { response_format: { type: 'json_object' } } : {}),
-        messages: [{ role: 'system', content: npc.biography }, ...(modePrompt ? [{ role: 'system', content: modePrompt }] : []), ...(sceneMode ? [{ role: 'system', content: SCENE_FORMAT_INSTRUCTION + '\nServer clock (Asia/Bangkok): ' + new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Bangkok', dateStyle: 'short', timeStyle: 'medium' }).format(new Date(now)) }] : []), ...history.map(m => ({ role: m.role, content: m.content })), { role: 'user', content: userText }] }),
+      body: JSON.stringify(buildExperimentRequest(npc, { history, userText, now, modePrompt, contractText: identity.response.text })),
       signal: AbortSignal.timeout(15000)
     });
     if (!response.ok) {

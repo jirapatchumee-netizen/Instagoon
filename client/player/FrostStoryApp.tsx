@@ -429,7 +429,7 @@ type PlayerMemory = {
   createdAt: number;
 };
 type Chat = {
-  experiment?: { mode: 'character-only'; provider: 'deepseek'; model: string; sourceHash: string; runId: string; presentation?: 'scene-v1'; allowFiftyShades?: boolean; activeMode?: 'normal' | 'fifty-shades' };
+  experiment?: { mode: 'character-only'; provider: 'deepseek'; model: string; sourceHash: string; runId: string; presentation?: 'scene-v1'; allowFiftyShades?: boolean; activeMode?: 'normal' | 'fifty-shades'; responseVariant?: 'baseline' | 'contract'; responseVariants?: ('baseline' | 'contract')[] };
   revisionId: string;
   episodeId: string;
   episodes: { id: string; title: string; completed: boolean; accessible: boolean }[];
@@ -1072,6 +1072,7 @@ export function FrostStoryApp() {
 
   const [aiSending, setAiSending] = useState(false);
   const [experimentModeSwitching, setExperimentModeSwitching] = useState(false);
+  const [cheerResponseVariant, setCheerResponseVariant] = useState<'baseline' | 'contract'>('contract');
   const [pending, setPending] = useState<{ id: string; content: string; failed?: string }[]>([]);
   const [unlockedRewards, setUnlockedRewards] = useState<string[]>([]);
   const [memoryPanel, setMemoryPanel] = useState<{ open: boolean; items: { key: string; value: string }[] }>({ open: false, items: [] });
@@ -1159,7 +1160,7 @@ export function FrostStoryApp() {
         unlockedRewards?: string[];
         relationship: number;
         energy: Energy;
-      }>(`/api/chats/${encodeURIComponent(selectedCreator.id)}/message`, json({ message: text, fiftyShades: fiftyShadesMode }));
+      }>(`/api/chats/${encodeURIComponent(selectedCreator.id)}/message`, json({ message: text, fiftyShades: fiftyShadesMode, responseVariant: chat.experiment?.responseVariant }));
 
       setPending((prev) => prev.filter((item) => item.id !== id));
       if (res.messages) setChat((prev) => (prev ? { ...prev, aiMessages: res.messages } : prev));
@@ -1314,8 +1315,24 @@ export function FrostStoryApp() {
     });
   }
 
-  function chatPath(creatorId: string, mode = fiftyShadesMode) {
-    return `/api/chats/${encodeURIComponent(creatorId)}?fiftyShades=${mode ? '1' : '0'}`;
+  function chatPath(creatorId: string, mode = fiftyShadesMode, variant = cheerResponseVariant) {
+    return `/api/chats/${encodeURIComponent(creatorId)}?fiftyShades=${mode ? '1' : '0'}${creatorId === 'cheer' ? `&responseVariant=${variant}` : ''}`;
+  }
+
+  async function switchResponseVariant() {
+    if (!selectedCreator || !chat?.experiment?.responseVariants || aiSending || experimentModeSwitching) return;
+    const next = chat.experiment.responseVariant === 'contract' ? 'baseline' : 'contract';
+    const openedAt = chatOpenedAtRef.current;
+    setExperimentModeSwitching(true);
+    try {
+      const result = await api<{ chat: Chat }>(chatPath(selectedCreator.id, fiftyShadesMode, next));
+      if (chatOpenedAtRef.current !== openedAt) return;
+      setChat(result.chat);
+      setPending([]);
+      setCheerResponseVariant(next);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : t.genericError);
+    } finally { setExperimentModeSwitching(false); }
   }
 
   async function toggleFiftyShades() {
@@ -1381,7 +1398,7 @@ export function FrostStoryApp() {
     if (!selectedCreator) return;
     if (!window.confirm(t.resetChatConfirm)) return;
     try {
-      await api(`/api/chats/${encodeURIComponent(selectedCreator.id)}/reset-chat`, json({ fiftyShades: fiftyShadesMode }));
+      await api(`/api/chats/${encodeURIComponent(selectedCreator.id)}/reset-chat`, json({ fiftyShades: fiftyShadesMode, responseVariant: chat?.experiment?.responseVariant }));
       const result = await api<{ chat: Chat }>(chatPath(selectedCreator.id));
       setChat(result.chat);
       setPending([]);
@@ -2574,7 +2591,7 @@ export function FrostStoryApp() {
                       </span>
                     )}
                   </div>
-                  {chat?.experiment && <small className="fs-dm-experiment-label">{chat.experiment.presentation ? 'DeepSeek · ข้อมูลตัวละคร + รูปแบบฉาก' : 'DeepSeek · ข้อมูลตัวละครเท่านั้น'}{chat.experiment.activeMode === 'fifty-shades' ? ' · Fifty Shades' : ''}</small>}
+                  {chat?.experiment && <small className="fs-dm-experiment-label">{chat.experiment.responseVariants ? `DeepSeek · ${chat.experiment.responseVariant === 'contract' ? 'ชุด Contract' : 'ชุดเดิม'}` : chat.experiment.presentation ? 'DeepSeek · ข้อมูลตัวละคร + รูปแบบฉาก' : 'DeepSeek · ข้อมูลตัวละครเท่านั้น'}{chat.experiment.activeMode === 'fifty-shades' ? ' · Fifty Shades' : ''}</small>}
                 </div>
               </div>
               <div className="fs-dm-header-actions" ref={dmMenuRef}>
@@ -2591,6 +2608,16 @@ export function FrostStoryApp() {
                 </button>
                 {dmMenuOpen && (
                   <div className="fs-dm-menu" role="menu">
+                    {chat?.experiment?.responseVariants && <button
+                      type="button"
+                      role="menuitem"
+                      className="fs-dm-menu-item"
+                      onClick={() => void switchResponseVariant()}
+                      disabled={aiSending || experimentModeSwitching}
+                    >
+                      <span>ชุดคำตอบ</span>
+                      <span>{chat.experiment.responseVariant === 'contract' ? 'Contract ใหม่' : 'ชุดเดิม'}</span>
+                    </button>}
                     {(!chat?.experiment || chat.experiment.allowFiftyShades) && <button
                       type="button"
                       role="menuitem"
@@ -2611,6 +2638,7 @@ export function FrostStoryApp() {
                       type="button"
                       role="menuitem"
                       className="fs-dm-menu-item fs-dm-reset-chat-btn"
+                      disabled={aiSending || experimentModeSwitching}
                       onClick={() => {
                         setDmMenuOpen(false);
                         void resetAiChat();
