@@ -96,6 +96,9 @@ export function findProblems(files, mode = 'commit', opts = {}) {
       /"type"\s*:\s*"service_account"/.test(text) && push(f.path, 'is a Google service-account key file.');
       /"(masterPromptTemplate|renderRecipe)"\s*:/.test(text) && push(f.path, 'contains the private render recipe; keep it in the local art pipeline.');
       /"class_type"\s*:/.test(text) && /"inputs"\s*:/.test(text) && push(f.path, 'contains a ComfyUI workflow; keep it in the local art pipeline.');
+      // Public repo keeps a stub bible per creator (creatorId, name, identity, wardrobe, note). The version
+      // that locks the face adds goldenMasterSeeds / referenceImage — that one belongs to the art pipeline.
+      if (/^content\/creators\/[^/]+\/visual_bible\.json$/i.test(f.path) && /"(goldenMasterSeeds|referenceImage)"\s*:/.test(text)) push(f.path, 'is the full visual bible (face-lock seeds); keep it in instagoon-workbench/art-pipeline/creators/<name>/ (ADR-0010).');
     }
   }
   return problems;
