@@ -1,4 +1,5 @@
 import { DatabaseSync } from 'node:sqlite';
+import { narrativeNpc } from './narrative-npc.mjs';
 import { readFileSync, readdirSync } from 'node:fs';
 import worker from '../../src/index.mjs';
 import { ALLOWED_GEMINI_MODELS } from '../../src/ai/protected/gemini-config.mjs';
@@ -21,7 +22,7 @@ export async function narrativeFixture({ apiKey = 'test-placeholder', model = AL
       sql.exec('COMMIT'); return results;
     } catch (e) { sql.exec('ROLLBACK'); throw e; }
   } };
-  const npc = JSON.parse(readFileSync(new URL('../../../content/creators/cheer/character.json', import.meta.url), 'utf8'));
+  const npc = narrativeNpc();
   sql.prepare('INSERT INTO creators(id,name,bio) VALUES(?,?,?)').run(npc.id, npc.name, npc.tagline);
   sql.prepare('INSERT INTO npc_definitions(creator_id,definition_json,updated_at) VALUES(?,?,?)').run(npc.id, JSON.stringify(npc), Date.now());
   const sessions = {};
@@ -38,15 +39,15 @@ export async function narrativeFixture({ apiKey = 'test-placeholder', model = AL
   // exercised directly. No background model call should contaminate a pinned-model comparison.
   const deferred = [];
   return { sql, npc, env, deferred,
-    async request(message, { uid = 'one', action = 'message' } = {}) {
-      const response = await worker.fetch(new Request(`${env.PUBLIC_ORIGIN}/api/chats/cheer${action ? '/' + action : ''}`, {
+    async request(message, { uid = 'one', action = 'message', path } = {}) {
+      const response = await worker.fetch(new Request(path ? env.PUBLIC_ORIGIN + path : `${env.PUBLIC_ORIGIN}/api/chats/${npc.id}${action ? '/' + action : ''}`, {
         method: action ? 'POST' : 'GET', headers: { cookie: `frost_session=${sessions[uid]}`, origin: env.PUBLIC_ORIGIN, 'content-type': 'application/json' },
         ...(action ? { body: JSON.stringify(action === 'message' ? { message } : {}) } : {})
       }), env, { waitUntil: promise => deferred.push(promise) });
       return { status: response.status, payload: await response.json() };
     },
     async open(uid = 'one') { return this.request('', { uid, action: '' }); },
-    state(uid = 'one') { const row = sql.prepare('SELECT state_json FROM npc_scene_states WHERE user_id=? AND creator_id=?').get(uid, 'cheer'); return row ? JSON.parse(row.state_json) : null; }
+    state(uid = 'one') { const row = sql.prepare('SELECT state_json FROM npc_scene_states WHERE user_id=? AND creator_id=?').get(uid, npc.id); return row ? JSON.parse(row.state_json) : null; }
   };
 }
 

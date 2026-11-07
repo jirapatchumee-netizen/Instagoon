@@ -5,7 +5,7 @@ import { narrativeFixture, modelReply } from './helpers/narrative-fixture.mjs';
 
 const lab = { id: 'circuits-lab', name: 'ห้องแล็บวงจร', description: 'โต๊ะทดลองริมหน้าต่าง มีออสซิลโลสโคป' };
 const beatReply = (sceneUpdate = {}, text = 'ลองดูวงจรนี้ก่อน พี่อยากฟังวิธีคิดของเธอ') => ({
-  beats: [{ kind: 'action', text: 'เชียร์เลื่อนกระดาษให้แล้วแตะปลายปากกาลงข้างโจทย์' }, { kind: 'dialogue', text }, { kind: 'action', text: 'เธอเว้นจังหวะให้คิดโดยไม่เร่ง' }],
+  beats: [{ kind: 'action', text: 'นัทเลื่อนกระดาษให้แล้วแตะปลายปากกาลงข้างโจทย์' }, { kind: 'dialogue', text }, { kind: 'action', text: 'เธอเว้นจังหวะให้คิดโดยไม่เร่ง' }],
   innerThought: 'อยากรู้เหมือนกันว่าจะคิดทันไหม',
   sceneUpdate: { move: 'stay', activity: 'คุยเรื่องวงจร', goal: 'ช่วยรุ่นน้องคิดโจทย์', mood: 'สนใจ', ...sceneUpdate },
   matchedRuleIds: [], suggestedReplies: []
@@ -37,7 +37,7 @@ test('memory is attributed to a player statement with actual evidence, never an 
   assert.equal(state.memories[0].kind, 'player_statement');
   const bad = reduceNarrativeState(state, { memory: { text: 'เป็นแฟนกันแล้ว', evidence: 'ตกลงเป็นแฟน' } }, 'ยังไม่ตกลง');
   assert.equal(bad.memories.length, 1);
-  const promised = reduceNarrativeState(bad, { commitment: { text: 'เชียร์รับปากจะทำข้าวผัดไม่เผ็ด', evidence: 'เดี๋ยวพี่ทำข้าวผัดไม่เผ็ดให้' } }, 'หิวแล้ว', 'เดี๋ยวพี่ทำข้าวผัดไม่เผ็ดให้');
+  const promised = reduceNarrativeState(bad, { commitment: { text: 'นัทรับปากจะทำข้าวผัดไม่เผ็ด', evidence: 'เดี๋ยวพี่ทำข้าวผัดไม่เผ็ดให้' } }, 'หิวแล้ว', 'เดี๋ยวพี่ทำข้าวผัดไม่เผ็ดให้');
   assert.equal(promised.memories.at(-1).kind, 'npc_promise');
   const restored = readNarrativeState(f.npc, JSON.stringify(bad));
   assert.equal(restored.memories[0].evidence, 'ไม่กินเผ็ด');
@@ -53,11 +53,11 @@ test('the prompt respects character voice and recent history covers the gap befo
   assert.ok(prompt.includes('3-5 short ordered beats'));
   assert.ok(!prompt.includes('75%'));
   const rows = Array.from({ length: 23 }, (_, i) => ({ id: String(23 - i), role: i % 2 ? 'assistant' : 'user', content: `ข้อความ ${23 - i}`, created_at: 23 - i }));
-  const history = narrativeHistory(rows, 3, '23', 'เชียร์');
+  const history = narrativeHistory(rows, 3, '23', 'นัท');
   assert.ok(history.recentHistory.includes('ข้อความ 5'), 'unsummarized middle is present, not only the last six messages');
   assert.ok(!history.recentHistory.includes('ข้อความ 23'), 'current message is not duplicated');
   assert.equal(history.truncatedUnsummarized, false);
-  assert.equal(narrativeHistory(rows, 0, '23', 'เชียร์', 30).truncatedUnsummarized, true);
+  assert.equal(narrativeHistory(rows, 0, '23', 'นัท', 30).truncatedUnsummarized, true);
   f.sql.close();
 });
 
@@ -114,6 +114,6 @@ test('invalid or blocked replies never commit a scene or charge energy, and a fa
     assert.equal((await f.request('ช่วยดูวงจรหน่อย')).status, 500);
     assert.equal(f.sql.prepare("SELECT COUNT(*) n FROM ai_chat_messages WHERE user_id='one' AND role='assistant'").get().n, 1, 'only the free opening remains after a failed reply');
     assert.deepEqual(f.state(), initialState);
-    assert.equal(f.sql.prepare("SELECT COUNT(*) n FROM relationships WHERE user_id='one' AND creator_id='cheer'").get().n, 0, 'relationship writes roll back with the failed reply');
+    assert.equal(f.sql.prepare("SELECT COUNT(*) n FROM relationships WHERE user_id='one' AND creator_id='narrative-tester'").get().n, 0, 'relationship writes roll back with the failed reply');
   } finally { globalThis.fetch = savedFetch; f.sql.close(); }
 });

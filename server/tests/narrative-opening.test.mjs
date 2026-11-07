@@ -18,7 +18,7 @@ test('opening a new chat creates a free real NPC greeting once, with time/place 
     assert.equal(greeting.role, 'assistant');
     assert.match(greeting.content, /^\[scene:/);
     assert.match(greeting.content, /\[thought:/);
-    assert.match(greeting.content, /กูเชียร์/);
+    assert.match(greeting.content, /กูนัท/);
     assert.ok(!/แพ้พนัน|หนึ่งภาคการศึกษา|ต้องจีบ|เดิมพัน/.test(greeting.content));
     assert.equal(greeting.affectionDelta, 0);
     assert.equal(f.state().turn, 0);
@@ -38,7 +38,7 @@ test('the first player response inherits the NPC invitation even when POST arriv
   let sent;
   globalThis.fetch = async (_url, init) => {
     sent = JSON.parse(init.body);
-    return modelReply({ beats: [{ kind: 'action', text: 'เชียร์พยักหน้าแล้วหยุดแซว' }, { kind: 'dialogue', text: 'เออ ได้ ไม่ตื๊อ อยากคุยเรื่องอื่นก็บอก' }], sceneUpdate: { move: 'stay', mood: 'รักษาฟอร์ม', goal: 'คุยตามความสะดวกของรุ่นน้อง', activity: 'นั่งคุยที่โรงอาหาร' } });
+    return modelReply({ beats: [{ kind: 'action', text: 'นัทพยักหน้าแล้วหยุดแซว' }, { kind: 'dialogue', text: 'เออ ได้ ไม่ตื๊อ อยากคุยเรื่องอื่นก็บอก' }], sceneUpdate: { move: 'stay', mood: 'รักษาฟอร์ม', goal: 'คุยตามความสะดวกของรุ่นน้อง', activity: 'นั่งคุยที่โรงอาหาร' } });
   };
   try {
     const result = await f.request('ไม่เอาอะ');
@@ -58,7 +58,7 @@ test('the first player response inherits the NPC invitation even when POST arriv
 test('existing histories and scene states are not overwritten, and the opening batch is atomic', async () => {
   const f = await narrativeFixture();
   try {
-    f.sql.prepare('INSERT INTO ai_chat_messages(id,user_id,creator_id,role,content,created_at) VALUES(?,?,?,?,?,?)').run('existing', 'one', 'cheer', 'user', 'คุยกันไปแล้ว', Date.now());
+    f.sql.prepare('INSERT INTO ai_chat_messages(id,user_id,creator_id,role,content,created_at) VALUES(?,?,?,?,?,?)').run('existing', 'one', 'narrative-tester', 'user', 'คุยกันไปแล้ว', Date.now());
     assert.equal((await f.open()).payload.chat.aiMessages.length, 1);
     assert.equal(f.state(), null, 'an old conversation is not reset to the opening scene');
     f.sql.exec("CREATE TRIGGER fail_initial_scene BEFORE INSERT ON npc_scene_states BEGIN SELECT RAISE(ABORT, 'fixture_scene_failure'); END;");

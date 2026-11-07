@@ -14,8 +14,8 @@ export async function loadBundle(env) {
   return bundle;
 }
 
-// Idempotent. Only touches content tables, and only for creators present in the bundle;
-// posts/stories removed from git are suspended, never deleted (player rows reference them).
+// Idempotent. Syncs content tables and retires definitions removed from the bundle;
+// referenced content rows are suspended and player records are preserved.
 export async function ensureContent(env) {
   const b = await loadBundle(env);
   if (!b || seeded === b.version) return;
@@ -42,15 +42,18 @@ export async function ensureContent(env) {
       );
     }
     // A creator that was in an earlier bundle and is gone from this one is hidden: its posts and
-    // stories are suspended (player rows keep referencing them) and it leaves the creator list.
+    // stories/revisions are suspended and its profile/definition removed. Player references stay.
     // Creators that never came from git (older D1 rows) are not touched.
     const meta = async k => JSON.parse((await env.DB.prepare('SELECT value FROM content_meta WHERE key=?').bind(k).first())?.value || '[]');
     const ids = b.creators.map(c => c.id);
     const removed = [...new Set([...(await meta('creators')), ...(await meta('removed_creators'))])].filter(id => !ids.includes(id));
     for (const id of removed) {
       stmts.push(
+        q('DELETE FROM npc_definitions WHERE creator_id=?', id),
+        q("UPDATE creators SET name='Removed creator',bio='',avatar_key='' WHERE id=?", id),
         q("UPDATE posts SET status='suspended' WHERE creator_id=? AND status<>'suspended'", id),
         q("UPDATE stories SET status='suspended' WHERE creator_id=? AND status<>'suspended'", id),
+        q("UPDATE revisions SET status='suspended' WHERE creator_id=? AND status='published'", id),
       );
     }
     const setMeta = (k, v) => q('INSERT INTO content_meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value', k, v);
