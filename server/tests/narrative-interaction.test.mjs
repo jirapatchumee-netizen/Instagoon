@@ -47,7 +47,7 @@ test('the optional interaction migration is idempotent and preserves explicit bo
 test('clear boundaries persist and casual acknowledgements do not restart courtship', async () => {
   const f = await narrativeFixture();
   try {
-    for (const text of ['ไม่อยากโดนจีบ', 'หยุดจีบ', 'ไม่อยากให้มึงจีบ', 'ไม่แดก และไม่อยากโดนจีบ']) {
+    for (const text of ['อย่าจีบ', 'หยุดจีบ', 'ไม่อยากให้มึงจีบ หยุดเลย', 'ไม่แดก และไม่อยากโดนจีบ หยุดเลย']) {
       const initial = initialNarrativeState(f.npc);
       let state = reduceNarrativeState(initial, { goal: 'เอาชนะให้ได้', nextOffer: { kind: 'romance', quote: 'จีบต่อได้ไหม' } }, text, 'จีบต่อได้ไหม');
       assert.equal(state.interaction.romancePaused, true, text);

@@ -12,7 +12,7 @@ const place = value => {
 export function initialNarrativeState(npc) {
   const location = place(npc.narrative.openingLocation);
   if (!location) throw new Error('invalid_narrative_opening_location');
-  return { version: 1, turn: 0, locationId: location.id, places: [location], pendingLocationId: null,
+  return { version: 1, courtshipStyle: npc.narrative.courtshipStyle || 'reserved', turn: 0, locationId: location.id, places: [location], pendingLocationId: null,
     activity: safeText(npc.narrative.openingActivity), goal: safeText(npc.narrative.openingGoal), motivation: safeText(npc.narrative.openingGoal),
     mood: 'มั่นใจและอยากรู้จัก', memories: [], interaction: readInteraction({ pendingOffer: npc.narrative.opening?.offer }) };
 }
@@ -23,7 +23,7 @@ export function readNarrativeState(npc, raw) {
     if (value?.version !== 1) return initial;
     const places = (Array.isArray(value.places) ? value.places : []).map(place).filter(Boolean).slice(0, 12);
     if (!places.some(p => p.id === value.locationId)) return initial;
-    return { version: 1, turn: Math.max(0, Math.min(100000, Number(value.turn) || 0)), locationId: value.locationId,
+    return { version: 1, courtshipStyle: initial.courtshipStyle, turn: Math.max(0, Math.min(100000, Number(value.turn) || 0)), locationId: value.locationId,
       places, pendingLocationId: places.some(p => p.id === value.pendingLocationId) ? value.pendingLocationId : null,
       activity: safeText(value.activity) || initial.activity, goal: safeText(value.goal) || initial.goal,
       motivation: safeText(value.motivation) || initial.motivation,
@@ -170,15 +170,17 @@ Relationship style now: ${levelStyle}
 ${secretsPrompt}
 ${rulesPrompt}
 Examples are fictional demonstrations, not memories or events: ${npc.style.examples}
+Courtship style: ${npc.narrative.courtshipStyle || 'reserved'}. Competitive means staying curious and finding another conversational angle after a declined offer; it never means treating rejection as acceptance.
 
 Turn contract:
 - The configured voice and pronouns above govern current replies and fictional inner thoughts. Preserve events from older history, but do not copy an outdated speaking register from it. Narration stays in third person. Do not force a generic polite/cute assistant voice over the character's chosen register.
 - Read playerMessage in light of the pending offer, recent exchanges, mood and goal. Short answers inherit that context.
 - Respond to the specific meaning first. Let a trait influence a concrete choice and a varied tactic: a witty reframe, playful challenge, curiosity, a new topic, practical help, or an action. Competitive characters can keep trying a DIFFERENT conversational approach while conversation remains welcome. Do not repeat the same rejected offer.
 - Separate passing mood from long-term relationship. Care can be blunt. No generic cute persona or compulsory question endings. Never decide the player's actions, thoughts, consent or relationship status.
-- Refusal scope is mandatory: identify WHAT was declined, using playerTurnContext, the pending offer and history. "ไม่แดก" declines food, not all conversation or courtship. Accept the food refusal, keep the active goal, and pivot to another in-character angle; never force eating or infer global rejection. "ไม่ไป" declines travel. "ไม่อยากโดนจีบ/หยุดจีบ" pauses courtship, and "ไม่อยากคุย/ขออยู่เงียบ ๆ" pauses the conversation. An ambiguous "ไม่เอา" refers to the immediately pending offer; if unclear, clarify rather than assume consent or a global stop. Questions, quotations and food preferences are not blanket refusals.
-- Honor clear limits already established in history as well as persisted pause flags; a missing flag in an older scene does not revoke a prior limit. While courtship is paused, do not restart it through a joke; wait for the player to explicitly reopen it. Tiredness calls for concern in the character's own voice. A pause does not require a polite assistant voice.
+- Refusal scope is mandatory: identify WHAT was declined using playerTurnContext and history. "ไม่แดก" declines food; acknowledge it and change tactics, never force eating. "ไม่ไป" declines travel. For competitive characters, a declined dating offer or "ไม่อยากโดนจีบ" does not erase the character's interest or require a permanent neutral-friend state. Accept the declined approach and open a DIFFERENT conversational angle: wit, a friendly challenge, curiosity, or a character-owned action. Do not ask for dating again, argue against the answer, presume hidden attraction, or increase physical contact. A new challenge is about conversation, not pressuring the player to date. Reserved characters pause courtship on such preferences. Explicit "หยุดจีบ/อย่าจีบ/ไม่ต้องจีบ" pauses courtship for every character. "ไม่อยากคุย/ขออยู่เงียบ ๆ" pauses conversation. Ambiguous "ไม่เอา" refers to the pending offer; clarify when unclear.
+- Honor explicit stop requests in history and persisted pause flags; only the player can reopen those. Repeated rejection, discomfort or a request to change topic calls for a topic change, not stronger pressure. Tiredness calls for concern in the character's voice. Neither concern nor a pause requires a polite assistant voice.
 - Maintain momentum when the player has not ended the interaction: leave one natural new handle, such as a reframe, an invitation to respond, or a character-owned action. It need not be a question or another dare. Avoid ending only in self-defense ("กูแค่นำเสนอทางเลือก", "ไม่ได้บังคับ") unless the player actually raises pressure. If the fictional thought shows competitive interest, carry that into a visible tactic rather than an unrelated closing disclaimer.
+- Examples teach voice and conversational moves, NOT reusable response scripts. Do not copy their complete sentences, distinctive punchlines or action sequences. Use playerTurnContext.variationHint as a creative direction only when it fits this turn; invent fresh wording grounded in the actual player message and current scene. Read recent assistant replies: avoid repeating their opening, punchline, gesture and closing question. If the player repeats a short answer, acknowledge the repetition and advance a different detail rather than replaying the same response. Do not merely replace synonyms in the same template. Context and boundaries take priority over variety.
 - Return ${length} short ordered beats (dialogue/action), usually 1 sentence each. React → character-owned gesture → reply/next opening when useful. Vary the pattern; a brief reply is allowed. Combined visible text about 250-650 Thai characters, never pad. No graphic sexual narration.
 - innerThought is an optional short fictional character aside, never analysis or private model reasoning. Do not put the secret bet in an aside before it is available to reveal.
 - The persisted location/activity is authoritative, not the opening backstory. Reuse place IDs and details on return visits. You may invent modest plausible fictional locations, not real addresses or canon facts about the player.
