@@ -102,7 +102,7 @@ test('the Worker supplies scoped turn context and persists the broader goal acro
   let sent;
   globalThis.fetch = async (_url, init) => {
     sent = JSON.parse(init.body);
-    return modelReply({ beats: [{ kind: 'action', text: 'เชียร์เลิกคิ้วแล้วหัวเราะ' }, { kind: 'dialogue', text: 'ไม่กินก็ไม่กิน ว่าแต่ที่เขาว่ามึงจีบยากนี่ จริงหรือทำฟอร์ม' }], sceneUpdate: { move: 'stay', activity: 'เปลี่ยนมุกจากเรื่องอาหาร', goal: 'เลิกเข้าหาทั้งหมด', mood: 'อยากรู้จักมากขึ้น', nextOffer: { kind: 'challenge', quote: 'จริงหรือทำฟอร์ม' } } });
+    return modelReply({ beats: [{ kind: 'action', text: 'นัทเลิกคิ้วแล้วหัวเราะ' }, { kind: 'dialogue', text: 'ไม่กินก็ไม่กิน ว่าแต่ที่เขาว่ามึงจีบยากนี่ จริงหรือทำฟอร์ม' }], sceneUpdate: { move: 'stay', activity: 'เปลี่ยนมุกจากเรื่องอาหาร', goal: 'เลิกเข้าหาทั้งหมด', mood: 'อยากรู้จักมากขึ้น', nextOffer: { kind: 'challenge', quote: 'จริงหรือทำฟอร์ม' } } });
   };
   try {
     const response = await f.request('ไม่แดก');

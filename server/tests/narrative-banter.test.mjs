@@ -1,11 +1,12 @@
+import { narrativeNpc } from './helpers/narrative-npc.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { interpretNarrativeTurn, narrativeTurnContext, restoreLegacyInteraction } from '../src/narrative-interaction.mjs';
 import { initialNarrativeState, readNarrativeState, reduceNarrativeState } from '../src/narrative.mjs';
 import { narrativeFixture, modelReply } from './helpers/narrative-fixture.mjs';
-const npc = JSON.parse(readFileSync(new URL('../../content/creators/cheer/character.json', import.meta.url), 'utf8'));
-const payload = { beats: [{ kind: 'action', text: 'เชียร์เลิกคิ้วอย่างสนใจ' }, { kind: 'dialogue', text: 'แล้วมึงมีอะไรดีนอกจากทำหน้าเข้าถึงยากวะ' }], sceneUpdate: { move: 'stay', goal: 'เลิกจีบถาวร', mood: 'ท้าทาย', activity: 'คุยกัน' } };
+const npc = narrativeNpc();
+const payload = { beats: [{ kind: 'action', text: 'นัทเลิกคิ้วอย่างสนใจ' }, { kind: 'dialogue', text: 'แล้วมึงมีอะไรดีนอกจากทำหน้าเข้าถึงยากวะ' }], sceneUpdate: { move: 'stay', goal: 'เลิกจีบถาวร', mood: 'ท้าทาย', activity: 'คุยกัน' } };
 
 test('competitive resistance preserves interest without repeating a rejected dating offer; explicit stops persist', () => {
   const initial = initialNarrativeState(npc);
@@ -102,7 +103,7 @@ test('actual Worker restores legacy soft pauses across multiple turns without re
     await f.open();
     const state = f.state(); state.interaction.romancePaused = true; delete state.interaction.romancePauseReason;
     f.sql.prepare("UPDATE npc_scene_states SET state_json=? WHERE user_id='one'").run(JSON.stringify(state));
-    f.sql.prepare('INSERT INTO ai_chat_messages(id,user_id,creator_id,role,content,created_at) VALUES(?,?,?,?,?,?)').run('old-soft-refusal', 'one', 'cheer', 'user', 'ไม่อยากโดนจีบ', Date.now() - 1000);
+    f.sql.prepare('INSERT INTO ai_chat_messages(id,user_id,creator_id,role,content,created_at) VALUES(?,?,?,?,?,?)').run('old-soft-refusal', 'one', 'narrative-tester', 'user', 'ไม่อยากโดนจีบ', Date.now() - 1000);
     for (const message of ['ไม่อยากโดนจีบ', 'ยังมั่นใจอีกเหรอ']) {
       const response = await f.request(message);
       assert.equal(response.status, 200);

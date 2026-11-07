@@ -70,6 +70,8 @@ test('worker seeds D1 from the bundle, is idempotent, and suspends removed posts
   assert.deepEqual(sql.prepare("SELECT id,caption,status FROM posts ORDER BY id").all().map(r => ({ ...r })), [{ id: 'o1', caption: 'keep', status: 'published' }, { id: 'p1', caption: 'edited', status: 'published' }, { id: 'p2', caption: 'two', status: 'suspended' }]);
 
   // Removing the creator folder hides the creator and suspends its posts; a creator that never came from git stays.
+  sql.prepare("INSERT INTO users(id,email,google_id,created_at) VALUES('saved-player','saved@example.com','saved-player',0)").run();
+  sql.prepare("INSERT INTO relationships(user_id,creator_id,score) VALUES('saved-player','tester',25)").run();
   rmSync(join(content, 'creators', 'tester'), { recursive: true });
   mkdirSync(join(content, 'creators', 'kept'), { recursive: true });
   writeFileSync(join(content, 'creators', 'kept', 'character.json'), JSON.stringify({ ...newNpc('kept'), name: 'Kept', avatar: 'avatars/tester.webp' }));
@@ -77,6 +79,9 @@ test('worker seeds D1 from the bundle, is idempotent, and suspends removed posts
   resetContentCache();
   await ensureContent(e);
   assert.deepEqual(await removedCreators(e), ['tester']);
+  assert.equal(sql.prepare("SELECT COUNT(*) n FROM npc_definitions WHERE creator_id='tester'").get().n, 0, 'retired prompts are removed');
+  assert.deepEqual({ ...sql.prepare("SELECT name,bio,avatar_key FROM creators WHERE id='tester'").get() }, { name: 'Removed creator', bio: '', avatar_key: '' });
+  assert.equal(sql.prepare("SELECT score FROM relationships WHERE creator_id='tester'").get().score, 25, 'player progress is preserved');
   assert.deepEqual(sql.prepare("SELECT id,status FROM posts ORDER BY id").all().map(r => ({ ...r })), [{ id: 'o1', status: 'published' }, { id: 'p1', status: 'suspended' }, { id: 'p2', status: 'suspended' }]);
 });
 

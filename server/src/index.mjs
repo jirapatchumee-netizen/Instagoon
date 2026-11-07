@@ -400,6 +400,9 @@ async function player(req,env,user,path,now,ctx) {
  }
  if(path==='/api/consent' && method==='POST'){const b=await body(req);await run(env,'UPDATE users SET age_verified_at=?,consent_version=? WHERE id=?',now,string(b.consentVersion,100),user.id);return json({ok:true});}
  if(!user.age_verified_at)return json({error:'age_consent_required'},403);
+ // A retired character must not remain reachable through a saved profile/chat URL.
+ const creatorRoute = path.match(/^\/api\/(?:creators|chats)\/([\w-]+)(?:\/|$)/);
+ if (creatorRoute && (await removedCreators(env)).includes(creatorRoute[1])) return json({error:'not_found'},404);
  if(path==='/api/creators'&&method==='GET'){const removed=new Set(await removedCreators(env));return json({creators:(await all(env,'SELECT c.*,COALESCE(r.score,0) AS relationship FROM creators c LEFT JOIN relationships r ON r.creator_id=c.id AND r.user_id=? ORDER BY c.name',user.id)).filter(c=>!removed.has(c.id)).map(c=>({id:c.id,name:c.name,bio:c.bio,avatarKey:c.avatar_key,relationship:c.relationship}))});}
  let m=path.match(/^\/api\/creators\/([\w-]+)\/profile$/);
  if(m&&method==='GET'){
