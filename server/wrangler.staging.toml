@@ -23,6 +23,8 @@ run_worker_first = true
 
 [vars]
 GEMINI_MODEL = "gemini-2.5-flash"
+CF_AI_MODEL = "@cf/qwen/qwen2.5-coder-32b-instruct"
+PRIMARY_AI_PROVIDER = "workers-ai"
 PUBLIC_ORIGIN = "https://staging.instagoon.app"
 STAGING_EMAILS = "jirapat.chumee@gmail.com,taychinsgo@gmail.com"
 # One-time free energy per new staging account (production uses the default, 30).

@@ -281,17 +281,17 @@ try{const turn=await request('/api/chats/c/message',{method:'POST',data:{message
   globalThis.fetch=async()=>new Response('quota',{status:429});
   assert.equal((await request('/api/chats/c/message',{method:'POST',data:{message:'โควตาเต็ม'}})).status,429);
   assert.equal(free(),9,'a quota limit is still refunded past the cap');
-  // Cloudflare Workers AI fallback: when Gemini fails but env.AI is present, turn succeeds using Workers AI
+  // Cloudflare Workers AI fallback & dict response (Qwen 2.5 style)
   env.AI = {
    async run(model, opts) {
     return {
-     response: JSON.stringify({
+     response: {
       reply: 'เราอยู่นี่แล้ว ไม่ต้องห่วงนะ',
       innerThought: 'ดีใจที่ได้คุยกัน',
       action: 'ยิ้มเบาๆ ให้',
       affectionDelta: 2,
       moodToast: 'รู้สึกอบอุ่นหัวใจ 💕'
-     }),
+     },
      usage: { prompt_tokens: 15, completion_tokens: 20 }
     };
    }
@@ -305,7 +305,7 @@ try{const turn=await request('/api/chats/c/message',{method:'POST',data:{message
    assert.equal(fallbackRes.payload.action,'ยิ้มเบาๆ ให้');
    const latestTurn = sql.prepare("SELECT model, outcome FROM ai_turn_metrics WHERE user_id='u' ORDER BY created_at DESC LIMIT 1").get();
    assert.equal(latestTurn.outcome, 'ok');
-   assert.equal(latestTurn.model, '@cf/meta/llama-3.1-8b-instruct');
+   assert.equal(latestTurn.model, '@cf/qwen/qwen2.5-coder-32b-instruct');
   } finally {
    delete env.AI;
   }
