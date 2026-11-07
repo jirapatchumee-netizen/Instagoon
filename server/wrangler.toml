@@ -2,6 +2,9 @@ name = "froststory-api"
 main = "src/index.mjs"
 compatibility_date = "2026-10-01"
 
+[ai]
+binding = "AI"
+
 # Replace with IDs of provisioned resources before deploying.
 [[d1_databases]]
 binding = "DB"

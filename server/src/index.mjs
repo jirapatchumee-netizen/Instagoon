@@ -1103,6 +1103,77 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
      aiDebug = { error: 'GEMINI_API_KEY is not configured in env' };
    }
 
+   // Cloudflare Workers AI fallback if Gemini failed or is unavailable
+   if (!replyText && env.AI) {
+     try {
+       const cfModel = env.CF_AI_MODEL || '@cf/meta/llama-3.1-8b-instruct';
+       const aiPrompt = systemPrompt + `\n\nCRITICAL OUTPUT REQUIREMENT: You MUST output a single valid JSON object matching this schema:\n${JSON.stringify(responseSchema)}\nOutput ONLY valid JSON.`;
+       const aiRes = await env.AI.run(cfModel, {
+         messages: [
+           { role: 'system', content: aiPrompt },
+           { role: 'user', content: playerTurn }
+         ],
+         max_tokens: 1024,
+         temperature: 0.7
+       });
+       if (aiRes?.usage) {
+         tokensIn += aiRes.usage.prompt_tokens || 0;
+         tokensOut += aiRes.usage.completion_tokens || 0;
+       }
+       const rawAi = typeof aiRes?.response === 'string' ? aiRes.response : (typeof aiRes === 'string' ? aiRes : null);
+       if (rawAi) {
+         let parsed = null;
+         try {
+           parsed = JSON.parse(rawAi);
+         } catch {
+           const m = rawAi.match(/\{[\s\S]*\}/);
+           if (m) {
+             try { parsed = JSON.parse(m[0]); } catch {}
+           }
+         }
+         let decodedScene = null;
+         if (sceneMode && parsed) {
+           try {
+             decodedScene = decodeNarrative(parsed, sceneState, userText);
+             parsed = decodedScene;
+           } catch (err) {
+             console.error('CF Workers AI decodeNarrative error:', String(err));
+             parsed = null;
+           }
+         }
+         if (typeof parsed?.reply === 'string' && parsed.reply.trim()) {
+           const visible = [parsed.reply, parsed.innerThought, parsed.action, parsed.moodToast, ...(decodedScene ? [...decodedScene.beats.map(b => b.text), JSON.stringify(decodedScene.sceneUpdate)] : []), ...(Array.isArray(parsed.suggestedReplies) ? parsed.suggestedReplies : [])].filter(s => typeof s === 'string').join('\n');
+           if (!leaksInternals(visible, canary)) {
+             replyText = cleanTrailingSlang(parsed.reply.trim());
+             narrativeResult = decodedScene;
+             if (typeof parsed?.innerThought === 'string' && parsed.innerThought.trim()) {
+               innerThought = cleanTrailingSlang(parsed.innerThought.trim());
+             }
+             if (typeof parsed?.action === 'string' && parsed.action.trim()) {
+               actionText = cleanTrailingSlang(parsed.action.trim());
+             }
+             if (Array.isArray(parsed.matchedRuleIds)) detectedRuleIds.push(...parsed.matchedRuleIds.filter(rid => semanticRules.some(r => r.id === rid)));
+             if (parsed.affectionDelta) scoreDelta = Math.min(3, Math.max(1, Math.round(Number(parsed.affectionDelta)) || 1));
+             const lm = parsed.learnedMemory;
+             if (typeof lm?.key === 'string' && typeof lm?.value === 'string' && MEMORY_KEY.test(lm.key) && lm.value.trim() && lm.value.length <= 200) newMem = { key: lm.key, value: lm.value.trim() };
+             if (Array.isArray(parsed.suggestedReplies) && parsed.suggestedReplies.length > 0) {
+               suggestedReplies = parsed.suggestedReplies.filter(s => typeof s === 'string' && s.trim()).slice(0, 3).map(s => s.trim());
+             }
+             if (typeof parsed.moodToast === 'string' && parsed.moodToast.trim()) {
+               moodToast = parsed.moodToast.trim();
+             }
+             sawRateLimit = false;
+             aiDebug = { success: true, model: cfModel, provider: 'workers-ai' };
+             usedModel = cfModel;
+           }
+         }
+       }
+     } catch (e) {
+       console.error('Cloudflare Workers AI fallback exception:', String(e));
+       aiDebug = { ...(aiDebug || {}), cfAiError: String(e) };
+     }
+   }
+
    // Every model in the group failed: refund, and say whether it was a quota limit or another failure.
    // Quota limits are ours and always refunded; other failures only REFUNDS_PER_WINDOW times per window.
    if (!replyText) {

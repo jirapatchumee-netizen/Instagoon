@@ -6,6 +6,9 @@ preview_urls = false
 keep_vars = true
 routes = [{ pattern = "staging.instagoon.app", custom_domain = true }]
 
+[ai]
+binding = "AI"
+
 [[d1_databases]]
 binding = "DB"
 database_name = "instagoon-staging"
