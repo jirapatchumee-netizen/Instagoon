@@ -4218,3 +4218,9 @@ dialog.fs-overlay[open]::backdrop {
     transition: none;
   }
 }
+.fs-narrative-beats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  white-space: pre-wrap;
+}

@@ -624,7 +624,15 @@ function renderBubbleContent(text: string, onExpandMedia?: (key: string) => void
 
   const imgRegex = /\[img:([^\]]+)\]/g;
   let bodyNodes: React.ReactNode;
-  if (!imgRegex.test(bodyText)) {
+  if (bodyText.includes('[action:')) {
+    // Scene replies retain the order of dialogue and character-owned gestures.
+    bodyNodes = <div className="fs-narrative-beats">{bodyText.split(/(\[action:[\s\S]*?\])/g).filter(part => part.trim()).map((part, index) => {
+      const action = part.match(/^\[action:([\s\S]*?)\]$/);
+      return action
+        ? <div key={index} className="fs-visual-box"><span className="fs-visual-text">{action[1]}</span></div>
+        : <div key={index} className="fs-bubble-text">{part}</div>;
+    })}</div>;
+  } else if (!imgRegex.test(bodyText)) {
     bodyNodes = (
       <span className="fs-bubble-text">
         {bodyText.split('\n').map((line, lineIdx, arr) => (
