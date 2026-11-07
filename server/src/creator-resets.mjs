@@ -19,7 +19,10 @@ export async function applyCreatorResets(env, bundle) {
     for (const reset of bundle.creatorResets) {
       const queries = creatorResetQueries(reset);
       if (await env.DB.prepare('SELECT value FROM content_meta WHERE key=?').bind(`creator-reset:${reset.id}`).first()) continue;
-      if (bundle.creators.some(c => c.id === reset.creatorId)) throw new Error('cannot_reset_published_creator');
+      const active = bundle.creators.find(c => c.id === reset.creatorId);
+      // This reset only clears legacy tables. A reviewed character-only rebuild stores its
+      // conversations separately, so a still-pending legacy cleanup cannot erase the new run.
+      if (active && !(reset.allowWithCharacterOnly === true && active.definition?.chatExperiment?.mode === 'character-only')) throw new Error('cannot_reset_published_creator');
       await ensureNarrativeStorage(env.DB);
       // Every delete checks the durable marker. Competing isolates cannot clear a later incarnation
       // after another transaction completes this reset. Marker and all deletes commit together.

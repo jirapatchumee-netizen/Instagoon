@@ -1,0 +1,104 @@
+// Isolated experiment: the supplied profile is the ENTIRE system message. No app persona,
+// output schema, few-shot examples, summaries, scoring, knowledge rewrite or provider fallback.
+export const characterOnlyEnabled = npc => npc?.chatExperiment?.mode === 'character-only';
+export const EXPERIMENT_GENERATION = Object.freeze({ max_tokens: 1024, temperature: 0.7, reasoning_effort: 'none' });
+const ready = new WeakMap();
+export async function ensureExperimentStorage(db) {
+  if (!ready.has(db)) {
+    const promise = db.batch([
+      db.prepare(`CREATE TABLE IF NOT EXISTS experiment_chat_threads (
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        creator_id TEXT NOT NULL REFERENCES creators(id) ON DELETE CASCADE,
+        experiment_key TEXT NOT NULL, lock_token TEXT, lock_until INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY(user_id,creator_id,experiment_key))`),
+      db.prepare(`CREATE TABLE IF NOT EXISTS experiment_chat_messages (
+        id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        creator_id TEXT NOT NULL REFERENCES creators(id) ON DELETE CASCADE,
+        experiment_key TEXT NOT NULL, role TEXT NOT NULL CHECK(role IN ('user','assistant')),
+        content TEXT NOT NULL, created_at INTEGER NOT NULL)`),
+      db.prepare('CREATE INDEX IF NOT EXISTS experiment_messages_thread ON experiment_chat_messages(user_id,creator_id,experiment_key,created_at)')
+    ]);
+    ready.set(db, promise); promise.catch(() => ready.delete(db));
+  }
+  await ready.get(db);
+}
+const hash = async text => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))), n => n.toString(16).padStart(2, '0')).join('');
+export async function characterOnlyIdentity(npc) {
+  const profile = npc.biography;
+  const model = npc.chatExperiment?.model;
+  if (typeof profile !== 'string' || !profile.trim() || model !== 'deepseek-flash') throw new Error('invalid_character_experiment');
+  const sourceHash = await hash(profile);
+  const experimentKey = await hash(JSON.stringify({ sourceHash, model, generation: EXPERIMENT_GENERATION, runId: npc.chatExperiment.runId }));
+  return { sourceHash, experimentKey, model };
+}
+
+export async function characterOnlyChat(req, env, user, npc, action, now, services) {
+  const { json, takeEnergy, refundEnergy, energy, recordTurn } = services;
+  await ensureExperimentStorage(env.DB);
+  const identity = await characterOnlyIdentity(npc);
+  const scope = [user.id, npc.id, identity.experimentKey];
+  const experiment = { mode: 'character-only', provider: 'deepseek', model: identity.model, sourceHash: identity.sourceHash, runId: npc.chatExperiment.runId };
+  const list = async () => (await env.DB.prepare('SELECT id,role,content,created_at createdAt FROM experiment_chat_messages WHERE user_id=? AND creator_id=? AND experiment_key=? ORDER BY created_at,id').bind(...scope).all()).results.map(m => ({ ...m, mediaKey: null, affectionDelta: 0 }));
+  const blank = { memories: [], unlockedRewards: [], closeness: 0, trust: 0, romance: 0, score: 0 };
+  if (req.method === 'GET' && !action) return json({ chat: { ...blank, experiment, episodeId: 'free_ai_chat', revisionId: identity.experimentKey, currentNodeId: 'start', nodes: [], history: [], episodes: [], aiMessages: await list() } });
+  if (req.method === 'GET' && action === 'memories') return json({ memories: [] });
+  if (req.method !== 'POST' || !['message', 'reset-chat'].includes(action)) return json({ error: 'not_found' }, 404);
+  let userText;
+  if (action === 'message') {
+    let body;
+    try { body = await req.json(); } catch { return json({ error: 'invalid_json' }, 400); }
+    userText = typeof body.message === 'string' ? body.message.trim() : '';
+    if (!userText || userText.length > 1000) return json({ error: 'invalid_message' }, 400);
+    if (!env.DEEPSEEK_API_KEY) return json({ error: 'deepseek_not_configured' }, 503);
+  }
+  await env.DB.prepare('INSERT OR IGNORE INTO experiment_chat_threads(user_id,creator_id,experiment_key) VALUES(?,?,?)').bind(...scope).run();
+  const lock = crypto.randomUUID();
+  const acquired = await env.DB.prepare('UPDATE experiment_chat_threads SET lock_token=?,lock_until=? WHERE user_id=? AND creator_id=? AND experiment_key=? AND lock_until<=?').bind(lock, now + 90000, ...scope, now).run();
+  if (!acquired.meta.changes) return json({ error: 'thread_busy' }, 409);
+  let charged = null;
+  const started = Date.now();
+  let usage = {}, outcome = 'error';
+  try {
+    if (action === 'reset-chat') {
+      await env.DB.prepare('DELETE FROM experiment_chat_messages WHERE user_id=? AND creator_id=? AND experiment_key=?').bind(...scope).run();
+      return json({ ok: true, experiment });
+    }
+    const history = await list();
+    // Never silently trim or summarize a controlled experiment.
+    if (history.length >= 200) return json({ error: 'experiment_history_full' }, 409);
+    charged = await takeEnergy(env, user.id, now);
+    if (!charged) return json({ error: 'energy_empty' }, 402);
+    const response = await fetch('https://api.deepseek.com/chat/completions', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.DEEPSEEK_API_KEY}` },
+      body: JSON.stringify({ model: identity.model, ...EXPERIMENT_GENERATION,
+        messages: [{ role: 'system', content: npc.biography }, ...history.map(m => ({ role: m.role, content: m.content })), { role: 'user', content: userText }] }),
+      signal: AbortSignal.timeout(15000)
+    });
+    if (!response.ok) {
+      outcome = response.status === 429 ? 'rate_limit' : 'error';
+      throw new Error(outcome === 'rate_limit' ? 'rate_limit' : 'deepseek_unavailable');
+    }
+    const result = await response.json(); usage = result.usage || {};
+    if (result.model && !/^deepseek-(?:flash|v4(?:\.\d+)?-flash)(?:[-\w.]*)$/.test(result.model)) throw new Error('deepseek_model_mismatch');
+    if (result.choices?.[0]?.finish_reason === 'length') throw new Error('experiment_output_truncated');
+    const reply = result.choices?.[0]?.message?.content;
+    if (typeof reply !== 'string' || !reply.trim()) throw new Error('deepseek_empty_reply');
+    if (reply.length > 16000) throw new Error('deepseek_invalid_reply');
+    experiment.resolvedModel = result.model || identity.model;
+    // Commit the pair atomically. Failed turns never become context for the next attempt.
+    await env.DB.batch([
+      env.DB.prepare('INSERT INTO experiment_chat_messages(id,user_id,creator_id,experiment_key,role,content,created_at) VALUES(?,?,?,?,?,?,?)').bind(crypto.randomUUID(), ...scope, 'user', userText, now),
+      env.DB.prepare('INSERT INTO experiment_chat_messages(id,user_id,creator_id,experiment_key,role,content,created_at) VALUES(?,?,?,?,?,?,?)').bind(crypto.randomUUID(), ...scope, 'assistant', reply, now + 1)
+    ]);
+    const bucket = charged; charged = null;
+    await recordTurn(env, { userId: user.id, creatorId: npc.id, visitId: identity.experimentKey, now, outcome: 'ok', model: identity.model, latencyMs: Date.now() - started, fallbackCount: 0, energyBucket: bucket, tokensIn: usage.prompt_tokens, tokensOut: usage.completion_tokens }).catch(() => {});
+    return json({ ok: true, reply, innerThought: null, action: null, suggestedReplies: [], mediaKey: null, messages: await list(), relationship: 0, closeness: 0, trust: 0, romance: 0, level: 1, unlockedRewards: [], experiment, energy: await energy(env, user.id, now) });
+  } catch (error) {
+    if (charged) { await refundEnergy(env, user.id, charged, now); charged = null; }
+    await recordTurn(env, { userId: user.id, creatorId: npc.id, visitId: identity.experimentKey, now, outcome, model: identity.model, latencyMs: Date.now() - started, fallbackCount: 0, tokensIn: usage.prompt_tokens, tokensOut: usage.completion_tokens }).catch(() => {});
+    const code = ['rate_limit', 'deepseek_unavailable', 'deepseek_empty_reply', 'deepseek_model_mismatch', 'experiment_output_truncated', 'deepseek_invalid_reply'].includes(error.message) ? error.message : 'deepseek_unavailable';
+    return json({ error: code, experiment }, code === 'rate_limit' ? 429 : 503);
+  } finally {
+    await env.DB.prepare('UPDATE experiment_chat_threads SET lock_token=NULL,lock_until=0 WHERE user_id=? AND creator_id=? AND experiment_key=? AND lock_token=?').bind(...scope, lock).run();
+  }
+}

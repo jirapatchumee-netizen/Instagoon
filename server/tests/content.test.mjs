@@ -47,6 +47,11 @@ test('explicit reset requests affect the content version and cannot target a pub
   assert.equal(after.creatorResets[0].creatorId, 'retired');
   writeFileSync(join(content, 'creator-resets.json'), JSON.stringify([{ id: 'reset-active', creatorId: 'tester' }]));
   assert.throws(() => buildContent(content, dist), /cannot reset a published creator/);
+  writeFileSync(join(content, 'creator-resets.json'), JSON.stringify([{ id: 'reset-active', creatorId: 'tester', allowWithCharacterOnly: true }]));
+  assert.throws(() => buildContent(content, dist), /cannot reset a published creator/);
+  const experimental = { ...newNpc('tester'), biography: 'ข้อมูลตัวละครใหม่สำหรับทดสอบ', chatExperiment: { mode: 'character-only', model: 'deepseek-flash', runId: 'test-run' } };
+  writeFileSync(join(content, 'creators', 'tester', 'character.json'), JSON.stringify(experimental));
+  assert.equal(buildContent(content, dist).creatorResets[0].allowWithCharacterOnly, true);
 });
 
 test('no content folder means no bundle and the worker skips sync', async () => {

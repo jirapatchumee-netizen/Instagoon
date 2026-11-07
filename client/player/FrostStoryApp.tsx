@@ -429,6 +429,7 @@ type PlayerMemory = {
   createdAt: number;
 };
 type Chat = {
+  experiment?: { mode: 'character-only'; provider: 'deepseek'; model: string; sourceHash: string; runId: string };
   revisionId: string;
   episodeId: string;
   episodes: { id: string; title: string; completed: boolean; accessible: boolean }[];
@@ -1157,7 +1158,7 @@ export function FrostStoryApp() {
         unlockedRewards?: string[];
         relationship: number;
         energy: Energy;
-      }>(`/api/chats/${encodeURIComponent(selectedCreator.id)}/message`, json({ message: text, fiftyShades: fiftyShadesMode }));
+      }>(`/api/chats/${encodeURIComponent(selectedCreator.id)}/message`, json(chat.experiment ? { message: text } : { message: text, fiftyShades: fiftyShadesMode }));
 
       setPending((prev) => prev.filter((item) => item.id !== id));
       if (res.messages) setChat((prev) => (prev ? { ...prev, aiMessages: res.messages } : prev));
@@ -1183,7 +1184,9 @@ export function FrostStoryApp() {
             ? 'ระบบ AI มีคนใช้เยอะ รอสักครู่ คืนพลังงานให้แล้ว'
             : msg.includes('ai_unavailable')
               ? 'AI ตอบไม่ได้ชั่วคราว คืนพลังงานให้แล้ว'
-              : msg;
+              : msg.startsWith('deepseek_') || msg.startsWith('experiment_')
+                ? `การทดลอง DeepSeek ไม่สำเร็จ (${msg}) — ไม่มีการสลับโมเดลสำรอง`
+                : msg;
       setPending((prev) => prev.map((item) => (item.id === id ? { ...item, failed: reason } : item)));
     } finally {
       setAiSending(false);
@@ -1320,6 +1323,7 @@ export function FrostStoryApp() {
     try {
       const result = await api<{ chat: Chat }>(`/api/chats/${encodeURIComponent(creator.id)}`);
       setChat(result.chat);
+      if (result.chat.experiment) setAiDmTab('ai');
       setUnlockedRewards(result.chat.unlockedRewards || []);
     } catch (e) {
       if (e instanceof Error && e.message === 'content_suspended') {
@@ -2546,23 +2550,24 @@ export function FrostStoryApp() {
                       </span>
                     )}
                   </div>
+                  {chat?.experiment && <small className="fs-dm-experiment-label">DeepSeek · ข้อมูลตัวละครเท่านั้น</small>}
                 </div>
               </div>
               <div className="fs-dm-header-actions" ref={dmMenuRef}>
                 <button
                   type="button"
-                  className={`fs-dm-gear-btn${fiftyShadesMode ? ' has-fiftyshades' : ''}`}
+                  className={`fs-dm-gear-btn${fiftyShadesMode && !chat?.experiment ? ' has-fiftyshades' : ''}`}
                   aria-label={t.chatSettings}
-                  title={fiftyShadesMode ? `${t.chatSettings} (${t.fiftyShades} ON 🔥)` : t.chatSettings}
+                  title={fiftyShadesMode && !chat?.experiment ? `${t.chatSettings} (${t.fiftyShades} ON 🔥)` : t.chatSettings}
                   aria-haspopup="menu"
                   aria-expanded={dmMenuOpen}
                   onClick={() => setDmMenuOpen((open) => !open)}
                 >
-                  {fiftyShadesMode ? <Flame size={18} /> : <Settings size={18} />}
+                  {fiftyShadesMode && !chat?.experiment ? <Flame size={18} /> : <Settings size={18} />}
                 </button>
                 {dmMenuOpen && (
                   <div className="fs-dm-menu" role="menu">
-                    <button
+                    {!chat?.experiment && <button
                       type="button"
                       role="menuitem"
                       className={`fs-dm-menu-item fs-dm-fiftyshades-btn${fiftyShadesMode ? ' is-active' : ''}`}
@@ -2575,8 +2580,8 @@ export function FrostStoryApp() {
                       <span className={`fs-dm-toggle-pill ${fiftyShadesMode ? 'is-on' : 'is-off'}`}>
                         {fiftyShadesMode ? 'เปิด' : 'ปิด'}
                       </span>
-                    </button>
-                    <div className="fs-dm-menu-divider" />
+                    </button>}
+                    {!chat?.experiment && <div className="fs-dm-menu-divider" />}
                     <button
                       type="button"
                       role="menuitem"
@@ -2589,7 +2594,7 @@ export function FrostStoryApp() {
                       <MessageSquareX size={15} />
                       {t.resetChat}
                     </button>
-                    <button
+                    {!chat?.experiment && <button
                       type="button"
                       role="menuitem"
                       className="fs-dm-menu-item fs-dm-reset-story-btn"
@@ -2600,7 +2605,7 @@ export function FrostStoryApp() {
                     >
                       <RotateCcw size={15} />
                       {t.resetStory}
-                    </button>
+                    </button>}
                   </div>
                 )}
               </div>
@@ -2694,7 +2699,7 @@ export function FrostStoryApp() {
                 </div>
               ) : aiDmTab === 'ai' ? (
                 <>
-                  {(chat.aiMessages ?? []).length === 0 && pending.length === 0 && (
+                  {!chat.experiment && (chat.aiMessages ?? []).length === 0 && pending.length === 0 && (
                     <div className="fs-dm-row-left fs-group-end fs-msg-in">
                       <div className="fs-avatar fs-avatar-tiny">
                         {selectedCreator.avatarKey ? (
@@ -2939,7 +2944,7 @@ export function FrostStoryApp() {
               )}
             </div>
 
-            {aiDmTab === 'ai' && chat && (
+            {aiDmTab === 'ai' && chat && !chat.experiment && (
               <div className="fs-dm-memory">
                 <button type="button" className="fs-dm-memory-toggle" aria-expanded={memoryPanel.open} onClick={toggleMemoryPanel}>
                   🧠 สิ่งที่ {selectedCreator.name} จำเกี่ยวกับคุณ

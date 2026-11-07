@@ -9,3 +9,5 @@ The Worker applies pending requests during content synchronization, even if the 
 Migration 0013 reconciles the same Cheer operation when migrations are applied. It checks the same marker, so running it after the runtime reset cannot delete newer data.
 
 Before rebuilding Cheer under the same ID, remove her entry from `creator-resets.json` (the build rejects an active creator with a pending reset directive). **Keep the completed marker in D1.** This prevents a later migration reconciliation from clearing the new incarnation's progress. Reset IDs must never be recycled for a different operation.
+
+Exception requested for the character-only rebuild: `allowWithCharacterOnly=true` allows an active character-only experiment to finish this authorized legacy cleanup. That handler stores new conversations in separate tables which the legacy reset never deletes. The exception is rejected for ordinary published characters. See `CHARACTER_ONLY_EXPERIMENT.md`.
