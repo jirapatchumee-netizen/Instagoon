@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, mkdirSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -45,6 +45,15 @@ test('refuses what must never reach the public repo', () => {
     file('docs/art/milin_gm_ref_512x640.png', png(false)),
     file('content/media/posts/p.png', png(true)),
     file('content/creators/milin/visual_bible.json', '{"master' + 'PromptTemplate":"..."}'),
+    file('content/creators/azura/visual_bible.json', '{"goldenMaster' + 'Seeds":[1],"referenceImage":"gm.png"}'),
+    file('content/creators/belle/visual_bible.json', '{"' + 'goldenMasterSeeds":[1]}'),
+    file('content/creators/cira/visual_bible.json', '{"reference' + 'Image":"gm.png"}'),
+    file('content/creators/ageha/visual_bible_full.json', '{"goldenMaster' + 'Seeds":[1]}'),
+    file('content/creators/ageha/art/visual_bible.json', '{"goldenMaster' + 'Seeds":[1]}'),
+    file('content/Creators/AGEHA/art/x.JSON', '{"reference' + 'Image":"gm.png"}'),
+    file('content/creators/AGEHA/VISUAL_BIBLE.JSON', '{"goldenMaster' + 'Seeds":[1]}'),
+    file('content/creators/ayame/outfit_index.json', '{"reference' + 'Image":"gm.png"}'),
+    file('packages/contracts/seeds.json', '{"goldenMaster' + 'Seeds":[1]}'),
     file('workflows/z_image.json', '{"12":{"class_' + 'type":"LoadImage","inputs":{"image":"ref.png"}}}'),
     file('server/src/ai/protected/gemini-config.mjs', 'x', 'M'),
     file('server/src/ai/protected/fifty-shades.mjs', '', 'D'),
@@ -65,6 +74,12 @@ test('lets the look-alikes through', () => {
     file('server/src/index.mjs', "import { SAFETY_SETTINGS } from './ai/protected/gemini-config.mjs';", 'M'),
     file('server/tests/gameplay.test.mjs', 'hashes of nothing', 'M'),
     file('content/creators/mook/character.json', '{"name":"Mook","prompt_style":"short"}'),
+    file('content/creators/milin/visual_bible.json', '{"creatorId":"milin","name":"Milin","identity":"...","wardrobe":["a"],"note":"...","version":1}'),
+    file('docs/art-pipeline-notes.md', 'the full bible carries a "reference' + 'Image" key — naming it in a doc is fine'),
+    file('client/src/types.ts', 'export type Art = { reference' + 'Image: string }; // generic name outside the creator tree'),
+    file('packages/contracts/art.schema.json', '{"title":"reference' + 'Image","type":"string"}'),
+    file('packages/contracts/shot.schema.json', '{"reference' + 'Image":"gm.png"}'),
+    file('docs/glossary.md', 'goldenMasterSeeds คือ seed ของภาพต้นแบบ (prose, ไม่มี colon)'),
     file('AGENTS.md', 'ห้าม commit ไฟล์ที่มี masterPromptTemplate/renderRecipe และ private key'),
     file('docs/security-notes.md', 'fixture: "private_key":"-----BEGIN PRIVATE KEY-----' + '\\n' + 'abc" (short test body, no real key)'),
     file('docs/security-notes.md', 'prose only: masterPromptTemplate, renderRecipe, class_type, service_account are private names'),
@@ -80,6 +95,8 @@ test('CI mode reports the AI zone but still refuses secrets', () => {
   assert.deepEqual(findProblems(zone, 'ci').map(p => p.fatal), [false, false]);
   assert.deepEqual(findProblems(zone, 'commit').map(p => p.fatal), [true, true]);
   assert.equal(findProblems([file('scripts/guard-commit.mjs', null, 'D')], 'ci').some(p => p.fatal), true, 'deleting the guard must fail CI');
+  const bible = [file('content/creators/ageha/visual_bible.json', '{"goldenMaster' + 'Seeds":[1]}'), file('content/creators/ayame/visual_bible.json', '{"reference' + 'Image":"gm.png"}')];
+  assert.deepEqual(findProblems(bible, 'ci').map(p => p.fatal), [true, true], 'a full bible is fatal in CI too');
   assert.equal(findProblems([file('scripts/guard-commit.mjs', 'x', 'M')], 'ci').every(p => !p.fatal), true, 'editing the guard is an annotation, not a block');
   const secret = [file('server/.dev.vars', 'GEMINI_API_KEY=x'), file('private-docs/ROMANCE.md', 'x')];
   assert.deepEqual(findProblems(secret, 'ci').map(p => p.fatal), [true, true]);
@@ -122,4 +139,25 @@ test('a merge in progress does not blame the zone on someone else\'s commit', ()
   assert.deepEqual(findProblems([zone], 'commit').map(p => p.fatal), [true]);
   assert.deepEqual(findProblems([zone], 'commit', { transientOp: true }).map(p => p.fatal), [false]);
   assert.deepEqual(findProblems([file('.dev.vars', 'X=1')], 'commit', { transientOp: true }).map(p => p.fatal), [true]);
+});
+
+test('no tracked file trips a content rule', () => {
+  // The guard documents itself in AGENTS.md and the ADR, so prose can accidentally match a content rule
+  // (it did: writing the JSON form of the seeds key in AGENTS.md made that file uncommittable). Zone and
+  // mechanism paths are exempt - those are the intentional owner-review annotations.
+  const root = fileURLToPath(new URL('../../', import.meta.url));
+  const exempt = /^(server\/src\/ai\/protected\/|scripts\/guard-commit\.mjs$|\.githooks\/|\.github\/(workflows\/|CODEOWNERS$)|\.claude\/settings\.json$|package\.json$|server\/package\.json$|server\/tests\/(guard-commit|protected-zone)\.test\.mjs$|docs\/adr\/0013)/i;
+  // -z, not newline split: git quotes non-ASCII paths by default, and this repo has Thai filenames -
+  // quoted names would fail readFileSync and be skipped silently.
+  const tracked = execFileSync('git', ['ls-files', '-z'], { cwd: root, encoding: 'utf8' }).split('\0').filter(Boolean);
+  const bad = [], unreadable = [];
+  for (const f of tracked) {
+    if (exempt.test(f)) continue;
+    let content; try { content = readFileSync(join(root, f)); } catch { unreadable.push(f); continue; }
+    const hits = findProblems([{ path: f, status: 'A', content, diff: '' }], 'commit').filter(p => p.fatal);
+    if (hits.length) bad.push(`${f}: ${hits.map(h => h.message).join('; ')}`);
+  }
+  assert.deepEqual(unreadable, [], 'every tracked file must be readable by this check');
+  assert.ok(tracked.length > 50, 'git ls-files returned almost nothing - is this a real checkout?');
+  assert.deepEqual(bad, [], `tracked files must not trip a content rule:\n${bad.join('\n')}`);
 });
