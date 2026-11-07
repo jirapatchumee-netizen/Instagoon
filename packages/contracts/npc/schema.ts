@@ -18,7 +18,11 @@ export const NpcObjectSchema = z.object({
     openingLocation: z.object({ id: z.string().regex(/^[a-zA-Z0-9_-]{1,60}$/), name: z.string().min(1).max(100), description: z.string().max(300) }).strict(),
     openingActivity: z.string().min(1).max(200),
     openingGoal: z.string().min(1).max(200),
-    openingLine: z.string().min(1).max(400).optional()
+    openingLine: z.string().min(1).max(400).optional(),
+    opening: z.object({
+      innerThought: z.string().max(200),
+      beats: z.array(z.object({ kind: z.enum(['dialogue', 'action']), text: z.string().min(1).max(350) }).strict()).min(1).max(6)
+    }).strict().optional()
   }).strict().optional(),
   secrets: z.array(z.object({ id, content: text, minLevel: z.number().int().min(1).max(5) }).strict()).max(100), initialMemories: z.array(text).max(100),
   knowledge:z.array(KnowledgeEntrySchema).max(100).optional(), knowledgeEnabled:z.boolean().optional(), webSearchEnabled:z.boolean().optional(),
@@ -26,6 +30,9 @@ export const NpcObjectSchema = z.object({
   relationship: z.object({ weights: ScoresSchema, thresholds: z.array(z.number().min(0).max(100)).length(5), romanceEnabled: z.boolean() }).strict(), rules: z.array(RuleSchema).max(100), rewards: z.array(RewardSchema).max(100),
 }).strict();
 export const NpcSchema = NpcObjectSchema.superRefine((npc, ctx) => {
+  const opening = npc.narrative?.opening;
+  if (opening && (!opening.beats.some(b => b.kind === 'dialogue') || opening.beats.reduce((n, b) => n + b.text.length, 0) > 1000))
+    ctx.addIssue({ code: 'custom', path: ['narrative', 'opening'], message: 'คำทักต้องมีบทพูดและข้อความรวมไม่เกิน 1000 ตัวอักษร' });
   const { thresholds, weights, romanceEnabled } = npc.relationship;
   if (thresholds[0] !== 0 || thresholds.some((v, i) => i > 0 && v <= thresholds[i - 1])) ctx.addIssue({ code: 'custom', path: ['relationship', 'thresholds'], message: 'เกณฑ์ Lv ต้องเริ่มที่ 0 และเพิ่มขึ้นตามลำดับ' });
   if (weights.closeness + weights.trust + (romanceEnabled ? weights.romance : 0) <= 0) ctx.addIssue({ code: 'custom', path: ['relationship', 'weights'], message: 'น้ำหนักที่เปิดใช้งานต้องมากกว่า 0' });

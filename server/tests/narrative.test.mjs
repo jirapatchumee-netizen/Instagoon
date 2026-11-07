@@ -100,18 +100,20 @@ test('invalid or blocked replies never commit a scene or charge energy, and a fa
   const f = await narrativeFixture();
   const savedFetch = globalThis.fetch;
   try {
+    await f.open();
+    const initialState = f.state();
     globalThis.fetch = async () => modelReply(beatReply({ move: 'confirm', place: lab }));
     assert.equal((await f.request('ยังไม่ไป')).status, 503);
-    assert.equal(f.state(), null);
+    assert.deepEqual(f.state(), initialState);
     assert.equal(f.sql.prepare("SELECT free FROM energy WHERE user_id='one'").get().free, 100);
     globalThis.fetch = async () => Response.json({ candidates: [{ finishReason: 'SAFETY' }] });
     assert.equal((await f.request('ลองอีกที')).status, 503);
-    assert.equal(f.state(), null);
+    assert.deepEqual(f.state(), initialState);
     globalThis.fetch = async () => modelReply(beatReply());
     f.sql.exec(`CREATE TRIGGER reject_scene BEFORE INSERT ON npc_scene_states BEGIN SELECT RAISE(ABORT, 'fixture_write_failure'); END;`);
     assert.equal((await f.request('ช่วยดูวงจรหน่อย')).status, 500);
-    assert.equal(f.sql.prepare("SELECT COUNT(*) n FROM ai_chat_messages WHERE user_id='one' AND role='assistant'").get().n, 0);
-    assert.equal(f.state(), null);
+    assert.equal(f.sql.prepare("SELECT COUNT(*) n FROM ai_chat_messages WHERE user_id='one' AND role='assistant'").get().n, 1, 'only the free opening remains after a failed reply');
+    assert.deepEqual(f.state(), initialState);
     assert.equal(f.sql.prepare("SELECT COUNT(*) n FROM relationships WHERE user_id='one' AND creator_id='cheer'").get().n, 0, 'relationship writes roll back with the failed reply');
   } finally { globalThis.fetch = savedFetch; f.sql.close(); }
 });

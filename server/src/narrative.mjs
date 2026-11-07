@@ -187,6 +187,44 @@ export function narrativeSceneMetadata(state, at) {
   return { at, location: safeText(location.name, 100) };
 }
 
+export function narrativeOpeningMessage(npc, at) {
+  const opening = npc.narrative?.opening;
+  if (!narrativeEnabled(npc) || !opening) return null;
+  const state = initialNarrativeState(npc);
+  const beats = opening.beats.map(b => ({ kind: b.kind, text: safeText(b.text, 350).replace(/^(?:action|visual|dialogue)\s*:\s*/i, '') }));
+  const thought = safeText(opening.innerThought, 200);
+  const parts = [`[scene:${JSON.stringify(narrativeSceneMetadata(state, at))}]`];
+  if (thought) parts.push(`[thought:${thought}]`);
+  parts.push(serializeNarrative(beats));
+  return { state, content: parts.join('\n') };
+}
+
+export async function ensureNarrativeOpening(db, userId, npc, now) {
+  // Authored, free first message. It is real assistant history so the first player reply has context.
+  // Every conditional write is in one D1 transaction; repeated GETs/tabs cannot add another greeting.
+  const at = now - 1;
+  const opening = narrativeOpeningMessage(npc, at);
+  if (!opening) return false;
+  await ensureNarrativeStorage(db);
+  const bytes = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify([userId, npc.id]))));
+  const messageId = 'opening_' + Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+  const results = await db.batch([
+    db.prepare(`INSERT OR IGNORE INTO ai_chat_messages(id,user_id,creator_id,role,content,affection_delta,created_at)
+      SELECT ?,?,?,'assistant',?,0,?
+      WHERE NOT EXISTS(SELECT 1 FROM ai_chat_messages WHERE user_id=? AND creator_id=?)
+      AND NOT EXISTS(SELECT 1 FROM npc_scene_states WHERE user_id=? AND creator_id=?)
+      AND NOT EXISTS(SELECT 1 FROM dm_threads WHERE user_id=? AND creator_id=? AND (summary<>'' OR summarized_through>0))`)
+      .bind(messageId, userId, npc.id, opening.content, at, userId, npc.id, userId, npc.id, userId, npc.id),
+    db.prepare(`INSERT OR IGNORE INTO npc_scene_states(user_id,creator_id,state_json,updated_at)
+      SELECT ?,?,?,? WHERE EXISTS(SELECT 1 FROM ai_chat_messages WHERE id=? AND created_at=?)`)
+      .bind(userId, npc.id, JSON.stringify(opening.state), at, messageId, at),
+    db.prepare(`INSERT OR IGNORE INTO dm_threads(user_id,creator_id)
+      SELECT ?,? WHERE EXISTS(SELECT 1 FROM ai_chat_messages WHERE id=? AND created_at=?)`)
+      .bind(userId, npc.id, messageId, at)
+  ]);
+  return (results[0]?.meta?.changes || 0) > 0;
+}
+
 // Cover the interval since the last summary, plus a recent window. Old failed/unanswered turns are
 // still context. A bounded character budget prioritizes the newest messages rather than silently
 // dropping the unsummarized middle every time the summary has not run yet.

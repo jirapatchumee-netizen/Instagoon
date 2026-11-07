@@ -39,12 +39,13 @@ export async function narrativeFixture({ apiKey = 'test-placeholder', model = AL
   const deferred = [];
   return { sql, npc, env, deferred,
     async request(message, { uid = 'one', action = 'message' } = {}) {
-      const response = await worker.fetch(new Request(`${env.PUBLIC_ORIGIN}/api/chats/cheer/${action}`, {
-        method: 'POST', headers: { cookie: `frost_session=${sessions[uid]}`, origin: env.PUBLIC_ORIGIN, 'content-type': 'application/json' },
-        body: JSON.stringify(action === 'message' ? { message } : {})
+      const response = await worker.fetch(new Request(`${env.PUBLIC_ORIGIN}/api/chats/cheer${action ? '/' + action : ''}`, {
+        method: action ? 'POST' : 'GET', headers: { cookie: `frost_session=${sessions[uid]}`, origin: env.PUBLIC_ORIGIN, 'content-type': 'application/json' },
+        ...(action ? { body: JSON.stringify(action === 'message' ? { message } : {}) } : {})
       }), env, { waitUntil: promise => deferred.push(promise) });
       return { status: response.status, payload: await response.json() };
     },
+    async open(uid = 'one') { return this.request('', { uid, action: '' }); },
     state(uid = 'one') { const row = sql.prepare('SELECT state_json FROM npc_scene_states WHERE user_id=? AND creator_id=?').get(uid, 'cheer'); return row ? JSON.parse(row.state_json) : null; }
   };
 }
