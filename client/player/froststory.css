@@ -2624,15 +2624,11 @@ dialog.fs-overlay[open]::backdrop {
 .fs-visual-box {
   display: inline-flex;
   align-items: flex-start;
-  gap: 8px;
-  padding: 6px 12px;
-  background: rgba(245, 158, 11, 0.12);
-  border: 1px solid rgba(245, 158, 11, 0.38);
-  border-radius: 12px;
-  font-size: 0.81rem;
-  color: #fef3c7;
-  backdrop-filter: blur(8px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
+  padding: 2px 0;
+  font-family: 'Mitr', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 300;
+  color: #b7adca;
   width: fit-content;
   max-width: 100%;
 }
@@ -2644,9 +2640,27 @@ dialog.fs-overlay[open]::backdrop {
 }
 
 .fs-visual-text {
-  line-height: 1.45;
+  font-weight: 300;
+  line-height: 1.7;
   letter-spacing: 0.01em;
   font-style: italic;
+}
+
+.fs-bubble-text {
+  font-weight: 500;
+}
+
+.fs-scene-header {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 7px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(218, 199, 238, 0.16);
+  font-size: 0.82rem;
+  font-weight: 400;
+  line-height: 1.6;
+  color: #d5cbe2;
 }
 
 /* Clickable Images & Expand Hint */

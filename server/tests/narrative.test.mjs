@@ -71,6 +71,8 @@ test('real Worker path persists ordered scene beats, short-answer transitions, m
     let result = await f.request('ผมไม่กินเผ็ด แต่อยากดูโปรเจกต์พี่');
     assert.equal(result.status, 200);
     assert.equal(result.payload.beats.length, 3);
+    assert.equal(result.payload.scene.location, f.npc.narrative.openingLocation.name, 'pending destinations do not replace the displayed place');
+    assert.match(result.payload.messages.at(-1).content, /^\[scene:/, 'every new narrative reply stores its scene header');
     assert.match(result.payload.messages.at(-1).content, /\[action:/);
     assert.equal(f.state().pendingLocationId, lab.id);
     assert.equal(f.state().memories[0].kind, 'player_statement');
@@ -78,6 +80,7 @@ test('real Worker path persists ordered scene beats, short-answer transitions, m
     result = await f.request('ไปเลย');
     assert.equal(result.status, 200);
     assert.equal(f.state().locationId, lab.id);
+    assert.equal(result.payload.scene.location, lab.name, 'a confirmed transition updates the displayed place');
     const playerTurn = JSON.parse(requests.at(-1).contents[0].parts[0].text);
     assert.equal(playerTurn.scene.pendingLocationId, lab.id);
     assert.ok(playerTurn.relevantMemories.some(m => m.text.includes('ไม่กินเผ็ด')));

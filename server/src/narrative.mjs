@@ -127,7 +127,9 @@ export function decodeNarrative(value, state, userText) {
   if (!Array.isArray(value?.beats) || value.beats.length < 1 || value.beats.length > 6) throw new Error('invalid_narrative_beats');
   const beats = value.beats.map(b => {
     if (!['dialogue', 'action'].includes(b?.kind) || typeof b.text !== 'string' || !b.text.trim() || b.text.length > 350) throw new Error('invalid_narrative_beat');
-    return { kind: b.kind, text: safeText(b.text, 350) };
+    const text = safeText(b.text, 350).replace(b.kind === 'action' ? /^(?:action|visual|ท่าทาง)\s*:\s*/i : /^dialogue\s*:\s*/i, '');
+    if (!text) throw new Error('invalid_narrative_beat');
+    return { kind: b.kind, text };
   });
   const reply = beats.filter(b => b.kind === 'dialogue').map(b => b.text).join('\n');
   if (!reply || beats.reduce((n, b) => n + b.text.length, 0) > 1000 || !value.sceneUpdate) throw new Error('invalid_narrative_reply');
@@ -164,7 +166,8 @@ Turn contract:
 - A refusal changes the plan: accept it, keep character, and offer space or another topic. Tiredness calls for practical concern, not escalating competition. Respond to normal engineering questions within the character's knowledge.
 - Return ${length} short ordered beats (dialogue/action), usually 1 sentence each. React → character-owned gesture → reply/next opening when useful. Vary the pattern; a brief reply is allowed. Combined visible text about 250-650 Thai characters, never pad. No graphic sexual narration.
 - innerThought is an optional short fictional character aside, never analysis or private model reasoning. Do not put the secret bet in an aside before it is available to reveal.
-- The persisted scene is authoritative, not the opening backstory or today's real clock. Reuse place IDs and details on return visits. You may invent modest plausible fictional locations, not real addresses or canon facts about the player.
+- The persisted location/activity is authoritative, not the opening backstory. Reuse place IDs and details on return visits. You may invent modest plausible fictional locations, not real addresses or canon facts about the player.
+- The server displays the reply's date/time in Asia/Bangkok and the committed scene location above your prose. Use replyTime if referring to the current time. Do not duplicate that header or prefix beat text with action:, dialogue:, or visual:.
 - move=propose stores a destination as pending; do not narrate arrival. confirm only if the immediately pending destination is accepted by the player's latest message, or the player explicitly describes travelling to that named location. A question or refusal is not acceptance. Propose at most one destination. Otherwise stay/cancel. Keep activity at the current place until confirmation.
 - Preserve promises and callbacks. sceneUpdate.memory may hold one relevant PLAYER STATEMENT with a verbatim evidence quote from the latest playerMessage; it remains an unverified claim. Never store a suggestion as a completed event.
 - sceneUpdate.commitment is optional: one NPC promise actually made in this reply, with a verbatim dialogue quote as evidence. A promise remains pending, not a completed event. Use null when no new promise is made.
@@ -176,6 +179,12 @@ Return only JSON matching the provided schema.`;
 
 export function serializeNarrative(beats) {
   return beats.map(b => b.kind === 'action' ? `[action:${b.text}]` : b.text).join('\n');
+}
+
+export function narrativeSceneMetadata(state, at) {
+  const location = state.places.find(p => p.id === state.locationId);
+  if (!location || !Number.isFinite(at)) throw new Error('invalid_narrative_scene_metadata');
+  return { at, location: safeText(location.name, 100) };
 }
 
 // Cover the interval since the last summary, plus a recent window. Old failed/unanswered turns are
