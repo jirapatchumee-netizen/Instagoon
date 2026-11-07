@@ -55,6 +55,7 @@
   "chatExperiment": {
     "mode": "character-only",
     "model": "deepseek-flash",
-    "runId": "cheer-new-20261108-v1"
+    "runId": "cheer-new-20261108-v1",
+    "presentation": "scene-v1"
   }
 }

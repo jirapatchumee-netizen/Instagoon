@@ -1,5 +1,6 @@
-// Isolated experiment: the supplied profile is the ENTIRE system message. No app persona,
-// output schema, few-shot examples, summaries, scoring, knowledge rewrite or provider fallback.
+// Isolated experiment. An optional presentation contract formats output without adding persona,
+// few-shot examples, summaries, scoring, knowledge rewrite or provider fallback.
+import { SCENE_FORMAT_VERSION, SCENE_FORMAT_INSTRUCTION, decodeExperimentScene, serializeExperimentScene } from './experiment-scene-format.mjs';
 export const characterOnlyEnabled = npc => npc?.chatExperiment?.mode === 'character-only';
 export const EXPERIMENT_GENERATION = Object.freeze({ max_tokens: 1024, temperature: 0.7, reasoning_effort: 'none' });
 const ready = new WeakMap();
@@ -16,7 +17,10 @@ export async function ensureExperimentStorage(db) {
         creator_id TEXT NOT NULL REFERENCES creators(id) ON DELETE CASCADE,
         experiment_key TEXT NOT NULL, role TEXT NOT NULL CHECK(role IN ('user','assistant')),
         content TEXT NOT NULL, created_at INTEGER NOT NULL)`),
-      db.prepare('CREATE INDEX IF NOT EXISTS experiment_messages_thread ON experiment_chat_messages(user_id,creator_id,experiment_key,created_at)')
+      db.prepare('CREATE INDEX IF NOT EXISTS experiment_messages_thread ON experiment_chat_messages(user_id,creator_id,experiment_key,created_at)'),
+      db.prepare(`CREATE TABLE IF NOT EXISTS experiment_chat_displays (
+        message_id TEXT PRIMARY KEY REFERENCES experiment_chat_messages(id) ON DELETE CASCADE,
+        presentation_json TEXT NOT NULL)`)
     ]);
     ready.set(db, promise); promise.catch(() => ready.delete(db));
   }
@@ -28,8 +32,10 @@ export async function characterOnlyIdentity(npc) {
   const model = npc.chatExperiment?.model;
   if (typeof profile !== 'string' || !profile.trim() || model !== 'deepseek-flash') throw new Error('invalid_character_experiment');
   const sourceHash = await hash(profile);
-  const experimentKey = await hash(JSON.stringify({ sourceHash, model, generation: EXPERIMENT_GENERATION, runId: npc.chatExperiment.runId }));
-  return { sourceHash, experimentKey, model };
+  const presentation = npc.chatExperiment.presentation;
+  const formatIdentity = presentation === SCENE_FORMAT_VERSION ? { presentation, formatHash: await hash(SCENE_FORMAT_INSTRUCTION) } : {};
+  const experimentKey = await hash(JSON.stringify({ sourceHash, model, generation: EXPERIMENT_GENERATION, runId: npc.chatExperiment.runId, ...formatIdentity }));
+  return { sourceHash, experimentKey, model, presentation };
 }
 
 export async function characterOnlyChat(req, env, user, npc, action, now, services) {
@@ -37,8 +43,10 @@ export async function characterOnlyChat(req, env, user, npc, action, now, servic
   await ensureExperimentStorage(env.DB);
   const identity = await characterOnlyIdentity(npc);
   const scope = [user.id, npc.id, identity.experimentKey];
-  const experiment = { mode: 'character-only', provider: 'deepseek', model: identity.model, sourceHash: identity.sourceHash, runId: npc.chatExperiment.runId };
-  const list = async () => (await env.DB.prepare('SELECT id,role,content,created_at createdAt FROM experiment_chat_messages WHERE user_id=? AND creator_id=? AND experiment_key=? ORDER BY created_at,id').bind(...scope).all()).results.map(m => ({ ...m, mediaKey: null, affectionDelta: 0 }));
+  const sceneMode = identity.presentation === SCENE_FORMAT_VERSION;
+  const experiment = { mode: 'character-only', provider: 'deepseek', model: identity.model, sourceHash: identity.sourceHash, runId: npc.chatExperiment.runId, ...(sceneMode ? { presentation: identity.presentation } : {}) };
+  const rows = async () => (await env.DB.prepare('SELECT m.id,m.role,m.content,m.created_at createdAt,d.presentation_json displayJson FROM experiment_chat_messages m LEFT JOIN experiment_chat_displays d ON d.message_id=m.id WHERE m.user_id=? AND m.creator_id=? AND m.experiment_key=? ORDER BY m.created_at,m.id').bind(...scope).all()).results;
+  const list = async () => (await rows()).map(({ displayJson, ...m }) => ({ ...m, content: displayJson ? serializeExperimentScene(JSON.parse(displayJson)) : m.content, mediaKey: null, affectionDelta: 0 }));
   const blank = { memories: [], unlockedRewards: [], closeness: 0, trust: 0, romance: 0, score: 0 };
   if (req.method === 'GET' && !action) return json({ chat: { ...blank, experiment, episodeId: 'free_ai_chat', revisionId: identity.experimentKey, currentNodeId: 'start', nodes: [], history: [], episodes: [], aiMessages: await list() } });
   if (req.method === 'GET' && action === 'memories') return json({ memories: [] });
@@ -63,7 +71,7 @@ export async function characterOnlyChat(req, env, user, npc, action, now, servic
       await env.DB.prepare('DELETE FROM experiment_chat_messages WHERE user_id=? AND creator_id=? AND experiment_key=?').bind(...scope).run();
       return json({ ok: true, experiment });
     }
-    const history = await list();
+    const history = await rows();
     // Never silently trim or summarize a controlled experiment.
     if (history.length >= 200) return json({ error: 'experiment_history_full' }, 409);
     charged = await takeEnergy(env, user.id, now);
@@ -71,7 +79,8 @@ export async function characterOnlyChat(req, env, user, npc, action, now, servic
     const response = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.DEEPSEEK_API_KEY}` },
       body: JSON.stringify({ model: identity.model, ...EXPERIMENT_GENERATION,
-        messages: [{ role: 'system', content: npc.biography }, ...history.map(m => ({ role: m.role, content: m.content })), { role: 'user', content: userText }] }),
+        ...(sceneMode ? { response_format: { type: 'json_object' } } : {}),
+        messages: [{ role: 'system', content: npc.biography }, ...(sceneMode ? [{ role: 'system', content: SCENE_FORMAT_INSTRUCTION + '\nServer clock (Asia/Bangkok): ' + new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Bangkok', dateStyle: 'short', timeStyle: 'medium' }).format(new Date(now)) }] : []), ...history.map(m => ({ role: m.role, content: m.content })), { role: 'user', content: userText }] }),
       signal: AbortSignal.timeout(15000)
     });
     if (!response.ok) {
@@ -85,18 +94,22 @@ export async function characterOnlyChat(req, env, user, npc, action, now, servic
     if (typeof reply !== 'string' || !reply.trim()) throw new Error('deepseek_empty_reply');
     if (reply.length > 16000) throw new Error('deepseek_invalid_reply');
     experiment.resolvedModel = result.model || identity.model;
+    const replyAt = Math.max(Date.now(), now + 1);
+    const scene = sceneMode ? decodeExperimentScene(reply, userText, replyAt) : null;
+    const assistantId = crypto.randomUUID();
     // Commit the pair atomically. Failed turns never become context for the next attempt.
     await env.DB.batch([
       env.DB.prepare('INSERT INTO experiment_chat_messages(id,user_id,creator_id,experiment_key,role,content,created_at) VALUES(?,?,?,?,?,?,?)').bind(crypto.randomUUID(), ...scope, 'user', userText, now),
-      env.DB.prepare('INSERT INTO experiment_chat_messages(id,user_id,creator_id,experiment_key,role,content,created_at) VALUES(?,?,?,?,?,?,?)').bind(crypto.randomUUID(), ...scope, 'assistant', reply, now + 1)
+      env.DB.prepare('INSERT INTO experiment_chat_messages(id,user_id,creator_id,experiment_key,role,content,created_at) VALUES(?,?,?,?,?,?,?)').bind(assistantId, ...scope, 'assistant', reply, replyAt),
+      ...(scene ? [env.DB.prepare('INSERT INTO experiment_chat_displays(message_id,presentation_json) VALUES(?,?)').bind(assistantId, JSON.stringify(scene))] : [])
     ]);
     const bucket = charged; charged = null;
     await recordTurn(env, { userId: user.id, creatorId: npc.id, visitId: identity.experimentKey, now, outcome: 'ok', model: identity.model, latencyMs: Date.now() - started, fallbackCount: 0, energyBucket: bucket, tokensIn: usage.prompt_tokens, tokensOut: usage.completion_tokens }).catch(() => {});
-    return json({ ok: true, reply, innerThought: null, action: null, suggestedReplies: [], mediaKey: null, messages: await list(), relationship: 0, closeness: 0, trust: 0, romance: 0, level: 1, unlockedRewards: [], experiment, energy: await energy(env, user.id, now) });
+    return json({ ok: true, reply: scene ? scene.beats.filter(beat => beat.kind === 'dialogue').map(beat => beat.text).join('\n') : reply, innerThought: scene?.innerThought || null, action: null, ...(scene ? { scene: { at: scene.at, location: scene.location }, beats: scene.beats } : {}), suggestedReplies: [], mediaKey: null, messages: await list(), relationship: 0, closeness: 0, trust: 0, romance: 0, level: 1, unlockedRewards: [], experiment, energy: await energy(env, user.id, now) });
   } catch (error) {
     if (charged) { await refundEnergy(env, user.id, charged, now); charged = null; }
     await recordTurn(env, { userId: user.id, creatorId: npc.id, visitId: identity.experimentKey, now, outcome, model: identity.model, latencyMs: Date.now() - started, fallbackCount: 0, tokensIn: usage.prompt_tokens, tokensOut: usage.completion_tokens }).catch(() => {});
-    const code = ['rate_limit', 'deepseek_unavailable', 'deepseek_empty_reply', 'deepseek_model_mismatch', 'experiment_output_truncated', 'deepseek_invalid_reply'].includes(error.message) ? error.message : 'deepseek_unavailable';
+    const code = ['rate_limit', 'deepseek_unavailable', 'deepseek_empty_reply', 'deepseek_model_mismatch', 'experiment_output_truncated', 'deepseek_invalid_reply', 'experiment_invalid_scene', 'experiment_ungrounded_player_action'].includes(error.message) ? error.message : 'deepseek_unavailable';
     return json({ error: code, experiment }, code === 'rate_limit' ? 429 : 503);
   } finally {
     await env.DB.prepare('UPDATE experiment_chat_threads SET lock_token=NULL,lock_until=0 WHERE user_id=? AND creator_id=? AND experiment_key=? AND lock_token=?').bind(...scope, lock).run();
