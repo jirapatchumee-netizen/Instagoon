@@ -1122,7 +1122,7 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
              { role: 'user', content: playerTurn }
            ],
            response_format: { type: 'json_object' },
-           reasoning_effort: env.DEEPSEEK_REASONING_EFFORT || 'none',
+           reasoning_effort: env.DEEPSEEK_REASONING_EFFORT || 'low',
            max_tokens: 1024,
            temperature: 0.7
          }),
