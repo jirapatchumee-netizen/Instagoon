@@ -429,7 +429,7 @@ type PlayerMemory = {
   createdAt: number;
 };
 type Chat = {
-  experiment?: { mode: 'character-only'; provider: 'deepseek'; model: string; sourceHash: string; runId: string; presentation?: 'scene-v1' };
+  experiment?: { mode: 'character-only'; provider: 'deepseek'; model: string; sourceHash: string; runId: string; presentation?: 'scene-v1'; allowFiftyShades?: boolean; activeMode?: 'normal' | 'fifty-shades' };
   revisionId: string;
   episodeId: string;
   episodes: { id: string; title: string; completed: boolean; accessible: boolean }[];
@@ -1071,6 +1071,7 @@ export function FrostStoryApp() {
   }, [fiftyShadesMode]);
 
   const [aiSending, setAiSending] = useState(false);
+  const [experimentModeSwitching, setExperimentModeSwitching] = useState(false);
   const [pending, setPending] = useState<{ id: string; content: string; failed?: string }[]>([]);
   const [unlockedRewards, setUnlockedRewards] = useState<string[]>([]);
   const [memoryPanel, setMemoryPanel] = useState<{ open: boolean; items: { key: string; value: string }[] }>({ open: false, items: [] });
@@ -1138,7 +1139,7 @@ export function FrostStoryApp() {
   }
 
   async function sendAiMessage(text: string, retryId?: string) {
-    if (!selectedCreator || !chat || aiSending) return;
+    if (!selectedCreator || !chat || aiSending || experimentModeSwitching) return;
     const id = retryId ?? crypto.randomUUID();
     setPending((prev) =>
       retryId
@@ -1158,7 +1159,7 @@ export function FrostStoryApp() {
         unlockedRewards?: string[];
         relationship: number;
         energy: Energy;
-      }>(`/api/chats/${encodeURIComponent(selectedCreator.id)}/message`, json(chat.experiment ? { message: text } : { message: text, fiftyShades: fiftyShadesMode }));
+      }>(`/api/chats/${encodeURIComponent(selectedCreator.id)}/message`, json({ message: text, fiftyShades: fiftyShadesMode }));
 
       setPending((prev) => prev.filter((item) => item.id !== id));
       if (res.messages) setChat((prev) => (prev ? { ...prev, aiMessages: res.messages } : prev));
@@ -1313,6 +1314,29 @@ export function FrostStoryApp() {
     });
   }
 
+  function chatPath(creatorId: string, mode = fiftyShadesMode) {
+    return `/api/chats/${encodeURIComponent(creatorId)}?fiftyShades=${mode ? '1' : '0'}`;
+  }
+
+  async function toggleFiftyShades() {
+    if (aiSending || experimentModeSwitching || !chat) return;
+    const next = !fiftyShadesMode;
+    if (!chat.experiment?.allowFiftyShades) { setFiftyShadesMode(next); return; }
+    if (!selectedCreator) return;
+    const openedAt = chatOpenedAtRef.current;
+    setExperimentModeSwitching(true);
+    try {
+      const result = await api<{ chat: Chat }>(chatPath(selectedCreator.id, next));
+      if (chatOpenedAtRef.current !== openedAt) return;
+      setChat(result.chat);
+      setPending([]);
+      setFiftyShadesMode(next);
+      setUnlockedRewards(result.chat.unlockedRewards || []);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : t.genericError);
+    } finally { setExperimentModeSwitching(false); }
+  }
+
   async function openChat(creator: Creator) {
     setError('');
     setChat(null);
@@ -1321,7 +1345,7 @@ export function FrostStoryApp() {
     setSelectedCreator(creator);
     chatOpenedAtRef.current = Date.now();
     try {
-      const result = await api<{ chat: Chat }>(`/api/chats/${encodeURIComponent(creator.id)}`);
+      const result = await api<{ chat: Chat }>(chatPath(creator.id));
       setChat(result.chat);
       if (result.chat.experiment) setAiDmTab('ai');
       setUnlockedRewards(result.chat.unlockedRewards || []);
@@ -1329,7 +1353,7 @@ export function FrostStoryApp() {
       if (e instanceof Error && e.message === 'content_suspended') {
         try {
           await api(`/api/chats/${encodeURIComponent(creator.id)}/reset`, { method: 'POST' });
-          const retry = await api<{ chat: Chat }>(`/api/chats/${encodeURIComponent(creator.id)}`);
+          const retry = await api<{ chat: Chat }>(chatPath(creator.id));
           setChat(retry.chat);
           setUnlockedRewards(retry.chat.unlockedRewards || []);
           return;
@@ -1345,7 +1369,7 @@ export function FrostStoryApp() {
     if (!window.confirm(t.resetStoryConfirm)) return;
     try {
       await api(`/api/chats/${encodeURIComponent(selectedCreator.id)}/reset-story`, { method: 'POST' });
-      const result = await api<{ chat: Chat }>(`/api/chats/${encodeURIComponent(selectedCreator.id)}`);
+      const result = await api<{ chat: Chat }>(chatPath(selectedCreator.id));
       setChat(result.chat);
       setUnlockedRewards(result.chat.unlockedRewards || []);
     } catch (e) {
@@ -1357,8 +1381,8 @@ export function FrostStoryApp() {
     if (!selectedCreator) return;
     if (!window.confirm(t.resetChatConfirm)) return;
     try {
-      await api(`/api/chats/${encodeURIComponent(selectedCreator.id)}/reset-chat`, { method: 'POST' });
-      const result = await api<{ chat: Chat }>(`/api/chats/${encodeURIComponent(selectedCreator.id)}`);
+      await api(`/api/chats/${encodeURIComponent(selectedCreator.id)}/reset-chat`, json({ fiftyShades: fiftyShadesMode }));
+      const result = await api<{ chat: Chat }>(chatPath(selectedCreator.id));
       setChat(result.chat);
       setPending([]);
       setMemoryPanel({ open: false, items: [] });
@@ -2550,28 +2574,29 @@ export function FrostStoryApp() {
                       </span>
                     )}
                   </div>
-                  {chat?.experiment && <small className="fs-dm-experiment-label">{chat.experiment.presentation ? 'DeepSeek · ข้อมูลตัวละคร + รูปแบบฉาก' : 'DeepSeek · ข้อมูลตัวละครเท่านั้น'}</small>}
+                  {chat?.experiment && <small className="fs-dm-experiment-label">{chat.experiment.presentation ? 'DeepSeek · ข้อมูลตัวละคร + รูปแบบฉาก' : 'DeepSeek · ข้อมูลตัวละครเท่านั้น'}{chat.experiment.activeMode === 'fifty-shades' ? ' · Fifty Shades' : ''}</small>}
                 </div>
               </div>
               <div className="fs-dm-header-actions" ref={dmMenuRef}>
                 <button
                   type="button"
-                  className={`fs-dm-gear-btn${fiftyShadesMode && !chat?.experiment ? ' has-fiftyshades' : ''}`}
+                  className={`fs-dm-gear-btn${fiftyShadesMode && (!chat?.experiment || chat.experiment.allowFiftyShades) ? ' has-fiftyshades' : ''}`}
                   aria-label={t.chatSettings}
-                  title={fiftyShadesMode && !chat?.experiment ? `${t.chatSettings} (${t.fiftyShades} ON 🔥)` : t.chatSettings}
+                  title={fiftyShadesMode && (!chat?.experiment || chat.experiment.allowFiftyShades) ? `${t.chatSettings} (${t.fiftyShades} ON 🔥)` : t.chatSettings}
                   aria-haspopup="menu"
                   aria-expanded={dmMenuOpen}
                   onClick={() => setDmMenuOpen((open) => !open)}
                 >
-                  {fiftyShadesMode && !chat?.experiment ? <Flame size={18} /> : <Settings size={18} />}
+                  {fiftyShadesMode && (!chat?.experiment || chat.experiment.allowFiftyShades) ? <Flame size={18} /> : <Settings size={18} />}
                 </button>
                 {dmMenuOpen && (
                   <div className="fs-dm-menu" role="menu">
-                    {!chat?.experiment && <button
+                    {(!chat?.experiment || chat.experiment.allowFiftyShades) && <button
                       type="button"
                       role="menuitem"
                       className={`fs-dm-menu-item fs-dm-fiftyshades-btn${fiftyShadesMode ? ' is-active' : ''}`}
-                      onClick={() => setFiftyShadesMode((on) => !on)}
+                      onClick={() => void toggleFiftyShades()}
+                      disabled={aiSending || experimentModeSwitching || !chat}
                     >
                       <div className="fs-dm-menu-item-left">
                         <Flame size={15} className={fiftyShadesMode ? 'is-flame-lit' : ''} />
@@ -2581,7 +2606,7 @@ export function FrostStoryApp() {
                         {fiftyShadesMode ? 'เปิด' : 'ปิด'}
                       </span>
                     </button>}
-                    {!chat?.experiment && <div className="fs-dm-menu-divider" />}
+                    {(!chat?.experiment || chat.experiment.allowFiftyShades) && <div className="fs-dm-menu-divider" />}
                     <button
                       type="button"
                       role="menuitem"
@@ -2970,7 +2995,7 @@ export function FrostStoryApp() {
             {aiDmTab === 'ai' ? (
               <ChatComposer
                 placeholder={`ส่งข้อความหา ${selectedCreator.name}…`}
-                disabled={!chat || aiSending}
+                disabled={!chat || aiSending || experimentModeSwitching}
                 onSend={(text) => void sendAiMessage(text)}
               />
             ) : (

@@ -1,6 +1,7 @@
 // Isolated experiment. An optional presentation contract formats output without adding persona,
 // few-shot examples, summaries, scoring, knowledge rewrite or provider fallback.
 import { SCENE_FORMAT_VERSION, SCENE_FORMAT_INSTRUCTION, decodeExperimentScene, serializeExperimentScene } from './experiment-scene-format.mjs';
+import { fiftyShadesPrompt } from './ai/protected/fifty-shades.mjs';
 export const characterOnlyEnabled = npc => npc?.chatExperiment?.mode === 'character-only';
 export const EXPERIMENT_GENERATION = Object.freeze({ max_tokens: 1024, temperature: 0.7, reasoning_effort: 'none' });
 const ready = new WeakMap();
@@ -27,38 +28,65 @@ export async function ensureExperimentStorage(db) {
   await ready.get(db);
 }
 const hash = async text => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))), n => n.toString(16).padStart(2, '0')).join('');
-export async function characterOnlyIdentity(npc) {
+export async function characterOnlyIdentity(npc, { modePrompt = '' } = {}) {
   const profile = npc.biography;
   const model = npc.chatExperiment?.model;
   if (typeof profile !== 'string' || !profile.trim() || model !== 'deepseek-flash') throw new Error('invalid_character_experiment');
   const sourceHash = await hash(profile);
   const presentation = npc.chatExperiment.presentation;
   const formatIdentity = presentation === SCENE_FORMAT_VERSION ? { presentation, formatHash: await hash(SCENE_FORMAT_INSTRUCTION) } : {};
-  const experimentKey = await hash(JSON.stringify({ sourceHash, model, generation: EXPERIMENT_GENERATION, runId: npc.chatExperiment.runId, ...formatIdentity }));
+  const openingIdentity = npc.chatExperiment.opening ? { openingHash: await hash(JSON.stringify(npc.chatExperiment.opening)) } : {};
+  const modeIdentity = modePrompt ? { optionalMode: 'fifty-shades', modeHash: await hash(modePrompt) } : {};
+  const experimentKey = await hash(JSON.stringify({ sourceHash, model, generation: EXPERIMENT_GENERATION, runId: npc.chatExperiment.runId, ...formatIdentity, ...openingIdentity, ...modeIdentity }));
   return { sourceHash, experimentKey, model, presentation };
+}
+
+async function ensureExperimentOpening(db, npc, scope, now) {
+  const opening = npc.chatExperiment.opening;
+  if (!opening) return;
+  const raw = JSON.stringify({ location: opening.location, innerThought: opening.innerThought, playerActions: [], beats: opening.beats });
+  const at = now - 1, scene = decodeExperimentScene(raw, '', at);
+  const id = 'experiment_opening_' + await hash(JSON.stringify(scope));
+  await db.batch([
+    db.prepare(`INSERT OR IGNORE INTO experiment_chat_messages(id,user_id,creator_id,experiment_key,role,content,created_at)
+      SELECT ?,?,?,?,'assistant',?,? WHERE NOT EXISTS (
+        SELECT 1 FROM experiment_chat_messages WHERE user_id=? AND creator_id=? AND experiment_key=?)`).bind(id, ...scope, raw, at, ...scope),
+    db.prepare(`INSERT OR IGNORE INTO experiment_chat_displays(message_id,presentation_json)
+      SELECT ?,? WHERE EXISTS (SELECT 1 FROM experiment_chat_messages WHERE id=? AND created_at=?)`).bind(id, JSON.stringify(scene), id, at)
+  ]);
 }
 
 export async function characterOnlyChat(req, env, user, npc, action, now, services) {
   const { json, takeEnergy, refundEnergy, energy, recordTurn } = services;
   await ensureExperimentStorage(env.DB);
-  const identity = await characterOnlyIdentity(npc);
+  let body = {};
+  if (req.method === 'POST' && ['message', 'reset-chat'].includes(action)) {
+    try { const raw = await req.text(); body = raw ? JSON.parse(raw) : {}; } catch { return json({ error: 'invalid_json' }, 400); }
+    if (!body || typeof body !== 'object' || Array.isArray(body)) return json({ error: 'invalid_json' }, 400);
+  }
+  const requestedMode = body.fiftyShades === true || new URL(req.url).searchParams.get('fiftyShades') === '1';
+  const modeEnabled = npc.chatExperiment.allowFiftyShades === true && requestedMode;
+  const modePrompt = modeEnabled ? fiftyShadesPrompt({ enabled: true, npcName: npc.name, env }) : '';
+  const identity = await characterOnlyIdentity(npc, { modePrompt });
   const scope = [user.id, npc.id, identity.experimentKey];
   const sceneMode = identity.presentation === SCENE_FORMAT_VERSION;
-  const experiment = { mode: 'character-only', provider: 'deepseek', model: identity.model, sourceHash: identity.sourceHash, runId: npc.chatExperiment.runId, ...(sceneMode ? { presentation: identity.presentation } : {}) };
+  const experiment = { mode: 'character-only', provider: 'deepseek', model: identity.model, sourceHash: identity.sourceHash, runId: npc.chatExperiment.runId, allowFiftyShades: npc.chatExperiment.allowFiftyShades === true, activeMode: modeEnabled ? 'fifty-shades' : 'normal', ...(sceneMode ? { presentation: identity.presentation } : {}) };
   const rows = async () => (await env.DB.prepare('SELECT m.id,m.role,m.content,m.created_at createdAt,d.presentation_json displayJson FROM experiment_chat_messages m LEFT JOIN experiment_chat_displays d ON d.message_id=m.id WHERE m.user_id=? AND m.creator_id=? AND m.experiment_key=? ORDER BY m.created_at,m.id').bind(...scope).all()).results;
   const list = async () => (await rows()).map(({ displayJson, ...m }) => ({ ...m, content: displayJson ? serializeExperimentScene(JSON.parse(displayJson)) : m.content, mediaKey: null, affectionDelta: 0 }));
   const blank = { memories: [], unlockedRewards: [], closeness: 0, trust: 0, romance: 0, score: 0 };
-  if (req.method === 'GET' && !action) return json({ chat: { ...blank, experiment, episodeId: 'free_ai_chat', revisionId: identity.experimentKey, currentNodeId: 'start', nodes: [], history: [], episodes: [], aiMessages: await list() } });
+  if (req.method === 'GET' && !action) {
+    await ensureExperimentOpening(env.DB, npc, scope, now);
+    return json({ chat: { ...blank, experiment, episodeId: 'free_ai_chat', revisionId: identity.experimentKey, currentNodeId: 'start', nodes: [], history: [], episodes: [], aiMessages: await list() } });
+  }
   if (req.method === 'GET' && action === 'memories') return json({ memories: [] });
   if (req.method !== 'POST' || !['message', 'reset-chat'].includes(action)) return json({ error: 'not_found' }, 404);
   let userText;
   if (action === 'message') {
-    let body;
-    try { body = await req.json(); } catch { return json({ error: 'invalid_json' }, 400); }
     userText = typeof body.message === 'string' ? body.message.trim() : '';
     if (!userText || userText.length > 1000) return json({ error: 'invalid_message' }, 400);
     if (!env.DEEPSEEK_API_KEY) return json({ error: 'deepseek_not_configured' }, 503);
   }
+  if (action === 'message') await ensureExperimentOpening(env.DB, npc, scope, now);
   await env.DB.prepare('INSERT OR IGNORE INTO experiment_chat_threads(user_id,creator_id,experiment_key) VALUES(?,?,?)').bind(...scope).run();
   const lock = crypto.randomUUID();
   const acquired = await env.DB.prepare('UPDATE experiment_chat_threads SET lock_token=?,lock_until=? WHERE user_id=? AND creator_id=? AND experiment_key=? AND lock_until<=?').bind(lock, now + 90000, ...scope, now).run();
@@ -73,14 +101,14 @@ export async function characterOnlyChat(req, env, user, npc, action, now, servic
     }
     const history = await rows();
     // Never silently trim or summarize a controlled experiment.
-    if (history.length >= 200) return json({ error: 'experiment_history_full' }, 409);
+    if (history.length + 2 > 200) return json({ error: 'experiment_history_full' }, 409);
     charged = await takeEnergy(env, user.id, now);
     if (!charged) return json({ error: 'energy_empty' }, 402);
     const response = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.DEEPSEEK_API_KEY}` },
       body: JSON.stringify({ model: identity.model, ...EXPERIMENT_GENERATION,
         ...(sceneMode ? { response_format: { type: 'json_object' } } : {}),
-        messages: [{ role: 'system', content: npc.biography }, ...(sceneMode ? [{ role: 'system', content: SCENE_FORMAT_INSTRUCTION + '\nServer clock (Asia/Bangkok): ' + new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Bangkok', dateStyle: 'short', timeStyle: 'medium' }).format(new Date(now)) }] : []), ...history.map(m => ({ role: m.role, content: m.content })), { role: 'user', content: userText }] }),
+        messages: [{ role: 'system', content: npc.biography }, ...(modePrompt ? [{ role: 'system', content: modePrompt }] : []), ...(sceneMode ? [{ role: 'system', content: SCENE_FORMAT_INSTRUCTION + '\nServer clock (Asia/Bangkok): ' + new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Bangkok', dateStyle: 'short', timeStyle: 'medium' }).format(new Date(now)) }] : []), ...history.map(m => ({ role: m.role, content: m.content })), { role: 'user', content: userText }] }),
       signal: AbortSignal.timeout(15000)
     });
     if (!response.ok) {
