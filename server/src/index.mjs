@@ -3,6 +3,7 @@ import { ensureContent, bundledMedia, removedCreators } from './content.mjs';
 import { relationshipConfig, overallScore, levelOf, matchKeywordRules, secretsFor, levelStyle, applyRules, pickReward } from './gameplay/index.mjs';
 import { ALLOWED_GEMINI_MODELS, SAFETY_SETTINGS, modelsForVisit, pickLiteModel, chatGenerationConfig, rewriteGenerationConfig, summaryGenerationConfig, modelTestGenerationConfig } from './ai/protected/gemini-config.mjs';
 import { fiftyShadesPrompt as buildFiftyShadesPrompt } from './ai/protected/fifty-shades.mjs';
+import { promptV1 } from './ai/protected/prompt-v1.mjs';
 import { narrativeEnabled, ensureNarrativeStorage, readNarrativeState, narrativeHistory, narrativePrompt, narrativeSchema, decodeNarrative, serializeNarrative, selectNarrativeMemories, narrativeSceneMetadata, ensureNarrativeOpening } from './narrative.mjs';
 
 const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), {status, headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store',...headers}});
@@ -938,7 +939,16 @@ async function player(req,env,user,path,now,ctx) {
    // stored memories, the thread summary and recent history) travels as one JSON data object in the
    // user turn, so a message cannot close a quote and append new instructions.
    const canary = 'IGX-' + token().slice(0, 16);
-   const systemPrompt = sceneMode ? narrativePrompt(npcDef, currentStyle, secretsPrompt, rulesPrompt, canary) : `You are roleplaying as "${npcName}", an authentic idol/creator chatting on instagoon private DM.
+   // The 10-layer prompt is a deploy secret (ADR-0013 zone). promptV1 returns null when the secrets are
+   // unset or a slot could not be filled, so the creator keeps the inline prompt below. A creator in
+   // narrative scene mode is owned by narrativePrompt and is never overridden here.
+   const v1Prompt = promptV1({ env, npc: npcDef, creator, state: {
+     NOW_DATE: `วัน${dayName}ที่ ${dateNum} ${monthName} ${yearBe}`, NOW_TIME: timeStr, NOW_PLACE: sceneLocation,
+     CLOSENESS: closeness, TRUST: trust, ROMANCE: romance, REL: rel, LEVEL: currentLv,
+     CLOCK_STATE: `Level ${currentLv}/5 so far${npcDef?.plotClock ? ` — ${npcDef.plotClock}` : ''}`,
+     OPEN_LOOPS: threadSummary || 'no open loops recorded yet', CANARY: canary, fiftyShadesPrompt
+   }});
+   const systemPrompt = sceneMode ? narrativePrompt(npcDef, currentStyle, secretsPrompt, rulesPrompt, canary) : v1Prompt || `You are roleplaying as "${npcName}", an authentic idol/creator chatting on instagoon private DM.
 Tagline: "${npcDef?.tagline || ''}".
 Bio: "${npcDef?.biography || creatorData.bio}".
 Personality: "${npcDef?.personality || ''}".
