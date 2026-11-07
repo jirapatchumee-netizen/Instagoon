@@ -1,5 +1,19 @@
 # Character-only DeepSeek experiment
 
+## Cheer response contract experiment (2026-11-08)
+
+Cheer now defaults to a separate `contract` variant. Its compact source is `content/creators/cheer/response-contract.md` (2,093 trimmed characters in v1); the content build embeds it in the definition. No filesystem read or second model call occurs during a turn. The original biography, authored opening, model alias and generation settings are unchanged. The Markdown contains principles, not scripted replies. It does not implement a fictional clock or semantic action validator.
+
+The chat settings menu's **ชุดคำตอบ** switches between **Contract ใหม่** and **ชุดเดิม**. GET uses `responseVariant=contract|baseline`; message/reset POSTs carry the same field. Switching loads that variant's history before allowing messages. Reset clears only the selected variant and optional mode. No other character can configure this contract.
+
+The baseline adds no fields to the previous experiment-key calculation, so existing baseline history stays reachable. Contract identity additionally hashes the version and compiled text; edits start another isolated run. Normal/optional-mode histories remain separate inside both variants. Opening a variant or switching makes no provider call and consumes no energy. No database table/column changes are required.
+
+The API exposes the selected variant, contract version/hash and run revision, never the optional secret prompt. Existing turn metrics already record latency, tokens, model and visit ID (the variant's experiment key), so compare within the same mode and matching test inputs. The user chose to perform live quality/latency evaluation on staging; local automated checks use fixture responses and are not DeepSeek performance measurements.
+
+Suggested live comparison: start/reset each variant independently; send the same sequence, including rejecting the food offer, asking about a specific new topic, a clearly marked action, a hypothetical action, and an explicit request to stop/change topics. Compare specificity, thought/action/dialogue coherence, continuity, repetition and natural openings for a reply. Do not treat every refusal as a challenge or require a question at every ending. Repeat across fresh runs to observe variation.
+
+The sections below describe the preserved baseline and optional presentation/mode behavior. Only the `contract` variant adds the response guide.
+
 The owner requested a clean Cheer rebuild using the supplied character text, no central prompt, empty old history and one DeepSeek model without fallback.
 
 Cheer's `biography` preserves the supplied text verbatim. `chatExperiment.mode=character-only` selects an isolated handler before the normal game chat. With optional modes off and plain presentation, the entire system message is that biography, with no prefix or suffix. The remaining messages are only this experiment's new user/assistant exchanges and the current player input. It does not add the game's persona/banter contract, few-shot examples, relationship style, summary, player memories or knowledge rewrite. An optional-mode prompt is used only when that mode is explicitly selected. Profile fields used for display do not become extra instructions.
