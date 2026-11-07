@@ -4,6 +4,7 @@ import { relationshipConfig, overallScore, levelOf, matchKeywordRules, secretsFo
 import { ALLOWED_GEMINI_MODELS, SAFETY_SETTINGS, modelsForVisit, pickLiteModel, chatGenerationConfig, rewriteGenerationConfig, summaryGenerationConfig, modelTestGenerationConfig } from './ai/protected/gemini-config.mjs';
 import { fiftyShadesPrompt as buildFiftyShadesPrompt } from './ai/protected/fifty-shades.mjs';
 import { narrativeEnabled, ensureNarrativeStorage, readNarrativeState, narrativeHistory, narrativePrompt, narrativeSchema, decodeNarrative, serializeNarrative, selectNarrativeMemories, narrativeSceneMetadata, ensureNarrativeOpening } from './narrative.mjs';
+import { interpretNarrativeTurn } from './narrative-interaction.mjs';
 
 const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), {status, headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store',...headers}});
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), {status}); };
@@ -996,7 +997,7 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
      knownFactsAboutPlayer: memText,
      storySoFar: threadSummary || 'ยังไม่มี',
      recentHistory,
-     ...(sceneMode ? { scene: sceneState, replyTime: { at: now, timeZone: 'Asia/Bangkok' }, relevantMemories: selectNarrativeMemories(sceneState, userText), contextTruncated: historyContext.truncatedUnsummarized,
+     ...(sceneMode ? { scene: sceneState, playerTurnContext: interpretNarrativeTurn(sceneState, userText), replyTime: { at: now, timeZone: 'Asia/Bangkok' }, relevantMemories: selectNarrativeMemories(sceneState, userText), contextTruncated: historyContext.truncatedUnsummarized,
        relationship: { closeness, trust, romance, level: currentLv } } : {})
    });
    const responseSchema = sceneMode ? narrativeSchema(semanticRules) : {

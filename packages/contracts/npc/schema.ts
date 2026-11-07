@@ -21,7 +21,8 @@ export const NpcObjectSchema = z.object({
     openingLine: z.string().min(1).max(400).optional(),
     opening: z.object({
       innerThought: z.string().max(200),
-      beats: z.array(z.object({ kind: z.enum(['dialogue', 'action']), text: z.string().min(1).max(350) }).strict()).min(1).max(6)
+      beats: z.array(z.object({ kind: z.enum(['dialogue', 'action']), text: z.string().min(1).max(350) }).strict()).min(1).max(6),
+      offer: z.object({ kind: z.enum(['food', 'travel', 'romance', 'topic', 'challenge']), quote: z.string().min(1).max(180) }).strict().optional()
     }).strict().optional()
   }).strict().optional(),
   secrets: z.array(z.object({ id, content: text, minLevel: z.number().int().min(1).max(5) }).strict()).max(100), initialMemories: z.array(text).max(100),
@@ -31,6 +32,9 @@ export const NpcObjectSchema = z.object({
 }).strict();
 export const NpcSchema = NpcObjectSchema.superRefine((npc, ctx) => {
   const opening = npc.narrative?.opening;
+  const openingOffer = opening?.offer;
+  if (opening && openingOffer && !opening.beats.some(b => b.kind === 'dialogue' && b.text.includes(openingOffer.quote)))
+    ctx.addIssue({ code: 'custom', path: ['narrative', 'opening', 'offer'], message: 'ข้อเสนอเริ่มต้นต้องอ้างข้อความจากบทพูดจริง' });
   if (opening && (!opening.beats.some(b => b.kind === 'dialogue') || opening.beats.reduce((n, b) => n + b.text.length, 0) > 1000))
     ctx.addIssue({ code: 'custom', path: ['narrative', 'opening'], message: 'คำทักต้องมีบทพูดและข้อความรวมไม่เกิน 1000 ตัวอักษร' });
   const { thresholds, weights, romanceEnabled } = npc.relationship;
