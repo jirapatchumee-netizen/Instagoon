@@ -160,11 +160,23 @@ export function buildContent(contentDir, distDir) {
     }).filter(Boolean);
     creators.push({ id: npc.id, name: npc.name, bio: npc.tagline, avatarKey: npc.avatar || null, definition: npc, posts, stories, episodes });
   }
+  const creatorResets = readJson(join(contentDir, 'creator-resets.json'), []);
+  if (!Array.isArray(creatorResets) || creatorResets.length > 10) err('creator-resets.json', 'must be an array with at most 10 explicit reset requests');
+  else {
+    const seen = new Set();
+    for (const reset of creatorResets) {
+      if (!reset || Object.keys(reset).some(k => !['id', 'creatorId'].includes(k)) || !ID.test(reset.id || '') || !ID.test(reset.creatorId || '')) err('creator-resets.json', 'invalid reset id or creatorId');
+      else if (seen.has(reset.id)) err('creator-resets.json', 'duplicate reset id');
+      else if (creators.some(c => c.id === reset.creatorId)) err('creator-resets.json', 'cannot reset a published creator; remove its reset request before republishing');
+      seen.add(reset?.id);
+    }
+  }
   if (errors.length) throw new Error(`content check failed:\n- ${errors.join('\n- ')}`);
 
   const hash = createHash('sha256').update(JSON.stringify(creators));
+  if (creatorResets.length) hash.update(JSON.stringify(creatorResets));
   for (const k of media.sort()) hash.update(k).update(readFileSync(join(mediaDir, k)));
-  const bundle = { version: hash.digest('hex').slice(0, 16), media, creators };
+  const bundle = { version: hash.digest('hex').slice(0, 16), media, creators, creatorResets };
   const out = join(distDir, '_content');
   mkdirSync(out, { recursive: true });
   if (media.length) cpSync(mediaDir, join(out, 'media'), { recursive: true });

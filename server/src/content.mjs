@@ -1,6 +1,7 @@
 // Game content (creators, NPC definitions, posts, stories, media) comes from git via the build
 // (dist/_content, see scripts/build-content.mjs). D1 keeps a copy so feed queries can join player
 // data; the Worker refreshes that copy itself when the deployed bundle version changes.
+import { applyCreatorResets } from './creator-resets.mjs';
 const BASE = 'https://assets.local/_content/';
 let bundle; // per isolate: undefined = not loaded, null = no bundle in this deploy
 let seeded = null;
@@ -19,6 +20,7 @@ export async function loadBundle(env) {
 export async function ensureContent(env) {
   const b = await loadBundle(env);
   if (!b || seeded === b.version) return;
+  try {
   await env.DB.prepare('CREATE TABLE IF NOT EXISTS content_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)').run();
   const cur = await env.DB.prepare("SELECT value FROM content_meta WHERE key='version'").first();
   if (cur?.value !== b.version) {
@@ -62,7 +64,12 @@ export async function ensureContent(env) {
     await env.DB.batch(stmts);
     console.log('content synced', b.version, b.creators.length);
   }
+  await applyCreatorResets(env, b);
   seeded = b.version;
+  } catch (cause) {
+    if (b.creatorResets?.length) throw Object.assign(new Error('content_reset_pending', { cause }), { contentResetFailed: true });
+    throw cause;
+  }
 }
 
 // Creator ids removed from git since they were last published; [] before the first sync.

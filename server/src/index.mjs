@@ -1519,7 +1519,7 @@ async fetch(req,env,ctx){
   }
   if(path==='/auth/google'||path==='/auth/callback'||path==='/auth/demo')return await auth(req,env,url);
   if(!path.startsWith('/api/'))return json({error:'not_found'},404);
-  try{await ensureContent(env);}catch(e){console.error('content sync failed',String(e?.message||e));}
+  try{await ensureContent(env);}catch(e){console.error('content sync failed',String(e?.message||e));if(e?.contentResetFailed)return json({error:'content_reset_pending'},503);}
   const user=await session(req,env);
   if(path==='/api/logout'&&req.method==='POST'){if(user)await run(env,'DELETE FROM sessions WHERE id=?',await hash(cookie(req,'frost_session')));return json({ok:true},200,{'set-cookie':secureCookie('frost_session','',0)});}
   if(path==='/api/account'&&req.method==='DELETE'){if(!user)return json({error:'unauthorized'},401);await env.DB.batch([env.DB.prepare('DELETE FROM invites WHERE email=?').bind(user.email),env.DB.prepare('DELETE FROM users WHERE id=?').bind(user.id)]);return json({ok:true},200,{'set-cookie':secureCookie('frost_session','',0)});}
