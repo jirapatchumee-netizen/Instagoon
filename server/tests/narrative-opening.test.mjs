@@ -18,7 +18,7 @@ test('opening a new chat creates a free real NPC greeting once, with time/place 
     assert.equal(greeting.role, 'assistant');
     assert.match(greeting.content, /^\[scene:/);
     assert.match(greeting.content, /\[thought:/);
-    assert.match(greeting.content, /พี่ชื่อเชียร์/);
+    assert.match(greeting.content, /กูเชียร์/);
     assert.ok(!/แพ้พนัน|หนึ่งภาคการศึกษา|ต้องจีบ|เดิมพัน/.test(greeting.content));
     assert.equal(greeting.affectionDelta, 0);
     assert.equal(f.state().turn, 0);
@@ -46,7 +46,7 @@ test('the first player response inherits the NPC invitation even when POST arriv
     assert.equal(result.payload.messages.length, 3);
     assert.deepEqual(result.payload.messages.map(m => m.role), ['assistant', 'user', 'assistant']);
     const data = JSON.parse(sent.contents[0].parts[0].text);
-    assert.ok(data.recentHistory.includes('ให้พี่ชวนกินข้าวสักมื้อไหม'));
+    assert.ok(data.recentHistory.includes(f.npc.narrative.opening.beats.at(-1).text));
     assert.ok(sent.systemInstruction.parts[0].text.includes(f.npc.userRole));
     assert.equal((await f.open()).payload.chat.aiMessages.length, 3, 'reopening does not introduce a second opening');
     assert.equal(f.sql.prepare("SELECT free FROM energy WHERE user_id='one'").get().free, 99, 'only the actual reply costs energy');
