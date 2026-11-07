@@ -50,6 +50,7 @@ test('refuses what must never reach the public repo', () => {
     file('content/creators/cira/visual_bible.json', '{"reference' + 'Image":"gm.png"}'),
     file('content/creators/ageha/visual_bible_full.json', '{"goldenMaster' + 'Seeds":[1]}'),
     file('content/creators/ageha/art/visual_bible.json', '{"goldenMaster' + 'Seeds":[1]}'),
+    file('content/Creators/AGEHA/art/x.JSON', '{"reference' + 'Image":"gm.png"}'),
     file('content/creators/AGEHA/VISUAL_BIBLE.JSON', '{"goldenMaster' + 'Seeds":[1]}'),
     file('content/creators/ayame/outfit_index.json', '{"reference' + 'Image":"gm.png"}'),
     file('packages/contracts/seeds.json', '{"goldenMaster' + 'Seeds":[1]}'),
@@ -146,13 +147,17 @@ test('no tracked file trips a content rule', () => {
   // mechanism paths are exempt - those are the intentional owner-review annotations.
   const root = fileURLToPath(new URL('../../', import.meta.url));
   const exempt = /^(server\/src\/ai\/protected\/|scripts\/guard-commit\.mjs$|\.githooks\/|\.github\/(workflows\/|CODEOWNERS$)|\.claude\/settings\.json$|package\.json$|server\/package\.json$|server\/tests\/(guard-commit|protected-zone)\.test\.mjs$|docs\/adr\/0013)/i;
-  const tracked = execFileSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' }).trim().split('\n');
-  const bad = [];
+  // -z, not newline split: git quotes non-ASCII paths by default, and this repo has Thai filenames -
+  // quoted names would fail readFileSync and be skipped silently.
+  const tracked = execFileSync('git', ['ls-files', '-z'], { cwd: root, encoding: 'utf8' }).split('\0').filter(Boolean);
+  const bad = [], unreadable = [];
   for (const f of tracked) {
     if (exempt.test(f)) continue;
-    let content; try { content = readFileSync(join(root, f)); } catch { continue; }
+    let content; try { content = readFileSync(join(root, f)); } catch { unreadable.push(f); continue; }
     const hits = findProblems([{ path: f, status: 'A', content, diff: '' }], 'commit').filter(p => p.fatal);
     if (hits.length) bad.push(`${f}: ${hits.map(h => h.message).join('; ')}`);
   }
+  assert.deepEqual(unreadable, [], 'every tracked file must be readable by this check');
+  assert.ok(tracked.length > 50, 'git ls-files returned almost nothing - is this a real checkout?');
   assert.deepEqual(bad, [], `tracked files must not trip a content rule:\n${bad.join('\n')}`);
 });
