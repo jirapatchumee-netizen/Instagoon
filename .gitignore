@@ -16,3 +16,14 @@ client_secret_*.json
 client/art/
 content/creators/*/assets/
 content/creators/*/avatars/
+
+# never commit (guarded again by scripts/guard-commit.mjs)
+*.env
+.env.*
+!.env.example
+gen-lang-client-*.json
+*service-account*.json
+*service_account*.json
+private-docs/
+.claude/settings.local.json
+node_modules

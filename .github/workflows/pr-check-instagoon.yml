@@ -15,6 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with:
           version: 10
@@ -22,6 +24,22 @@ jobs:
         with:
           node-version: 22
           cache: 'pnpm'
+      - name: Guardrail check (secrets, private art pipeline, AI zone)
+        # Judged by the guard as it exists on the base commit, so a PR cannot rewrite the checker that
+        # reviews it. Same rules as .githooks/pre-commit, so a skipped local hook cannot reach main.
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ -n "$(git ls-tree origin/$BASE_REF -- scripts/guard-commit.mjs)" ]; then
+            git show "origin/$BASE_REF:scripts/guard-commit.mjs" > "$RUNNER_TEMP/guard.mjs"
+          else
+            # This PR introduces the guard, so the base has no copy to trust. Judged by the PR's own rules —
+            # from the next PR onward the base copy is always used.
+            cp scripts/guard-commit.mjs "$RUNNER_TEMP/guard.mjs"
+            echo "::notice title=Guardrail::base commit has no scripts/guard-commit.mjs; judged by this PR's copy"
+          fi
+          node "$RUNNER_TEMP/guard.mjs" --base "origin/$BASE_REF"
       - run: pnpm install --no-frozen-lockfile
       - name: Worker tests (gameplay purity, NPC bundle, API)
         run: |

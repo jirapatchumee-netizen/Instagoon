@@ -1,0 +1,73 @@
+{
+  "permissions": {
+    "deny": [
+      "Edit(/server/src/ai/protected/**)",
+      "Write(/server/src/ai/protected/**)",
+      "Edit(/.githooks/**)",
+      "Write(/.githooks/**)",
+      "Edit(/scripts/guard-commit.mjs)",
+      "Write(/scripts/guard-commit.mjs)",
+      "Edit(/.claude/settings.json)",
+      "Write(/.claude/settings.json)",
+      "Bash(wrangler secret *)",
+      "Bash(npx wrangler secret *)",
+      "Bash(pnpm exec wrangler secret *)",
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git push * --force*)",
+      "Bash(git push * -f*)",
+      "Bash(git commit --no-verify*)",
+      "Bash(git commit * --no-verify*)",
+      "Bash(git commit -n*)",
+      "Bash(git config core.hooksPath *)",
+      "Bash(git commit *--no-verify*)",
+      "Bash(git -c core.hooksPath *)",
+      "Bash(git config --unset core.hooksPath*)",
+      "Bash(git push *+HEAD:main*)",
+      "Bash(git push *+main*)",
+      "Bash(git rebase -i*)",
+      "Read(/**/.env)",
+      "Read(/**/.env.*)",
+      "Read(/**/.dev.vars*)",
+      "Read(./private-docs/**)",
+      "Edit(./private-docs/**)",
+      "Write(./private-docs/**)",
+      "Edit(./docs/art/**)",
+      "Write(./docs/art/**)",
+      "Read(./docs/art/**)",
+      "Edit(/.github/CODEOWNERS)",
+      "Write(/.github/CODEOWNERS)",
+      "Edit(/package.json)",
+      "Write(/package.json)",
+      "Edit(/server/package.json)",
+      "Write(/server/package.json)"
+    ],
+    "ask": [
+      "Bash(*wrangler deploy*--env production*)",
+      "Bash(*wrangler deploy*-e production*)",
+      "Bash(*wrangler d1 migrations apply*--remote*)",
+      "Bash(*wrangler d1 execute*--remote*)",
+      "Bash(gh pr merge * --admin*)",
+      "Bash(gh workflow run *)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "git",
+            "args": [
+              "-C",
+              "${CLAUDE_PROJECT_DIR}",
+              "config",
+              "core.hooksPath",
+              ".githooks"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

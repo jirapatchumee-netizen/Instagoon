@@ -53,3 +53,22 @@ Standalone Web Visual Novel เดิม (Overtime Secrets) พักการ�
 
 - เอกสารเดิม (`DESIGN_VN.md`, `GLOSSARY_VN.md`, `ARCHITECTURE_PLAN.md`, ADR เดิม) และ branch `archive/overtime` (commit `eb44447`) เก็บไว้เฉพาะบนเครื่อง + mirror ของประวัติ git เดิม
 - ถ้าต้อง resurrect ให้เปิด repo แยก อย่าเอากลับเข้า repo เกม
+
+---
+
+## 🛡️ 4. Guardrail ของ repo (repo เป็น public — กติกาพวกนี้มีผลกับ Agent ทุกตัว)
+
+เปิด hook ต่อ clone ครั้งแรก (ค่านี้เก็บใน `.git/config` ไม่ได้มากับ repo):
+
+```sh
+git config core.hooksPath .githooks
+```
+
+- `scripts/guard-commit.mjs` คือตัวตรวจจริง `pre-commit` เรียกมันบนไฟล์ที่ staged ส่วน CI เรียก **สำเนาของ guard บน commit ต้นทาง** (`git show origin/<base>:scripts/guard-commit.mjs`) ตรวจ **ทุก commit + ผลสุทธิของทั้ง PR** — PR จึงลบ checker ของตัวเองไม่ได้ (ลบ guard = fail ทันทีใน CI), secret ที่ใส่แล้วลบยังโดนจับ, และของที่โผล่เฉพาะตอน resolve merge conflict ก็โดนจับ; ถ้า base ยังไม่มีไฟล์ guard (PR ที่มาเปิดใช้มันครั้งแรก) CI ใช้สำเนาของ PR นั้นเองและพิมพ์ notice บอก
+- **ห้ามขึ้น repo:** `.env`/`.dev.vars`/service-account key/private key, `private-docs/`, `docs/art/`, PNG ที่มี ComfyUI metadata, ไฟล์ที่มี `masterPromptTemplate`/`renderRecipe` หรือโครง ComfyUI workflow — ถ้า guard ปฏิเสธ ให้แก้ที่ไฟล์ (ลบ/ย้าย/strip) ไม่ใช่ `--no-verify`
+- `.claude/settings.json` deny ทั้ง zone, ไฟล์กลไก, `Read` ของ `.env`/`.dev.vars`, `private-docs/`, `docs/art/` และสั่ง `wrangler secret`/force-push/`--no-verify` — เป็นแนวกัน *เหตุพลาด* ของ agent ที่ใช้ Claude Code เท่านั้น ไม่ใช่ sandbox (Bash form ที่ pattern ไม่ครอบยังข้ามได้; `.claude/settings.local.json` ของแต่ละคนอย่า commit)
+- ค่าในไฟล์ zone ถูก pin hash ไว้ใน `server/tests/protected-zone.test.mjs` แก้แล้วเทสแดง แต่ค่าใน `wrangler*.toml` **ไม่ได้ pin hash** (ตรวจแค่ diff) และ vars ที่ตั้งบน Cloudflare dashboard มองจาก repo ไม่เห็น
+- **ประตูจริงของไฟล์พวกนี้คือรีวิวของเจ้าของ** (`.github/CODEOWNERS` + required review ที่ต้องเปิดใน branch protection เอง) ไม่ใช่ CI: ใน CI การแตะ zone/กลไกเป็นแค่ `::notice` เพราะมันมาอยู่ใน PR ที่เจ้าของกำลังอ่านอยู่แล้ว
+- ตอน merge / cherry-pick / revert guard ผ่อนผันเฉพาะพื้นที่ล็อก+กลไกให้เป็น annotation (tree ที่ staged มี commit ของคนอื่นปน) ส่วน secret / ไฟล์ art pipeline ยัง fail เสมอ
+- ถ้า secret หลุดเข้า history แล้ว การแก้ไฟล์ทีหลังไม่พอ — ต้อง rewrite history หรือ rotate credential (GitHub revoke token ที่ push เข้า public repo อัตโนมัติ)
+- ตรวจงานก่อนส่ง: `pnpm test` (ถ้า `pnpm install` ใน worktree ใหม่ติด `ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY` ให้รันตรง ๆ ว่า `node --experimental-strip-types --test server/tests/*.test.mjs`)

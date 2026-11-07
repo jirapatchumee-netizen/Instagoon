@@ -1,0 +1,3 @@
+#!/bin/sh
+# Switched on per clone with: git config core.hooksPath .githooks (the Claude Code SessionStart hook does it).
+exec node "$(git rev-parse --show-toplevel)/scripts/guard-commit.mjs"
