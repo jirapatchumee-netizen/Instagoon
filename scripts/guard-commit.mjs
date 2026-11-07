@@ -96,9 +96,11 @@ export function findProblems(files, mode = 'commit', opts = {}) {
       /"type"\s*:\s*"service_account"/.test(text) && push(f.path, 'is a Google service-account key file.');
       /"(masterPromptTemplate|renderRecipe)"\s*:/.test(text) && push(f.path, 'contains the private render recipe; keep it in the local art pipeline.');
       /"class_type"\s*:/.test(text) && /"inputs"\s*:/.test(text) && push(f.path, 'contains a ComfyUI workflow; keep it in the local art pipeline.');
-      // Public repo keeps a stub bible per creator (creatorId, name, identity, wardrobe, note). The version
-      // that locks the face adds goldenMasterSeeds / referenceImage — that one belongs to the art pipeline.
-      if (/^content\/creators\/[^/]+\/visual_bible\.json$/i.test(f.path) && /"(goldenMasterSeeds|referenceImage)"\s*:/.test(text)) push(f.path, 'is the full visual bible (face-lock seeds); keep it in instagoon-workbench/art-pipeline/creators/<name>/ (ADR-0010).');
+      // The public repo keeps a stub bible per creator (creatorId, name, identity, wardrobe, note, version).
+      // The private one is recognisable by its data: goldenMasterSeeds is distinctive enough to refuse under
+      // any name, wherever it is; referenceImage is a generic name, so it is refused inside the creator tree.
+      if (/"goldenMasterSeeds"\s*:/.test(text)) push(f.path, 'contains character face-lock seeds from the local art pipeline; never publish them.');
+      if (/^content\/creators\//i.test(f.path) && /"referenceImage"\s*:/.test(text)) push(f.path, 'references a golden-master image from the local art pipeline; never publish it.');
     }
   }
   return problems;

@@ -46,7 +46,13 @@ test('refuses what must never reach the public repo', () => {
     file('content/media/posts/p.png', png(true)),
     file('content/creators/milin/visual_bible.json', '{"master' + 'PromptTemplate":"..."}'),
     file('content/creators/ageha/visual_bible.json', '{"goldenMaster' + 'Seeds":[1],"referenceImage":"gm.png"}'),
+    file('content/creators/ageha/visual_bible.json', '{"' + 'goldenMasterSeeds":[1]}'),
     file('content/creators/ageha/visual_bible.json', '{"reference' + 'Image":"gm.png"}'),
+    file('content/creators/ageha/visual_bible_full.json', '{"goldenMaster' + 'Seeds":[1]}'),
+    file('content/creators/ageha/art/visual_bible.json', '{"goldenMaster' + 'Seeds":[1]}'),
+    file('content/creators/AGEHA/VISUAL_BIBLE.JSON', '{"goldenMaster' + 'Seeds":[1]}'),
+    file('content/creators/ayame/outfit_index.json', '{"reference' + 'Image":"gm.png"}'),
+    file('packages/contracts/seeds.json', '{"goldenMaster' + 'Seeds":[1]}'),
     file('workflows/z_image.json', '{"12":{"class_' + 'type":"LoadImage","inputs":{"image":"ref.png"}}}'),
     file('server/src/ai/protected/gemini-config.mjs', 'x', 'M'),
     file('server/src/ai/protected/fifty-shades.mjs', '', 'D'),
@@ -68,7 +74,7 @@ test('lets the look-alikes through', () => {
     file('server/tests/gameplay.test.mjs', 'hashes of nothing', 'M'),
     file('content/creators/mook/character.json', '{"name":"Mook","prompt_style":"short"}'),
     file('content/creators/milin/visual_bible.json', '{"creatorId":"milin","name":"Milin","identity":"...","wardrobe":["a"],"note":"...","version":1}'),
-    file('content/creators/ageha/outfit_index.json', '{"goldenMaster' + 'Seeds":[1]}'),
+    file('docs/art-pipeline-notes.md', 'the full bible carries a "reference' + 'Image" key — naming it in a doc is fine'),
     file('AGENTS.md', 'ห้าม commit ไฟล์ที่มี masterPromptTemplate/renderRecipe และ private key'),
     file('docs/security-notes.md', 'fixture: "private_key":"-----BEGIN PRIVATE KEY-----' + '\\n' + 'abc" (short test body, no real key)'),
     file('docs/security-notes.md', 'prose only: masterPromptTemplate, renderRecipe, class_type, service_account are private names'),
@@ -84,6 +90,8 @@ test('CI mode reports the AI zone but still refuses secrets', () => {
   assert.deepEqual(findProblems(zone, 'ci').map(p => p.fatal), [false, false]);
   assert.deepEqual(findProblems(zone, 'commit').map(p => p.fatal), [true, true]);
   assert.equal(findProblems([file('scripts/guard-commit.mjs', null, 'D')], 'ci').some(p => p.fatal), true, 'deleting the guard must fail CI');
+  const bible = [file('content/creators/ageha/visual_bible.json', '{"goldenMaster' + 'Seeds":[1]}'), file('content/creators/ayame/visual_bible.json', '{"reference' + 'Image":"gm.png"}')];
+  assert.deepEqual(findProblems(bible, 'ci').map(p => p.fatal), [true, true], 'a full bible is fatal in CI too');
   assert.equal(findProblems([file('scripts/guard-commit.mjs', 'x', 'M')], 'ci').every(p => !p.fatal), true, 'editing the guard is an annotation, not a block');
   const secret = [file('server/.dev.vars', 'GEMINI_API_KEY=x'), file('private-docs/ROMANCE.md', 'x')];
   assert.deepEqual(findProblems(secret, 'ci').map(p => p.fatal), [true, true]);
