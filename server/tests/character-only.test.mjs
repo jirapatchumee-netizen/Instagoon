@@ -1,22 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { narrativeFixture } from './helpers/narrative-fixture.mjs';
+import { sourceNpc, characterExperimentFixture as fixture } from './helpers/character-experiment-fixture.mjs';
 import { characterOnlyIdentity } from '../src/character-only-chat.mjs';
 import { NpcSchema } from '../../packages/contracts/npc/schema.ts';
 import { applyCreatorResets } from '../src/creator-resets.mjs';
-const sourceNpc = JSON.parse(readFileSync(new URL('../../content/creators/cheer/character.json', import.meta.url), 'utf8'));
-async function fixture() {
-  const f = await narrativeFixture();
-  for (const k of Object.keys(f.npc)) delete f.npc[k];
-  Object.assign(f.npc, structuredClone(sourceNpc));
-  f.sql.prepare('INSERT INTO creators(id,name,bio) VALUES(?,?,?)').run(f.npc.id, f.npc.name, f.npc.tagline);
-  f.sql.prepare('INSERT INTO npc_definitions(creator_id,definition_json,updated_at) VALUES(?,?,0)').run(f.npc.id, JSON.stringify(f.npc));
-  f.env.DEEPSEEK_API_KEY = 'fixture-placeholder';
-  f.env.PRIMARY_AI_PROVIDER = 'workers-ai'; // The character pins its own provider regardless.
-  f.env.AI = { async run() { throw new Error('experiment must never use Workers AI'); } };
-  return f;
-}
 const answer = text => Response.json({ model: 'deepseek-flash', choices: [{ finish_reason: 'stop', message: { content: text } }], usage: { prompt_tokens: 100, completion_tokens: 30 } });
 const count = f => f.sql.prepare('SELECT COUNT(*) n FROM experiment_chat_messages').get().n;
 

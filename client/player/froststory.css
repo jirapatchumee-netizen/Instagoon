@@ -2655,6 +2655,7 @@ dialog.fs-overlay[open]::backdrop {
 
 .fs-visual-text {
   font-weight: 300;
+  white-space: pre-line;
   line-height: 1.7;
   letter-spacing: 0.01em;
   font-style: italic;

@@ -429,7 +429,7 @@ type PlayerMemory = {
   createdAt: number;
 };
 type Chat = {
-  experiment?: { mode: 'character-only'; provider: 'deepseek'; model: string; sourceHash: string; runId: string };
+  experiment?: { mode: 'character-only'; provider: 'deepseek'; model: string; sourceHash: string; runId: string; presentation?: 'scene-v1' };
   revisionId: string;
   episodeId: string;
   episodes: { id: string; title: string; completed: boolean; accessible: boolean }[];
@@ -2550,7 +2550,7 @@ export function FrostStoryApp() {
                       </span>
                     )}
                   </div>
-                  {chat?.experiment && <small className="fs-dm-experiment-label">DeepSeek · ข้อมูลตัวละครเท่านั้น</small>}
+                  {chat?.experiment && <small className="fs-dm-experiment-label">{chat.experiment.presentation ? 'DeepSeek · ข้อมูลตัวละคร + รูปแบบฉาก' : 'DeepSeek · ข้อมูลตัวละครเท่านั้น'}</small>}
                 </div>
               </div>
               <div className="fs-dm-header-actions" ref={dmMenuRef}>
