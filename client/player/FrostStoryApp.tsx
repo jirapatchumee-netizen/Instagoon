@@ -158,6 +158,13 @@ export const TRANSLATIONS = {
     firstCommentUsedHint: 'คอมเมนต์เพิ่มเติมฟรี ไม่เพิ่มความสัมพันธ์',
     firstCommentNewHint: 'คอมเมนต์แรกใช้ 1 Energy และเพิ่มความสัมพันธ์ 1 แต้ม',
     knowBetterTitle: 'ค้นพบและเชื่อมต่อ',
+    suggestedForYou: 'แนะนำสำหรับคุณ',
+    suggestedSubtitle: 'แนะนำสำหรับคุณ',
+    follow: 'ติดตาม',
+    following: 'กำลังติดตาม',
+    emptyFeedTitle: 'ยังไม่มีโพสต์ใหม่',
+    emptyFeedDesc: 'กดติดตาม Creator ที่คุณชื่นชอบในหน้าค้นหา เพื่อดูโพสต์และสตอรี่ของพวกเธอ',
+    exploreCreators: 'ค้นหา Creator',
     charactersCount: (n: number) => `${n} ผู้ใช้`,
     openDM: 'ส่งข้อความ',
     relationship: 'ความสัมพันธ์',
@@ -248,6 +255,13 @@ export const TRANSLATIONS = {
     firstCommentUsedHint: 'Additional comments are free and do not add relationship',
     firstCommentNewHint: 'First comment consumes 1 Energy and adds 1 Relationship',
     knowBetterTitle: 'Explore & Connect',
+    suggestedForYou: 'Suggested for you',
+    suggestedSubtitle: 'Suggested for you',
+    follow: 'Follow',
+    following: 'Following',
+    emptyFeedTitle: 'No posts yet',
+    emptyFeedDesc: 'Follow creators in the search tab to see their posts and stories here.',
+    exploreCreators: 'Explore Creators',
     charactersCount: (n: number) => `${n} accounts`,
     openDM: 'Message',
     relationship: 'Relationship',
@@ -338,6 +352,13 @@ export const TRANSLATIONS = {
     firstCommentUsedHint: '2回目以降のコメントは無料ですが、関係度は上がりません',
     firstCommentNewHint: '最初のコメントはエネルギーを1消費し、関係度が1上がります',
     knowBetterTitle: '見つけてつながる',
+    suggestedForYou: 'おすすめ',
+    suggestedSubtitle: 'おすすめ',
+    follow: 'フォロー',
+    following: 'フォロー中',
+    emptyFeedTitle: '投稿がまだありません',
+    emptyFeedDesc: '検索タブでお気に入りのクリエイターをフォローして、投稿やストーリーを見ましょう。',
+    exploreCreators: 'クリエイターを探す',
     charactersCount: (n: number) => `${n}アカウント`,
     openDM: 'メッセージ',
     relationship: '関係度',
@@ -391,7 +412,7 @@ type User = {
   consentVersion: string | null;
   isAdmin?: boolean;
 };
-type Creator = { id: string; name: string; bio: string; avatarKey: string | null; relationship: number };
+type Creator = { id: string; name: string; bio: string; avatarKey: string | null; relationship: number; following?: boolean };
 type Comment = { id: string; content: string; createdAt: number; own: boolean };
 type Post = {
   id: string;
@@ -1438,6 +1459,36 @@ export function FrostStoryApp() {
     setProfileData(null);
   }
 
+  async function toggleFollow(c: Creator) {
+    const nextFollowing = !c.following;
+    setCreators((prev) =>
+      prev.map((item) => (item.id === c.id ? { ...item, following: nextFollowing } : item))
+    );
+    if (profileCreator?.id === c.id) {
+      setProfileCreator((prev) => (prev ? { ...prev, following: nextFollowing } : prev));
+      setProfileData((prev) =>
+        prev ? { ...prev, creator: { ...prev.creator, following: nextFollowing } } : prev
+      );
+    }
+    try {
+      await api<{ ok: boolean; following: boolean }>(
+        `/api/creators/${encodeURIComponent(c.id)}/follow`,
+        json({ follow: nextFollowing })
+      );
+      void loadFeed();
+    } catch {
+      setCreators((prev) =>
+        prev.map((item) => (item.id === c.id ? { ...item, following: !nextFollowing } : item))
+      );
+      if (profileCreator?.id === c.id) {
+        setProfileCreator((prev) => (prev ? { ...prev, following: !nextFollowing } : prev));
+        setProfileData((prev) =>
+          prev ? { ...prev, creator: { ...prev.creator, following: !nextFollowing } } : prev
+        );
+      }
+    }
+  }
+
   async function reactToStory(story: Story, reaction: string) {
     setHeartBurstPostId(`story-${story.id}`);
     window.setTimeout(() => setHeartBurstPostId(null), 800);
@@ -1660,7 +1711,7 @@ export function FrostStoryApp() {
               })}
 
               {creators
-                .filter((c) => !stories.some((s) => s.creatorId === c.id))
+                .filter((c) => c.following && !stories.some((s) => s.creatorId === c.id))
                 .map((creator) => (
                   <button
                     key={`creator-ring-${creator.id}`}
@@ -1682,7 +1733,20 @@ export function FrostStoryApp() {
             </section>
 
             {posts.length === 0 && (
-              <p className="fs-empty">{t.noPosts}</p>
+              <div className="fs-empty-feed">
+                <div className="fs-empty-feed-icon">
+                  <IgSearch size={36} />
+                </div>
+                <h3>{t.emptyFeedTitle}</h3>
+                <p>{t.emptyFeedDesc}</p>
+                <button
+                  type="button"
+                  className="fs-empty-feed-btn"
+                  onClick={() => setScreen('creators')}
+                >
+                  {t.exploreCreators}
+                </button>
+              </div>
             )}
 
             {/* Instagram Authentic Post Feed */}
@@ -1964,7 +2028,7 @@ export function FrostStoryApp() {
           <div className="fs-section-pad">
             <div className="fs-section-heading">
               <div>
-                <h1>{t.knowBetterTitle}</h1>
+                <h1>{t.suggestedForYou}</h1>
               </div>
               <span className="fs-muted">{t.charactersCount(creators.length)}</span>
             </div>
@@ -2001,20 +2065,30 @@ export function FrostStoryApp() {
                         </span>
                       )}
                     </div>
-                    <p>{creator.bio}</p>
+                    <p>{creator.bio || t.suggestedSubtitle}</p>
                   </div>
 
-                  <button
-                    type="button"
-                    className="fs-dm-pill-btn"
-                    disabled={busy}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      void openChat(creator);
-                    }}
-                  >
-                    {t.openDM}
-                  </button>
+                  <div className="fs-creator-actions" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      className={`fs-follow-btn ${creator.following ? 'is-following' : 'is-follow'}`}
+                      disabled={busy}
+                      onClick={() => void toggleFollow(creator)}
+                    >
+                      {creator.following ? t.following : t.follow}
+                    </button>
+                    {creator.following && (
+                      <button
+                        type="button"
+                        className="fs-dm-pill-btn"
+                        disabled={busy}
+                        onClick={() => void openChat(creator)}
+                        title={t.openDM}
+                      >
+                        {t.openDM}
+                      </button>
+                    )}
+                  </div>
                 </article>
               ))}
             </div>
@@ -2378,17 +2452,26 @@ export function FrostStoryApp() {
                       </div>
                     </div>
 
-                    <button
-                      type="button"
-                      className="fs-profile-dm-btn"
-                      onClick={() => {
-                        const c = profileCreator;
-                        closeProfile();
-                        void openChat(c);
-                      }}
-                    >
-                      <Sparkles size={16} /> ส่งข้อความ (DM)
-                    </button>
+                    <div className="fs-profile-actions-bar">
+                      <button
+                        type="button"
+                        className={`fs-follow-btn ${profileCreator?.following ? 'is-following' : 'is-follow'}`}
+                        onClick={() => profileCreator && void toggleFollow(profileCreator)}
+                      >
+                        {profileCreator?.following ? t.following : t.follow}
+                      </button>
+                      <button
+                        type="button"
+                        className="fs-profile-dm-btn"
+                        onClick={() => {
+                          const c = profileCreator;
+                          closeProfile();
+                          void openChat(c);
+                        }}
+                      >
+                        <Sparkles size={16} /> {t.openDM}
+                      </button>
+                    </div>
                   </div>
 
                   {/* 3 Tabs Navigation */}

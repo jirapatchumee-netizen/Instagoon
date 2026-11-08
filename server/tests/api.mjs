@@ -498,4 +498,19 @@ assert.equal((await call('/api/dev/test-models',{method:'POST',data:{models:['..
     globalThis.fetch = savedFetch;
   }
 }
+{
+  const gid = sql.prepare("SELECT id FROM users WHERE email='player1@gmail.com'").get().id;
+  const folRes = await call('/api/creators/c/follow', { method: 'POST', data: { follow: true }, sess: guest.sess });
+  assert.equal(folRes.status, 200);
+  assert.equal(folRes.payload.following, true);
+  assert.equal(sql.prepare("SELECT COUNT(*) n FROM follows WHERE user_id=? AND creator_id='c'").get(gid).n, 1);
+
+  const cList = await call('/api/creators', { sess: guest.sess });
+  assert.equal(cList.payload.creators.find(x => x.id === 'c')?.following, true);
+
+  const unfolRes = await call('/api/creators/c/follow', { method: 'POST', data: { follow: false }, sess: guest.sess });
+  assert.equal(unfolRes.status, 200);
+  assert.equal(unfolRes.payload.following, false);
+  assert.equal(sql.prepare("SELECT COUNT(*) n FROM follows WHERE user_id=? AND creator_id='c'").get(gid).n, 0);
+}
 console.log('Worker API authentication, comments, stories, revision and deletion checks passed');
