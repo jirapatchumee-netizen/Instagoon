@@ -2,7 +2,9 @@
 
 ## Cheer response contract experiment (2026-11-08)
 
-Cheer defaults to the `contract` variant using v2 in `content/creators/cheer/response-contract.md` (2,358 trimmed characters). The original v1 is retained verbatim in `response-contract-v1.md` (2,093 characters). The build embeds both, but sends only the selected guide to DeepSeek. No filesystem read or second model call occurs during a turn. The original biography, authored opening, model alias and generation settings are unchanged. The Markdown contains principles, not scripted replies; it does not implement a fictional clock.
+Cheer defaults to the `contract` variant using v2 in `content/creators/cheer/response-contract.md` (2,349 trimmed characters after the immediate-banter revision). The original v1 is retained verbatim in `response-contract-v1.md` (2,093 characters). The build embeds both, but sends only the selected guide to DeepSeek. No filesystem read or second model call occurs during a turn. The original biography, authored opening, model alias and generation settings are unchanged. The Markdown contains principles, not scripted replies; it does not implement a fictional clock.
+
+The revised v2 prioritizes a compact, specific reversal and playable proposition in the current encounter. It discourages literal explanations of the rejected offer, invented player deadlines/exams, unsolicited departures and vague future attention. Explicit stops/topic changes remain respected. The changed text hash automatically selects fresh v2 history without deleting older runs; use per-turn hashes when comparing revisions carrying the same v2 label.
 
 The chat settings menu selects **Contract v2**, **Contract v1** or **ชุดเดิม**. GET uses `responseVariant=contract|contract-v1|baseline`; message/reset POSTs carry the same field. Switching loads that variant's history before allowing messages. Reset clears only the selected variant and optional mode. No other character can configure this contract.
 
