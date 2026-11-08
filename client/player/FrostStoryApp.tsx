@@ -428,8 +428,10 @@ type PlayerMemory = {
   value: string;
   createdAt: number;
 };
+type ResponseVariant = 'baseline' | 'contract' | 'contract-v1';
+const responseVariantLabel = (variant: ResponseVariant, version?: string | null) => variant === 'baseline' ? 'ชุดเดิม' : version === 'cheer-response-v2' ? 'Contract v2' : version === 'cheer-response-v1' || variant === 'contract-v1' ? 'Contract v1' : 'Contract';
 type Chat = {
-  experiment?: { mode: 'character-only'; provider: 'deepseek'; model: string; sourceHash: string; runId: string; presentation?: 'scene-v1'; allowFiftyShades?: boolean; activeMode?: 'normal' | 'fifty-shades'; responseVariant?: 'baseline' | 'contract'; responseVariants?: ('baseline' | 'contract')[] };
+  experiment?: { mode: 'character-only'; provider: 'deepseek'; model: string; sourceHash: string; runId: string; presentation?: 'scene-v1'; allowFiftyShades?: boolean; activeMode?: 'normal' | 'fifty-shades'; responseVariant?: ResponseVariant; responseVariants?: ResponseVariant[]; contractVersion?: string | null; contractVersions?: Partial<Record<ResponseVariant, string>> };
   revisionId: string;
   episodeId: string;
   episodes: { id: string; title: string; completed: boolean; accessible: boolean }[];
@@ -1072,7 +1074,7 @@ export function FrostStoryApp() {
 
   const [aiSending, setAiSending] = useState(false);
   const [experimentModeSwitching, setExperimentModeSwitching] = useState(false);
-  const [cheerResponseVariant, setCheerResponseVariant] = useState<'baseline' | 'contract'>('contract');
+  const [cheerResponseVariant, setCheerResponseVariant] = useState<ResponseVariant>('contract');
   const [pending, setPending] = useState<{ id: string; content: string; failed?: string }[]>([]);
   const [unlockedRewards, setUnlockedRewards] = useState<string[]>([]);
   const [memoryPanel, setMemoryPanel] = useState<{ open: boolean; items: { key: string; value: string }[] }>({ open: false, items: [] });
@@ -1319,9 +1321,8 @@ export function FrostStoryApp() {
     return `/api/chats/${encodeURIComponent(creatorId)}?fiftyShades=${mode ? '1' : '0'}${creatorId === 'cheer' ? `&responseVariant=${variant}` : ''}`;
   }
 
-  async function switchResponseVariant() {
-    if (!selectedCreator || !chat?.experiment?.responseVariants || aiSending || experimentModeSwitching) return;
-    const next = chat.experiment.responseVariant === 'contract' ? 'baseline' : 'contract';
+  async function switchResponseVariant(next: ResponseVariant) {
+    if (!selectedCreator || !chat?.experiment?.responseVariants?.includes(next) || next === chat.experiment.responseVariant || aiSending || experimentModeSwitching) return;
     const openedAt = chatOpenedAtRef.current;
     setExperimentModeSwitching(true);
     try {
@@ -1330,6 +1331,7 @@ export function FrostStoryApp() {
       setChat(result.chat);
       setPending([]);
       setCheerResponseVariant(next);
+      setDmMenuOpen(false);
     } catch (error) {
       setError(error instanceof Error ? error.message : t.genericError);
     } finally { setExperimentModeSwitching(false); }
@@ -2591,7 +2593,7 @@ export function FrostStoryApp() {
                       </span>
                     )}
                   </div>
-                  {chat?.experiment && <small className="fs-dm-experiment-label">{chat.experiment.responseVariants ? `DeepSeek · ${chat.experiment.responseVariant === 'contract' ? 'ชุด Contract' : 'ชุดเดิม'}` : chat.experiment.presentation ? 'DeepSeek · ข้อมูลตัวละคร + รูปแบบฉาก' : 'DeepSeek · ข้อมูลตัวละครเท่านั้น'}{chat.experiment.activeMode === 'fifty-shades' ? ' · Fifty Shades' : ''}</small>}
+                  {chat?.experiment && <small className="fs-dm-experiment-label">{chat.experiment.responseVariants ? `DeepSeek · ${responseVariantLabel(chat.experiment.responseVariant || 'baseline', chat.experiment.contractVersion)}` : chat.experiment.presentation ? 'DeepSeek · ข้อมูลตัวละคร + รูปแบบฉาก' : 'DeepSeek · ข้อมูลตัวละครเท่านั้น'}{chat.experiment.activeMode === 'fifty-shades' ? ' · Fifty Shades' : ''}</small>}
                 </div>
               </div>
               <div className="fs-dm-header-actions" ref={dmMenuRef}>
@@ -2608,16 +2610,20 @@ export function FrostStoryApp() {
                 </button>
                 {dmMenuOpen && (
                   <div className="fs-dm-menu" role="menu">
-                    {chat?.experiment?.responseVariants && <button
-                      type="button"
-                      role="menuitem"
-                      className="fs-dm-menu-item"
-                      onClick={() => void switchResponseVariant()}
-                      disabled={aiSending || experimentModeSwitching}
-                    >
-                      <span>ชุดคำตอบ</span>
-                      <span>{chat.experiment.responseVariant === 'contract' ? 'Contract ใหม่' : 'ชุดเดิม'}</span>
-                    </button>}
+                    {chat?.experiment?.responseVariants && <div role="group" aria-label="ชุดคำตอบ">
+                      {chat.experiment.responseVariants.map(variant => <button
+                        key={variant}
+                        type="button"
+                        role="menuitemradio"
+                        aria-checked={chat.experiment?.responseVariant === variant}
+                        className="fs-dm-menu-item fs-dm-variant-btn"
+                        onClick={() => void switchResponseVariant(variant)}
+                        disabled={aiSending || experimentModeSwitching}
+                      >
+                        <span>{responseVariantLabel(variant, chat.experiment?.contractVersions?.[variant])}</span>
+                        {chat.experiment?.responseVariant === variant && <span aria-hidden="true">✓</span>}
+                      </button>)}
+                    </div>}
                     {(!chat?.experiment || chat.experiment.allowFiftyShades) && <button
                       type="button"
                       role="menuitem"

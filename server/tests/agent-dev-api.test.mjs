@@ -18,14 +18,14 @@ function createMockDb() {
                 if (creatorId === 'cheer') {
                   return {
                     definition_json: JSON.stringify({
-                      biography: 'Cheer test bio',
+                      id: 'cheer', biography: 'Cheer test bio',
                       chatExperiment: {
                         mode: 'character-only',
                         model: 'deepseek-flash',
                         responseContract: {
-                          id: 'contract-v1',
-                          hash: 'hash123',
-                          markdown: '# Cheer Response Contract'
+                          id: 'cheer-response-v1',
+                          defaultVariant: 'contract',
+                          text: '# Cheer Response Contract'
                         }
                       }
                     })
@@ -168,7 +168,8 @@ test('Agent Dev API: allows cheer history, metrics, contract, and health', async
   assert.equal(contRes.status, 200);
   const contData = await contRes.json();
   assert.equal(contData.ok, true);
-  assert.equal(contData.contractId, 'contract-v1');
+  assert.equal(contData.contractId, 'cheer-response-v1');
+  assert.match(contData.contractHash, /^[a-f0-9]{64}$/);
   assert.equal(contData.contractMarkdown, '# Cheer Response Contract');
 });
 
