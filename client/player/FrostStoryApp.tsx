@@ -1623,20 +1623,6 @@ export function FrostStoryApp() {
           <>
             {/* Instagram Stories Row with Exact Gradient Ring */}
             <section className="fs-stories-bar" aria-label="Stories">
-              <div
-                className="fs-story-item"
-                onClick={() => setScreen('account')}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => e.key === 'Enter' && setScreen('account')}
-              >
-                <div className="fs-story-your-ring">
-                  <div className="fs-story-your-inner">{t.you}</div>
-                  <span className="fs-story-plus">+</span>
-                </div>
-                <span className="fs-story-name">{t.yourStory}</span>
-              </div>
-
               {stories.map((story) => {
                 const creator = getCreator(story.creatorId);
                 const name = creator?.name ?? 'Creator';
