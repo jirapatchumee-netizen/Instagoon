@@ -14,7 +14,9 @@ export const NpcObjectSchema = z.object({
   schemaVersion: z.literal('1.0'), id, name: text.min(1).max(120), handle: z.string().min(1).max(100), tagline: text, avatar: asset, color: z.string().regex(/^#[a-fA-F0-9]{6}$/), tags: z.array(z.string().max(80)).max(30), age: text, biography: text, personality: text, world: text, occupation: text, likes: text, dislikes: text, goals: text, immutableFacts: z.array(text).max(100), knowledgeBoundary: text,
   userRole: text.optional(), precedingIncident: text.optional(), appearanceDetail: text.optional(), sensoryProps: SensoryPropsSchema.optional(),
   chatExperiment: z.object({ mode: z.literal('character-only'), model: z.literal('deepseek-flash'), runId: id, presentation: z.literal('scene-v1').optional(), allowFiftyShades: z.boolean().optional(),
-    responseContract: z.object({ id: z.literal('cheer-response-v1'), defaultVariant: z.enum(['baseline', 'contract']), text: z.string().min(1).max(2400).optional() }).strict().optional(),
+    responseContract: z.object({ id: z.enum(['cheer-response-v1', 'cheer-response-v2']), defaultVariant: z.enum(['baseline', 'contract']), text: z.string().min(1).max(2400).optional(),
+      previous: z.object({ id: z.literal('cheer-response-v1'), text: z.string().min(1).max(2400).optional() }).strict().optional()
+    }).strict().optional(),
     opening: z.object({ location: z.string().min(1).max(100), innerThought: z.string().min(1).max(300), beats: z.array(z.object({ kind: z.enum(['action', 'dialogue']), text: z.string().min(1).max(1600) }).strict()).min(1).max(12) }).strict().optional()
   }).strict().optional(),
   narrative: z.object({
@@ -36,6 +38,8 @@ export const NpcObjectSchema = z.object({
   relationship: z.object({ weights: ScoresSchema, thresholds: z.array(z.number().min(0).max(100)).length(5), romanceEnabled: z.boolean() }).strict(), rules: z.array(RuleSchema).max(100), rewards: z.array(RewardSchema).max(100),
 }).strict();
 export const NpcSchema = NpcObjectSchema.superRefine((npc, ctx) => {
+  if (npc.chatExperiment?.responseContract?.previous && npc.chatExperiment.responseContract.id !== 'cheer-response-v2')
+    ctx.addIssue({ code: 'custom', path: ['chatExperiment', 'responseContract', 'previous'], message: 'Only v2 can retain the previous response contract' });
   if (npc.chatExperiment?.responseContract && (npc.id !== 'cheer' || npc.chatExperiment.presentation !== 'scene-v1'))
     ctx.addIssue({ code: 'custom', path: ['chatExperiment', 'responseContract'], message: 'Response contract is scoped to Cheer scene experiments' });
   if (npc.chatExperiment?.opening && (npc.chatExperiment.presentation !== 'scene-v1' || !npc.chatExperiment.opening.beats.some(b => b.kind === 'dialogue')))

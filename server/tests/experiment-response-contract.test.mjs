@@ -20,9 +20,14 @@ test('baseline preserves deployed keys; contract edits select a new independent 
     const old = await characterOnlyIdentity(f.npc, baseline);
     assert.equal(old.experimentKey, 'bbbc200f370a87987507fadbc8376f5543c872296d8e2f06b37e3e68515a4ae5');
     assert.equal((await characterOnlyIdentity(f.npc, { ...baseline, modePrompt: 'OPTIONAL_MODE_FIXTURE เชียร์' })).experimentKey, '822ee020d5b6b7a9037215c1bbb8587ab09f75c2e75c15ddff86a4e1005e0f47');
+    const previous = await characterOnlyIdentity(f.npc, { responseVariant: 'contract-v1' });
+    assert.equal(previous.experimentKey, 'a4164e8e7d89348f186ec1bd8856275014e6fe55afa7a97ff7f615e844b7c088');
+    assert.equal(previous.response.id, 'cheer-response-v1');
     const next = await characterOnlyIdentity(f.npc);
     assert.equal(next.response.variant, 'contract');
     assert.notEqual(next.experimentKey, old.experimentKey);
+    assert.notEqual(next.experimentKey, previous.experimentKey);
+    assert.equal(next.response.id, 'cheer-response-v2');
     f.npc.chatExperiment.responseContract.text += '\nKeep a new relevant detail.';
     assert.notEqual((await characterOnlyIdentity(f.npc)).experimentKey, next.experimentKey);
     assert.equal((await characterOnlyIdentity(f.npc, baseline)).experimentKey, old.experimentKey);
@@ -83,8 +88,10 @@ test('invalid variant or missing compiled contract fails before charging or call
 test('build compiler loads only the bounded Cheer Markdown, never a supplied compiled override', () => {
   const dir = mkdtempSync(join(tmpdir(), 'cheer-contract-'));
   writeFileSync(join(dir, 'response-contract.md'), '# Runtime\r\nAnswer the current point.\r\n');
+  writeFileSync(join(dir, 'response-contract-v1.md'), '# Previous\r\nKeep this control.\r\n');
   const compiled = loadResponseContract(structuredClone(sourceNpc), dir);
   assert.equal(compiled.chatExperiment.responseContract.text, '# Runtime\nAnswer the current point.');
+  assert.equal(compiled.chatExperiment.responseContract.previous.text, '# Previous\nKeep this control.');
   assert.equal(NpcSchema.safeParse(compiled).success, true);
   assert.throws(() => loadResponseContract(compiled, dir), /invalid response contract source/);
   writeFileSync(join(dir, 'response-contract.md'), 'x'.repeat(2401));
