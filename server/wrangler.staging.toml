@@ -28,8 +28,7 @@ DEEPSEEK_MODEL = "deepseek-flash"
 CF_AI_MODEL = "@cf/qwen/qwen2.5-coder-32b-instruct"
 PUBLIC_ORIGIN = "https://staging.instagoon.app"
 STAGING_EMAILS = "jirapat.chumee@gmail.com,taychinsgo@gmail.com"
-# Secret key for AI agents co-developing and evaluating experimental character narratives.
-AGENT_DEV_SECRET = "agnt_sec_cheer_staging_20261108"
+# Secret for AI agents (AGENT_DEV_SECRET) is managed via Cloudflare Worker Secrets (wrangler secret put).
 # One-time free energy per new staging account (production uses the default, 30).
 FREE_ENERGY_GRANT = "100"
 # Fill these with Google's published USD per 1M tokens for the active model group to make

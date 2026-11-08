@@ -45,7 +45,7 @@ function safeTrace(raw) {
 }
 
 export function isAuthorizedAgent(req, env) {
-  const secret = env.AGENT_DEV_SECRET;
+  const secret = env.AGENT_SECRET || env.AGENT_DEV_SECRET;
   if (!secret || typeof secret !== 'string' || secret.length < 8) return false;
   const auth = req.headers.get('authorization') || '';
   const bearer = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
