@@ -338,12 +338,33 @@ const postShape = p=>({id:p.id,creatorId:p.creator_id,creatorName:p.creator_name
 const storyShape = s=>({id:s.id,creatorId:s.creator_id,type:s.type,mediaKey:s.media_key,publishedAt:s.published_at,expiresAt:s.type==='broadcast'?s.published_at+86400000:s.first_viewed_at==null?null:s.first_viewed_at+86400000,firstViewedAt:s.first_viewed_at});
 async function visiblePost(env,user,pid,now){return one(env,`SELECT p.* FROM posts p LEFT JOIN relationships r ON r.creator_id=p.creator_id AND r.user_id=? WHERE p.id=? AND p.status='published' AND p.published_at<=? AND COALESCE(r.score,0)>=p.relationship_required`,user.id,pid,now);}
 async function visibleStory(env,user,sid,now){const s=await one(env,`SELECT s.*,v.first_viewed_at FROM stories s LEFT JOIN relationships r ON r.creator_id=s.creator_id AND r.user_id=? LEFT JOIN story_views v ON v.story_id=s.id AND v.user_id=? WHERE s.id=? AND s.status='published' AND s.published_at<=? AND COALESCE(r.score,0)>=s.relationship_required`,user.id,user.id,sid,now);if(!s||(s.type==='broadcast'&&now>=s.published_at+86400000)||(s.first_viewed_at!=null&&s.type==='unlockable'&&now>=s.first_viewed_at+86400000))return null;return s;}
+let userProfileReady = false;
+async function ensureUserProfileColumns(env) {
+  if (userProfileReady) return;
+  try { await env.DB.exec('ALTER TABLE users ADD COLUMN avatar_id TEXT'); } catch {}
+  try { await env.DB.exec('ALTER TABLE users ADD COLUMN nickname TEXT'); } catch {}
+  userProfileReady = true;
+}
+
 async function player(req,env,user,path,now,ctx) {
  const method=req.method;
  if(path==='/api/shop'||path.startsWith('/api/shop/')) return await shopPlayer(req,env,user,path,now);
  if(path==='/api/me' && method==='GET'){
+  await ensureUserProfileColumns(env);
+  const uRow = await one(env, 'SELECT nickname, avatar_id FROM users WHERE id=?', user.id);
   const isAdmin = isAdminUser(env,user);
-  return json({user:{id:user.id,email:user.email,role:user.role||(isAdmin?'admin':'player'),isAdmin,ageVerifiedAt:user.age_verified_at,consentVersion:user.consent_version},energy:await energy(env,user.id,now)});
+  return json({user:{id:user.id,email:user.email,role:user.role||(isAdmin?'admin':'player'),isAdmin,ageVerifiedAt:user.age_verified_at,consentVersion:user.consent_version,nickname:uRow?.nickname||null,avatarId:uRow?.avatar_id||null},energy:await energy(env,user.id,now)});
+ }
+ if(path==='/api/me/profile' && method==='POST'){
+  await ensureUserProfileColumns(env);
+  const b = await body(req);
+  const nickname = typeof b.nickname === 'string' ? b.nickname.trim().slice(0, 30) : null;
+  const avatarId = typeof b.avatarId === 'string' ? b.avatarId.trim().slice(0, 50) : null;
+  if (nickname !== null || avatarId !== null) {
+    await run(env, 'UPDATE users SET nickname=COALESCE(?, nickname), avatar_id=COALESCE(?, avatar_id) WHERE id=?', nickname, avatarId, user.id);
+  }
+  const uRow = await one(env, 'SELECT nickname, avatar_id FROM users WHERE id=?', user.id);
+  return json({ok:true, nickname:uRow?.nickname||null, avatarId:uRow?.avatar_id||null});
  }
  if(path==='/api/dev/energy' && method==='POST'){
   if(!isAdminUser(env,user)) return json({error:'forbidden'}, 403);
