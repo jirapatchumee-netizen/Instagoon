@@ -1,4 +1,5 @@
 import app from './index.mjs';
+import { isAuthorizedAgent } from './agent-dev-api.mjs';
 
 // Same values as public/_headers, which only applies to assets served without the Worker.
 const headers = {
@@ -26,6 +27,15 @@ export default {
   if (pathname === '/auth/google' || pathname === '/auth/callback') {
    if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET || !env.STAGING_EMAILS) return new Response('Staging sign-in is not configured', { status: 503, headers });
    return app.fetch(req, env, ctx);
+  }
+  if (pathname.startsWith('/api/agent/')) {
+   if (isAuthorizedAgent(req, env) || await allowed(req, env)) {
+    return app.fetch(req, env, ctx);
+   }
+   return new Response(JSON.stringify({ error: 'unauthorized_agent', message: 'Valid Bearer token or X-Agent-Secret required' }), {
+    status: 401,
+    headers: { 'content-type': 'application/json; charset=utf-8', ...headers }
+   });
   }
   if (!await allowed(req, env)) {
    if (req.method === 'GET' && (pathname === '/' || pathname.startsWith('/staging-login/') || pathname === '/privacy' || pathname === '/privacy.html' || pathname === '/terms' || pathname === '/terms.html' || pathname === '/legal.css' || pathname === '/legal.js')) {

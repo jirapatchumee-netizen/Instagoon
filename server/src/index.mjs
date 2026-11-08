@@ -6,6 +6,7 @@ import { fiftyShadesPrompt as buildFiftyShadesPrompt } from './ai/protected/fift
 import { narrativeEnabled, ensureNarrativeStorage, readNarrativeState, narrativeHistory, narrativePrompt, narrativeSchema, decodeNarrative, serializeNarrative, selectNarrativeMemories, narrativeSceneMetadata, ensureNarrativeOpening } from './narrative.mjs';
 import { narrativeTurnContext, restoreLegacyInteraction } from './narrative-interaction.mjs';
 import { characterOnlyEnabled, characterOnlyChat } from './character-only-chat.mjs';
+import { handleAgentDevRoute } from './agent-dev-api.mjs';
 
 const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), {status, headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store',...headers}});
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), {status}); };
@@ -1534,6 +1535,9 @@ async fetch(req,env,ctx){
    if(!user)return json({error:'unauthorized'},401);
    if(!isAdminUser(env,user) && !await access(req,env,user))return json({error:'forbidden'},403);
    return await admin(req,env,path,now);
+  }
+  if(path.startsWith('/api/agent/')){
+   return await handleAgentDevRoute(req, env, path, now, user);
   }
   if(!user)return json({error:'unauthorized'},401);
   return await player(req,env,user,path,now,ctx);
