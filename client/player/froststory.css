@@ -4733,3 +4733,41 @@ dialog.fs-overlay[open]::backdrop {
   background: rgba(56, 189, 248, 0.25);
 }
 
+.fs-fastforward-bar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 8px 14px 2px;
+  background: transparent;
+}
+
+.fs-fastforward-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, rgba(236, 72, 153, 0.18), rgba(168, 85, 247, 0.22));
+  border: 1px solid rgba(236, 72, 153, 0.5);
+  color: #fdf2f8;
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(236, 72, 153, 0.15);
+  transition: all 0.18s ease;
+}
+
+.fs-fastforward-btn:hover {
+  background: linear-gradient(135deg, rgba(236, 72, 153, 0.3), rgba(168, 85, 247, 0.35));
+  border-color: #ec4899;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(236, 72, 153, 0.25);
+}
+
+.fs-fastforward-icon {
+  color: #f472b6;
+  flex-shrink: 0;
+}
+
+

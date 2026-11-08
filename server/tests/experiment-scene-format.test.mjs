@@ -30,6 +30,16 @@ test('presentation preserves model wording, guarantees marked player actions, an
   assert.deepEqual(markedWithoutModelCopy.playerActions, ['เลื่อนเก้าอี้', 'ยกแก้วน้ำ']);
   const ordinary = decodeExperimentScene(JSON.stringify(sceneReply({ beats: [{ kind: 'dialogue', text: 'คำพูดล้วน' }] })), 'ถ้าผมเดินไปจะเป็นยังไง', at);
   assert.equal(ordinary.beats.length, 1, 'no invented action or mandatory gesture');
+  const speechOnly = decodeExperimentScene(JSON.stringify(sceneReply({ playerActions: ['1อาทิตย์หรอโบราณชะมัด เรื่องแบบนี้คืนเดียวก็รู้ผลหละพี่'] })), '1อาทิตย์หรอโบราณชะมัด เรื่องแบบนี้คืนเดียวก็รู้ผลหละพี่', at);
+  assert.deepEqual(speechOnly.playerActions, [], 'plain speech quoted by model is filtered from action box');
+  assert.ok(!speechOnly.beats[0].text.includes('คุณ:'), 'action frame does not duplicate player speech');
+  const ffReply = decodeExperimentScene(JSON.stringify(sceneReply({ fastForward: { location: 'ห้องแล็บ 301', time: '17:00 น.' } })), 'ตกลง', at);
+  assert.equal(ffReply.fastForward.location, 'ห้องแล็บ 301');
+  assert.equal(ffReply.fastForward.time, '17:00 น.');
+  assert.equal(ffReply.fastForward.label, '⏩ ไปที่ ห้องแล็บ 301 (17:00 น.)');
+  const ffStored = serializeExperimentScene(ffReply);
+  const ffHeader = readSceneHeader(ffStored);
+  assert.deepEqual(ffHeader.scene.fastForward, ffReply.fastForward);
   for (const hypothetical of ['ถ้า *เดินหนี* จะเป็นยังไง', 'คำว่า *เดินหนี* คืออะไร', '"*เดินหนี*"'])
     assert.deepEqual(decodeExperimentScene(JSON.stringify(sceneReply()), hypothetical, at).playerActions, [], 'quoted/hypothetical markers are not actual actions');
   assert.throws(() => decodeExperimentScene(JSON.stringify(sceneReply({ playerActions: ['ผู้เล่นยอมเป็นแฟน'] })), 'สวัสดี', at), /ungrounded/);

@@ -1,4 +1,9 @@
-export type SceneMetadata = { at: number; time?: string; location: string };
+export type SceneMetadata = {
+  at: number;
+  time?: string;
+  location: string;
+  fastForward?: { time?: string; location: string; label: string };
+};
 export type NarrativeSegment = { kind: 'dialogue' | 'action'; text: string };
 
 export function readSceneHeader(text: string): { scene: SceneMetadata | null; body: string } {
@@ -10,7 +15,16 @@ export function readSceneHeader(text: string): { scene: SceneMetadata | null; bo
     if (typeof value.at !== 'number' || !Number.isFinite(value.at) || !Number.isFinite(new Date(value.at).getTime()) ||
         typeof value.location !== 'string' || !value.location.trim() || value.location.length > 100) return { scene: null, body };
     const time = typeof value.time === 'string' && value.time.trim().length <= 30 ? value.time.trim() : undefined;
-    return { scene: { at: value.at, location: value.location, ...(time ? { time } : {}) }, body };
+    const fastForward = value.fastForward && typeof value.fastForward === 'object' && typeof value.fastForward.location === 'string' && value.fastForward.location.trim()
+      ? {
+          location: value.fastForward.location.trim(),
+          ...(typeof value.fastForward.time === 'string' && value.fastForward.time.trim() ? { time: value.fastForward.time.trim() } : {}),
+          label: typeof value.fastForward.label === 'string' && value.fastForward.label.trim()
+            ? value.fastForward.label.trim()
+            : (value.fastForward.time ? `⏩ ไปที่ ${value.fastForward.location.trim()} (${value.fastForward.time.trim()})` : `⏩ ไปที่ ${value.fastForward.location.trim()}`)
+        }
+      : undefined;
+    return { scene: { at: value.at, location: value.location, ...(time ? { time } : {}), ...(fastForward ? { fastForward } : {}) }, body };
   } catch { return { scene: null, body }; }
 }
 
