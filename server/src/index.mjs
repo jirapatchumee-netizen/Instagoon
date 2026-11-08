@@ -330,8 +330,8 @@ async function applyChoiceOutcome(env, userId, creator, rev, choice, now) {
 
 async function energy(env,uid,now) {
  // Free energy is a one-time grant of 30 per account (migration 0009): it never refills.
- const row=await one(env,'SELECT free,purchased FROM energy WHERE user_id=?',uid);
- return {free:row.free,purchased:row.purchased,nextRefillAt:null};
+ const row=await one(env,'SELECT free,purchased,COALESCE(diamonds,0) diamonds FROM energy WHERE user_id=?',uid);
+ return {free:row.free,purchased:row.purchased,diamonds:row.diamonds??0,nextRefillAt:null};
 }
 const postShape = p=>({id:p.id,creatorId:p.creator_id,creatorName:p.creator_name,caption:p.caption,mediaKey:p.media_key,publishedAt:p.published_at,relationshipRequired:p.relationship_required,simulatedLikes:p.simulated_likes,likes:p.likes,firstCommentUsed:!!p.claimed});
 const storyShape = s=>({id:s.id,creatorId:s.creator_id,type:s.type,mediaKey:s.media_key,publishedAt:s.published_at,expiresAt:s.type==='broadcast'?s.published_at+86400000:s.first_viewed_at==null?null:s.first_viewed_at+86400000,firstViewedAt:s.first_viewed_at});

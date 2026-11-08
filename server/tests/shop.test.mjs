@@ -57,7 +57,7 @@ const call = (sql, method, path, body, env = shopEnv) => worker.fetch(new Reques
   headers: body && !(body instanceof FormData) ? { ...headers, 'content-type': 'application/json' } : headers,
   body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
 }), { DB: d1(sql), ...env }, {});
-const energyOf = sql => ({ ...sql.prepare('SELECT free,purchased FROM energy WHERE user_id=?').get('u') });
+const energyOf = sql => ({ ...sql.prepare('SELECT free,purchased,COALESCE(diamonds,0) diamonds FROM energy WHERE user_id=?').get('u') });
 let n = 0;
 const rid = () => `req-${++n}-${'x'.repeat(8)}`;
 async function order(sql, sku = 'energy_59', extra = { confirmAge20: true }) {
@@ -160,7 +160,7 @@ test('slip: a valid slip QR credits once; reused, unreadable or late slips are r
   const body = await ok.json();
   assert.equal(body.order.status, 'paid');
   assert.equal(body.order.confirmed, false, 'not confirmed until the statement shows the deposit');
-  assert.deepEqual(body.energy, { free: 30, purchased: 118, nextRefillAt: null });
+  assert.deepEqual(body.energy, { free: 30, purchased: 118, diamonds: 118, nextRefillAt: null });
   assert.equal(sql.prepare('SELECT slip_bank b FROM orders WHERE id=?').get(o.id).b, 'KBANK');
   assert.equal((await call(sql, 'POST', `/api/shop/orders/${o.id}/slip`, { slipQr: qr })).status, 200, 'resubmitting a paid order is a no-op');
   assert.equal(energyOf(sql).purchased, 118);
@@ -186,18 +186,61 @@ test('slip: concurrent submissions of the same slip credit exactly once', async 
   assert.equal(sql.prepare("SELECT COUNT(*) n FROM token_ledger WHERE order_id=?").get(o.id).n, 1);
 });
 
-test('daily limit: one pack per Bangkok calendar day, then open again after midnight', async () => {
+test('daily limit: one pack per tier per Bangkok calendar day, then open again after midnight', async () => {
+  const sql = dbOf();
+  const o29 = (await order(sql, 'energy_29')).body.order;
+  await call(sql, 'POST', `/api/shop/orders/${o29.id}/slip`, { slipQr: buildSlipQr('004', '015311000000ABC0003') });
+  const info = await (await call(sql, 'GET', '/api/shop')).json();
+  assert.equal(info.purchasedToday, false, 'not all packs purchased yet');
+  assert.equal(info.products.find(p => p.sku === 'energy_29').purchasedToday, true);
+  assert.equal(info.products.find(p => p.sku === 'energy_59').purchasedToday, false);
+  assert.equal(info.nextAvailableAt, bangkokDayStart(now) + 86400000);
+
+  // energy_29 again today: refused
+  const blocked29 = await order(sql, 'energy_29');
+  assert.equal(blocked29.res.status, 429);
+  assert.equal(blocked29.body.error, 'daily_limit_reached');
+
+  // energy_59 and energy_99 can still be bought today
+  const o59 = (await order(sql, 'energy_59')).body.order;
+  await call(sql, 'POST', `/api/shop/orders/${o59.id}/slip`, { slipQr: buildSlipQr('004', '015311000000ABC0004') });
+  const o99 = (await order(sql, 'energy_99')).body.order;
+  await call(sql, 'POST', `/api/shop/orders/${o99.id}/slip`, { slipQr: buildSlipQr('004', '015311000000ABC0005') });
+
+  // Now all 3 packs have been bought today
+  const infoAll = await (await call(sql, 'GET', '/api/shop')).json();
+  assert.equal(infoAll.purchasedToday, true, 'all packs purchased today');
+
+  // Next calendar day: open again
+  sql.prepare("UPDATE orders SET paid_at=? WHERE sku='energy_29'").run(bangkokDayStart(now) - 1);
+  assert.equal((await order(sql, 'energy_29')).res.status, 201);
+});
+
+test('member diamonds: earn 1:1 on topup and exchange 10 diamonds for 1 energy', async () => {
   const sql = dbOf();
   const o = (await order(sql, 'energy_29')).body.order;
-  await call(sql, 'POST', `/api/shop/orders/${o.id}/slip`, { slipQr: buildSlipQr('004', '015311000000ABC0003') });
-  const info = await (await call(sql, 'GET', '/api/shop')).json();
-  assert.equal(info.purchasedToday, true);
-  assert.equal(info.nextAvailableAt, bangkokDayStart(now) + 86400000);
-  const blocked = await order(sql, 'energy_99');
-  assert.equal(blocked.res.status, 429);
-  assert.equal(blocked.body.error, 'daily_limit_reached');
-  sql.prepare('UPDATE orders SET paid_at=? WHERE id=?').run(bangkokDayStart(now) - 1, o.id);
-  assert.equal((await order(sql, 'energy_99')).res.status, 201);
+  await call(sql, 'POST', `/api/shop/orders/${o.id}/slip`, { slipQr: buildSlipQr('004', '015311000000ABC0010') });
+  let e = energyOf(sql);
+  assert.equal(e.purchased, 58);
+  assert.equal(e.diamonds, 58);
+
+  // Exchange 50 diamonds -> 5 energy
+  const ex = await call(sql, 'POST', '/api/shop/exchange', { diamonds: 50 });
+  assert.equal(ex.status, 200);
+  const exBody = await ex.json();
+  assert.equal(exBody.ok, true);
+  assert.equal(exBody.exchangedDiamonds, 50);
+  assert.equal(exBody.energyGained, 5);
+  assert.equal(exBody.energy.diamonds, 8);
+  assert.equal(exBody.energy.purchased, 63);
+
+  // Trying to exchange remaining 8 diamonds fails (min 10)
+  const fail1 = await call(sql, 'POST', '/api/shop/exchange', { diamonds: 8 });
+  assert.equal(fail1.status, 400);
+
+  // Non-multiple of 10 fails
+  const fail2 = await call(sql, 'POST', '/api/shop/exchange', { diamonds: 15 });
+  assert.equal(fail2.status, 400);
 });
 
 async function callText(sql, path, text) {
@@ -262,7 +305,7 @@ test('admin: manual credit needs a bank reference, refund takes back only purcha
   assert.equal(list.orders[0].confirmed, true, 'a manual credit is already checked against the bank');
   sql.prepare('UPDATE energy SET purchased=100 WHERE user_id=?').run('u');
   assert.equal((await call(sql, 'POST', `/api/admin/orders/${o.id}/refund`, { reason: 'customer request' })).status, 200);
-  assert.deepEqual(energyOf(sql), { free: 30, purchased: -98 }, 'balance may go negative, free energy untouched');
+  assert.deepEqual(energyOf(sql), { free: 30, purchased: -98, diamonds: 0 }, 'balance may go negative, free energy untouched');
   assert.equal((await call(sql, 'POST', `/api/admin/orders/${o.id}/refund`, { reason: 'again' })).status, 409);
   assert.equal(sql.prepare("SELECT delta_purchased d FROM token_ledger WHERE reason='refunded'").get().d, -198);
 });

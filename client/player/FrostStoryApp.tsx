@@ -383,7 +383,7 @@ export const TRANSLATIONS = {
   },
 };
 
-type Energy = { free: number; purchased: number; nextRefillAt: number | null };
+type Energy = { free: number; purchased: number; diamonds?: number; nextRefillAt: number | null };
 type User = {
   id: string;
   email: string;
@@ -1568,11 +1568,12 @@ export function FrostStoryApp() {
             <button
               type="button"
               className="fs-energy"
-              title={t.energyRefillDefault}
+              title={`${t.energyRefillDefault}${energy?.diamonds ? ` · 💎 ${energy.diamonds}` : ''}`}
               onClick={() => setShopOpen(true)}
             >
               <Zap size={13} className="fs-energy-icon" />
               {energy ? `${energy.free} + ${energy.purchased}` : '–'}
+              {Boolean(energy?.diamonds) && <span style={{ marginLeft: 3, color: '#38bdf8' }}>💎{energy?.diamonds}</span>}
             </button>
             {shopOpen && <EnergyShop lang={lang} onClose={() => setShopOpen(false)} onEnergy={setEnergy} />}
 

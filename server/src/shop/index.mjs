@@ -40,8 +40,8 @@ const orderShape = (o, env) => ({
 });
 
 async function energyOf(env, uid) {
-  const row = await env.DB.prepare('SELECT free,purchased FROM energy WHERE user_id=?').bind(uid).first();
-  return { free: row?.free ?? 0, purchased: row?.purchased ?? 0, nextRefillAt: null };
+  const row = await env.DB.prepare('SELECT free,purchased,COALESCE(diamonds,0) diamonds FROM energy WHERE user_id=?').bind(uid).first();
+  return { free: row?.free ?? 0, purchased: row?.purchased ?? 0, diamonds: row?.diamonds ?? 0, nextRefillAt: null };
 }
 
 async function expireStale(env, uid, now) {
@@ -51,8 +51,11 @@ async function expireStale(env, uid, now) {
 // Revoked and refunded purchases still count: the limit is on attempts to buy, not on outcomes.
 async function dailyState(env, uid, now) {
   const start = bangkokDayStart(now);
-  const row = await env.DB.prepare("SELECT COUNT(*) n FROM orders WHERE user_id=? AND status IN ('paid','refunded','revoked') AND paid_at>=?").bind(uid, start).first();
-  return { purchasedToday: row.n > 0, nextAvailableAt: start + DAY_MS };
+  const { results } = await env.DB.prepare(
+    "SELECT DISTINCT sku FROM orders WHERE user_id=? AND status IN ('paid','refunded','revoked') AND paid_at>=?"
+  ).bind(uid, start).all();
+  const purchasedSkusToday = (results || []).map(r => r.sku);
+  return { purchasedSkusToday, nextAvailableAt: start + DAY_MS };
 }
 
 async function pickAmount(env, priceSatang, now) {
@@ -86,7 +89,7 @@ async function createOrder(req, env, user, now) {
   const product = await env.DB.prepare('SELECT * FROM products WHERE sku=? AND active=1').bind(sku).first();
   if (!product) return err('unknown_product', 404);
   const daily = await dailyState(env, user.id, now);
-  if (daily.purchasedToday) return err('daily_limit_reached', 429, { nextAvailableAt: daily.nextAvailableAt });
+  if (daily.purchasedSkusToday.includes(sku)) return err('daily_limit_reached', 429, { nextAvailableAt: daily.nextAvailableAt });
 
   await expireStale(env, user.id, now);
   // One open order per player. Picking the same pack again returns it; picking another replaces it.
@@ -114,13 +117,14 @@ async function createOrder(req, env, user, now) {
 // Order -> paid, ledger row, energy credit: one D1 batch, so either all three happen or none.
 // The order_id unique index on token_ledger and the UNIQUE trans_ref on orders make a replayed or
 // concurrent submission fail the whole batch instead of crediting twice.
+// Member system gives diamonds equal to energy topped up (10 diamonds = 1 energy).
 async function credit(env, order, transRef, bank, now) {
   const ledgerId = crypto.randomUUID();
   try {
     const [paid] = await env.DB.batch([
       env.DB.prepare("UPDATE orders SET status='paid', paid_at=?, trans_ref=?, slip_bank=? WHERE id=? AND status='pending'").bind(now, transRef, bank, order.id),
-      env.DB.prepare("INSERT INTO token_ledger(id,user_id,delta_free,delta_purchased,reason,order_id,created_at) SELECT ?,user_id,0,energy,'purchase',id,? FROM orders WHERE id=? AND status='paid' AND trans_ref=?").bind(ledgerId, now, order.id, transRef),
-      env.DB.prepare('UPDATE energy SET purchased=purchased+? WHERE user_id=? AND EXISTS(SELECT 1 FROM token_ledger WHERE id=?)').bind(order.energy, order.user_id, ledgerId),
+      env.DB.prepare("INSERT INTO token_ledger(id,user_id,delta_free,delta_purchased,delta_diamonds,reason,order_id,created_at) SELECT ?,user_id,0,energy,energy,'purchase',id,? FROM orders WHERE id=? AND status='paid' AND trans_ref=?").bind(ledgerId, now, order.id, transRef),
+      env.DB.prepare('UPDATE energy SET purchased=purchased+?, diamonds=diamonds+? WHERE user_id=? AND EXISTS(SELECT 1 FROM token_ledger WHERE id=?)').bind(order.energy, order.energy, order.user_id, ledgerId),
     ]);
     return paid.meta.changes ? 'credited' : 'not_pending';
   } catch (e) {
@@ -129,6 +133,40 @@ async function credit(env, order, transRef, bank, now) {
     if (/token_ledger/.test(msg)) return 'not_pending';
     throw e;
   }
+}
+
+async function exchangeDiamonds(req, env, user, now) {
+  if (user.shop_blocked_at) return err('shop_blocked', 403);
+  let b = {};
+  try { b = await req.json(); } catch { /* allow empty to exchange max */ }
+  const cur = await energyOf(env, user.id);
+  const maxExchangeable = Math.floor(cur.diamonds / 10) * 10;
+  if (maxExchangeable < 10) return err('insufficient_diamonds', 400, { minRequired: 10, diamonds: cur.diamonds });
+
+  let requested = b?.diamonds != null ? Number(b.diamonds) : maxExchangeable;
+  if (!Number.isInteger(requested) || requested < 10 || requested % 10 !== 0) {
+    return err('invalid_amount', 400);
+  }
+  if (requested > cur.diamonds) {
+    return err('insufficient_diamonds', 400, { diamonds: cur.diamonds });
+  }
+
+  const energyGain = Math.floor(requested / 10);
+  const ledgerId = crypto.randomUUID();
+  const [ledger] = await env.DB.batch([
+    env.DB.prepare("INSERT INTO token_ledger(id,user_id,delta_free,delta_purchased,delta_diamonds,reason,created_at) VALUES(?,?,?,?,?,'diamond_exchange',?)")
+      .bind(ledgerId, user.id, 0, energyGain, -requested, now),
+    env.DB.prepare('UPDATE energy SET purchased=purchased+?, diamonds=diamonds-? WHERE user_id=? AND diamonds>=? AND EXISTS(SELECT 1 FROM token_ledger WHERE id=?)')
+      .bind(energyGain, requested, user.id, requested, ledgerId),
+  ]);
+  if (!ledger.meta.changes) return err('exchange_failed', 500);
+  const updatedEnergy = await energyOf(env, user.id);
+  return json({
+    ok: true,
+    exchangedDiamonds: requested,
+    energyGained: energyGain,
+    energy: updatedEnergy,
+  });
 }
 
 async function submitSlip(req, env, user, orderId, now) {
@@ -161,17 +199,30 @@ export async function shopPlayer(req, env, user, path, now) {
     await expireStale(env, user.id, now);
     const { results } = await env.DB.prepare('SELECT * FROM products WHERE active=1 ORDER BY position').all();
     const open = await env.DB.prepare("SELECT * FROM orders WHERE user_id=? AND status='pending' ORDER BY created_at DESC LIMIT 1").bind(user.id).first();
+    const daily = await dailyState(env, user.id, now);
+    const allPurchased = results.length > 0 && results.every(p => daily.purchasedSkusToday.includes(p.sku));
+    const userEnergy = await energyOf(env, user.id);
     return json({
       enabled: true,
       blocked: !!user.shop_blocked_at,
       ageConfirmed: !!user.purchase_age_confirmed_at,
-      ...(await dailyState(env, user.id, now)),
-      products: results.map(p => ({ sku: p.sku, name: p.name, priceSatang: p.price_satang, energy: p.energy })),
+      purchasedToday: allPurchased,
+      purchasedSkusToday: daily.purchasedSkusToday,
+      nextAvailableAt: daily.nextAvailableAt,
+      diamonds: userEnergy.diamonds,
+      products: results.map(p => ({
+        sku: p.sku,
+        name: p.name,
+        priceSatang: p.price_satang,
+        energy: p.energy,
+        purchasedToday: daily.purchasedSkusToday.includes(p.sku),
+      })),
       openOrder: open ? orderShape(open, env) : null,
     });
   }
   if (!path.startsWith('/api/shop/')) return null;
   if (!shopReady(env)) return err('shop_unavailable', 503);
+  if (path === '/api/shop/exchange' && method === 'POST') return exchangeDiamonds(req, env, user, now);
   if (path === '/api/shop/orders' && method === 'POST') return createOrder(req, env, user, now);
   if (path === '/api/shop/orders' && method === 'GET') {
     await expireStale(env, user.id, now);
@@ -193,12 +244,12 @@ export async function shopPlayer(req, env, user, path, now) {
 
 const adminOrder = o => ({ id: o.id, userId: o.user_id, email: o.email, sku: o.sku, amountSatang: o.amount_satang, energy: o.energy, status: o.status, createdAt: o.created_at, paidAt: o.paid_at, transRef: o.trans_ref, slipBank: o.slip_bank, confirmed: !!o.reconciled_at, note: o.note });
 
-// Takes back only the purchased energy (balance may go negative), never relationship or content.
+// Takes back only the purchased energy and diamonds, never relationship or content.
 async function reverse(env, order, status, note, now) {
   const stmts = [
     env.DB.prepare("UPDATE orders SET status=?, note=? WHERE id=? AND status='paid'").bind(status, note, order.id),
-    env.DB.prepare("INSERT INTO token_ledger(id,user_id,delta_free,delta_purchased,reason,order_id,created_at) SELECT ?,user_id,0,-energy,?,id,? FROM orders WHERE id=? AND status=?").bind(crypto.randomUUID(), status, now, order.id, status),
-    env.DB.prepare('UPDATE energy SET purchased=purchased-? WHERE user_id=? AND EXISTS(SELECT 1 FROM orders WHERE id=? AND status=?)').bind(order.energy, order.user_id, order.id, status),
+    env.DB.prepare("INSERT INTO token_ledger(id,user_id,delta_free,delta_purchased,delta_diamonds,reason,order_id,created_at) SELECT ?,user_id,0,-energy,-energy,?,id,? FROM orders WHERE id=? AND status=?").bind(crypto.randomUUID(), status, now, order.id, status),
+    env.DB.prepare('UPDATE energy SET purchased=purchased-?, diamonds=MAX(0, diamonds-?) WHERE user_id=? AND EXISTS(SELECT 1 FROM orders WHERE id=? AND status=?)').bind(order.energy, order.energy, order.user_id, order.id, status),
   ];
   if (status === 'revoked') stmts.push(env.DB.prepare('UPDATE users SET shop_blocked_at=? WHERE id=? AND EXISTS(SELECT 1 FROM orders WHERE id=? AND status=?)').bind(now, order.user_id, order.id, status));
   const [changed] = await env.DB.batch(stmts);
