@@ -5,14 +5,14 @@ import { handleAgentDevRoute } from '../src/agent-dev-api.mjs';
 import { resetContentCache } from '../src/content.mjs';
 
 const scene = { location: 'โรงอาหาร', innerThought: 'ลองฟังเรื่องนี้', playerActions: [], beats: [{ kind: 'dialogue', text: 'เล่าต่อดิ' }] };
-const options = { scene: true, opening: true, responseContract: true };
+const options = { scene: true, opening: true };
 async function agent(f, path) {
   const req = new Request('https://staging.example' + path, { headers: { Authorization: 'Bearer fixture-agent-credential' } });
   const res = await handleAgentDevRoute(req, { ...f.env, AGENT_DEV_SECRET: 'fixture-agent-credential' }, new URL(req.url).pathname, Date.now());
   return { status: res.status, data: await res.json() };
 }
 
-test('agent history returns latest messages, separates players sharing a variant, and exposes only allowlisted traces', async () => {
+test('agent history returns latest messages, separates players sharing an experiment, and exposes only allowlisted traces', async () => {
   const f = await characterExperimentFixture(options), saved = globalThis.fetch;
   globalThis.fetch = async () => Response.json({ model: 'deepseek-flash', choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(scene) } }] });
   try {
@@ -30,7 +30,7 @@ test('agent history returns latest messages, separates players sharing a variant
       assert.equal(t.totalTurns, 3);
       const userMessages = t.turns.filter(m => m.role === 'user');
       assert.equal(userMessages.length, 1);
-      assert.equal(t.turns.at(-1).trace.contractVersion, 'cheer-response-v2');
+      assert.equal(t.turns.at(-1).trace.configuredModel, 'deepseek-flash');
     }
     const latest = await agent(f, '/api/agent/characters/cheer/history?limit=1');
     assert.equal(latest.data.totalMessages, 1);
@@ -48,7 +48,7 @@ test('agent history returns latest messages, separates players sharing a variant
   } finally { globalThis.fetch = saved; f.sql.close(); }
 });
 
-test('contract endpoint reads compiled Markdown and reports database/deployment drift without rewriting content', async () => {
+test('contract endpoint reports database/deployment drift without rewriting content', async () => {
   const f = await characterExperimentFixture(options);
   resetContentCache();
   f.env.ASSETS = { fetch: async () => Response.json({ version: 'deployed-fixture', creators: [{ id: 'cheer', definition: f.npc }] }) };
@@ -58,16 +58,12 @@ test('contract endpoint reads compiled Markdown and reports database/deployment 
     const result = await agent(f, '/api/agent/characters/cheer/contract');
     assert.equal(result.status, 200);
     assert.equal(result.data.mode, 'default');
-    assert.equal(result.data.contractId, null);
-    assert.equal(result.data.deployed.contractId, 'cheer-response-v2');
-    assert.equal(result.data.deployed.contractMarkdown, f.npc.chatExperiment.responseContract.text);
-    assert.match(result.data.deployed.contractHash, /^[a-f0-9]{64}$/);
+    assert.equal(result.data.deployed.mode, 'character-only');
+    assert.match(result.data.deployed.sourceHash, /^[a-f0-9]{64}$/);
     assert.equal(result.data.matchesDeployed, false);
     assert.equal(JSON.parse(f.sql.prepare('SELECT definition_json FROM npc_definitions WHERE creator_id=?').get('cheer').definition_json).biography, 'older profile');
     f.sql.prepare('UPDATE npc_definitions SET definition_json=? WHERE creator_id=?').run(JSON.stringify(f.npc), 'cheer');
-    const current = await agent(f, '/api/agent/characters/cheer/contract?responseVariant=contract-v1');
-    assert.equal(current.data.contractId, 'cheer-response-v1');
+    const current = await agent(f, '/api/agent/characters/cheer/contract');
     assert.equal(current.data.matchesDeployed, true);
-    assert.equal((await agent(f, '/api/agent/characters/cheer/contract?responseVariant=unknown')).status, 400);
   } finally { resetContentCache(); f.sql.close(); }
 });

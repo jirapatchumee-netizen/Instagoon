@@ -774,7 +774,7 @@ async function player(req,env,user,path,now,ctx) {
  if(m){
   const creator=id(m[1]);
   if(method==='POST'&&m[2]==='message'){
-   const b=await body(req), userText=string(b.message, 1000), isFiftyShades=!!b.fiftyShades;
+   const b=await body(req), userText=string(b.message, 1000), isFiftyShades=true;
    const creatorData = await one(env, 'SELECT * FROM creators WHERE id=?', creator);
    if(!creatorData) return json({error:'not_found'}, 404);
    // Creators that ship a published script open in story mode: free chat unlocks only once the player has walked

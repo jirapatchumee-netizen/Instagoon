@@ -5,7 +5,6 @@
 // 2. Scoped strictly to permitted experiment characters (e.g. 'cheer').
 // 3. Isolated from user credentials, financial orders, and non-experiment creator data.
 import { loadBundle } from './content.mjs';
-import { responseContractFor } from './experiment-request.mjs';
 
 const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), {
   status,
@@ -16,24 +15,16 @@ const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(d
   }
 });
 
-const ALLOWED_DEV_CREATORS = new Set(['cheer']);
+const ALLOWED_DEV_CREATORS = new Set(['cheer', 'june']);
 const hash = async value => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))), n => n.toString(16).padStart(2, '0')).join('');
 const threadId = (creator, user, key) => hash(JSON.stringify([creator, user, key]));
-async function contractSnapshot(definition, requested) {
+async function contractSnapshot(definition) {
   const experiment = definition?.chatExperiment;
-  let response = null, configurationError = null;
-  if (experiment?.responseContract) {
-    try { response = responseContractFor(definition, requested); }
-    catch (error) { configurationError = error.message; }
-  }
   return { mode: experiment?.mode || 'default', model: experiment?.model || null,
-    contractId: response?.id || null, contractHash: response?.text ? await hash(response.text) : null,
-    contractMarkdown: response?.text || null, biography: definition?.biography || null,
-    sourceHash: definition?.biography ? await hash(definition.biography) : null,
-    responseVariant: response?.variant || null, responseVariants: response?.available ? response.variants : [],
-    playerActionPolicy: response?.playerActionPolicy || null, configurationError };
+    biography: definition?.biography || null,
+    sourceHash: definition?.biography ? await hash(definition.biography) : null };
 }
-const TRACE_FIELDS = ['experimentKey', 'responseVariant', 'activeMode', 'sourceHash', 'contractVersion', 'contractHash', 'configuredModel', 'resolvedModel', 'generation', 'playerActionPolicy', 'createdAt', 'providerLatencyMs', 'tokensIn', 'tokensOut'];
+const TRACE_FIELDS = ['experimentKey', 'activeMode', 'sourceHash', 'configuredModel', 'resolvedModel', 'generation', 'createdAt', 'providerLatencyMs', 'tokensIn', 'tokensOut'];
 function safeTrace(raw) {
   try {
     const value = JSON.parse(raw);
@@ -103,13 +94,11 @@ export async function handleAgentDevRoute(req, env, path, now, user = null) {
     let definition;
     try { definition = JSON.parse(row?.definition_json || 'null'); } catch {}
 
-    const requested = url.searchParams.get('responseVariant') ?? undefined;
-    if (requested !== undefined && !['baseline', 'contract', 'contract-v1'].includes(requested)) return json({ error: 'invalid_response_variant' }, 400);
-    const current = await contractSnapshot(definition, requested);
+    const current = await contractSnapshot(definition);
     // Read-only: report drift rather than seeding/updating D1 from an agent GET.
     const bundle = env.ASSETS ? await loadBundle(env) : null;
     const deployedDefinition = bundle?.creators?.find(c => c.id === creatorId)?.definition;
-    const deployed = deployedDefinition ? await contractSnapshot(deployedDefinition, requested) : null;
+    const deployed = deployedDefinition ? await contractSnapshot(deployedDefinition) : null;
     return json({
       ok: true,
       creatorId,
@@ -117,7 +106,7 @@ export async function handleAgentDevRoute(req, env, path, now, user = null) {
       definitionSource: 'database',
       deployedBundleVersion: bundle?.version || null,
       deployed,
-      matchesDeployed: deployed ? ['mode', 'model', 'sourceHash', 'contractHash', 'responseVariant'].every(key => current[key] === deployed[key]) : null
+      matchesDeployed: deployed ? ['mode', 'model', 'sourceHash'].every(key => current[key] === deployed[key]) : null
     });
   }
 

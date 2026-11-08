@@ -6,7 +6,6 @@ import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, wri
 import { join, relative, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { NpcSchema } from '../packages/contracts/npc/schema.ts';
-import { loadResponseContract } from './load-response-contract.mjs';
 
 const ID = /^[a-zA-Z0-9_-]{1,80}$/;
 const KEY = /^[a-zA-Z0-9_./-]{1,200}$/;
@@ -64,8 +63,7 @@ export function buildContent(contentDir, distDir) {
     const where = `creators/${folder}`;
     const parsed = NpcSchema.safeParse(readJson(join(base, 'character.json'), undefined));
     if (!parsed.success) { err(`${where}/character.json`, parsed.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join('; ')); continue; }
-    let npc = parsed.data;
-    try { npc = loadResponseContract(npc, base); } catch (error) { err(`${where}/response-contract.md`, error.message); continue; }
+    const npc = parsed.data;
     if (npc.id !== folder) err(`${where}/character.json`, `id "${npc.id}" must match folder name`);
     needMedia(`${where}/character.json avatar`, npc.avatar);
     for (const r of npc.rewards) needMedia(`${where}/character.json reward ${r.id}`, r.asset);

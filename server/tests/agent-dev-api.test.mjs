@@ -21,12 +21,7 @@ function createMockDb() {
                       id: 'cheer', biography: 'Cheer test bio',
                       chatExperiment: {
                         mode: 'character-only',
-                        model: 'deepseek-flash',
-                        responseContract: {
-                          id: 'cheer-response-v1',
-                          defaultVariant: 'contract',
-                          text: '# Cheer Response Contract'
-                        }
+                        model: 'deepseek-flash'
                       }
                     })
                   };
@@ -140,7 +135,7 @@ test('Agent Dev API: allows cheer history, metrics, contract, and health', async
   assert.equal(healthRes.status, 200);
   const healthData = await healthRes.json();
   assert.equal(healthData.ok, true);
-  assert.deepEqual(healthData.allowedCreators, ['cheer']);
+  assert.deepEqual(healthData.allowedCreators, ['cheer', 'june']);
 
   // History endpoint
   const histReq = new Request('https://staging.example/api/agent/characters/cheer/history', { headers: authHeaders });
@@ -168,9 +163,10 @@ test('Agent Dev API: allows cheer history, metrics, contract, and health', async
   assert.equal(contRes.status, 200);
   const contData = await contRes.json();
   assert.equal(contData.ok, true);
-  assert.equal(contData.contractId, 'cheer-response-v1');
-  assert.match(contData.contractHash, /^[a-f0-9]{64}$/);
-  assert.equal(contData.contractMarkdown, '# Cheer Response Contract');
+  assert.equal(contData.mode, 'character-only');
+  assert.equal(contData.model, 'deepseek-flash');
+  assert.equal(contData.biography, 'Cheer test bio');
+  assert.match(contData.sourceHash, /^[a-f0-9]{64}$/);
 });
 
 test('Staging worker forwards agent requests with valid Bearer token without session cookie', async () => {
