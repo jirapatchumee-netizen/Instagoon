@@ -124,7 +124,7 @@ export async function characterOnlyChat(req, env, user, npc, action, now, servic
     const providerStarted = Date.now();
     const response = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.DEEPSEEK_API_KEY}` },
-      body: JSON.stringify(buildExperimentRequest(npc, { history, userText, now, modePrompt })),
+      body: JSON.stringify(buildExperimentRequest(npc, { history, userText, now, modePrompt, nickname: user.nickname })),
       signal: AbortSignal.timeout(15000)
     });
     if (!response.ok) {

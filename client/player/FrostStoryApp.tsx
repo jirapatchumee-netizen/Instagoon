@@ -207,6 +207,15 @@ export const TRANSLATIONS = {
     chatSettings: 'ตั้งค่าแชท',
     sendFailed: 'ส่งไม่สำเร็จ · แตะเพื่อลองใหม่',
     chatLoading: 'กำลังเปิดแชท',
+    profileSetupTitle: 'ตั้งค่าโปรไฟล์ผู้เล่น',
+    profileEditTitle: 'แก้ไขโปรไฟล์',
+    profileSetupDesc: 'เลือกรูปโปรไฟล์และตั้งชื่อเล่นของคุณ เพื่อให้ Creator จดจำและเรียกชื่อคุณในแชท',
+    avatarSelectLabel: 'เลือกรูปโปรไฟล์ (Avatar)',
+    nicknameLabel: 'ชื่อเล่นของคุณ',
+    nicknamePlaceholder: 'เช่น วิน, เคน, ข้าวฟ่าง (สูงสุด 30 ตัวอักษร)',
+    saveProfileBtn: 'ยืนยันและเริ่มแชท',
+    saveProfileEditBtn: 'บันทึกข้อมูล',
+    editProfile: 'แก้ไขโปรไฟล์',
   },
   en: {
     loading: 'Loading instagoon…',
@@ -304,6 +313,15 @@ export const TRANSLATIONS = {
     chatSettings: 'Chat settings',
     sendFailed: 'Not sent · Tap to retry',
     chatLoading: 'Opening chat',
+    profileSetupTitle: 'Player Profile Setup',
+    profileEditTitle: 'Edit Profile',
+    profileSetupDesc: 'Choose your avatar and nickname so Creators can recognize and call you by name in chat.',
+    avatarSelectLabel: 'Choose Avatar',
+    nicknameLabel: 'Your Nickname',
+    nicknamePlaceholder: 'e.g. Alex, Ken, Sam (max 30 chars)',
+    saveProfileBtn: 'Confirm & Start Chat',
+    saveProfileEditBtn: 'Save Changes',
+    editProfile: 'Edit Profile',
   },
   ja: {
     loading: 'instagoon を読み込み中…',
@@ -401,6 +419,15 @@ export const TRANSLATIONS = {
     chatSettings: 'チャット設定',
     sendFailed: '送信できませんでした · タップして再送',
     chatLoading: 'チャットを開いています',
+    profileSetupTitle: 'プレイヤープロフィール設定',
+    profileEditTitle: 'プロフィール編集',
+    profileSetupDesc: 'アバターとニックネームを設定して、クリエイターから名前で呼んでもらいましょう。',
+    avatarSelectLabel: 'アバターを選択',
+    nicknameLabel: 'ニックネーム',
+    nicknamePlaceholder: '例: レン、ハルト、ユウ (最大30文字)',
+    saveProfileBtn: '保存してチャットを開始',
+    saveProfileEditBtn: '保存',
+    editProfile: 'プロフィール編集',
   },
 };
 
@@ -411,6 +438,8 @@ type User = {
   ageVerifiedAt: number | null;
   consentVersion: string | null;
   isAdmin?: boolean;
+  nickname?: string | null;
+  avatarId?: string | null;
 };
 type Creator = { id: string; name: string; bio: string; avatarKey: string | null; relationship: number; following?: boolean };
 type Comment = { id: string; content: string; createdAt: number; own: boolean };
@@ -872,6 +901,143 @@ function Modal({
   );
 }
 
+export const PRESET_AVATARS = [
+  { id: 'user_m1', label: 'หนุ่มหล่อ CEO', src: '/avatars/user_m1.jpg' },
+  { id: 'user_m2', label: 'หนุ่มแบดบอย', src: '/avatars/user_m2.jpg' },
+  { id: 'user_m3', label: 'หนุ่มแว่นสุขุม', src: '/avatars/user_m3.jpg' },
+  { id: 'user_f1', label: 'สาวชิค เกิร์ลครัช', src: '/avatars/user_f1.jpg' },
+  { id: 'user_f2', label: 'สาวหวาน หรูหรา', src: '/avatars/user_f2.jpg' },
+  { id: 'user_f3', label: 'สาวมั่น คมเฉี่ยว', src: '/avatars/user_f3.jpg' },
+];
+
+export function getAvatarSrc(avatarId?: string | null) {
+  const found = PRESET_AVATARS.find((a) => a.id === avatarId);
+  return found ? found.src : null;
+}
+
+function ProfileSetupModal({
+  user,
+  t,
+  onSave,
+  onClose,
+  canClose,
+  saving,
+}: {
+  user: User;
+  t: (typeof TRANSLATIONS)[Lang];
+  onSave: (nickname: string, avatarId: string) => Promise<void>;
+  onClose: () => void;
+  canClose: boolean;
+  saving: boolean;
+}) {
+  const [selectedAvatar, setSelectedAvatar] = useState<string>(() => user.avatarId || 'user_m1');
+  const [nickname, setNickname] = useState<string>(() => user.nickname || '');
+  const [err, setErr] = useState('');
+
+  const isEdit = Boolean(user.nickname);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    const trimmed = nickname.trim();
+    if (!trimmed) {
+      setErr('กรุณากรอกชื่อเล่นของคุณ');
+      return;
+    }
+    if (!selectedAvatar) {
+      setErr('กรุณาเลือกรูปโปรไฟล์');
+      return;
+    }
+    setErr('');
+    await onSave(trimmed, selectedAvatar);
+  }
+
+  return (
+    <Modal labelledBy="fs-profile-setup-title" onClose={canClose ? onClose : () => {}}>
+      <section className="fs-profile-setup-modal">
+        <header className="fs-profile-setup-header">
+          <h2 id="fs-profile-setup-title">{isEdit ? t.profileEditTitle : t.profileSetupTitle}</h2>
+          {canClose && (
+            <button type="button" className="fs-btn-icon-close" onClick={onClose} aria-label="Close">
+              <X size={20} />
+            </button>
+          )}
+        </header>
+
+        <p className="fs-profile-setup-desc">{t.profileSetupDesc}</p>
+
+        {err && <div className="fs-alert-error" role="alert">{err}</div>}
+
+        <form onSubmit={(e) => void handleSubmit(e)} className="fs-profile-setup-form">
+          <div className="fs-avatar-picker-section">
+            <span className="fs-form-label">{t.avatarSelectLabel}</span>
+            <div className="fs-avatar-grid">
+              {PRESET_AVATARS.map((av) => {
+                const isSelected = selectedAvatar === av.id;
+                return (
+                  <button
+                    key={av.id}
+                    type="button"
+                    className={`fs-avatar-card ${isSelected ? 'fs-selected' : ''}`}
+                    onClick={() => setSelectedAvatar(av.id)}
+                  >
+                    <div className="fs-avatar-card-thumb">
+                      <img src={av.src} alt={av.label} />
+                      {isSelected && (
+                        <div className="fs-avatar-checkmark">
+                          <Check size={12} strokeWidth={3} />
+                        </div>
+                      )}
+                    </div>
+                    <span className="fs-avatar-card-label">{av.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="fs-nickname-section">
+            <label htmlFor="fs-nickname-input" className="fs-form-label">{t.nicknameLabel}</label>
+            <div className="fs-input-wrap">
+              <input
+                id="fs-nickname-input"
+                type="text"
+                className="fs-input"
+                value={nickname}
+                onChange={(e) => setNickname(e.target.value.slice(0, 30))}
+                placeholder={t.nicknamePlaceholder}
+                data-autofocus
+                disabled={saving}
+                maxLength={30}
+              />
+              <span className="fs-char-counter">{nickname.length}/30</span>
+            </div>
+          </div>
+
+          <div className="fs-profile-setup-actions">
+            {canClose && (
+              <button
+                type="button"
+                className="fs-btn-ghost"
+                disabled={saving}
+                onClick={onClose}
+              >
+                ยกเลิก
+              </button>
+            )}
+            <button
+              type="submit"
+              className="fs-primary"
+              disabled={saving || !nickname.trim() || !selectedAvatar}
+            >
+              {saving ? 'กำลังบันทึก...' : isEdit ? t.saveProfileEditBtn : t.saveProfileBtn}
+            </button>
+          </div>
+        </form>
+      </section>
+    </Modal>
+  );
+}
+
 export function LoginScreen({
   t,
   lang,
@@ -977,6 +1143,9 @@ export function FrostStoryApp() {
 
   const [user, setUser] = useState<User | null>(null);
   const [energy, setEnergy] = useState<Energy | null>(null);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [pendingChatCreator, setPendingChatCreator] = useState<Creator | null>(null);
   const [shopOpen, setShopOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -1406,6 +1575,11 @@ export function FrostStoryApp() {
   }
 
   async function openChat(creator: Creator) {
+    if (user && !user.nickname) {
+      setPendingChatCreator(creator);
+      setProfileModalOpen(true);
+      return;
+    }
     setError('');
     setChat(null);
     setPending([]);
@@ -2114,10 +2288,28 @@ export function FrostStoryApp() {
             <section className="fs-card fs-account">
               <div className="fs-account-profile">
                 <div className="fs-avatar fs-avatar-large">
-                  <UserIcon size={24} />
+                  {user.avatarId && getAvatarSrc(user.avatarId) ? (
+                    <img
+                      src={getAvatarSrc(user.avatarId)!}
+                      alt={user.nickname || user.email}
+                      className="fs-avatar-img"
+                    />
+                  ) : (
+                    <UserIcon size={24} />
+                  )}
                 </div>
-                <div>
-                  <strong>{user.email}</strong>
+                <div className="fs-account-info">
+                  <div className="fs-account-name-row">
+                    <strong>{user.nickname || user.email.split('@')[0]}</strong>
+                    <button
+                      type="button"
+                      className="fs-profile-edit-btn"
+                      onClick={() => setProfileModalOpen(true)}
+                    >
+                      {t.editProfile}
+                    </button>
+                  </div>
+                  <span className="fs-muted">{user.email}</span>
                   <span className="fs-muted">{t.betaUserDesc}</span>
                 </div>
               </div>
@@ -2211,7 +2403,11 @@ export function FrostStoryApp() {
           title={t.account}
         >
           <div className="fs-avatar fs-avatar-tiny fs-bottom-user-avatar">
-            <UserIcon size={14} />
+            {user?.avatarId && getAvatarSrc(user.avatarId) ? (
+              <img src={getAvatarSrc(user.avatarId)!} alt="" className="fs-avatar-img" />
+            ) : (
+              <UserIcon size={14} />
+            )}
           </div>
         </button>
       </nav>
@@ -3332,6 +3528,40 @@ export function FrostStoryApp() {
             )}
           </section>
         </Modal>
+      )}
+
+      {/* Profile Setup / Edit Modal */}
+      {profileModalOpen && user && (
+        <ProfileSetupModal
+          user={user}
+          t={t}
+          canClose={Boolean(user.nickname)}
+          saving={savingProfile}
+          onClose={() => {
+            setProfileModalOpen(false);
+            setPendingChatCreator(null);
+          }}
+          onSave={async (nickname, avatarId) => {
+            setSavingProfile(true);
+            try {
+              const res = await api<{ ok: boolean; nickname: string; avatarId: string }>(
+                '/api/me/profile',
+                json({ nickname, avatarId })
+              );
+              setUser((prev) => (prev ? { ...prev, nickname: res.nickname, avatarId: res.avatarId } : prev));
+              setProfileModalOpen(false);
+              const target = pendingChatCreator;
+              setPendingChatCreator(null);
+              if (target) {
+                void openChat(target);
+              }
+            } catch (e) {
+              setError(e instanceof Error ? e.message : 'บันทึกโปรไฟล์ไม่สำเร็จ');
+            } finally {
+              setSavingProfile(false);
+            }
+          }}
+        />
       )}
 
       {/* Energy Top-up Shop */}
