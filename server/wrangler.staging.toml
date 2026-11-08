@@ -31,6 +31,9 @@ STAGING_EMAILS = "jirapat.chumee@gmail.com,taychinsgo@gmail.com"
 # Secret for AI agents (AGENT_DEV_SECRET) is managed via Cloudflare Worker Secrets (wrangler secret put).
 # One-time free energy per new staging account (production uses the default, 30).
 FREE_ENERGY_GRANT = "100"
+BANK_NAME = "ธนาคารกสิกรไทย"
+BANK_ACCOUNT_NO = "177-1-50013-3"
+BANK_ACCOUNT_NAME = "บจก. แมช มูฟ อัลฟ่า"
 # Fill these with Google's published USD per 1M tokens for the active model group to make
 # /api/admin/chat-metrics report estimatedCostUsd. Left unset on purpose: the numbers must come
 # from the pricing page, not from a guess. See docs/AI_CHAT_COST_PLAN.md (P0).

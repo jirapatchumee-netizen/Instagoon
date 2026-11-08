@@ -34,11 +34,13 @@ const PRIVATE_PATHS = [
   [/(^|\/)docs\/art\//i, 'golden-master and reference images stay in the local art pipeline']
 ];
 const ZONE = /^server\/src\/ai\/protected\//i;
-// Files whose edit would weaken the guardrails themselves — including CODEOWNERS (the real gate) and the
-// package.json scripts that decide whether the harness tests run. CI cannot block them (a PR may
-// legitimately improve the guard) — that is what CODEOWNERS + required review is for.
-const MECHANISM = /^(scripts\/guard-commit\.mjs|\.githooks\/|\.github\/(workflows\/|CODEOWNERS)|\.claude\/settings\.json$|package\.json$|server\/package\.json$|server\/tests\/(guard-commit|protected-zone)\.test\.mjs$|docs\/adr\/0013)/i;
+// Files whose edit would weaken the guardrails themselves, including CODEOWNERS (the real gate). CI cannot
+// block them (a PR may legitimately improve the guard) — that is what CODEOWNERS + required review is for.
+const MECHANISM = /^(scripts\/guard-commit\.mjs|\.githooks\/|\.github\/(workflows\/|CODEOWNERS)|\.claude\/settings\.json$|server\/tests\/(guard-commit|protected-zone)\.test\.mjs$|docs\/adr\/0013)/i;
 const WRANGLER = /^server\/wrangler[^/]*\.toml$/i;
+// package.json is ordinary code except for its "scripts" block, where the command that runs the guard's own
+// tests lives. Lock the block, not the file, so an agent can commit a dependency.
+const PKG = /^(package|server\/package)\.json$/i;
 // The guard's own test file quotes the shapes it refuses. They are exempted by path, not by file
 // type, so a workflow pasted into a .md or a recipe into a .js is still blocked.
 const SELF_TEST = /^server\/tests\/guard-commit\.test\.mjs$/i;
@@ -57,6 +59,13 @@ export function pngTextKeys(buf) {
   return keys;
 }
 
+// The "scripts" object as one comparable text. null when it cannot be read — an unreadable side never
+// looks unchanged, so a malformed or missing package.json stays owner-only.
+function scriptsSection(x) {
+  if (!x) return null;
+  try { return JSON.stringify(JSON.parse(x.toString('utf8')).scripts ?? null); } catch { return null; }
+}
+
 // files: [{ path, status, content: Buffer|null, diff: string }] as staged. Returns one problem per finding.
 // mode 'commit' (the hook) refuses everything flagged. mode 'ci' only refuses what cannot be undone once
 // pushed: secrets, private art-pipeline files, generator metadata. An AI-zone change is reported instead,
@@ -72,6 +81,10 @@ export function findProblems(files, mode = 'commit', opts = {}) {
     if (ZONE.test(f.path)) pushSoft(f.path, 'owner-locked AI zone (ADR-0013). Agents: stop and ask the owner — only the owner commits a zone change, with --no-verify and who approved it in the message.');
     if (MECHANISM.test(f.path)) pushSoft(f.path, 'changing the guardrails themselves (ADR-0013) — owner review required, see CODEOWNERS.');
     if (WRANGLER.test(f.path) && ZONE_VARS.test(f.diff || '')) pushSoft(f.path, 'GEMINI_MODEL/SUMMARY_MODEL is part of the owner-locked AI zone (ADR-0013).');
+    if (PKG.test(f.path)) {
+      const before = scriptsSection(f.headContent), after = scriptsSection(f.content);
+      if (after === null || before !== after) pushSoft(f.path, 'the "scripts" block of package.json decides which tests the guard runs (ADR-0013) — owner review required; other sections are ordinary code.');
+    }
     if (mode === 'ci' && f.status === 'D' && f.path === 'scripts/guard-commit.mjs') push(f.path, 'deleting the commit guard leaves every later CI run without a checker (ADR-0013).');
     if (f.status === 'D') continue;
     for (const [re, what] of SECRET_PATHS) if (re.test(f.path)) push(f.path, `${what}; never commit it (public repo).`);
@@ -118,17 +131,25 @@ function pairs(cwd, args) {
   return out;
 }
 
-function readOne(cwd, status, path, at, diffArgs) {
+function parentBlob(cwd, parent, path) {
+  try { return gitRun(cwd, 'show', `${parent}:${path}`); } catch { return null; }
+}
+
+function readOne(cwd, status, path, at, diffArgs, parent) {
   return {
     path, status,
     content: status === 'D' ? null : gitRun(cwd, 'show', `${at}${path}`),
-    diff: WRANGLER.test(path) ? gitRun(cwd, ...diffArgs, path).toString('utf8') : ''
+    diff: WRANGLER.test(path) ? gitRun(cwd, ...diffArgs, path).toString('utf8') : '',
+    // The "before" side of package.json: only its scripts block is owner-locked, and that is decided by
+    // comparing the two sides, not the diff text. A file the change introduces has no parent side — null
+    // reads as "changed", so a new package.json still goes to the owner.
+    headContent: PKG.test(path) ? parentBlob(cwd, parent, path) : undefined
   };
 }
 
 function stagedChanges(cwd) {
   return pairs(cwd, ['diff', '--cached', '--name-status', '--no-renames'])
-    .map(({ status, path }) => readOne(cwd, status, path, ':', ['diff', '--cached', '-U0', '--']));
+    .map(({ status, path }) => readOne(cwd, status, path, ':', ['diff', '--cached', '-U0', '--'], 'HEAD'));
 }
 
 // CI reads every commit of the PR *and* the net tree. Every commit catches a secret added then deleted
@@ -140,11 +161,11 @@ function commitChanges(cwd, base) {
   for (const c of commits) {
     // diff-tree, not git show: the commit header would otherwise glue itself onto the first status token.
     for (const { status, path } of pairs(cwd, ['diff-tree', '--root', '-r', '--no-commit-id', '--name-status', '--no-renames', c])) {
-      files.push(readOne(cwd, status, path, `${c}:`, ['show', '-U0', c, '--']));
+      files.push(readOne(cwd, status, path, `${c}:`, ['show', '-U0', c, '--'], `${c}^`));
     }
   }
   for (const { status, path } of pairs(cwd, ['diff', `${base}...HEAD`, '--name-status', '--no-renames'])) {
-    files.push(readOne(cwd, status, path, 'HEAD:', ['diff', `${base}...HEAD`, '-U0', '--']));
+    files.push(readOne(cwd, status, path, 'HEAD:', ['diff', `${base}...HEAD`, '-U0', '--'], base));
   }
   return files;
 }

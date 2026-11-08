@@ -6,6 +6,7 @@ import { fiftyShadesPrompt as buildFiftyShadesPrompt } from './ai/protected/fift
 import { narrativeEnabled, ensureNarrativeStorage, readNarrativeState, narrativeHistory, narrativePrompt, narrativeSchema, decodeNarrative, serializeNarrative, selectNarrativeMemories, narrativeSceneMetadata, ensureNarrativeOpening } from './narrative.mjs';
 import { narrativeTurnContext, restoreLegacyInteraction } from './narrative-interaction.mjs';
 import { characterOnlyEnabled, characterOnlyChat } from './character-only-chat.mjs';
+import { shopPlayer, shopAdmin, shopReportsApi, writeDailyReports } from './shop/index.mjs';
 import { handleAgentDevRoute } from './agent-dev-api.mjs';
 
 const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), {status, headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store',...headers}});
@@ -330,8 +331,8 @@ async function applyChoiceOutcome(env, userId, creator, rev, choice, now) {
 
 async function energy(env,uid,now) {
  // Free energy is a one-time grant of 30 per account (migration 0009): it never refills.
- const row=await one(env,'SELECT free,purchased FROM energy WHERE user_id=?',uid);
- return {free:row.free,purchased:row.purchased,nextRefillAt:null};
+ const row=await one(env,'SELECT free,purchased,COALESCE(diamonds,0) diamonds FROM energy WHERE user_id=?',uid);
+ return {free:row.free,purchased:row.purchased,diamonds:row.diamonds??0,nextRefillAt:null};
 }
 const postShape = p=>({id:p.id,creatorId:p.creator_id,creatorName:p.creator_name,caption:p.caption,mediaKey:p.media_key,publishedAt:p.published_at,relationshipRequired:p.relationship_required,simulatedLikes:p.simulated_likes,likes:p.likes,firstCommentUsed:!!p.claimed});
 const storyShape = s=>({id:s.id,creatorId:s.creator_id,type:s.type,mediaKey:s.media_key,publishedAt:s.published_at,expiresAt:s.type==='broadcast'?s.published_at+86400000:s.first_viewed_at==null?null:s.first_viewed_at+86400000,firstViewedAt:s.first_viewed_at});
@@ -339,6 +340,7 @@ async function visiblePost(env,user,pid,now){return one(env,`SELECT p.* FROM pos
 async function visibleStory(env,user,sid,now){const s=await one(env,`SELECT s.*,v.first_viewed_at FROM stories s LEFT JOIN relationships r ON r.creator_id=s.creator_id AND r.user_id=? LEFT JOIN story_views v ON v.story_id=s.id AND v.user_id=? WHERE s.id=? AND s.status='published' AND s.published_at<=? AND COALESCE(r.score,0)>=s.relationship_required`,user.id,user.id,sid,now);if(!s||(s.type==='broadcast'&&now>=s.published_at+86400000)||(s.first_viewed_at!=null&&s.type==='unlockable'&&now>=s.first_viewed_at+86400000))return null;return s;}
 async function player(req,env,user,path,now,ctx) {
  const method=req.method;
+ if(path==='/api/shop'||path.startsWith('/api/shop/')) return await shopPlayer(req,env,user,path,now);
  if(path==='/api/me' && method==='GET'){
   const isAdmin = isAdminUser(env,user);
   return json({user:{id:user.id,email:user.email,role:user.role||(isAdmin?'admin':'player'),isAdmin,ageVerifiedAt:user.age_verified_at,consentVersion:user.consent_version},energy:await energy(env,user.id,now)});
@@ -411,8 +413,25 @@ async function player(req,env,user,path,now,ctx) {
   let definition; try { definition = JSON.parse(row?.definition_json || 'null'); } catch {}
   if (characterOnlyEnabled(definition)) return characterOnlyChat(req, env, user, definition, experimentRoute[2], now, { json, takeEnergy, refundEnergy, energy, recordTurn });
  }
- if(path==='/api/creators'&&method==='GET'){const removed=new Set(await removedCreators(env));return json({creators:(await all(env,'SELECT c.*,COALESCE(r.score,0) AS relationship FROM creators c LEFT JOIN relationships r ON r.creator_id=c.id AND r.user_id=? ORDER BY c.name',user.id)).filter(c=>!removed.has(c.id)).map(c=>({id:c.id,name:c.name,bio:c.bio,avatarKey:c.avatar_key,relationship:c.relationship}))});}
- let m=path.match(/^\/api\/creators\/([\w-]+)\/profile$/);
+ if(path==='/api/creators'&&method==='GET'){
+  const removed=new Set(await removedCreators(env));
+  const rows=await all(env,'SELECT c.*,COALESCE(r.score,0) AS relationship,EXISTS(SELECT 1 FROM follows f WHERE f.creator_id=c.id AND f.user_id=?) AS following FROM creators c LEFT JOIN relationships r ON r.creator_id=c.id AND r.user_id=? ORDER BY c.name',user.id,user.id);
+  return json({creators:rows.filter(c=>!removed.has(c.id)).map(c=>({id:c.id,name:c.name,bio:c.bio,avatarKey:c.avatar_key,relationship:c.relationship,following:!!c.following}))});
+ }
+ let m=path.match(/^\/api\/creators\/([\w-]+)\/follow$/);
+ if(m&&method==='POST'){
+  const cid=id(m[1]), b=await body(req);
+  const shouldFollow=typeof b.follow==='boolean'?b.follow:null;
+  const existing=await one(env,'SELECT 1 FROM follows WHERE user_id=? AND creator_id=?',user.id,cid);
+  const targetFollowing=shouldFollow!==null?shouldFollow:!existing;
+  if(targetFollowing){
+   await run(env,'INSERT OR IGNORE INTO follows(user_id,creator_id,created_at) VALUES(?,?,?)',user.id,cid,now);
+  }else{
+   await run(env,'DELETE FROM follows WHERE user_id=? AND creator_id=?',user.id,cid);
+  }
+  return json({ok:true,following:targetFollowing,creatorId:cid});
+ }
+ m=path.match(/^\/api\/creators\/([\w-]+)\/profile$/);
  if(m&&method==='GET'){
   const creatorId=id(m[1]);
   const creator=await one(env,'SELECT * FROM creators WHERE id=?',creatorId);
@@ -460,7 +479,8 @@ async function player(req,env,user,path,now,ctx) {
     closeness:relRow?.closeness||0,
     trust:relRow?.trust||0,
     romance:relRow?.romance||0,
-    level:currentLv
+    level:currentLv,
+    following:!!(await one(env,'SELECT 1 FROM follows WHERE user_id=? AND creator_id=?',user.id,creatorId))
    },
    posts:(postsRes.results||[]).map(p=>({...postShape(p),comments:[]})),
    vault,
@@ -468,7 +488,7 @@ async function player(req,env,user,path,now,ctx) {
   });
  }
  if(path==='/api/feed'&&method==='GET'){
-  const posts=await all(env,`SELECT p.*,c.name creator_name,(SELECT COUNT(*) FROM likes l WHERE l.post_id=p.id) likes,EXISTS(SELECT 1 FROM comment_claims x WHERE x.user_id=? AND x.post_id=p.id) claimed FROM posts p JOIN creators c ON c.id=p.creator_id LEFT JOIN relationships r ON r.creator_id=p.creator_id AND r.user_id=? WHERE p.status='published' AND p.published_at<=? AND COALESCE(r.score,0)>=p.relationship_required ORDER BY p.published_at DESC LIMIT 100`,user.id,user.id,now);
+  const posts=await all(env,`SELECT p.*,c.name creator_name,(SELECT COUNT(*) FROM likes l WHERE l.post_id=p.id) likes,EXISTS(SELECT 1 FROM comment_claims x WHERE x.user_id=? AND x.post_id=p.id) claimed FROM posts p JOIN creators c ON c.id=p.creator_id JOIN follows f ON f.creator_id=p.creator_id AND f.user_id=? LEFT JOIN relationships r ON r.creator_id=p.creator_id AND r.user_id=? WHERE p.status='published' AND p.published_at<=? AND COALESCE(r.score,0)>=p.relationship_required ORDER BY p.published_at DESC LIMIT 100`,user.id,user.id,user.id,now);
   for(const p of posts){p.comments=(await all(env,'SELECT id,user_id,content,created_at FROM comments WHERE post_id=? AND hidden=0 ORDER BY created_at LIMIT 100',p.id)).map(c=>({id:c.id,content:c.content,createdAt:c.created_at,own:c.user_id===user.id}));}
   await run(env,'INSERT INTO activity(user_id,kind,created_at) VALUES(?,?,?)',user.id,'feed',now);
   return json({posts:posts.map(p=>({...postShape(p),comments:p.comments}))});
@@ -491,7 +511,7 @@ async function player(req,env,user,path,now,ctx) {
  m=path.match(/^\/api\/posts\/([\w-]+)\/like$/);
  if(m&&method==='POST'){if(!await visiblePost(env,user,id(m[1]),now))return json({error:'not_found'},404);await run(env,'INSERT OR IGNORE INTO likes(user_id,post_id) VALUES(?,?)',user.id,m[1]);return json({ok:true});}
  if(path==='/api/stories'&&method==='GET'){
-  const ids=await all(env,"SELECT id FROM stories WHERE status='published' AND published_at<=?",now); const stories=[];
+  const ids=await all(env,"SELECT s.id FROM stories s JOIN follows f ON f.creator_id=s.creator_id AND f.user_id=? WHERE s.status='published' AND s.published_at<=?",user.id,now); const stories=[];
   for(const i of ids){const s=await visibleStory(env,user,i.id,now);if(s)stories.push(storyShape(s));}return json({stories});
  }
  m=path.match(/^\/api\/stories\/([\w-]+)\/view$/);
@@ -1480,6 +1500,7 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
 }
 async function admin(req,env,path,now){
  const method=req.method;
+ if(path.startsWith('/api/admin/orders')||path.startsWith('/api/admin/shop/')){const r=await shopAdmin(req,env,path,now);if(r)return r;}
  if(path==='/api/admin/metrics'&&method==='GET'){
   const admin=(env.ADMIN_EMAIL||'').toLowerCase();
   const eligible=await all(env,`SELECT a.user_id,MIN(a.created_at) first_at FROM activity a JOIN users u ON u.id=a.user_id WHERE u.is_test=0 AND lower(u.email)<>? GROUP BY a.user_id HAVING MIN(a.created_at)<=?`,admin,now-14*86400000);
@@ -1516,7 +1537,7 @@ async function admin(req,env,path,now){
  if(path==='/api/admin/energy'&&method==='POST'){const b=await body(req),uid=id(b.userId),amount=integer(b.amount);if(amount<1||amount>1000)return fail('invalid_amount');const result=await env.DB.batch([env.DB.prepare('UPDATE energy SET purchased=purchased+? WHERE user_id=?').bind(amount,uid),env.DB.prepare('INSERT INTO token_ledger(id,user_id,delta_purchased,reason,created_at) VALUES(?,?,?,?,?)').bind(crypto.randomUUID(),uid,amount,string(b.reason,500),now)]);if(!result[0].meta.changes)return json({error:'not_found'},404);return json({ok:true});}
  return json({error:'not_found'},404);
 }
-export default {async scheduled(_event,env,ctx){ctx.waitUntil(retention(env,Date.now()).then(r=>console.log('chat retention',JSON.stringify(r))));},
+export default {async scheduled(_event,env,ctx){const now=Date.now();ctx.waitUntil(retention(env,now).then(r=>console.log('chat retention',JSON.stringify(r))));ctx.waitUntil(writeDailyReports(env,now).then(r=>console.log('shop daily report',JSON.stringify(r))));},
 async fetch(req,env,ctx){
  try {
   const url=new URL(req.url),path=url.pathname,now=Date.now();
@@ -1528,6 +1549,7 @@ async fetch(req,env,ctx){
   if(path==='/auth/google'||path==='/auth/callback'||path==='/auth/demo')return await auth(req,env,url);
   if(!path.startsWith('/api/'))return json({error:'not_found'},404);
   try{await ensureContent(env);}catch(e){console.error('content sync failed',String(e?.message||e));if(e?.contentResetFailed)return json({error:'content_reset_pending'},503);}
+  if(path.startsWith('/api/reports/'))return await shopReportsApi(req,env,path);
   const user=await session(req,env);
   if(path==='/api/logout'&&req.method==='POST'){if(user)await run(env,'DELETE FROM sessions WHERE id=?',await hash(cookie(req,'frost_session')));return json({ok:true},200,{'set-cookie':secureCookie('frost_session','',0)});}
   if(path==='/api/account'&&req.method==='DELETE'){if(!user)return json({error:'unauthorized'},401);await env.DB.batch([env.DB.prepare('DELETE FROM invites WHERE email=?').bind(user.email),env.DB.prepare('DELETE FROM users WHERE id=?').bind(user.id)]);return json({ok:true},200,{'set-cookie':secureCookie('frost_session','',0)});}
