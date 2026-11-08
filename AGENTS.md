@@ -56,7 +56,29 @@ Standalone Web Visual Novel เดิม (Overtime Secrets) พักการ�
 
 ---
 
-## 🛡️ 4. Guardrail ของ repo (repo เป็น public — กติกาพวกนี้มีผลกับ Agent ทุกตัว)
+## 🔒 4. ความปลอดภัยของระบบและนโยบาย Secret บน Public Repository (Mandatory for ALL Agents)
+
+`Instagoon-app` เป็น **PUBLIC GitHub Repository** ดังนั้น AI Agent ทุกตัวต้องปฏิบัติตามกฎความปลอดภัยอย่างเคร่งครัด:
+
+1. **ห้ามเปิดสิทธิ์ Direct D1 Access หรือ Cloudflare Account ให้ External Agent หรือบุคคลภายนอกเด็ดขาด**:
+   - Cloudflare D1 **ไม่มี Table/Row-Level Security** การให้สิทธิ์เข้า D1 จะทำให้บุคคลภายนอกสามารถ Query ข้อมูลได้ทุกตาราง (เห็นอีเมลผู้ใช้, hash รหัสผ่าน, สลิปโอนเงิน PromptPay/ข้อมูลทางการเงิน และประวัติแชทของตัวละครอื่นทั้งหมด เช่น Milin, Mook, Noey)
+   - หาก External Agent หรือทีมร่วมพัฒนาต้องการเข้าถึงข้อมูลเพื่อทดสอบ/ประเมินผลบท ให้สร้าง **Scoped Developer REST API** ที่:
+     - ล็อกสิทธิ์เฉพาะ `creatorId` ที่ได้รับอนุญาต (เช่น `cheer`) ปฏิเสธตัวละครอื่นด้วย `403 Forbidden`
+     - มี Authentication ผ่าน Bearer Token หรือ Custom Header Secret
+     - บังคับเป็น Read-Only (`GET` เท่านั้น)
+2. **ห้ามใส่ Secret Token / API Key ใน `[vars]` ของ `wrangler*.toml` เด็ดขาด**:
+   - บล็อก `[vars]` ใน `wrangler.toml` เป็น environment variable แบบสาธารณะ ห้ามใส่ Secret, Token หรือ Password ใดๆ
+   - ค่าที่เป็นความลับทั้งหมด (เช่น `AGENT_SECRET`, `GEMINI_API_KEY`, `DEEPSEEK_API_KEY`, `FIFTY_SHADES_SECRET_PROMPT`) **ต้องตั้งผ่าน Cloudflare Worker Secret เท่านั้น**:
+     ```bash
+     npx wrangler secret put <SECRET_NAME> --config server/wrangler.staging.toml
+     ```
+3. **ห้ามเปิดเผย Secret ผ่าน Public Surface**:
+   - ห้ามใส่ Secret Token ลงใน Git commit message, PR description, หรือ GitHub Issues
+   - ให้ส่งต่อ Secret ให้ทีมงานหรือ External Agent ผ่านช่องทางส่วนตัว (DM/Private Chat) เท่านั้น
+
+---
+
+## 🛡️ 5. Guardrail ของ repo (repo เป็น public — กติกาพวกนี้มีผลกับ Agent ทุกตัว)
 
 เปิด hook ต่อ clone ครั้งแรก (ค่านี้เก็บใน `.git/config` ไม่ได้มากับ repo):
 
