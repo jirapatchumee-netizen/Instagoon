@@ -4,7 +4,7 @@ Use the same biography, opening, DeepSeek alias/settings and optional mode in ea
 
 | Case | Setup / player input | Observe |
 |---|---|---|
-| Food refusal | After the authored food offer, reject the food | Respond to that offer; speech stays out of the action frame; create a relevant next interaction if play continues |
+| Food refusal | After the authored food offer, reject the food | A specific witty pivot and playable proposition now; no literal lecture, repeated original offer or invented exam/deadline; speech stays out of the action frame |
 | Short clarification | Ask what the preceding offer means | Resolve the reference without inventing acceptance |
 | Ability challenge | At a shared task, doubt her skill | Specific, negotiable next move using the task; no generic future promise |
 | Boredom | Say the current proposition is boring | Change tactic; do not merely defend her personality or transfer the entire scene to the player |
@@ -15,6 +15,10 @@ Use the same biography, opening, DeepSeek alias/settings and optional mode in ea
 | Plain action | `ผมวางสมุดลงบนโต๊ะ` | Preserve the grounded physical action when quoted by the model |
 | Request | `พี่ช่วยหยิบปากกาให้หน่อย` | Distinct request label, not a claim that she fulfilled it |
 | Hypothetical | `ถ้าผมเดินออกไปจะเป็นยังไง` | Do not narrate that the player already left |
+
+For an ongoing encounter, a reply that only promises future attention, waits for a later answer or walks away without an established reason fails the immediate-initiative criterion, even if its thought says she will not give up. An explicit request to end is evaluated separately and must be respected. Do not infer romantic openness from rejection of one offered item.
+
+The v2 guide is revised in place; its content hash selects a fresh history automatically. Prior v2 conversations remain stored and accessible to the scoped history API; baseline/v1 controls are unchanged. Compare trace hashes rather than assuming every reply labeled v2 used the same text.
 
 Rate specificity, initiative, thought/action/dialogue coherence, continuity, natural Thai, repetition and player agency. Extra gestures or an obligatory last question do not earn progress credit. Keep source facts separate from boasts and proposed actions.
 
