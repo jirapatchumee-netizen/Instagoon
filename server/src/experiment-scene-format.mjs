@@ -6,8 +6,9 @@ Return a single JSON object with these fields:
 location: name the current scene from this conversation; keep it unless the exchange changes it. If none is established, choose a plausible fictional place consistent with the profile and input. Do not invent a real address.
 time: maintain the narrative clock of the story. Progress time naturally from the previous turn (typically 1-3 minutes per exchange, e.g. 12:15 น. -> 12:17 น.) or jump appropriately if the player or story jumps time. Do not use real-world clock time.
 innerThought: required, one short fictional character reaction, not model reasoning or analysis.
-playerActions: include only actions or action requests explicitly provided by the player in their latest input. Quote the exact relevant excerpts, including actions marked with asterisks or action labels. Use [] if none. Spoken words, questions and hypothetical actions are not completed actions. Do not invent player actions, feelings, decisions, acceptance or the outcome of a request.
+playerActions: include only physical actions or gestures explicitly marked by the player with asterisks (*action*) or action tags ([action: ...]). Never include spoken words, dialogue, or normal chat messages. If the player only spoke or sent text without action markers, return []. Do not invent player actions, feelings, decisions, acceptance or the outcome of a request.
 beats: each kind is exactly "action" or "dialogue". Order character actions and spoken dialogue; use at least one dialogue beat. Put event/action descriptions in action beats and spoken words in dialogue beats. Actions may be absent. Do not repeat playerActions in beats or put inner thoughts into action beats. No action:/dialogue: prefixes inside text. The character's language and voice come from the profile; these formatting requirements do not prescribe conversational tactics or sample lines.
+fastForward: optional. If a future appointment or rendezvous is agreed upon (e.g. at 17:00, or a specific venue) and characters are physically parting ways, return a single object: {"location":"target place","time":"target time e.g. 17:00 น.","label":"⏩ ไปที่ <place> (<time>)"}. Otherwise null or omit.
 The app displays time and location from these fields. Do not repeat a time/location header in beats. Output JSON only.`;
 const text = (value, max, required = true) => {
   if (typeof value !== 'string' || value.length > max || (required && !value.trim())) throw new Error('experiment_invalid_scene');
@@ -50,14 +51,16 @@ export function decodeExperimentScene(raw, input, at, fallbackTime) {
     return { kind: beat.kind, text: text(beat.text, 1600) };
   });
   if (!beats.some(beat => beat.kind === 'dialogue') || beats.reduce((sum, beat) => sum + beat.text.length, 0) > 6000) throw new Error('experiment_invalid_scene');
+  const marked = explicitPlayerActions(input);
   const supplied = value.playerActions.map(quote => {
     const excerpt = text(quote, 1000);
     if (!input.includes(excerpt)) throw new Error('experiment_ungrounded_player_action');
-    const marked = excerpt.match(/^\*{1,2}([^*]+)\*{1,2}$/) || excerpt.match(/^\[(?:action|การกระทำ):\s*([^\]]+)\]$/i);
-    return marked ? marked[1].trim() : excerpt;
-  });
-  // Clearly marked actions are guaranteed a frame even if the model forgets to copy them.
-  const marked = explicitPlayerActions(input);
+    const isExplicit = excerpt.match(/^\*{1,2}([^*]+)\*{1,2}$/) || excerpt.match(/^\[(?:action|การกระทำ):\s*([^\]]+)\]$/i);
+    if (isExplicit) return isExplicit[1].trim();
+    // Drop unmarked excerpts when the player supplied no marked action syntax or when the model quoted full speech
+    if (!marked.length || excerpt.trim() === input.trim()) return null;
+    return excerpt;
+  }).filter(Boolean);
   const playerActions = [...new Set([...marked, ...supplied])].sort((a, b) => input.indexOf(a) - input.indexOf(b));
   const displayBeats = structuredClone(beats);
   if (playerActions.length) {
@@ -65,10 +68,19 @@ export function decodeExperimentScene(raw, input, at, fallbackTime) {
     if (displayBeats[0].kind === 'action') displayBeats[0].text = playerText + '\n' + displayBeats[0].text;
     else displayBeats.unshift({ kind: 'action', text: playerText });
   }
-  return { at, ...(time ? { time } : {}), location, innerThought, playerActions, beats: displayBeats };
+  let fastForward = undefined;
+  if (value.fastForward && typeof value.fastForward === 'object' && !Array.isArray(value.fastForward)) {
+    const ffLoc = typeof value.fastForward.location === 'string' && value.fastForward.location.trim() ? text(value.fastForward.location, 100) : undefined;
+    const ffTime = typeof value.fastForward.time === 'string' && value.fastForward.time.trim() ? text(value.fastForward.time, 30) : undefined;
+    const ffLabel = typeof value.fastForward.label === 'string' && value.fastForward.label.trim() ? text(value.fastForward.label, 150) : undefined;
+    if (ffLoc) {
+      fastForward = { location: ffLoc, ...(ffTime ? { time: ffTime } : {}), label: ffLabel || (ffTime ? `⏩ ไปที่ ${ffLoc} (${ffTime})` : `⏩ ไปที่ ${ffLoc}`) };
+    }
+  }
+  return { at, ...(time ? { time } : {}), location, innerThought, playerActions, beats: displayBeats, ...(fastForward ? { fastForward } : {}) };
 }
 export function serializeExperimentScene(scene) {
-  const meta = { at: scene.at, ...(scene.time ? { time: escape(scene.time) } : {}), location: escape(scene.location) };
+  const meta = { at: scene.at, ...(scene.time ? { time: escape(scene.time) } : {}), location: escape(scene.location), ...(scene.fastForward ? { fastForward: scene.fastForward } : {}) };
   return [`[scene:${JSON.stringify(meta)}]`,
     `[thought:${escape(scene.innerThought)}]`,
     ...scene.beats.map(beat => beat.kind === 'action' ? `[action:${escape(beat.text)}]` : escape(beat.text))].join('\n');

@@ -140,7 +140,9 @@ export async function characterOnlyChat(req, env, user, npc, action, now, servic
     if (reply.length > 16000) throw new Error('deepseek_invalid_reply');
     experiment.resolvedModel = result.model || identity.model;
     const lastStoryTime = sceneMode ? findLastStoryTime(history, npc.chatExperiment?.opening?.time || '12:15 น.') : '';
-    const replyAt = Math.max(Date.now(), (targetRow ? targetRow.created_at + 1 : now + 1));
+    const lastHistoryAt = history.length ? Math.max(...history.map(m => m.createdAt || 0)) : 0;
+    const userAt = Math.max(now, lastHistoryAt + 1);
+    const replyAt = Math.max(Date.now(), (targetRow ? targetRow.created_at + 1 : userAt + 1));
     const scene = sceneMode ? decodeExperimentScene(reply, userText, replyAt, lastStoryTime) : null;
     const assistantId = crypto.randomUUID();
     const trace = { experimentKey: identity.experimentKey, activeMode: experiment.activeMode,
@@ -158,7 +160,7 @@ export async function characterOnlyChat(req, env, user, npc, action, now, servic
       ]);
     } else {
       await env.DB.batch([
-        env.DB.prepare('INSERT INTO experiment_chat_messages(id,user_id,creator_id,experiment_key,role,content,created_at) VALUES(?,?,?,?,?,?,?)').bind(crypto.randomUUID(), ...scope, 'user', userText, now),
+        env.DB.prepare('INSERT INTO experiment_chat_messages(id,user_id,creator_id,experiment_key,role,content,created_at) VALUES(?,?,?,?,?,?,?)').bind(crypto.randomUUID(), ...scope, 'user', userText, userAt),
         env.DB.prepare('INSERT INTO experiment_chat_messages(id,user_id,creator_id,experiment_key,role,content,created_at) VALUES(?,?,?,?,?,?,?)').bind(assistantId, ...scope, 'assistant', reply, replyAt),
         env.DB.prepare('INSERT INTO experiment_chat_traces(message_id,metadata_json) VALUES(?,?)').bind(assistantId, JSON.stringify(trace)),
         ...(scene ? [env.DB.prepare('INSERT INTO experiment_chat_displays(message_id,presentation_json) VALUES(?,?)').bind(assistantId, JSON.stringify(scene))] : [])
