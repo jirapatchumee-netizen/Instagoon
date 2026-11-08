@@ -40,6 +40,14 @@ test('presentation preserves model wording, guarantees marked player actions, an
   const ffStored = serializeExperimentScene(ffReply);
   const ffHeader = readSceneHeader(ffStored);
   assert.deepEqual(ffHeader.scene.fastForward, ffReply.fastForward);
+  const fallbackFF = decodeExperimentScene(JSON.stringify(sceneReply({ beats: [
+    { kind: 'dialogue', text: 'เจอกันห้าโมงเย็น ห้องสโมฯ ชั้น 3 มาช้ากูไม่รอนะเว้ย' },
+    { kind: 'action', text: 'เธอสะพายกระเป๋าเดินจากไปโดยไม่หันกลับมา' }
+  ] })), 'ได้สิ', at);
+  assert.ok(fallbackFF.fastForward, 'fallback detected appointment');
+  assert.equal(fallbackFF.fastForward.location, 'ห้องสโมฯ ชั้น 3');
+  assert.equal(fallbackFF.fastForward.time, '17:00 น.');
+  assert.equal(fallbackFF.fastForward.label, '⏩ ไปที่ ห้องสโมฯ ชั้น 3 (17:00 น.)');
   for (const hypothetical of ['ถ้า *เดินหนี* จะเป็นยังไง', 'คำว่า *เดินหนี* คืออะไร', '"*เดินหนี*"'])
     assert.deepEqual(decodeExperimentScene(JSON.stringify(sceneReply()), hypothetical, at).playerActions, [], 'quoted/hypothetical markers are not actual actions');
   assert.throws(() => decodeExperimentScene(JSON.stringify(sceneReply({ playerActions: ['ผู้เล่นยอมเป็นแฟน'] })), 'สวัสดี', at), /ungrounded/);

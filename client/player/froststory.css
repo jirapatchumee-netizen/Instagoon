@@ -4770,4 +4770,13 @@ dialog.fs-overlay[open]::backdrop {
   flex-shrink: 0;
 }
 
+.fs-inbubble-fastforward {
+  display: flex;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(236, 72, 153, 0.25);
+  justify-content: flex-start;
+}
+
+
 

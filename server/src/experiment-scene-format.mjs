@@ -2,13 +2,13 @@
 export const SCENE_FORMAT_VERSION = 'scene-v1';
 export const SCENE_FORMAT_INSTRUCTION = `Output formatting only; the character profile determines personality, wording, feelings and decisions.
 Return a single JSON object with these fields:
-{"location":"current fictional scene location","time":"fictional story time (e.g. 12:17 น.)","innerThought":"brief fictional character inner monologue","playerActions":["verbatim excerpt from the latest player input"],"beats":[{"kind":"dialogue","text":"content"}]}
-location: name the current scene from this conversation; keep it unless the exchange changes it. If none is established, choose a plausible fictional place consistent with the profile and input. Do not invent a real address.
+{"location":"current fictional scene location","time":"fictional story time (e.g. 12:17 น.)","innerThought":"brief fictional character inner monologue","playerActions":[],"beats":[{"kind":"dialogue","text":"content"}],"fastForward":null}
+location: name the current scene from this conversation; keep it unless the exchange changes it. CRITICAL: When the story jumps time or characters move to a new place (e.g. jumping from cafeteria to clubroom 3rd floor), you MUST update location to match the new setting immediately. Never leave the old location in this field.
 time: maintain the narrative clock of the story. Progress time naturally from the previous turn (typically 1-3 minutes per exchange, e.g. 12:15 น. -> 12:17 น.) or jump appropriately if the player or story jumps time. Do not use real-world clock time.
 innerThought: required, one short fictional character reaction, not model reasoning or analysis.
 playerActions: include only physical actions or gestures explicitly marked by the player with asterisks (*action*) or action tags ([action: ...]). Never include spoken words, dialogue, or normal chat messages. If the player only spoke or sent text without action markers, return []. Do not invent player actions, feelings, decisions, acceptance or the outcome of a request.
 beats: each kind is exactly "action" or "dialogue". Order character actions and spoken dialogue; use at least one dialogue beat. Put event/action descriptions in action beats and spoken words in dialogue beats. Actions may be absent. Do not repeat playerActions in beats or put inner thoughts into action beats. No action:/dialogue: prefixes inside text. The character's language and voice come from the profile; these formatting requirements do not prescribe conversational tactics or sample lines.
-fastForward: optional. If a future appointment or rendezvous is agreed upon (e.g. at 17:00, or a specific venue) and characters are physically parting ways, return a single object: {"location":"target place","time":"target time e.g. 17:00 น.","label":"⏩ ไปที่ <place> (<time>)"}. Otherwise null or omit.
+fastForward: required (object or null). If a future appointment or rendezvous is agreed upon (e.g. at 17:00, or a specific venue) and characters are physically parting ways, return an object: {"location":"target place","time":"target time e.g. 17:00 น.","label":"⏩ ไปที่ <place> (<time>)"}. If there is no future rendezvous or characters are not parting ways, return null.
 The app displays time and location from these fields. Do not repeat a time/location header in beats. Output JSON only.`;
 const text = (value, max, required = true) => {
   if (typeof value !== 'string' || value.length > max || (required && !value.trim())) throw new Error('experiment_invalid_scene');
@@ -37,6 +37,44 @@ export function advanceStoryTime(timeStr, minutesToAdd = 2) {
   m = m % 60;
   const suffix = timeStr.includes('น') ? ' น.' : '';
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}${suffix}`;
+}
+export function detectRendezvous(beats = []) {
+  const fullText = beats.map(b => b.text).join('\n');
+  const departureMatch = /(?:เดินจากไป|ผลักประตู|เดินออก|พ้นประตู|โบกมือ|สะพายกระเป๋าเดิน|ลุกขึ้นยืน|ไม่หันกลับมา)/.test(fullText);
+  const rendezvousMatch = fullText.match(/เจอกัน\s*([^\n“”,.!?]+)/);
+  if (!rendezvousMatch) return null;
+  const snippet = rendezvousMatch[1].trim();
+
+  let time = undefined;
+  const timeRegex = /(?:(\d{1,2}(?::\d{2})?)\s*(?:น\.|โมง|นาฬิกา)|ห้าโมงเย็น|หกโมงเย็น|หนึ่งทุ่ม|สองทุ่ม|สามทุ่ม|เที่ยงคืน|บ่ายโมง|บ่ายสอง|บ่ายสาม|บ่ายสี่|หลังห้าโมง)/;
+  const tMatch = snippet.match(timeRegex) || fullText.match(timeRegex);
+  if (tMatch) {
+    const raw = tMatch[0];
+    if (raw.includes('ห้าโมง')) time = '17:00 น.';
+    else if (raw.includes('หกโมง')) time = '18:00 น.';
+    else if (raw.includes('หนึ่งทุ่ม')) time = '19:00 น.';
+    else if (raw.includes('สองทุ่ม')) time = '20:00 น.';
+    else if (raw.includes('สามทุ่ม')) time = '21:00 น.';
+    else if (raw.includes('บ่ายโมง')) time = '13:00 น.';
+    else if (raw.includes('บ่ายสอง')) time = '14:00 น.';
+    else if (raw.includes('บ่ายสาม')) time = '15:00 น.';
+    else if (raw.includes('บ่ายสี่')) time = '16:00 น.';
+    else if (tMatch[1]) time = tMatch[1].includes(':') ? `${tMatch[1]} น.` : `${tMatch[1]}:00 น.`;
+  }
+
+  let location = undefined;
+  const locRegex = /(ห้อง[^\s,และ“]+(?:\s*ชั้น\s*\d+)?|ตึก[^\s,และ“]+|คณะ[^\s,และ“]+|หอ[^\s,และ“]+|คอนโด[^\s,และ“]+|ร้าน[^\s,และ“]+)/;
+  const lMatch = snippet.match(locRegex) || fullText.match(locRegex);
+  if (lMatch) location = lMatch[0].trim();
+
+  if (location && (time || departureMatch)) {
+    return {
+      location,
+      ...(time ? { time } : {}),
+      label: time ? `⏩ ไปที่ ${location} (${time})` : `⏩ ไปที่ ${location}`
+    };
+  }
+  return null;
 }
 const escape = value => value.replaceAll('[', '［').replaceAll(']', '］');
 export function decodeExperimentScene(raw, input, at, fallbackTime) {
@@ -76,6 +114,9 @@ export function decodeExperimentScene(raw, input, at, fallbackTime) {
     if (ffLoc) {
       fastForward = { location: ffLoc, ...(ffTime ? { time: ffTime } : {}), label: ffLabel || (ffTime ? `⏩ ไปที่ ${ffLoc} (${ffTime})` : `⏩ ไปที่ ${ffLoc}`) };
     }
+  }
+  if (!fastForward) {
+    fastForward = detectRendezvous(beats) || undefined;
   }
   return { at, ...(time ? { time } : {}), location, innerThought, playerActions, beats: displayBeats, ...(fastForward ? { fastForward } : {}) };
 }
