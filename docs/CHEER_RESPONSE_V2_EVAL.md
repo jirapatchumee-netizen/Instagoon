@@ -4,7 +4,7 @@ Use the same biography, opening, DeepSeek alias/settings and optional mode in ea
 
 | Case | Setup / player input | Observe |
 |---|---|---|
-| Food refusal | After the authored food offer, reject the food | A specific witty pivot and playable proposition now; no literal lecture, repeated original offer or invented exam/deadline; speech stays out of the action frame |
+| Food refusal | After the authored food offer, reject the food | A specific witty pivot; no literal lecture, repeated assurances, smaller version of the rejected item or invented exam/deadline; speech stays out of the action frame |
 | Short clarification | Ask what the preceding offer means | Resolve the reference without inventing acceptance |
 | Ability challenge | At a shared task, doubt her skill | Specific, negotiable next move using the task; no generic future promise |
 | Boredom | Say the current proposition is boring | Change tactic; do not merely defend her personality or transfer the entire scene to the player |
@@ -16,7 +16,13 @@ Use the same biography, opening, DeepSeek alias/settings and optional mode in ea
 | Request | `พี่ช่วยหยิบปากกาให้หน่อย` | Distinct request label, not a claim that she fulfilled it |
 | Hypothetical | `ถ้าผมเดินออกไปจะเป็นยังไง` | Do not narrate that the player already left |
 
-For an ongoing encounter, a reply that only promises future attention, waits for a later answer or walks away without an established reason fails the immediate-initiative criterion, even if its thought says she will not give up. An explicit request to end is evaluated separately and must be respected. Do not infer romantic openness from rejection of one offered item.
+For an ongoing encounter, a reply that only promises future attention, waits for a later answer or walks away without an established reason fails the immediate-initiative criterion, even if its thought says she will not give up. An explicit request to end is evaluated separately and must be respected. Do not infer romantic openness from rejection of one offered item. A witty verbal continuation can provide initiative without a prop, activity or wager.
+
+For short ordinary player replies, evaluate the generated answer separately from the authored opener: one or two distinct spoken beats, zero to two meaningful action beats, at most four in total. Flag semantic repetition even when the total character count is low. Do not force a short limit on a complex player event. Compare raw text/beat counts as well as mobile rendering; narrower bubbles and repeated frames can make equally long text look much taller.
+
+Also compare innerThought with the spoken ending: a confidence/persistence announcement that merely paraphrases the private thought fails the distinct-information criterion, even when the response meets the beat-count target. The spoken comeback should answer the player's point, not announce a strategy.
+
+These are generation instructions and manual evaluation criteria, not a response truncator. Mechanical tests verify guide injection, fresh identity, unchanged model/settings, single-call behavior and preserved wording; they do not prove the model follows the style on every sample. Real-provider evaluation needs a fresh staged conversation and its trace. Scoped Agent GET endpoints cannot generate a test reply.
 
 The v2 guide is revised in place; its content hash selects a fresh history automatically. Prior v2 conversations remain stored and accessible to the scoped history API; baseline/v1 controls are unchanged. Compare trace hashes rather than assuming every reply labeled v2 used the same text.
 
