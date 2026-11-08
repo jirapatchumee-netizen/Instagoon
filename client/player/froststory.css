@@ -2985,6 +2985,16 @@ dialog.fs-overlay[open]::backdrop {
   color: #a1a1aa;
 }
 
+.fs-dm-variant-btn {
+  width: 100%;
+  justify-content: space-between;
+}
+
+.fs-dm-menu-item.fs-dm-variant-btn[aria-checked="true"] {
+  color: #f5a3d7;
+  background: rgba(232, 71, 154, 0.1);
+}
+
 .fs-dm-menu-item {
   display: flex;
   align-items: center;

@@ -145,4 +145,18 @@ node apps/Instagoon/worker/tests/api.mjs
 ```
 เมื่อผ่านการทดสอบบนเครื่อง Local ทั้งหมดแล้ว จึงทำการ commit และแจ้ง Sync Briefing ให้กับทีมอื่นทราบ
 
+---
+
+## 🔒 8. Security, Data Privacy & Secret Isolation Protocol (กฎความปลอดภัยสำหรับ AI Agent ทุกทีม)
+
+เนื่องจาก repository นี้เป็น **Public Repo**:
+
+1. **ห้ามเปิดสิทธิ์ Cloudflare Account / Direct D1 Access ให้ Agent หรือบุคคลภายนอก:**
+   Cloudflare D1 ไม่มี Table/Row-Level Security การให้สิทธิ์เข้า D1 จะทำให้ Agent ภายนอกอ่านข้อมูลได้ทุกตาราง รวมถึง User PII (อีเมล, รหัสผ่าน), ข้อมูลการเงิน (สลิปโอนเงิน PromptPay) และแชทส่วนตัวของทุกตัวละคร (Milin, Mook, Noey) หากต้องการแลกเปลี่ยนข้อมูล ให้สร้างหรือใช้ **Scoped Developer REST API** ที่ล็อกเฉพาะ creator ที่ได้รับอนุญาต และเป็น Read-Only (`GET`) เท่านั้น
+2. **ห้ามใส่ Secret Token / API Key ใน `[vars]` ของ `wrangler*.toml`:**
+   บล็อก `[vars]` เป็น public environment variables ห้ามใส่ค่า token หรือ secret ใดๆ ค่าความลับทั้งหมดต้องตั้งผ่าน Cloudflare Worker Secrets (`wrangler secret put <SECRET_NAME>`) เท่านั้น
+3. **ห้ามเปิดเผย Secret ผ่าน Public Issues, PRs หรือ Git Commits:**
+   ต้องส่ง credentials ให้บุคคลภายนอกหรือทีมงานผ่านช่องทางส่วนตัว (DM/Private Chat) เท่านั้น
+
+
 

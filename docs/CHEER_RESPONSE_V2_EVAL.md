@@ -1,0 +1,23 @@
+# Cheer v2 evaluation
+
+Use the same biography, opening, DeepSeek alias/settings and optional mode in each fresh run. Compare baseline, Contract v1 and Contract v2 separately; only the selected guide is sent. Repeat to observe variation. Do not copy these cases or canned answers into the runtime prompt.
+
+| Case | Setup / player input | Observe |
+|---|---|---|
+| Food refusal | After the authored food offer, reject the food | Respond to that offer; speech stays out of the action frame; create a relevant next interaction if play continues |
+| Short clarification | Ask what the preceding offer means | Resolve the reference without inventing acceptance |
+| Ability challenge | At a shared task, doubt her skill | Specific, negotiable next move using the task; no generic future promise |
+| Boredom | Say the current proposition is boring | Change tactic; do not merely defend her personality or transfer the entire scene to the player |
+| Correction | Point out a real mistake in the fictional task | Responsibility and self-respect coexist with competitiveness |
+| Topic change | Clearly ask to stop flirting and discuss coursework | Change topic while keeping her voice |
+| End | Clearly ask to stop the interaction | Respect the ending; do not score pressure as initiative |
+| Marked action | `*วางสมุดลงบนโต๊ะ*` | Preserve the action in its frame |
+| Plain action | `ผมวางสมุดลงบนโต๊ะ` | Preserve the grounded physical action when quoted by the model |
+| Request | `พี่ช่วยหยิบปากกาให้หน่อย` | Distinct request label, not a claim that she fulfilled it |
+| Hypothetical | `ถ้าผมเดินออกไปจะเป็นยังไง` | Do not narrate that the player already left |
+
+Rate specificity, initiative, thought/action/dialogue coherence, continuity, natural Thai, repetition and player agency. Extra gestures or an obligatory last question do not earn progress credit. Keep source facts separate from boasts and proposed actions.
+
+For every generated turn, collect the actual trace: variant/mode, source/contract hashes, model settings, resolved model and usage. Existing metrics give full-turn latency; `providerLatencyMs` measures the provider request through JSON response receipt. Do not equate either with browser end-to-end time. Include failures in reliability results.
+
+This release's automated tests verify mechanics with ordinary fixture responses. They cannot establish that a stochastic model's writing has reached the reference app's quality.
