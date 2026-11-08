@@ -4,7 +4,6 @@ import {
   ArrowLeft,
   Check,
   ChevronDown,
-  Flame,
   Globe,
   Loader2,
   LockKeyhole,
@@ -450,10 +449,8 @@ type PlayerMemory = {
   value: string;
   createdAt: number;
 };
-type ResponseVariant = 'baseline' | 'contract' | 'contract-v1';
-const responseVariantLabel = (variant: ResponseVariant, version?: string | null) => variant === 'baseline' ? 'ชุดเดิม' : version === 'cheer-response-v2' ? 'Contract v2' : version === 'cheer-response-v1' || variant === 'contract-v1' ? 'Contract v1' : 'Contract';
 type Chat = {
-  experiment?: { mode: 'character-only'; provider: 'deepseek'; model: string; sourceHash: string; runId: string; presentation?: 'scene-v1'; allowFiftyShades?: boolean; activeMode?: 'normal' | 'fifty-shades'; responseVariant?: ResponseVariant; responseVariants?: ResponseVariant[]; contractVersion?: string | null; contractVersions?: Partial<Record<ResponseVariant, string>> };
+  experiment?: { mode: 'character-only'; provider: 'deepseek'; model: string; sourceHash: string; runId: string; presentation?: 'scene-v1'; activeMode?: 'normal' | 'master-template' };
   revisionId: string;
   episodeId: string;
   episodes: { id: string; title: string; completed: boolean; accessible: boolean }[];
@@ -1081,23 +1078,7 @@ export function FrostStoryApp() {
   const [aiDmTab, setAiDmTab] = useState<'ai' | 'story'>('ai');
   const [dmMenuOpen, setDmMenuOpen] = useState(false);
   const dmMenuRef = useRef<HTMLDivElement | null>(null);
-  const [fiftyShadesMode, setFiftyShadesMode] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('fs_fiftyshades_mode') === 'true';
-    } catch {
-      return false;
-    }
-  });
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('fs_fiftyshades_mode', String(fiftyShadesMode));
-    } catch {}
-  }, [fiftyShadesMode]);
-
   const [aiSending, setAiSending] = useState(false);
-  const [experimentModeSwitching, setExperimentModeSwitching] = useState(false);
-  const [cheerResponseVariant, setCheerResponseVariant] = useState<ResponseVariant>('contract');
   const [pending, setPending] = useState<{ id: string; content: string; failed?: string }[]>([]);
   const [unlockedRewards, setUnlockedRewards] = useState<string[]>([]);
   const [memoryPanel, setMemoryPanel] = useState<{ open: boolean; items: { key: string; value: string }[] }>({ open: false, items: [] });
@@ -1165,7 +1146,7 @@ export function FrostStoryApp() {
   }
 
   async function sendAiMessage(text: string, retryId?: string) {
-    if (!selectedCreator || !chat || aiSending || experimentModeSwitching) return;
+    if (!selectedCreator || !chat || aiSending) return;
     const id = retryId ?? crypto.randomUUID();
     setPending((prev) =>
       retryId
@@ -1185,7 +1166,7 @@ export function FrostStoryApp() {
         unlockedRewards?: string[];
         relationship: number;
         energy: Energy;
-      }>(`/api/chats/${encodeURIComponent(selectedCreator.id)}/message`, json({ message: text, fiftyShades: fiftyShadesMode, responseVariant: chat.experiment?.responseVariant }));
+      }>(`/api/chats/${encodeURIComponent(selectedCreator.id)}/message`, json({ message: text }));
 
       setPending((prev) => prev.filter((item) => item.id !== id));
       if (res.messages) setChat((prev) => (prev ? { ...prev, aiMessages: res.messages } : prev));
@@ -1341,43 +1322,8 @@ export function FrostStoryApp() {
     });
   }
 
-  function chatPath(creatorId: string, mode = fiftyShadesMode, variant = cheerResponseVariant) {
-    return `/api/chats/${encodeURIComponent(creatorId)}?fiftyShades=${mode ? '1' : '0'}${creatorId === 'cheer' ? `&responseVariant=${variant}` : ''}`;
-  }
-
-  async function switchResponseVariant(next: ResponseVariant) {
-    if (!selectedCreator || !chat?.experiment?.responseVariants?.includes(next) || next === chat.experiment.responseVariant || aiSending || experimentModeSwitching) return;
-    const openedAt = chatOpenedAtRef.current;
-    setExperimentModeSwitching(true);
-    try {
-      const result = await api<{ chat: Chat }>(chatPath(selectedCreator.id, fiftyShadesMode, next));
-      if (chatOpenedAtRef.current !== openedAt) return;
-      setChat(result.chat);
-      setPending([]);
-      setCheerResponseVariant(next);
-      setDmMenuOpen(false);
-    } catch (error) {
-      setError(error instanceof Error ? error.message : t.genericError);
-    } finally { setExperimentModeSwitching(false); }
-  }
-
-  async function toggleFiftyShades() {
-    if (aiSending || experimentModeSwitching || !chat) return;
-    const next = !fiftyShadesMode;
-    if (!chat.experiment?.allowFiftyShades) { setFiftyShadesMode(next); return; }
-    if (!selectedCreator) return;
-    const openedAt = chatOpenedAtRef.current;
-    setExperimentModeSwitching(true);
-    try {
-      const result = await api<{ chat: Chat }>(chatPath(selectedCreator.id, next));
-      if (chatOpenedAtRef.current !== openedAt) return;
-      setChat(result.chat);
-      setPending([]);
-      setFiftyShadesMode(next);
-      setUnlockedRewards(result.chat.unlockedRewards || []);
-    } catch (error) {
-      setError(error instanceof Error ? error.message : t.genericError);
-    } finally { setExperimentModeSwitching(false); }
+  function chatPath(creatorId: string) {
+    return `/api/chats/${encodeURIComponent(creatorId)}`;
   }
 
   async function openChat(creator: Creator) {
@@ -1424,7 +1370,7 @@ export function FrostStoryApp() {
     if (!selectedCreator) return;
     if (!window.confirm(t.resetChatConfirm)) return;
     try {
-      await api(`/api/chats/${encodeURIComponent(selectedCreator.id)}/reset-chat`, json({ fiftyShades: fiftyShadesMode, responseVariant: chat?.experiment?.responseVariant }));
+      await api(`/api/chats/${encodeURIComponent(selectedCreator.id)}/reset-chat`, json({}));
       const result = await api<{ chat: Chat }>(chatPath(selectedCreator.id));
       setChat(result.chat);
       setPending([]);
@@ -1549,6 +1495,7 @@ export function FrostStoryApp() {
       setNotifications(result.notifications);
     });
   };
+  void openNotifications;
 
   if (loading) return null;
 
@@ -1626,37 +1573,6 @@ export function FrostStoryApp() {
               {energy ? `${energy.free} + ${energy.purchased}` : '–'}
               {Boolean(energy?.diamonds) && <span style={{ marginLeft: 3, color: '#38bdf8' }}>💎{energy?.diamonds}</span>}
             </button>
-
-            {/* Official Instagram Heart (Activity / Notifications) */}
-            <button
-              type="button"
-              aria-label={t.notifications}
-              title={t.notifications}
-              className={`fs-icon-btn ${screen === 'notifications' ? 'is-active' : ''}`}
-              onClick={openNotifications}
-            >
-              <IgHeart size={24} filled={screen === 'notifications'} />
-              <span className="fs-notif-dot" />
-            </button>
-
-            {/* Official Instagram Paper Airplane (Direct Messages) */}
-            <button
-              type="button"
-              aria-label="Direct Messages"
-              title="Direct Messages (DM)"
-              className="fs-icon-btn fs-dm-btn-wrap"
-              onClick={() => {
-                if (creators.length > 0) {
-                  setScreen('creators');
-                }
-              }}
-            >
-              <IgShare size={23} />
-              {creators.length > 0 && (
-                <span className="fs-dm-badge">{creators.length}</span>
-              )}
-            </button>
-
           </div>
         </div>
       </header>
@@ -1833,17 +1749,6 @@ export function FrostStoryApp() {
                           <span className="fs-quote-author">— {post.creatorName}</span>
                         </div>
                       )}
-
-                      {/* Floating Reward Pill */}
-                      <span
-                        className={`fs-energy-float-tag ${
-                          post.firstCommentUsed ? 'is-claimed' : ''
-                        }`}
-                      >
-                        {post.firstCommentUsed
-                          ? t.claimedReward
-                          : t.firstCommentReward}
-                      </span>
 
                       {/* Instagram Double-Tap Heart Pop */}
                       {heartBurstPostId === post.id && (
@@ -2373,7 +2278,28 @@ export function FrostStoryApp() {
               ) : (
                 <>
                   <div className="fs-profile-hero">
-                    <div className="fs-profile-avatar-wrap">
+                    <div
+                      className={`fs-profile-avatar-wrap ${profileData.creator.avatarKey ? 'is-clickable' : ''}`}
+                      role={profileData.creator.avatarKey ? 'button' : undefined}
+                      tabIndex={profileData.creator.avatarKey ? 0 : undefined}
+                      title={profileData.creator.avatarKey ? 'แตะเพื่อดูภาพโปรไฟล์ขนาดเต็ม' : undefined}
+                      onClick={() => {
+                        if (profileData.creator.avatarKey) {
+                          setExpandedMedia({
+                            mediaKey: profileData.creator.avatarKey,
+                            title: profileData.creator.name,
+                          });
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if ((e.key === 'Enter' || e.key === ' ') && profileData.creator.avatarKey) {
+                          setExpandedMedia({
+                            mediaKey: profileData.creator.avatarKey,
+                            title: profileData.creator.name,
+                          });
+                        }
+                      }}
+                    >
                       {profileData.creator.avatarKey ? (
                         <img src={media(profileData.creator.avatarKey)} alt={profileData.creator.name} />
                       ) : (
@@ -2514,7 +2440,31 @@ export function FrostStoryApp() {
                         <p className="fs-dm-empty" style={{ gridColumn: '1 / -1' }}>ยังไม่มีโพสต์</p>
                       ) : (
                         profileData.posts.map((p) => (
-                          <div key={p.id} className="fs-profile-post-thumb">
+                          <div
+                            key={p.id}
+                            className={`fs-profile-post-thumb ${p.mediaKey ? 'is-clickable' : ''}`}
+                            role={p.mediaKey ? 'button' : undefined}
+                            tabIndex={p.mediaKey ? 0 : undefined}
+                            title={p.mediaKey ? 'แตะเพื่อดูภาพขนาดเต็ม' : undefined}
+                            onClick={() => {
+                              if (p.mediaKey) {
+                                setExpandedMedia({
+                                  mediaKey: p.mediaKey,
+                                  title: p.creatorName,
+                                  caption: p.caption,
+                                });
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if ((e.key === 'Enter' || e.key === ' ') && p.mediaKey) {
+                                setExpandedMedia({
+                                  mediaKey: p.mediaKey,
+                                  title: p.creatorName,
+                                  caption: p.caption,
+                                });
+                              }
+                            }}
+                          >
                             {p.mediaKey ? (
                               <img src={media(p.mediaKey)} alt="" loading="lazy" />
                             ) : (
@@ -2664,58 +2614,28 @@ export function FrostStoryApp() {
                       </span>
                     )}
                   </div>
-                  {chat?.experiment && <small className="fs-dm-experiment-label">{chat.experiment.responseVariants ? `DeepSeek · ${responseVariantLabel(chat.experiment.responseVariant || 'baseline', chat.experiment.contractVersion)}` : chat.experiment.presentation ? 'DeepSeek · ข้อมูลตัวละคร + รูปแบบฉาก' : 'DeepSeek · ข้อมูลตัวละครเท่านั้น'}{chat.experiment.activeMode === 'fifty-shades' ? ' · Fifty Shades' : ''}</small>}
+                  {chat?.experiment && <small className="fs-dm-experiment-label">DeepSeek · Master Roleplay Engine</small>}
                 </div>
               </div>
               <div className="fs-dm-header-actions" ref={dmMenuRef}>
                 <button
                   type="button"
-                  className={`fs-dm-gear-btn${fiftyShadesMode && (!chat?.experiment || chat.experiment.allowFiftyShades) ? ' has-fiftyshades' : ''}`}
+                  className="fs-dm-gear-btn"
                   aria-label={t.chatSettings}
-                  title={fiftyShadesMode && (!chat?.experiment || chat.experiment.allowFiftyShades) ? `${t.chatSettings} (${t.fiftyShades} ON 🔥)` : t.chatSettings}
+                  title={t.chatSettings}
                   aria-haspopup="menu"
                   aria-expanded={dmMenuOpen}
                   onClick={() => setDmMenuOpen((open) => !open)}
                 >
-                  {fiftyShadesMode && (!chat?.experiment || chat.experiment.allowFiftyShades) ? <Flame size={18} /> : <Settings size={18} />}
+                  <Settings size={18} />
                 </button>
                 {dmMenuOpen && (
                   <div className="fs-dm-menu" role="menu">
-                    {chat?.experiment?.responseVariants && <div role="group" aria-label="ชุดคำตอบ">
-                      {chat.experiment.responseVariants.map(variant => <button
-                        key={variant}
-                        type="button"
-                        role="menuitemradio"
-                        aria-checked={chat.experiment?.responseVariant === variant}
-                        className="fs-dm-menu-item fs-dm-variant-btn"
-                        onClick={() => void switchResponseVariant(variant)}
-                        disabled={aiSending || experimentModeSwitching}
-                      >
-                        <span>{responseVariantLabel(variant, chat.experiment?.contractVersions?.[variant])}</span>
-                        {chat.experiment?.responseVariant === variant && <span aria-hidden="true">✓</span>}
-                      </button>)}
-                    </div>}
-                    {(!chat?.experiment || chat.experiment.allowFiftyShades) && <button
-                      type="button"
-                      role="menuitem"
-                      className={`fs-dm-menu-item fs-dm-fiftyshades-btn${fiftyShadesMode ? ' is-active' : ''}`}
-                      onClick={() => void toggleFiftyShades()}
-                      disabled={aiSending || experimentModeSwitching || !chat}
-                    >
-                      <div className="fs-dm-menu-item-left">
-                        <Flame size={15} className={fiftyShadesMode ? 'is-flame-lit' : ''} />
-                        <span>{t.fiftyShades}</span>
-                      </div>
-                      <span className={`fs-dm-toggle-pill ${fiftyShadesMode ? 'is-on' : 'is-off'}`}>
-                        {fiftyShadesMode ? 'เปิด' : 'ปิด'}
-                      </span>
-                    </button>}
-                    {(!chat?.experiment || chat.experiment.allowFiftyShades) && <div className="fs-dm-menu-divider" />}
                     <button
                       type="button"
                       role="menuitem"
                       className="fs-dm-menu-item fs-dm-reset-chat-btn"
-                      disabled={aiSending || experimentModeSwitching}
+                      disabled={aiSending}
                       onClick={() => {
                         setDmMenuOpen(false);
                         void resetAiChat();
@@ -3100,7 +3020,7 @@ export function FrostStoryApp() {
             {aiDmTab === 'ai' ? (
               <ChatComposer
                 placeholder={`ส่งข้อความหา ${selectedCreator.name}…`}
-                disabled={!chat || aiSending || experimentModeSwitching}
+                disabled={!chat || aiSending}
                 onSend={(text) => void sendAiMessage(text)}
               />
             ) : (
@@ -3220,11 +3140,11 @@ export function FrostStoryApp() {
               <button
                 type="button"
                 className="fs-lightbox-back-btn"
-                aria-label="ย้อนกลับไปหน้าแชท"
+                aria-label="ย้อนกลับ"
                 onClick={() => setExpandedMedia(null)}
               >
                 <ArrowLeft size={18} />
-                <span>ย้อนกลับไปหน้าแชท</span>
+                <span>ย้อนกลับ</span>
               </button>
               {expandedMedia.title && (
                 <span id="fs-lightbox-title" className="fs-lightbox-title">

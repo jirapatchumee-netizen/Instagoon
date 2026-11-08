@@ -1,5 +1,4 @@
 // Presentation only. No persona examples, banter policy, goal reducer or relationship rules.
-import { PLAYER_ACTION_POLICY, groundedPlayerActionEntries } from './experiment-player-actions.mjs';
 export const SCENE_FORMAT_VERSION = 'scene-v1';
 export const SCENE_FORMAT_INSTRUCTION = `Output formatting only; the character profile determines personality, wording, feelings and decisions.
 Return a single JSON object with these fields:
@@ -27,7 +26,7 @@ export function explicitPlayerActions(input) {
   return actions;
 }
 const escape = value => value.replaceAll('[', '［').replaceAll(']', '］');
-export function decodeExperimentScene(raw, input, at, { playerActionPolicy } = {}) {
+export function decodeExperimentScene(raw, input, at) {
   let value;
   try { value = JSON.parse(raw); } catch { throw new Error('experiment_invalid_scene'); }
   if (!value || typeof value !== 'object' || Array.isArray(value) || !Number.isFinite(at)) throw new Error('experiment_invalid_scene');
@@ -46,13 +45,10 @@ export function decodeExperimentScene(raw, input, at, { playerActionPolicy } = {
   });
   // Clearly marked actions are guaranteed a frame even if the model forgets to copy them.
   const marked = explicitPlayerActions(input);
-  const entries = playerActionPolicy === PLAYER_ACTION_POLICY
-    ? groundedPlayerActionEntries(input, supplied, marked)
-    : [...new Set([...marked, ...supplied])].sort((a, b) => input.indexOf(a) - input.indexOf(b)).map(quote => ({ text: quote, kind: 'action' }));
-  const playerActions = entries.map(entry => entry.text);
+  const playerActions = [...new Set([...marked, ...supplied])].sort((a, b) => input.indexOf(a) - input.indexOf(b));
   const displayBeats = structuredClone(beats);
   if (playerActions.length) {
-    const playerText = entries.map(entry => `${entry.kind === 'request' ? 'คำขอของคุณ' : 'คุณ'}: ${entry.text}`).join('\n');
+    const playerText = playerActions.map(quote => `คุณ: ${quote}`).join('\n');
     if (displayBeats[0].kind === 'action') displayBeats[0].text = playerText + '\n' + displayBeats[0].text;
     else displayBeats.unshift({ kind: 'action', text: playerText });
   }

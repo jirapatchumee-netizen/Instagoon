@@ -55,10 +55,8 @@
   "chatExperiment": {
     "mode": "character-only",
     "model": "deepseek-flash",
-    "runId": "cheer-new-20261108-v1",
+    "runId": "cheer-master-20261109-v1",
     "presentation": "scene-v1",
-    "allowFiftyShades": true,
-    "responseContract": { "id": "cheer-response-v2", "defaultVariant": "contract", "previous": { "id": "cheer-response-v1" } },
     "opening": {
       "location": "โรงอาหารคณะวิศวกรรมศาสตร์",
       "innerThought": "ไอ้เด็กนี่เหรอที่เขาว่าจีบยาก เออ... ค่อยน่าสนใจหน่อย ดูสิว่าจะทำหน้านิ่งได้อีกนานแค่ไหน",
