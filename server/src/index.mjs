@@ -6,6 +6,7 @@ import { fiftyShadesPrompt as buildFiftyShadesPrompt } from './ai/protected/fift
 import { narrativeEnabled, ensureNarrativeStorage, readNarrativeState, narrativeHistory, narrativePrompt, narrativeSchema, decodeNarrative, serializeNarrative, selectNarrativeMemories, narrativeSceneMetadata, ensureNarrativeOpening } from './narrative.mjs';
 import { narrativeTurnContext, restoreLegacyInteraction } from './narrative-interaction.mjs';
 import { characterOnlyEnabled, characterOnlyChat } from './character-only-chat.mjs';
+import { shopPlayer, shopAdmin, shopReportsApi, writeDailyReports } from './shop/index.mjs';
 
 const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), {status, headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store',...headers}});
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), {status}); };
@@ -338,6 +339,7 @@ async function visiblePost(env,user,pid,now){return one(env,`SELECT p.* FROM pos
 async function visibleStory(env,user,sid,now){const s=await one(env,`SELECT s.*,v.first_viewed_at FROM stories s LEFT JOIN relationships r ON r.creator_id=s.creator_id AND r.user_id=? LEFT JOIN story_views v ON v.story_id=s.id AND v.user_id=? WHERE s.id=? AND s.status='published' AND s.published_at<=? AND COALESCE(r.score,0)>=s.relationship_required`,user.id,user.id,sid,now);if(!s||(s.type==='broadcast'&&now>=s.published_at+86400000)||(s.first_viewed_at!=null&&s.type==='unlockable'&&now>=s.first_viewed_at+86400000))return null;return s;}
 async function player(req,env,user,path,now,ctx) {
  const method=req.method;
+ if(path==='/api/shop'||path.startsWith('/api/shop/')) return await shopPlayer(req,env,user,path,now);
  if(path==='/api/me' && method==='GET'){
   const isAdmin = isAdminUser(env,user);
   return json({user:{id:user.id,email:user.email,role:user.role||(isAdmin?'admin':'player'),isAdmin,ageVerifiedAt:user.age_verified_at,consentVersion:user.consent_version},energy:await energy(env,user.id,now)});
@@ -1479,6 +1481,7 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
 }
 async function admin(req,env,path,now){
  const method=req.method;
+ if(path.startsWith('/api/admin/orders')||path.startsWith('/api/admin/shop/')){const r=await shopAdmin(req,env,path,now);if(r)return r;}
  if(path==='/api/admin/metrics'&&method==='GET'){
   const admin=(env.ADMIN_EMAIL||'').toLowerCase();
   const eligible=await all(env,`SELECT a.user_id,MIN(a.created_at) first_at FROM activity a JOIN users u ON u.id=a.user_id WHERE u.is_test=0 AND lower(u.email)<>? GROUP BY a.user_id HAVING MIN(a.created_at)<=?`,admin,now-14*86400000);
@@ -1515,7 +1518,7 @@ async function admin(req,env,path,now){
  if(path==='/api/admin/energy'&&method==='POST'){const b=await body(req),uid=id(b.userId),amount=integer(b.amount);if(amount<1||amount>1000)return fail('invalid_amount');const result=await env.DB.batch([env.DB.prepare('UPDATE energy SET purchased=purchased+? WHERE user_id=?').bind(amount,uid),env.DB.prepare('INSERT INTO token_ledger(id,user_id,delta_purchased,reason,created_at) VALUES(?,?,?,?,?)').bind(crypto.randomUUID(),uid,amount,string(b.reason,500),now)]);if(!result[0].meta.changes)return json({error:'not_found'},404);return json({ok:true});}
  return json({error:'not_found'},404);
 }
-export default {async scheduled(_event,env,ctx){ctx.waitUntil(retention(env,Date.now()).then(r=>console.log('chat retention',JSON.stringify(r))));},
+export default {async scheduled(_event,env,ctx){const now=Date.now();ctx.waitUntil(retention(env,now).then(r=>console.log('chat retention',JSON.stringify(r))));ctx.waitUntil(writeDailyReports(env,now).then(r=>console.log('shop daily report',JSON.stringify(r))));},
 async fetch(req,env,ctx){
  try {
   const url=new URL(req.url),path=url.pathname,now=Date.now();
@@ -1527,6 +1530,7 @@ async fetch(req,env,ctx){
   if(path==='/auth/google'||path==='/auth/callback'||path==='/auth/demo')return await auth(req,env,url);
   if(!path.startsWith('/api/'))return json({error:'not_found'},404);
   try{await ensureContent(env);}catch(e){console.error('content sync failed',String(e?.message||e));if(e?.contentResetFailed)return json({error:'content_reset_pending'},503);}
+  if(path.startsWith('/api/reports/'))return await shopReportsApi(req,env,path);
   const user=await session(req,env);
   if(path==='/api/logout'&&req.method==='POST'){if(user)await run(env,'DELETE FROM sessions WHERE id=?',await hash(cookie(req,'frost_session')));return json({ok:true},200,{'set-cookie':secureCookie('frost_session','',0)});}
   if(path==='/api/account'&&req.method==='DELETE'){if(!user)return json({error:'unauthorized'},401);await env.DB.batch([env.DB.prepare('DELETE FROM invites WHERE email=?').bind(user.email),env.DB.prepare('DELETE FROM users WHERE id=?').bind(user.id)]);return json({ok:true},200,{'set-cookie':secureCookie('frost_session','',0)});}

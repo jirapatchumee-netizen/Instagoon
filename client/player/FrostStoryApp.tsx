@@ -34,6 +34,7 @@ import {
   IgAudio,
 } from './InstagramIcons';
 import './froststory.css';
+import { EnergyShop } from './EnergyShop';
 
 export type Lang = 'th' | 'en' | 'ja';
 
@@ -921,6 +922,7 @@ export function FrostStoryApp() {
 
   const [user, setUser] = useState<User | null>(null);
   const [energy, setEnergy] = useState<Energy | null>(null);
+  const [shopOpen, setShopOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -1016,7 +1018,7 @@ export function FrostStoryApp() {
           return;
         }
         if (errorData.error === 'energy_empty') {
-          alert('พลังงานไม่พอสำหรับฟังเสียง');
+          setShopOpen(true);
           setTtsLoadingId(null);
           return;
         }
@@ -1178,10 +1180,11 @@ export function FrostStoryApp() {
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('energy_empty')) setShopOpen(true);
       const reason = msg.includes('thread_busy')
         ? `${selectedCreator.name} กำลังพิมพ์ตอบข้อความก่อนหน้าอยู่`
         : msg.includes('energy_empty')
-          ? 'พลังงานหมด (1⚡ ต่อข้อความ) รอรีเฟรชพรุ่งนี้'
+          ? 'พลังงานหมด (1⚡ ต่อข้อความ) แตะ ⚡ ด้านบนเพื่อเติม'
           : msg.includes('rate_limit')
             ? 'ระบบ AI มีคนใช้เยอะ รอสักครู่ คืนพลังงานให้แล้ว'
             : msg.includes('ai_unavailable')
@@ -1211,7 +1214,7 @@ export function FrostStoryApp() {
       if (msg.includes('level_too_low')) {
         alert('ระดับความสัมพันธ์ยังไม่ถึงเกณฑ์ หรือสามารถเลือกกดปลดล็อกทันทีด้วย 3⚡ ได้ค่ะ');
       } else if (msg.includes('energy_empty')) {
-        alert('พลังงานไม่พอ (ต้องการ 3⚡) รอรีเฟรชพรุ่งนี้ได้เลยค่ะ');
+        setShopOpen(true);
       } else {
         setError(msg);
       }
@@ -1562,15 +1565,16 @@ export function FrostStoryApp() {
             <LangSelect lang={lang} onChange={handleSetLang} short />
 
             {/* Energy Telemetry */}
-            <span
+            <button
+              type="button"
               className="fs-energy"
-              title={
-                t.energyRefillDefault
-              }
+              title={t.energyRefillDefault}
+              onClick={() => setShopOpen(true)}
             >
               <Zap size={13} className="fs-energy-icon" />
               {energy ? `${energy.free} + ${energy.purchased}` : '–'}
-            </span>
+            </button>
+            {shopOpen && <EnergyShop lang={lang} onClose={() => setShopOpen(false)} onEnergy={setEnergy} />}
 
             {/* Official Instagram Heart (Activity / Notifications) */}
             <button
