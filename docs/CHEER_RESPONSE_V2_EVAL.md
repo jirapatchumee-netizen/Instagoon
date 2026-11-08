@@ -20,6 +20,8 @@ For an ongoing encounter, a reply that only promises future attention, waits for
 
 For short ordinary player replies, evaluate the generated answer separately from the authored opener: one or two distinct spoken beats, zero to two meaningful action beats, at most four in total. Flag semantic repetition even when the total character count is low. Do not force a short limit on a complex player event. Compare raw text/beat counts as well as mobile rendering; narrower bubbles and repeated frames can make equally long text look much taller.
 
+Also compare innerThought with the spoken ending: a confidence/persistence announcement that merely paraphrases the private thought fails the distinct-information criterion, even when the response meets the beat-count target. The spoken comeback should answer the player's point, not announce a strategy.
+
 These are generation instructions and manual evaluation criteria, not a response truncator. Mechanical tests verify guide injection, fresh identity, unchanged model/settings, single-call behavior and preserved wording; they do not prove the model follows the style on every sample. Real-provider evaluation needs a fresh staged conversation and its trace. Scoped Agent GET endpoints cannot generate a test reply.
 
 The v2 guide is revised in place; its content hash selects a fresh history automatically. Prior v2 conversations remain stored and accessible to the scoped history API; baseline/v1 controls are unchanged. Compare trace hashes rather than assuming every reply labeled v2 used the same text.
