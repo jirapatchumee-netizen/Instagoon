@@ -3116,6 +3116,120 @@ dialog.fs-overlay[open]::backdrop {
   border-bottom-left-radius: 6px;
 }
 
+.fs-answer-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  position: relative;
+  max-width: 100%;
+}
+
+.fs-msg-edit-btn {
+  opacity: 0;
+  transition: opacity 0.15s ease, background 0.15s ease;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  color: #e2e8f0;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.fs-answer-wrap:hover .fs-msg-edit-btn,
+.fs-msg-edit-btn:focus-visible {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .fs-msg-edit-btn {
+    opacity: 0.65;
+  }
+}
+
+.fs-msg-edit-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+.fs-edit-message-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 340px;
+}
+
+.fs-edit-message-input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(25, 18, 35, 0.95);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.fs-edit-message-input:focus {
+  border-color: #ec4899;
+  box-shadow: 0 0 12px rgba(236, 72, 153, 0.35);
+}
+
+.fs-edit-message-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.fs-edit-btn-cancel,
+.fs-edit-btn-submit {
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.fs-edit-btn-cancel {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #cbd5e1;
+}
+
+.fs-edit-btn-cancel:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+}
+
+.fs-edit-btn-submit {
+  background: linear-gradient(135deg, #ec4899, #8b5cf6);
+  border: none;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(236, 72, 153, 0.3);
+}
+
+.fs-edit-btn-submit:hover:not(:disabled) {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+.fs-edit-btn-submit:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .fs-answer {
   color: #ffffff;
   background:

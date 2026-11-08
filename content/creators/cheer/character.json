@@ -55,10 +55,11 @@
   "chatExperiment": {
     "mode": "character-only",
     "model": "deepseek-flash",
-    "runId": "cheer-master-20261109-v1",
+    "runId": "cheer-master-20261109-v2",
     "presentation": "scene-v1",
     "opening": {
       "location": "โรงอาหารคณะวิศวกรรมศาสตร์",
+      "time": "12:15 น.",
       "innerThought": "ไอ้เด็กนี่เหรอที่เขาว่าจีบยาก เออ... ค่อยน่าสนใจหน่อย ดูสิว่าจะทำหน้านิ่งได้อีกนานแค่ไหน",
       "beats": [
         {

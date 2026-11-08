@@ -132,3 +132,31 @@ test('runtime boots a database that has not applied migration 0014 and experimen
     assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM experiment_chat_threads').get().n, 0);
   } finally { globalThis.fetch = saved; f.sql.close(); }
 });
+
+test('edit-message updates the target user turn, deletes subsequent turns, and re-answers atomically', async () => {
+  const f = await fixture(), saved = globalThis.fetch;
+  let answerText = 'คำตอบแรก';
+  globalThis.fetch = async () => answer(answerText);
+  try {
+    const t1 = await f.request('ข้อความแรก');
+    assert.equal(t1.status, 200);
+    const userMsg1Id = t1.payload.messages.find(m => m.role === 'user' && m.content === 'ข้อความแรก').id;
+
+    answerText = 'คำตอบสอง';
+    const t2 = await f.request('ข้อความสอง');
+    assert.equal(t2.status, 200);
+    assert.equal(t2.payload.messages.length, 4);
+
+    // Edit message 1
+    answerText = 'คำตอบใหม่สำหรับข้อความแรก';
+    const edited = await f.request('ข้อความแรกที่แก้แล้ว', { action: 'edit-message', data: { messageId: userMsg1Id, message: 'ข้อความแรกที่แก้แล้ว' } });
+    assert.equal(edited.status, 200);
+    assert.equal(edited.payload.messages.length, 2, 'turn 2 was truncated/deleted');
+    assert.equal(edited.payload.messages[0].content, 'ข้อความแรกที่แก้แล้ว');
+    assert.equal(edited.payload.messages[1].content, 'คำตอบใหม่สำหรับข้อความแรก');
+
+    // Invalid message ID returns 404
+    const notFound = await f.request('ลองแก้', { action: 'edit-message', data: { messageId: 'unknown-id', message: 'ข้อความ' } });
+    assert.equal(notFound.status, 404);
+  } finally { globalThis.fetch = saved; f.sql.close(); }
+});

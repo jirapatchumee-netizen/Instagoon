@@ -407,7 +407,7 @@ async function player(req,env,user,path,now,ctx) {
  // A retired character must not remain reachable through a saved profile/chat URL.
  const creatorRoute = path.match(/^\/api\/(?:creators|chats)\/([\w-]+)(?:\/|$)/);
  if (creatorRoute && (await removedCreators(env)).includes(creatorRoute[1])) return json({error:'not_found'},404);
- const experimentRoute = path.match(/^\/api\/chats\/([\w-]+)(?:\/(message|reset-chat|memories))?$/);
+ const experimentRoute = path.match(/^\/api\/chats\/([\w-]+)(?:\/(message|edit-message|reset-chat|memories))?$/);
  if (experimentRoute) {
   const row = await one(env, 'SELECT definition_json FROM npc_definitions WHERE creator_id=?', experimentRoute[1]);
   let definition; try { definition = JSON.parse(row?.definition_json || 'null'); } catch {}
@@ -770,7 +770,7 @@ async function player(req,env,user,path,now,ctx) {
     }
   });
  }
- m=path.match(/^\/api\/chats\/([\w-]+)(?:\/(choose|episode|message))?$/);
+ m=path.match(/^\/api\/chats\/([\w-]+)(?:\/(choose|episode|message|edit-message))?$/);
  if(m){
   const creator=id(m[1]);
   if(method==='POST'&&m[2]==='message'){

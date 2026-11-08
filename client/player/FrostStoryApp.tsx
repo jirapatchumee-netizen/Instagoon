@@ -8,6 +8,7 @@ import {
   Loader2,
   LockKeyhole,
   MessageSquareX,
+  Pencil,
   RotateCcw,
   Send,
   Settings,
@@ -1079,6 +1080,8 @@ export function FrostStoryApp() {
   const [dmMenuOpen, setDmMenuOpen] = useState(false);
   const dmMenuRef = useRef<HTMLDivElement | null>(null);
   const [aiSending, setAiSending] = useState(false);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState('');
   const [pending, setPending] = useState<{ id: string; content: string; failed?: string }[]>([]);
   const [unlockedRewards, setUnlockedRewards] = useState<string[]>([]);
   const [memoryPanel, setMemoryPanel] = useState<{ open: boolean; items: { key: string; value: string }[] }>({ open: false, items: [] });
@@ -1197,6 +1200,48 @@ export function FrostStoryApp() {
                 ? `การทดลอง DeepSeek ไม่สำเร็จ (${msg}) — ไม่มีการสลับโมเดลสำรอง`
                 : msg;
       setPending((prev) => prev.map((item) => (item.id === id ? { ...item, failed: reason } : item)));
+    } finally {
+      setAiSending(false);
+    }
+  }
+
+  async function editAiMessage(messageId: string, newText: string) {
+    if (!selectedCreator || !chat || aiSending) return;
+    setEditingMessageId(null);
+    setEditingText('');
+    setAiSending(true);
+
+    const targetIdx = (chat.aiMessages ?? []).findIndex((m) => m.id === messageId);
+    if (targetIdx !== -1) {
+      const updatedMessages = (chat.aiMessages ?? []).slice(0, targetIdx + 1).map((m, idx) =>
+        idx === targetIdx ? { ...m, content: newText } : m
+      );
+      setChat((prev) => (prev ? { ...prev, aiMessages: updatedMessages } : prev));
+    }
+
+    try {
+      const res = await api<{
+        ok: boolean;
+        reply: string;
+        messages: AiChatMessage[];
+        relationship?: number;
+        energy?: Energy;
+      }>(`/api/chats/${encodeURIComponent(selectedCreator.id)}/edit-message`, json({ messageId, message: newText }));
+
+      if (res.messages) setChat((prev) => (prev ? { ...prev, aiMessages: res.messages } : prev));
+      if (res.energy) setEnergy(res.energy);
+      if (typeof res.relationship === 'number') {
+        const newRel = res.relationship;
+        setSelectedCreator((prev) => (prev ? { ...prev, relationship: newRel } : prev));
+        setCreators((prev) =>
+          prev.map((c) => (c.id === selectedCreator.id ? { ...c, relationship: newRel } : c))
+        );
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('energy_empty')) setShopOpen(true);
+      alert('ไม่สามารถแก้ไขข้อความได้: ' + msg);
+      void openChat(selectedCreator);
     } finally {
       setAiSending(false);
     }
@@ -2771,7 +2816,65 @@ export function FrostStoryApp() {
                     const isNew = msg.role === 'assistant' && msg.createdAt > chatOpenedAtRef.current;
                     return msg.role === 'user' ? (
                       <div key={msg.id} className={`fs-dm-row-right${groupEnd ? ' fs-group-end' : ''}`}>
-                        <div className="fs-answer">{msg.content}</div>
+                        {editingMessageId === msg.id ? (
+                          <div className="fs-edit-message-box">
+                            <textarea
+                              className="fs-edit-message-input"
+                              value={editingText}
+                              onChange={(e) => setEditingText(e.target.value)}
+                              rows={2}
+                              autoFocus
+                              disabled={aiSending}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                  e.preventDefault();
+                                  if (editingText.trim()) void editAiMessage(msg.id, editingText.trim());
+                                } else if (e.key === 'Escape') {
+                                  setEditingMessageId(null);
+                                  setEditingText('');
+                                }
+                              }}
+                            />
+                            <div className="fs-edit-message-actions">
+                              <button
+                                type="button"
+                                className="fs-edit-btn-cancel"
+                                disabled={aiSending}
+                                onClick={() => {
+                                  setEditingMessageId(null);
+                                  setEditingText('');
+                                }}
+                              >
+                                ยกเลิก
+                              </button>
+                              <button
+                                type="button"
+                                className="fs-edit-btn-submit"
+                                disabled={aiSending || !editingText.trim()}
+                                onClick={() => void editAiMessage(msg.id, editingText.trim())}
+                              >
+                                ส่งใหม่
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="fs-answer-wrap">
+                            <button
+                              type="button"
+                              className="fs-msg-edit-btn"
+                              title="แก้ไขข้อความนี้"
+                              aria-label="แก้ไขข้อความ"
+                              disabled={aiSending}
+                              onClick={() => {
+                                setEditingMessageId(msg.id);
+                                setEditingText(msg.content);
+                              }}
+                            >
+                              <Pencil size={12} />
+                            </button>
+                            <div className="fs-answer">{msg.content}</div>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div key={msg.id} className={`fs-dm-row-left${groupEnd ? ' fs-group-end' : ''}${isNew ? ' fs-msg-in' : ''}`}>
