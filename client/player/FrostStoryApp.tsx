@@ -619,7 +619,11 @@ function hasSpokenDialogue(text: string): boolean {
   return stripped.length > 0;
 }
 
-export function renderBubbleContent(text: string, onExpandMedia?: (key: string) => void) {
+export function renderBubbleContent(
+  text: string,
+  onExpandMedia?: (key: string) => void,
+  onFastForward?: (ff: { time?: string; location: string; label: string }) => void
+) {
   if (!text) return null;
 
   let mood: string | null = null;
@@ -758,6 +762,36 @@ export function renderBubbleContent(text: string, onExpandMedia?: (key: string) 
           </div>
         )}
         {bodyNodes}
+        {scene?.fastForward && onFastForward && (
+          <div className="fs-inbubble-fastforward">
+            <button
+              type="button"
+              className="fs-fastforward-btn"
+              onClick={() => onFastForward(scene.fastForward!)}
+            >
+              <Sparkles size={14} className="fs-fastforward-icon" />
+              <span>{scene.fastForward.label}</span>
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (scene?.fastForward && onFastForward) {
+    return (
+      <div className="fs-bubble-with-meta">
+        {bodyNodes}
+        <div className="fs-inbubble-fastforward">
+          <button
+            type="button"
+            className="fs-fastforward-btn"
+            onClick={() => onFastForward(scene.fastForward!)}
+          >
+            <Sparkles size={14} className="fs-fastforward-icon" />
+            <span>{scene.fastForward.label}</span>
+          </button>
+        </div>
       </div>
     );
   }
@@ -2888,11 +2922,17 @@ export function FrostStoryApp() {
                         <div className="fs-dm-msg-col">
                           <div className="fs-dm-bubble-row">
                             <div className="fs-bubble">
-                              {renderBubbleContent(msg.content, (k) =>
-                                setExpandedMedia({
-                                  mediaKey: k,
-                                  title: `ภาพจาก ${selectedCreator.name}`,
-                                })
+                              {renderBubbleContent(
+                                msg.content,
+                                (k) =>
+                                  setExpandedMedia({
+                                    mediaKey: k,
+                                    title: `ภาพจาก ${selectedCreator.name}`,
+                                  }),
+                                !aiSending ? (ff) => {
+                                  const actionText = `*เดินทางไปที่ ${ff.location}${ff.time ? ` เวลา ${ff.time}` : ''} ตามที่นัดไว้*`;
+                                  void sendAiMessage(actionText);
+                                } : undefined
                               )}
                             </div>
                             {hasSpokenDialogue(msg.content) && (
