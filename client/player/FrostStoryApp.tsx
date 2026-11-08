@@ -1562,8 +1562,6 @@ export function FrostStoryApp() {
           </div>
 
           <div className="fs-header-actions">
-            <LangSelect lang={lang} onChange={handleSetLang} short />
-
             {/* Energy Telemetry */}
             <button
               type="button"
@@ -1575,7 +1573,6 @@ export function FrostStoryApp() {
               {energy ? `${energy.free} + ${energy.purchased}` : '–'}
               {Boolean(energy?.diamonds) && <span style={{ marginLeft: 3, color: '#38bdf8' }}>💎{energy?.diamonds}</span>}
             </button>
-            {shopOpen && <EnergyShop lang={lang} onClose={() => setShopOpen(false)} onEnergy={setEnergy} />}
 
             {/* Official Instagram Heart (Activity / Notifications) */}
             <button
@@ -3175,6 +3172,11 @@ export function FrostStoryApp() {
             )}
           </section>
         </Modal>
+      )}
+
+      {/* Energy Top-up Shop */}
+      {shopOpen && (
+        <EnergyShop lang={lang} onClose={() => setShopOpen(false)} onEnergy={setEnergy} />
       )}
 
       {/* Dev Tools Telemetry Drawer */}

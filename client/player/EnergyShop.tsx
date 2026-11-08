@@ -172,7 +172,13 @@ export function EnergyShop({ lang, onClose, onEnergy }: { lang: string; onClose:
 
   useEffect(() => {
     const element = ref.current;
-    element?.showModal();
+    if (element && !element.open) {
+      try {
+        element.showModal();
+      } catch (err) {
+        console.error('showModal error:', err);
+      }
+    }
     say('bot', { text: t.hello });
     call<ShopInfo>('/api/shop')
       .then((s) => {
@@ -320,7 +326,15 @@ export function EnergyShop({ lang, onClose, onEnergy }: { lang: string; onClose:
   const cardId = [...msgs].reverse().find((m) => m.card)?.id;
 
   return (
-    <dialog ref={ref} className="fs-overlay" aria-label={t.name} onCancel={onClose}>
+    <dialog
+      ref={ref}
+      className="fs-overlay"
+      aria-label={t.name}
+      onCancel={(event) => {
+        event.preventDefault();
+        onClose();
+      }}
+    >
       <section className="fs-shopchat">
         <header className="fs-shopchat-head">
           <button type="button" className="fs-shopchat-back" onClick={onClose} aria-label="back">
