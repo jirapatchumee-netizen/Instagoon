@@ -1,4 +1,4 @@
-export type SceneMetadata = { at: number; location: string };
+export type SceneMetadata = { at: number; time?: string; location: string };
 export type NarrativeSegment = { kind: 'dialogue' | 'action'; text: string };
 
 export function readSceneHeader(text: string): { scene: SceneMetadata | null; body: string } {
@@ -9,15 +9,19 @@ export function readSceneHeader(text: string): { scene: SceneMetadata | null; bo
     const value = JSON.parse(match[1]);
     if (typeof value.at !== 'number' || !Number.isFinite(value.at) || !Number.isFinite(new Date(value.at).getTime()) ||
         typeof value.location !== 'string' || !value.location.trim() || value.location.length > 100) return { scene: null, body };
-    return { scene: { at: value.at, location: value.location }, body };
+    const time = typeof value.time === 'string' && value.time.trim().length <= 30 ? value.time.trim() : undefined;
+    return { scene: { at: value.at, location: value.location, ...(time ? { time } : {}) }, body };
   } catch { return { scene: null, body }; }
 }
 
 export function sceneHeaderLabels(scene: SceneMetadata) {
   const date = new Date(scene.at);
+  const timeStr = scene.time
+    ? scene.time.trim().replace(/\s*น\.?$/i, '').trim()
+    : new Intl.DateTimeFormat('th-TH', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(date);
   return {
     date: new Intl.DateTimeFormat('th-TH', { timeZone: 'Asia/Bangkok', dateStyle: 'full' }).format(date),
-    time: new Intl.DateTimeFormat('th-TH', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(date),
+    time: timeStr,
     location: scene.location
   };
 }

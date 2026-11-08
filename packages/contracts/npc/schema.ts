@@ -14,7 +14,12 @@ export const NpcObjectSchema = z.object({
   schemaVersion: z.literal('1.0'), id, name: text.min(1).max(120), handle: z.string().min(1).max(100), tagline: text, avatar: asset, color: z.string().regex(/^#[a-fA-F0-9]{6}$/), tags: z.array(z.string().max(80)).max(30), age: text, biography: text, personality: text, world: text, occupation: text, likes: text, dislikes: text, goals: text, immutableFacts: z.array(text).max(100), knowledgeBoundary: text,
   userRole: text.optional(), precedingIncident: text.optional(), appearanceDetail: text.optional(), sensoryProps: SensoryPropsSchema.optional(),
   chatExperiment: z.object({ mode: z.literal('character-only'), model: z.literal('deepseek-flash'), runId: id, presentation: z.literal('scene-v1').optional(),
-    opening: z.object({ location: z.string().min(1).max(100), innerThought: z.string().min(1).max(300), beats: z.array(z.object({ kind: z.enum(['action', 'dialogue']), text: z.string().min(1).max(1600) }).strict()).min(1).max(12) }).strict().optional()
+    opening: z.object({
+      location: z.string().min(1).max(100),
+      time: z.string().min(1).max(30).optional(),
+      innerThought: z.string().min(1).max(300),
+      beats: z.array(z.object({ kind: z.enum(['action', 'dialogue']), text: z.string().min(1).max(1600) }).strict()).min(1).max(12)
+    }).strict().optional()
   }).strict().optional(),
   narrative: z.object({
     enabled: z.boolean(),

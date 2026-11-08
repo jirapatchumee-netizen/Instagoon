@@ -2,7 +2,7 @@
 import { SCENE_FORMAT_VERSION, SCENE_FORMAT_INSTRUCTION, decodeExperimentScene, serializeExperimentScene } from './experiment-scene-format.mjs';
 import { fiftyShadesPrompt } from './ai/protected/fifty-shades.mjs';
 export const characterOnlyEnabled = npc => npc?.chatExperiment?.mode === 'character-only';
-import { EXPERIMENT_GENERATION, buildExperimentRequest } from './experiment-request.mjs';
+import { EXPERIMENT_GENERATION, buildExperimentRequest, findLastStoryTime } from './experiment-request.mjs';
 export { EXPERIMENT_GENERATION } from './experiment-request.mjs';
 const ready = new WeakMap();
 export async function ensureExperimentStorage(db) {
@@ -47,8 +47,9 @@ export async function characterOnlyIdentity(npc, { modePrompt = '' } = {}) {
 async function ensureExperimentOpening(db, npc, scope, now) {
   const opening = npc.chatExperiment.opening;
   if (!opening) return;
-  const raw = JSON.stringify({ location: opening.location, innerThought: opening.innerThought, playerActions: [], beats: opening.beats });
-  const at = now - 1, scene = decodeExperimentScene(raw, '', at);
+  const time = opening.time || '12:15 น.';
+  const raw = JSON.stringify({ location: opening.location, time, innerThought: opening.innerThought, playerActions: [], beats: opening.beats });
+  const at = now - 1, scene = decodeExperimentScene(raw, '', at, time);
   const id = 'experiment_opening_' + await hash(JSON.stringify(scope));
   await db.batch([
     db.prepare(`INSERT OR IGNORE INTO experiment_chat_messages(id,user_id,creator_id,experiment_key,role,content,created_at)
@@ -63,7 +64,7 @@ export async function characterOnlyChat(req, env, user, npc, action, now, servic
   const { json, takeEnergy, refundEnergy, energy, recordTurn } = services;
   await ensureExperimentStorage(env.DB);
   let body = {};
-  if (req.method === 'POST' && ['message', 'reset-chat'].includes(action)) {
+  if (req.method === 'POST' && ['message', 'edit-message', 'reset-chat'].includes(action)) {
     try { const raw = await req.text(); body = raw ? JSON.parse(raw) : {}; } catch { return json({ error: 'invalid_json' }, 400); }
     if (!body || typeof body !== 'object' || Array.isArray(body)) return json({ error: 'invalid_json' }, 400);
   }
@@ -81,14 +82,18 @@ export async function characterOnlyChat(req, env, user, npc, action, now, servic
     return json({ chat: { ...blank, experiment, episodeId: 'free_ai_chat', revisionId: identity.experimentKey, currentNodeId: 'start', nodes: [], history: [], episodes: [], aiMessages: await list() } });
   }
   if (req.method === 'GET' && action === 'memories') return json({ memories: [] });
-  if (req.method !== 'POST' || !['message', 'reset-chat'].includes(action)) return json({ error: 'not_found' }, 404);
-  let userText;
-  if (action === 'message') {
+  if (req.method !== 'POST' || !['message', 'edit-message', 'reset-chat'].includes(action)) return json({ error: 'not_found' }, 404);
+  let userText, editMessageId;
+  if (['message', 'edit-message'].includes(action)) {
     userText = typeof body.message === 'string' ? body.message.trim() : '';
     if (!userText || userText.length > 1000) return json({ error: 'invalid_message' }, 400);
     if (!env.DEEPSEEK_API_KEY) return json({ error: 'deepseek_not_configured' }, 503);
+    if (action === 'edit-message') {
+      editMessageId = typeof body.messageId === 'string' ? body.messageId.trim() : '';
+      if (!editMessageId) return json({ error: 'invalid_message_id' }, 400);
+    }
   }
-  if (action === 'message') await ensureExperimentOpening(env.DB, npc, scope, now);
+  if (['message', 'edit-message'].includes(action)) await ensureExperimentOpening(env.DB, npc, scope, now);
   await env.DB.prepare('INSERT OR IGNORE INTO experiment_chat_threads(user_id,creator_id,experiment_key) VALUES(?,?,?)').bind(...scope).run();
   const lock = crypto.randomUUID();
   const acquired = await env.DB.prepare('UPDATE experiment_chat_threads SET lock_token=?,lock_until=? WHERE user_id=? AND creator_id=? AND experiment_key=? AND lock_until<=?').bind(lock, now + 90000, ...scope, now).run();
@@ -101,7 +106,17 @@ export async function characterOnlyChat(req, env, user, npc, action, now, servic
       await env.DB.prepare('DELETE FROM experiment_chat_messages WHERE user_id=? AND creator_id=? AND experiment_key=?').bind(...scope).run();
       return json({ ok: true, experiment });
     }
-    const history = await rows();
+    let targetRow = null;
+    let history;
+    if (action === 'edit-message') {
+      targetRow = await env.DB.prepare('SELECT id, created_at FROM experiment_chat_messages WHERE id=? AND user_id=? AND creator_id=? AND experiment_key=? AND role=?')
+        .bind(editMessageId, ...scope, 'user').first();
+      if (!targetRow) return json({ error: 'message_not_found' }, 404);
+      history = (await env.DB.prepare('SELECT m.id,m.role,m.content,m.created_at createdAt,d.presentation_json displayJson,t.metadata_json traceJson FROM experiment_chat_messages m LEFT JOIN experiment_chat_displays d ON d.message_id=m.id LEFT JOIN experiment_chat_traces t ON t.message_id=m.id WHERE m.user_id=? AND m.creator_id=? AND m.experiment_key=? AND (m.created_at < ? OR (m.created_at = ? AND m.id != ?)) ORDER BY m.created_at,m.id')
+        .bind(...scope, targetRow.created_at, targetRow.created_at, targetRow.id).all()).results;
+    } else {
+      history = await rows();
+    }
     // Never silently trim or summarize a controlled experiment.
     if (history.length + 2 > 200) return json({ error: 'experiment_history_full' }, 409);
     charged = await takeEnergy(env, user.id, now);
@@ -124,20 +139,31 @@ export async function characterOnlyChat(req, env, user, npc, action, now, servic
     if (typeof reply !== 'string' || !reply.trim()) throw new Error('deepseek_empty_reply');
     if (reply.length > 16000) throw new Error('deepseek_invalid_reply');
     experiment.resolvedModel = result.model || identity.model;
-    const replyAt = Math.max(Date.now(), now + 1);
-    const scene = sceneMode ? decodeExperimentScene(reply, userText, replyAt) : null;
+    const lastStoryTime = sceneMode ? findLastStoryTime(history, npc.chatExperiment?.opening?.time || '12:15 น.') : '';
+    const replyAt = Math.max(Date.now(), (targetRow ? targetRow.created_at + 1 : now + 1));
+    const scene = sceneMode ? decodeExperimentScene(reply, userText, replyAt, lastStoryTime) : null;
     const assistantId = crypto.randomUUID();
     const trace = { experimentKey: identity.experimentKey, activeMode: experiment.activeMode,
       sourceHash: identity.sourceHash, configuredModel: identity.model, resolvedModel: result.model || null,
       generation: EXPERIMENT_GENERATION, createdAt: replyAt, providerLatencyMs,
       tokensIn: Number.isFinite(usage.prompt_tokens) ? usage.prompt_tokens : null, tokensOut: Number.isFinite(usage.completion_tokens) ? usage.completion_tokens : null };
     // Commit the pair atomically. Failed turns never become context for the next attempt.
-    await env.DB.batch([
-      env.DB.prepare('INSERT INTO experiment_chat_messages(id,user_id,creator_id,experiment_key,role,content,created_at) VALUES(?,?,?,?,?,?,?)').bind(crypto.randomUUID(), ...scope, 'user', userText, now),
-      env.DB.prepare('INSERT INTO experiment_chat_messages(id,user_id,creator_id,experiment_key,role,content,created_at) VALUES(?,?,?,?,?,?,?)').bind(assistantId, ...scope, 'assistant', reply, replyAt),
-      env.DB.prepare('INSERT INTO experiment_chat_traces(message_id,metadata_json) VALUES(?,?)').bind(assistantId, JSON.stringify(trace)),
-      ...(scene ? [env.DB.prepare('INSERT INTO experiment_chat_displays(message_id,presentation_json) VALUES(?,?)').bind(assistantId, JSON.stringify(scene))] : [])
-    ]);
+    if (action === 'edit-message') {
+      await env.DB.batch([
+        env.DB.prepare('DELETE FROM experiment_chat_messages WHERE user_id=? AND creator_id=? AND experiment_key=? AND (created_at > ? OR (created_at = ? AND id != ?))').bind(...scope, targetRow.created_at, targetRow.created_at, targetRow.id),
+        env.DB.prepare('UPDATE experiment_chat_messages SET content=? WHERE id=?').bind(userText, targetRow.id),
+        env.DB.prepare('INSERT INTO experiment_chat_messages(id,user_id,creator_id,experiment_key,role,content,created_at) VALUES(?,?,?,?,?,?,?)').bind(assistantId, ...scope, 'assistant', reply, replyAt),
+        env.DB.prepare('INSERT INTO experiment_chat_traces(message_id,metadata_json) VALUES(?,?)').bind(assistantId, JSON.stringify(trace)),
+        ...(scene ? [env.DB.prepare('INSERT INTO experiment_chat_displays(message_id,presentation_json) VALUES(?,?)').bind(assistantId, JSON.stringify(scene))] : [])
+      ]);
+    } else {
+      await env.DB.batch([
+        env.DB.prepare('INSERT INTO experiment_chat_messages(id,user_id,creator_id,experiment_key,role,content,created_at) VALUES(?,?,?,?,?,?,?)').bind(crypto.randomUUID(), ...scope, 'user', userText, now),
+        env.DB.prepare('INSERT INTO experiment_chat_messages(id,user_id,creator_id,experiment_key,role,content,created_at) VALUES(?,?,?,?,?,?,?)').bind(assistantId, ...scope, 'assistant', reply, replyAt),
+        env.DB.prepare('INSERT INTO experiment_chat_traces(message_id,metadata_json) VALUES(?,?)').bind(assistantId, JSON.stringify(trace)),
+        ...(scene ? [env.DB.prepare('INSERT INTO experiment_chat_displays(message_id,presentation_json) VALUES(?,?)').bind(assistantId, JSON.stringify(scene))] : [])
+      ]);
+    }
     const bucket = charged; charged = null;
     await recordTurn(env, { userId: user.id, creatorId: npc.id, visitId: identity.experimentKey, now, outcome: 'ok', model: identity.model, latencyMs: Date.now() - started, fallbackCount: 0, energyBucket: bucket, tokensIn: usage.prompt_tokens, tokensOut: usage.completion_tokens }).catch(() => {});
     return json({ ok: true, reply: scene ? scene.beats.filter(beat => beat.kind === 'dialogue').map(beat => beat.text).join('\n') : reply, innerThought: scene?.innerThought || null, action: null, ...(scene ? { scene: { at: scene.at, location: scene.location }, beats: scene.beats } : {}), suggestedReplies: [], mediaKey: null, messages: await list(), relationship: 0, closeness: 0, trust: 0, romance: 0, level: 1, unlockedRewards: [], experiment, energy: await energy(env, user.id, now) });

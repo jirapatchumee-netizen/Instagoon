@@ -20,6 +20,8 @@ test('presentation preserves model wording, guarantees marked player actions, an
   const stored = serializeExperimentScene(result), header = readSceneHeader(stored);
   assert.equal(header.scene.at, at);
   assert.equal(sceneHeaderLabels(header.scene).time, '23:37');
+  const timedResult = decodeExperimentScene(JSON.stringify(sceneReply({ time: '12:15 น.' })), 'สวัสดี', at);
+  assert.equal(sceneHeaderLabels(readSceneHeader(serializeExperimentScene(timedResult)).scene).time, '12:15');
   assert.equal(header.scene.location, sceneReply().location);
   assert.match(header.body, /^\[thought:/);
   const action = splitNarrativeBody(header.body).find(p => p.kind === 'action');
