@@ -28,3 +28,4 @@ private-docs/
 .claude/settings.local.json
 node_modules
 .eval/
+ui-audit-report/

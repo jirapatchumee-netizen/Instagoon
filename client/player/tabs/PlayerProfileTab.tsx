@@ -251,6 +251,7 @@ export function PlayerProfileTab({
             className={`fs-toggle-btn ${soundEnabled ? 'is-active' : ''}`}
             onClick={handleToggleSound}
             aria-pressed={soundEnabled}
+            aria-label={t.settingsSound}
           >
             <span className="fs-toggle-knob" />
           </button>
@@ -266,6 +267,7 @@ export function PlayerProfileTab({
             className={`fs-toggle-btn ${hapticsEnabled ? 'is-active' : ''}`}
             onClick={handleToggleHaptics}
             aria-pressed={hapticsEnabled}
+            aria-label={t.settingsHaptics}
           >
             <span className="fs-toggle-knob" />
           </button>
