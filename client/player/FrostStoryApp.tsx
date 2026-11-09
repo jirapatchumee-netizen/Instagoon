@@ -2,15 +2,22 @@ import { useCallback, useEffect, useLayoutEffect, useState, useRef, type FormEve
 import { readSceneHeader } from './message-format';
 import { useOverlayHistory } from './overlay-history';
 import { ArrowLeft, Loader2, MessageSquareX, Pencil, RotateCcw, Send, Settings, Sparkles, User as UserIcon, Volume2, VolumeX, X, Zap } from 'lucide-react';
-import { IgHeart, IgComment, IgShare, IgBookmark, IgMore, IgVerified, IgHome, IgSearch, IgCreate, IgReels, IgAudio } from './InstagramIcons';
+import { IgHeart, IgShare, IgHome, IgSearch, IgReels, IgVerified } from './InstagramIcons';
 import { EnergyShop } from './EnergyShop';
 import { type Lang, LANGS, TRANSLATIONS } from './i18n';
 import { LangSelect } from './LangSelect';
 import { type Energy, type User, type Creator, type Post, type Story, type AiChatMessage, type Chat, type Screen, type ProfileData } from './types';
 import { ApiError, api } from './api';
-import { ChatComposer, media, Media, hasSpokenDialogue, renderBubbleContent, formatDateTime, json, StoryContent, Modal, getAvatarSrc } from './ui';
+import { ChatComposer, media, hasSpokenDialogue, renderBubbleContent, json, StoryContent, Modal, getAvatarSrc } from './ui';
 import { ProfileSetupModal } from './overlays/ProfileSetupModal';
 import { LoginScreen } from './LoginScreen';
+import { HomeTab } from './tabs/HomeTab';
+import { ExploreTab } from './tabs/ExploreTab';
+import { ReelsTab } from './tabs/ReelsTab';
+import { InboxTab } from './tabs/InboxTab';
+import { PlayerProfileTab } from './tabs/PlayerProfileTab';
+import { ActivityOverlay } from './overlays/ActivityOverlay';
+import { PostMenuSheet } from './overlays/PostMenuSheet';
 import './froststory.css';
 
 export function FrostStoryApp() {
@@ -630,8 +637,27 @@ export function FrostStoryApp() {
     });
   }
 
+  const [activityOpen, setActivityOpen] = useState(false);
+  const [postMenuPost, setPostMenuPost] = useState<Post | null>(null);
+  const [postMenuCreator, setPostMenuCreator] = useState<Creator | null>(null);
+
+  const handleSelectTab = (tab: Screen) => {
+    setScreen(tab);
+    if (typeof window !== 'undefined') {
+      window.history.replaceState({ ...window.history.state, mainTab: tab }, '', '');
+    }
+  };
+
+  const handleLogoClick = () => {
+    if (screen === 'feed') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      handleSelectTab('feed');
+    }
+  };
+
   const openNotifications = () => {
-    setScreen('notifications');
+    setActivityOpen(true);
     void action(async () => {
       const result = await api<{
         notifications: { id: string; text: string; createdAt: number }[];
@@ -639,7 +665,6 @@ export function FrostStoryApp() {
       setNotifications(result.notifications);
     });
   };
-  void openNotifications;
 
   useOverlayHistory(!!selectedStory, () => setSelectedStory(null));
   useOverlayHistory(!!profileCreator, closeProfile);
@@ -648,6 +673,11 @@ export function FrostStoryApp() {
   useOverlayHistory(!!expandedMedia, () => setExpandedMedia(null));
   useOverlayHistory(profileModalOpen, () => setProfileModalOpen(false));
   useOverlayHistory(shopOpen, () => setShopOpen(false));
+  useOverlayHistory(activityOpen, () => setActivityOpen(false));
+  useOverlayHistory(Boolean(postMenuPost && postMenuCreator), () => {
+    setPostMenuPost(null);
+    setPostMenuCreator(null);
+  });
 
   if (loading) return null;
 
@@ -700,34 +730,47 @@ export function FrostStoryApp() {
   return (
     <div className="fs-app">
       {/* Authentic Instagram iOS 18 Top Bar */}
-      <header className="fs-insta-header">
-        <div className="fs-insta-header-inner">
-          <div
-            className="fs-brand"
-            onClick={() => setScreen('feed')}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => e.key === 'Enter' && setScreen('feed')}
-            title="Instagram"
-          >
-            <span className="fs-wordmark">instagoon</span>
-          </div>
-
-          <div className="fs-header-actions">
-            {/* Energy Telemetry */}
-            <button
-              type="button"
-              className="fs-energy"
-              title={`${t.energyRefillDefault}${energy?.diamonds ? ` · 💎 ${energy.diamonds}` : ''}`}
-              onClick={() => setShopOpen(true)}
+      {!selectedStory && !selectedCreator && !expandedMedia && (
+        <header className="fs-insta-header">
+          <div className="fs-insta-header-inner">
+            <div
+              className="fs-brand"
+              onClick={handleLogoClick}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && handleLogoClick()}
+              title="Instagram"
             >
-              <Zap size={13} className="fs-energy-icon" />
-              {energy ? `${energy.free} + ${energy.purchased}` : '–'}
-              {Boolean(energy?.diamonds) && <span style={{ marginLeft: 3, color: '#38bdf8' }}>💎{energy?.diamonds}</span>}
-            </button>
+              <span className="fs-wordmark">instagoon</span>
+            </div>
+
+            <div className="fs-header-actions">
+              {/* Energy Telemetry */}
+              <button
+                type="button"
+                className="fs-energy"
+                title={`${t.energyRefillDefault}${energy?.diamonds ? ` · 💎 ${energy.diamonds}` : ''}`}
+                onClick={() => setShopOpen(true)}
+              >
+                <Zap size={13} className="fs-energy-icon" />
+                {energy ? `${energy.free} + ${energy.purchased}` : '–'}
+                {Boolean(energy?.diamonds) && <span style={{ marginLeft: 3, color: '#38bdf8' }}>💎{energy?.diamonds}</span>}
+              </button>
+
+              {/* Activity Heart */}
+              <button
+                type="button"
+                className="fs-header-icon-btn"
+                title={t.notifications}
+                onClick={openNotifications}
+                aria-label={t.notifications}
+              >
+                <IgHeart size={24} />
+              </button>
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
+      )}
 
       {error && (
         <div className="fs-error" role="alert">
@@ -740,576 +783,178 @@ export function FrostStoryApp() {
 
       {/* Centered Instagram iOS Column */}
       <main className="fs-main">
-        {screen === 'feed' && (
-          <>
-            {/* Instagram Stories Row with Exact Gradient Ring */}
-            <section className="fs-stories-bar" aria-label="Stories">
-              {stories.map((story) => {
-                const creator = getCreator(story.creatorId);
-                const name = creator?.name ?? 'Creator';
-                const isUnlockable = story.type === 'unlockable';
-                const isViewed = !!story.firstViewedAt;
-                return (
-                  <button
-                    key={story.id}
-                    className="fs-story-item"
-                    onClick={() => {
-                      if (isUnlockable && !isViewed) setSelectedStory(story);
-                      else void openStory(story);
-                    }}
-                  >
-                    <span
-                      className={`fs-story-ring ${
-                        isUnlockable
-                          ? 'fs-story-unlock'
-                          : isViewed
-                          ? 'fs-story-viewed'
-                          : 'fs-story-unviewed'
-                      }`}
-                    >
-                      <span className="fs-story-ring-inner">
-                        {creator?.avatarKey ? (
-                          <img alt={name} src={media(creator.avatarKey)} />
-                        ) : (
-                          name.slice(0, 1)
-                        )}
-                      </span>
-                    </span>
-                    <span className="fs-story-name">{name}</span>
-                  </button>
-                );
-              })}
-
-              {creators
-                .filter((c) => c.following && !stories.some((s) => s.creatorId === c.id))
-                .map((creator) => (
-                  <button
-                    key={`creator-ring-${creator.id}`}
-                    className="fs-story-item"
-                    onClick={() => void openChat(creator)}
-                  >
-                    <span className="fs-story-ring fs-story-viewed">
-                      <span className="fs-story-ring-inner">
-                        {creator.avatarKey ? (
-                          <img alt={creator.name} src={media(creator.avatarKey)} />
-                        ) : (
-                          creator.name.slice(0, 1)
-                        )}
-                      </span>
-                    </span>
-                    <span className="fs-story-name">{creator.name}</span>
-                  </button>
-                ))}
-            </section>
-
-            {posts.length === 0 && (
-              <div className="fs-empty-feed">
-                <div className="fs-empty-feed-icon">
-                  <IgSearch size={36} />
-                </div>
-                <h3>{t.emptyFeedTitle}</h3>
-                <p>{t.emptyFeedDesc}</p>
-                <button
-                  type="button"
-                  className="fs-empty-feed-btn"
-                  onClick={() => setScreen('creators')}
-                >
-                  {t.exploreCreators}
-                </button>
-              </div>
-            )}
-
-            {/* Instagram Authentic Post Feed */}
-            <div className="fs-posts">
-              {posts.map((post) => {
-                const creator = getCreator(post.creatorId);
-                const isLiked = !!likedPostIds[post.id] || post.likes > 0;
-                const isSaved = !!savedPostIds[post.id];
-                const totalLikes = post.likes + post.simulatedLikes;
-
-                return (
-                  <article className="fs-insta-post" key={post.id}>
-                    {/* Instagram Post Header */}
-                    <div className="fs-post-header">
-                      <div
-                        className="fs-post-author"
-                        onClick={() => {
-                          if (creator) void openProfile(creator);
-                        }}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && creator) void openProfile(creator);
-                        }}
-                      >
-                        <div className="fs-avatar-ring">
-                          <div className="fs-avatar">
-                            {creator?.avatarKey ? (
-                              <img src={media(creator.avatarKey)} alt={post.creatorName} />
-                            ) : (
-                              post.creatorName.slice(0, 1)
-                            )}
-                          </div>
-                        </div>
-                        <div className="fs-post-author-meta">
-                          <div className="fs-post-author-row">
-                            <strong>{post.creatorName}</strong>
-                            <IgVerified size={15} />
-                            {creator && creator.relationship >= 100 && (
-                              <span className="fs-top-fan-pill" title="คุณคือแฟนตัวยง (ความสัมพันธ์ครบ 100)">
-                                💎 แฟนตัวยง
-                              </span>
-                            )}
-                          </div>
-                          <div className="fs-audio-subtitle">
-                            <IgAudio size={11} />
-                            <span>{t.originalAudio} · {creator?.id || 'creator'}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="fs-post-header-right">
-                        <button
-                          type="button"
-                          className="fs-more-btn"
-                          aria-label="Options"
-                          onClick={() => {
-                            if (creator) void openChat(creator);
-                          }}
-                        >
-                          <IgMore size={20} />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* True Edge-to-Edge Media with Double-Tap Heart */}
-                    <div
-                      className={`fs-post-media-frame ${
-                        post.mediaKey ? '' : 'fs-post-media-quote'
-                      }`}
-                      onDoubleClick={() => void likePost(post.id, true)}
-                    >
-                      {post.mediaKey ? (
-                        <Media
-                          className="fs-post-image"
-                          mediaKey={post.mediaKey}
-                          label={post.caption}
-                        />
-                      ) : (
-                        <div className="fs-quote-backdrop">
-                          <p className="fs-quote-text">“{post.caption}”</p>
-                          <span className="fs-quote-author">— {post.creatorName}</span>
-                        </div>
-                      )}
-
-                      {/* Instagram Double-Tap Heart Pop */}
-                      {heartBurstPostId === post.id && (
-                        <div className="fs-heart-burst" aria-hidden="true">
-                          <IgHeart size={92} filled />
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Official Instagram Action Bar */}
-                    <div className="fs-post-actions-bar">
-                      <div className="fs-post-actions-left">
-                        <button
-                          type="button"
-                          className={`fs-action-icon-btn ${isLiked ? 'is-liked' : ''}`}
-                          disabled={busy}
-                          onClick={() => void likePost(post.id, true)}
-                          title="Like"
-                        >
-                          <IgHeart size={25} filled={isLiked} />
-                        </button>
-
-                        <label
-                          htmlFor={`comment-${post.id}`}
-                          className="fs-action-icon-btn"
-                          title="Comment"
-                        >
-                          <IgComment size={24} />
-                        </label>
-
-                        <button
-                          type="button"
-                          className="fs-action-icon-btn"
-                          title="Share / DM"
-                          onClick={() => {
-                            if (creator) void openChat(creator);
-                          }}
-                        >
-                          <IgShare size={24} />
-                        </button>
-                      </div>
-
-                      <div className="fs-post-actions-right">
-                        <button
-                          type="button"
-                          className={`fs-action-icon-btn ${isSaved ? 'is-saved' : ''}`}
-                          aria-label="Bookmark"
-                          onClick={() =>
-                            setSavedPostIds((prev) => ({
-                              ...prev,
-                              [post.id]: !prev[post.id],
-                            }))
-                          }
-                        >
-                          <IgBookmark size={24} filled={isSaved} />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Instagram Post Body */}
-                    <div className="fs-post-body">
-                      <div className="fs-likes-count">
-                        {t.likesCount(totalLikes)}
-                      </div>
-
-                      <p className="fs-caption-line">
-                        <strong className="fs-caption-author">{post.creatorName}</strong>{' '}
-                        <span>{post.caption}</span>
-                      </p>
-
-                      {/* View Comments Link */}
-                      {post.comments.length > 0 && (
-                        <button
-                          type="button"
-                          className="fs-view-comments-btn"
-                          onClick={() => {
-                            if (creator) void openChat(creator);
-                          }}
-                        >
-                          {t.commentsTitle(post.comments.length)}
-                        </button>
-                      )}
-
-                      {/* Comments Preview */}
-                      {post.comments.length > 0 && (
-                        <div className="fs-comments-preview-list">
-                          {post.comments.slice(-2).map((comment) => (
-                            <div className="fs-comment-item" key={comment.id}>
-                              <strong className="fs-comment-author">
-                                {comment.own ? t.you : t.player}
-                                {comment.own && creator && creator.relationship >= 100 && (
-                                  <span className="fs-comment-topfan-badge" title="คุณคือแฟนตัวยง">
-                                    💎 แฟนตัวยง
-                                  </span>
-                                )}
-                              </strong>{' '}
-                              <span className="fs-comment-txt">{comment.content}</span>
-                              {comment.own ? (
-                                <button
-                                  type="button"
-                                  className="fs-comment-act-btn"
-                                  disabled={busy}
-                                  onClick={() =>
-                                    void action(async () => {
-                                      await api(
-                                        `/api/comments/${encodeURIComponent(comment.id)}`,
-                                        { method: 'DELETE' }
-                                      );
-                                      await loadFeed();
-                                    })
-                                  }
-                                >
-                                  {t.delete}
-                                </button>
-                              ) : (
-                                <button
-                                  type="button"
-                                  className="fs-comment-act-btn"
-                                  disabled={busy}
-                                  onClick={() => {
-                                    const reason = window.prompt(t.reportPrompt);
-                                    if (reason?.trim())
-                                      void action(async () => {
-                                        await api(
-                                          `/api/comments/${encodeURIComponent(
-                                            comment.id
-                                          )}/report`,
-                                          json({ reason: reason.trim() })
-                                        );
-                                      });
-                                  }}
-                                >
-                                  {t.report}
-                                </button>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      <div className="fs-post-timestamp">
-                        {formatDateTime(post.publishedAt, lang)}
-                      </div>
-
-                      {/* Native Style Inline Comment Input with User Avatar */}
-                      <form
-                        className="fs-comment-form"
-                        onSubmit={(event) => void submitComment(event, post)}
-                      >
-                        <div className="fs-avatar fs-avatar-tiny">
-                          <UserIcon size={14} />
-                        </div>
-                        <input
-                          id={`comment-${post.id}`}
-                          maxLength={1000}
-                          placeholder={t.commentPlaceholder}
-                          value={comments[post.id] ?? ''}
-                          onChange={(event) =>
-                            setComments((previous) => ({
-                              ...previous,
-                              [post.id]: event.target.value,
-                            }))
-                          }
-                        />
-                        {comments[post.id]?.trim() && (
-                          <button
-                            disabled={busy}
-                            type="submit"
-                            className="fs-comment-post-btn"
-                          >
-                            {t.postBtn}
-                          </button>
-                        )}
-                      </form>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          </>
+        {screen === "feed" && (
+          <HomeTab
+            posts={posts}
+            stories={stories}
+            creators={creators}
+            user={user}
+            likedPostIds={likedPostIds}
+            savedPostIds={savedPostIds}
+            heartBurstPostId={heartBurstPostId}
+            comments={comments}
+            busy={busy}
+            lang={lang}
+            onOpenStory={(story) => {
+              if (story.type === "unlockable" && !story.firstViewedAt) setSelectedStory(story);
+              else void openStory(story);
+            }}
+            onOpenProfile={(creator) => void openProfile(creator)}
+            onOpenChat={(creator) => void openChat(creator)}
+            onLikePost={(postId, fromDoubleTap) => void likePost(postId, fromDoubleTap)}
+            onToggleSave={(postId) =>
+              setSavedPostIds((prev) => ({ ...prev, [postId]: !prev[postId] }))
+            }
+            onCommentChange={(postId, val) =>
+              setComments((prev) => ({ ...prev, [postId]: val }))
+            }
+            onCommentSubmit={(post, e) => void submitComment(e, post)}
+            onOpenPostMenu={(post, creator) => {
+              setPostMenuPost(post);
+              setPostMenuCreator(creator);
+            }}
+            onGoToExplore={() => handleSelectTab("creators")}
+          />
         )}
 
-        {screen === 'creators' && (
-          <div className="fs-section-pad">
-            <div className="fs-section-heading">
-              <div>
-                <h1>{t.suggestedForYou}</h1>
-              </div>
-              <span className="fs-muted">{t.charactersCount(creators.length)}</span>
-            </div>
-
-            <div className="fs-creator-list">
-              {creators.map((creator) => (
-                <article
-                  className="fs-creator-dm-row"
-                  key={creator.id}
-                  onClick={() => void openProfile(creator)}
-                >
-                  <div className="fs-creator-avatar-wrap">
-                    <div className="fs-avatar fs-avatar-large">
-                      {creator.avatarKey ? (
-                        <img src={media(creator.avatarKey)} alt={creator.name} />
-                      ) : (
-                        creator.name.slice(0, 1)
-                      )}
-                    </div>
-                    <span className="fs-online-dot" />
-                  </div>
-
-                  <div className="fs-creator-info">
-                    <div className="fs-creator-title-row">
-                      <h2>{creator.name}</h2>
-                      <IgVerified size={15} />
-                      {creator.relationship >= 100 ? (
-                        <span className="fs-top-fan-pill" title="คุณคือแฟนตัวยง (ความสัมพันธ์ครบ 100)">
-                          💎 แฟนตัวยง
-                        </span>
-                      ) : (
-                        <span className="fs-rel-pill">
-                          {creator.relationship}/100
-                        </span>
-                      )}
-                    </div>
-                    <p>{creator.bio || t.suggestedSubtitle}</p>
-                  </div>
-
-                  <div className="fs-creator-actions" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      type="button"
-                      className={`fs-follow-btn ${creator.following ? 'is-following' : 'is-follow'}`}
-                      disabled={busy}
-                      onClick={() => void toggleFollow(creator)}
-                    >
-                      {creator.following ? t.following : t.follow}
-                    </button>
-                    {creator.following && (
-                      <button
-                        type="button"
-                        className="fs-dm-pill-btn"
-                        disabled={busy}
-                        onClick={() => void openChat(creator)}
-                        title={t.openDM}
-                      >
-                        {t.openDM}
-                      </button>
-                    )}
-                  </div>
-                </article>
-              ))}
-            </div>
-          </div>
+        {screen === "creators" && (
+          <ExploreTab
+            creators={creators}
+            lang={lang}
+            busy={busy}
+            onOpenProfile={(creator) => void openProfile(creator)}
+            onOpenChat={(creator) => void openChat(creator)}
+            onToggleFollow={(creator) => void toggleFollow(creator)}
+          />
         )}
 
-        {screen === 'notifications' && (
-          <div className="fs-section-pad">
-            <div className="fs-section-heading">
-              <div>
-                <h1>{t.notifications}</h1>
-              </div>
-            </div>
-            {notifications.length ? (
-              notifications.map((notice) => (
-                <article className="fs-card fs-notice" key={notice.id}>
-                  <div className="fs-notice-dot" />
-                  <div>
-                    <p>{notice.text}</p>
-                    <small>{formatDateTime(notice.createdAt, lang)}</small>
-                  </div>
-                </article>
-              ))
-            ) : (
-              <p className="fs-empty">{t.noNotifs}</p>
-            )}
-          </div>
+        {screen === "reels" && (
+          <ReelsTab
+            stories={stories}
+            creators={creators}
+            lang={lang}
+            onOpenStory={(story) => setSelectedStory(story)}
+            onOpenChat={(creator) => void openChat(creator)}
+            onViewProfile={(creator) => void openProfile(creator)}
+          />
         )}
 
-        {screen === 'account' && (
-          <div className="fs-section-pad">
-            <div className="fs-section-heading">
-              <div>
-                <h1>{t.account}</h1>
-              </div>
-            </div>
-            <section className="fs-card fs-account">
-              <div className="fs-account-profile">
-                <div className="fs-avatar fs-avatar-large">
-                  {user.avatarId && getAvatarSrc(user.avatarId) ? (
-                    <img
-                      src={getAvatarSrc(user.avatarId)!}
-                      alt={user.nickname || user.email}
-                      className="fs-avatar-img"
-                    />
-                  ) : (
-                    <UserIcon size={24} />
-                  )}
-                </div>
-                <div className="fs-account-info">
-                  <div className="fs-account-name-row">
-                    <strong>{user.nickname || user.email.split('@')[0]}</strong>
-                    <button
-                      type="button"
-                      className="fs-profile-edit-btn"
-                      onClick={() => setProfileModalOpen(true)}
-                    >
-                      {t.editProfile}
-                    </button>
-                  </div>
-                  <span className="fs-muted">{user.email}</span>
-                  <span className="fs-muted">{t.betaUserDesc}</span>
-                </div>
-              </div>
+        {screen === "inbox" && (
+          <InboxTab
+            creators={creators}
+            lang={lang}
+            onOpenChat={(creator) => void openChat(creator)}
+          />
+        )}
 
-              <div className="fs-account-lang">
-                <span>{t.languageSetting}</span>
-                <LangSelect lang={lang} onChange={handleSetLang} />
-              </div>
-
-              <button
-                className="fs-small"
-                disabled={busy}
-                onClick={() =>
-                  void action(async () => {
-                    await api('/api/logout', json({}));
-                    setUser(null);
-                    setEnergy(null);
-                  })
-                }
-              >
-                {t.logout}
-              </button>
-              <hr />
-              <h2>{t.deleteAccountTitle}</h2>
-              <p>{t.deleteAccountDesc}</p>
-              <button
-                className="fs-danger"
-                disabled={busy}
-                onClick={() => {
-                  if (window.confirm(t.deleteAccountConfirm))
-                    void action(async () => {
-                      await api('/api/account', { method: 'DELETE' });
-                      setUser(null);
-                      setEnergy(null);
-                    });
-                }}
-              >
-                {t.deleteAccountBtn}
-              </button>
-            </section>
-          </div>
+        {screen === "account" && (
+          <PlayerProfileTab
+            user={user}
+            creators={creators}
+            posts={posts}
+            savedPostIds={savedPostIds}
+            lang={lang}
+            busy={busy}
+            onSetLang={handleSetLang}
+            onEditProfile={() => setProfileModalOpen(true)}
+            onViewProfile={(creator) => void openProfile(creator)}
+            onLogout={() =>
+              void action(async () => {
+                await api("/api/logout", json({}));
+                setUser(null);
+                setEnergy(null);
+              })
+            }
+            onDeleteAccount={() =>
+              void action(async () => {
+                await api("/api/account", { method: "DELETE" });
+                setUser(null);
+                setEnergy(null);
+              })
+            }
+          />
         )}
       </main>
 
       {/* Official Instagram iOS Bottom Tab Navigation Bar */}
-      <nav className="fs-insta-bottom-bar" aria-label="Bottom Navigation">
-        <button
-          type="button"
-          className={`fs-nav-tab ${screen === 'feed' ? 'is-active' : ''}`}
-          onClick={() => setScreen('feed')}
-          title={t.feed}
-        >
-          <IgHome size={25} active={screen === 'feed'} />
-        </button>
+      {!selectedStory && !selectedCreator && !expandedMedia && (
+        <nav className="fs-insta-bottom-bar" aria-label="Bottom Navigation">
+          <button
+            type="button"
+            className={`fs-nav-tab ${screen === 'feed' ? 'is-active' : ''}`}
+            onClick={() => handleSelectTab('feed')}
+            title={t.feed}
+          >
+            <IgHome size={25} active={screen === 'feed'} />
+          </button>
 
-        <button
-          type="button"
-          className={`fs-nav-tab ${screen === 'creators' ? 'is-active' : ''}`}
-          onClick={() => setScreen('creators')}
-          title={t.creators}
-        >
-          <IgSearch size={25} active={screen === 'creators'} />
-        </button>
+          <button
+            type="button"
+            className={`fs-nav-tab ${screen === 'creators' ? 'is-active' : ''}`}
+            onClick={() => handleSelectTab('creators')}
+            title={t.creators}
+          >
+            <IgSearch size={25} active={screen === 'creators'} />
+          </button>
 
-        <button
-          type="button"
-          className="fs-nav-tab"
-          onClick={() => {
-            if (creators.length > 0) void openChat(creators[0]);
-          }}
-          title="Create"
-        >
-          <IgCreate size={25} />
-        </button>
+          <button
+            type="button"
+            className={`fs-nav-tab ${screen === 'reels' ? 'is-active' : ''}`}
+            onClick={() => handleSelectTab('reels')}
+            title={t.reels}
+          >
+            <IgReels size={25} active={screen === 'reels'} />
+          </button>
 
-        <button
-          type="button"
-          className="fs-nav-tab"
-          onClick={() => {
-            if (stories.length > 0) void openStory(stories[0]);
-          }}
-          title="Reels / Stories"
-        >
-          <IgReels size={25} />
-        </button>
+          <button
+            type="button"
+            className={`fs-nav-tab ${screen === 'inbox' ? 'is-active' : ''}`}
+            onClick={() => handleSelectTab('inbox')}
+            title={t.inbox}
+          >
+            <IgShare size={24} active={screen === 'inbox'} />
+          </button>
 
-        <button
-          type="button"
-          className={`fs-nav-tab fs-profile-tab ${screen === 'account' ? 'is-active' : ''}`}
-          onClick={() => setScreen('account')}
-          title={t.account}
-        >
-          <div className="fs-avatar fs-avatar-tiny fs-bottom-user-avatar">
-            {user?.avatarId && getAvatarSrc(user.avatarId) ? (
-              <img src={getAvatarSrc(user.avatarId)!} alt="" className="fs-avatar-img" />
-            ) : (
-              <UserIcon size={14} />
-            )}
-          </div>
-        </button>
-      </nav>
+          <button
+            type="button"
+            className={`fs-nav-tab fs-profile-tab ${screen === 'account' ? 'is-active' : ''}`}
+            onClick={() => handleSelectTab('account')}
+            title={t.account}
+          >
+            <div className="fs-avatar fs-avatar-tiny fs-bottom-user-avatar">
+              {user?.avatarId && getAvatarSrc(user.avatarId) ? (
+                <img src={getAvatarSrc(user.avatarId)!} alt="" className="fs-avatar-img" />
+              ) : (
+                <UserIcon size={14} />
+              )}
+            </div>
+          </button>
+        </nav>
+      )}
+
+      {/* Overlays */}
+      <ActivityOverlay
+        open={activityOpen}
+        onClose={() => setActivityOpen(false)}
+        lang={lang}
+        notifications={notifications}
+      />
+
+      <PostMenuSheet
+        post={postMenuPost}
+        creator={postMenuCreator}
+        isSaved={Boolean(postMenuPost && savedPostIds[postMenuPost.id])}
+        lang={lang}
+        onClose={() => {
+          setPostMenuPost(null);
+          setPostMenuCreator(null);
+        }}
+        onViewProfile={(c) => void openProfile(c)}
+        onToggleSave={(postId) =>
+          setSavedPostIds((prev) => ({ ...prev, [postId]: !prev[postId] }))
+        }
+        onMessage={(c) => void openChat(c)}
+      />
 
       {/* Fullscreen 9:16 Instagram Story Viewer Modal */}
       {selectedStory && (
