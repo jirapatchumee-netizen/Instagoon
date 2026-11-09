@@ -774,7 +774,8 @@ export function FrostStoryApp() {
               role="button"
               tabIndex={0}
               onKeyDown={(e) => e.key === 'Enter' && handleLogoClick()}
-              title="Instagram"
+              title="instagoon"
+              aria-label="instagoon"
             >
               <span className="fs-wordmark">instagoon</span>
             </div>

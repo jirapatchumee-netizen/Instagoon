@@ -289,6 +289,7 @@ export function HomeTab({
                     type="button"
                     className={`fs-action-icon-btn ${isLiked ? 'is-liked' : ''}`}
                     aria-label={isLiked ? 'Unlike' : 'Like'}
+                    aria-pressed={isLiked}
                     onClick={() => void onLikePost(post.id)}
                   >
                     <IgHeart size={24} filled={isLiked} />
@@ -324,6 +325,7 @@ export function HomeTab({
                     type="button"
                     className={`fs-action-icon-btn ${isSaved ? 'is-saved' : ''}`}
                     aria-label="Bookmark"
+                    aria-pressed={isSaved}
                     onClick={() => onToggleSave(post.id)}
                   >
                     <IgBookmark size={24} filled={isSaved} />
