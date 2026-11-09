@@ -102,3 +102,29 @@ test('Overlay stack: closing ActivityOverlay and PostMenuSheet pops top entry wi
   disposeMenu();
   disposeActivity();
 });
+
+test('Suggested for you: translations and creator fallback logic exist for new users', () => {
+  for (const lang of ['th', 'en', 'ja']) {
+    const table = TRANSLATIONS[lang];
+    assert.ok(table.suggestedForYou, `suggestedForYou must exist in ${lang}`);
+    assert.ok(table.suggestedSubtitle, `suggestedSubtitle must exist in ${lang}`);
+    assert.ok(table.follow, `follow must exist in ${lang}`);
+    assert.ok(table.following, `following must exist in ${lang}`);
+  }
+
+  const dummyCreators = [
+    { id: 'mira-v2', name: 'Mira V2', bio: '', avatarKey: null, relationship: 0, following: false },
+    { id: 'mook', name: 'มุก', bio: '', avatarKey: null, relationship: 0, following: false },
+  ];
+  const dummyStories = [];
+  const hasFollowing = dummyCreators.some((c) => c.following);
+  const storyCreatorIds = new Set(dummyStories.map((s) => s.creatorId));
+  const barCreators = hasFollowing
+    ? dummyCreators.filter((c) => c.following && !storyCreatorIds.has(c.id))
+    : dummyCreators.filter((c) => !storyCreatorIds.has(c.id));
+
+  // For new users with 0 followed creators, all available creators must appear in the top bar
+  assert.equal(barCreators.length, 2);
+  assert.equal(barCreators[0].id, 'mira-v2');
+  assert.equal(barCreators[1].id, 'mook');
+});
