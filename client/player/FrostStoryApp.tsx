@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useState, useRef, type FormEvent } from 'react';
-import { readSceneHeader } from './message-format';
+import { formatFastForwardAction } from './message-format';
 import { useOverlayHistory } from './overlay-history';
 import { ArrowLeft, Loader2, MessageSquareX, Pencil, RotateCcw, Send, Settings, Sparkles, User as UserIcon, Volume2, VolumeX, X, Zap } from 'lucide-react';
 import { IgShare, IgHome, IgSearch, IgReels, IgVerified } from './InstagramIcons';
@@ -1649,7 +1649,7 @@ export function FrostStoryApp() {
                                     title: `ภาพจาก ${selectedCreator.name}`,
                                   }),
                                 !aiSending ? (ff) => {
-                                  const actionText = `*เดินทางไปที่ ${ff.location}${ff.time ? ` เวลา ${ff.time}` : ''} ตามที่นัดไว้*`;
+                                  const actionText = formatFastForwardAction(ff);
                                   void sendAiMessage(actionText);
                                 } : undefined
                               )}
@@ -1880,33 +1880,11 @@ export function FrostStoryApp() {
             )}
 
             {aiDmTab === 'ai' ? (
-              <>
-                {(() => {
-                  const lastMsg = (chat?.aiMessages ?? []).at(-1);
-                  const ff = lastMsg && lastMsg.role === 'assistant' ? readSceneHeader(lastMsg.content).scene?.fastForward : null;
-                  if (!ff || aiSending) return null;
-                  return (
-                    <div className="fs-fastforward-bar">
-                      <button
-                        type="button"
-                        className="fs-fastforward-btn"
-                        onClick={() => {
-                          const actionText = `*เดินทางไปที่ ${ff.location}${ff.time ? ` เวลา ${ff.time}` : ''} ตามที่นัดไว้*`;
-                          void sendAiMessage(actionText);
-                        }}
-                      >
-                        <Sparkles size={14} className="fs-fastforward-icon" />
-                        <span>{ff.label}</span>
-                      </button>
-                    </div>
-                  );
-                })()}
-                <ChatComposer
-                  placeholder={`ส่งข้อความหา ${selectedCreator.name}…`}
-                  disabled={!chat || aiSending}
-                  onSend={(text) => void sendAiMessage(text)}
-                />
-              </>
+              <ChatComposer
+                placeholder={`ส่งข้อความหา ${selectedCreator.name}…`}
+                disabled={!chat || aiSending}
+                onSend={(text) => void sendAiMessage(text)}
+              />
             ) : (
               <footer className="fs-dm-footer">
                 {node ? (

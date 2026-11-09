@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { TRANSLATIONS, LANGS } from '../player/i18n.ts';
 import { createOverlayStack } from '../player/overlay-history.ts';
+import { formatFastForwardAction, cleanFastForwardLocation, cleanFastForwardLabel } from '../player/message-format.ts';
 
 test('Placeholder copy: all 26 required keys exist across th, en, and ja', () => {
   const expectedKeys = [
@@ -127,4 +128,28 @@ test('Suggested for you: translations and creator fallback logic exist for new u
   assert.equal(barCreators.length, 2);
   assert.equal(barCreators[0].id, 'mira-v2');
   assert.equal(barCreators[1].id, 'mook');
+});
+
+test('Fast forward: cleans pronouns and formats natural roleplay action without duplicate bars', () => {
+  assert.equal(cleanFastForwardLocation('ห้องกู'), 'ห้องของเธอ');
+  assert.equal(cleanFastForwardLocation('ห้องกู 412 ตึกหอใน'), 'ห้อง 412 ตึกหอใน');
+  assert.equal(cleanFastForwardLocation('ห้องฉัน'), 'ห้องของเธอ');
+  assert.equal(cleanFastForwardLocation('ร้านกาแฟ'), 'ร้านกาแฟ');
+
+  assert.equal(
+    formatFastForwardAction({ location: 'ห้องกู', time: '20:00 น.' }),
+    '*มาตามนัดที่ห้องของเธอ เวลา 20:00 น.*'
+  );
+  assert.equal(
+    formatFastForwardAction({ location: 'ห้องกู 412 ตึกหอใน', time: '20:00 น.' }),
+    '*มาตามนัดที่ห้อง 412 ตึกหอใน เวลา 20:00 น.*'
+  );
+  assert.equal(
+    formatFastForwardAction({ location: 'ห้องสโมฯ ชั้น 3', time: '17:00 น.' }),
+    '*มาตามนัดที่ห้องสโมฯ ชั้น 3 เวลา 17:00 น.*'
+  );
+  assert.equal(
+    cleanFastForwardLabel('⏩ ไปที่ ห้องกู (20:00 น.)'),
+    '⏩ ไปที่ ห้องของเธอ (20:00 น.)'
+  );
 });

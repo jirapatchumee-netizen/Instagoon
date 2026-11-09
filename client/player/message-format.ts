@@ -6,6 +6,36 @@ export type SceneMetadata = {
 };
 export type NarrativeSegment = { kind: 'dialogue' | 'action'; text: string };
 
+export function cleanFastForwardLocation(location: string): string {
+  return location
+    .replace(/^ห้อง(?:กู|ฉัน|เรา|เค้า)(?:\s*([0-9A-Za-z]+))?/i, (_, room) => room ? `ห้อง ${room}` : 'ห้องของเธอ')
+    .replace(/^บ้าน(?:กู|ฉัน|เรา|เค้า)/, 'บ้านของเธอ')
+    .replace(/^โต๊ะ(?:กู|ฉัน|เรา|เค้า)/, 'โต๊ะของเธอ')
+    .trim()
+    .replace(/^ที่\s*/, '');
+}
+
+export function cleanFastForwardLabel(label: string): string {
+  return label
+    .replace(/ห้อง(?:กู|ฉัน|เรา|เค้า)(?:\s*([0-9A-Za-z]+))?/gi, (_, room) => room ? `ห้อง ${room}` : 'ห้องของเธอ')
+    .replace(/บ้าน(?:กู|ฉัน|เรา|เค้า)/g, 'บ้านของเธอ')
+    .replace(/โต๊ะ(?:กู|ฉัน|เรา|เค้า)/g, 'โต๊ะของเธอ');
+}
+
+export function formatFastForwardAction(ff: { location: string; time?: string }): string {
+  const loc = cleanFastForwardLocation(ff.location || '');
+  if (loc && ff.time) {
+    return `*มาตามนัดที่${loc} เวลา ${ff.time}*`;
+  }
+  if (loc) {
+    return `*มาตามนัดที่${loc}*`;
+  }
+  if (ff.time) {
+    return `*มาถึงตามเวลานัด ${ff.time}*`;
+  }
+  return `*มาถึงตามเวลานัดหมาย*`;
+}
+
 export function readSceneHeader(text: string): { scene: SceneMetadata | null; body: string } {
   const match = text.match(/^\[scene:([^\]]*)\]\s*/i);
   if (!match) return { scene: null, body: text };
@@ -15,13 +45,16 @@ export function readSceneHeader(text: string): { scene: SceneMetadata | null; bo
     if (typeof value.at !== 'number' || !Number.isFinite(value.at) || !Number.isFinite(new Date(value.at).getTime()) ||
         typeof value.location !== 'string' || !value.location.trim() || value.location.length > 100) return { scene: null, body };
     const time = typeof value.time === 'string' && value.time.trim().length <= 30 ? value.time.trim() : undefined;
-    const fastForward = value.fastForward && typeof value.fastForward === 'object' && typeof value.fastForward.location === 'string' && value.fastForward.location.trim()
+    const rawLoc = value.fastForward?.location ? String(value.fastForward.location).trim() : '';
+    const rawTime = typeof value.fastForward?.time === 'string' && value.fastForward.time.trim() ? value.fastForward.time.trim() : undefined;
+    const rawLabel = typeof value.fastForward?.label === 'string' && value.fastForward.label.trim() ? value.fastForward.label.trim() : '';
+    const fastForward = value.fastForward && typeof value.fastForward === 'object' && rawLoc
       ? {
-          location: value.fastForward.location.trim(),
-          ...(typeof value.fastForward.time === 'string' && value.fastForward.time.trim() ? { time: value.fastForward.time.trim() } : {}),
-          label: typeof value.fastForward.label === 'string' && value.fastForward.label.trim()
-            ? value.fastForward.label.trim()
-            : (value.fastForward.time ? `⏩ ไปที่ ${value.fastForward.location.trim()} (${value.fastForward.time.trim()})` : `⏩ ไปที่ ${value.fastForward.location.trim()}`)
+          location: rawLoc,
+          ...(rawTime ? { time: rawTime } : {}),
+          label: rawLabel
+            ? cleanFastForwardLabel(rawLabel)
+            : (rawTime ? `⏩ ไปที่${cleanFastForwardLocation(rawLoc)} (${rawTime})` : `⏩ ไปที่${cleanFastForwardLocation(rawLoc)}`)
         }
       : undefined;
     return { scene: { at: value.at, location: value.location, ...(time ? { time } : {}), ...(fastForward ? { fastForward } : {}) }, body };
