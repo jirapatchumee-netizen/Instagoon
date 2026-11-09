@@ -781,6 +781,7 @@ export function FrostStoryApp() {
             }}
             onOpenProfile={(creator) => void openProfile(creator)}
             onOpenChat={(creator) => void openChat(creator)}
+            onToggleFollow={(creator) => void toggleFollow(creator)}
             onLikePost={(postId, fromDoubleTap) => void likePost(postId, fromDoubleTap)}
             onToggleSave={(postId) =>
               setSavedPostIds((prev) => ({ ...prev, [postId]: !prev[postId] }))

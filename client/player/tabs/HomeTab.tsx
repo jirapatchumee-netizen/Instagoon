@@ -2,7 +2,7 @@ import { type FormEvent } from 'react';
 import { type Post, type Creator, type Story, type User } from '../types';
 import { TRANSLATIONS, type Lang } from '../i18n';
 import { media, Media, PRESET_AVATARS, getAvatarSrc } from '../ui';
-import { IgHeart, IgComment, IgShare, IgBookmark, IgMore, IgVerified, IgAudio, IgSearch } from '../InstagramIcons';
+import { IgHeart, IgComment, IgShare, IgBookmark, IgMore, IgVerified, IgAudio } from '../InstagramIcons';
 
 interface HomeTabProps {
   posts: Post[];
@@ -18,6 +18,7 @@ interface HomeTabProps {
   onOpenStory: (story: Story) => void;
   onOpenProfile: (creator: Creator) => void;
   onOpenChat: (creator: Creator) => void;
+  onToggleFollow: (creator: Creator) => void;
   onLikePost: (postId: string, fromDoubleTap?: boolean) => void;
   onToggleSave: (postId: string) => void;
   onCommentChange: (postId: string, value: string) => void;
@@ -40,6 +41,7 @@ export function HomeTab({
   onOpenStory,
   onOpenProfile,
   onOpenChat,
+  onToggleFollow,
   onLikePost,
   onToggleSave,
   onCommentChange,
@@ -50,6 +52,12 @@ export function HomeTab({
   const t = TRANSLATIONS[lang];
 
   const getCreator = (id: string) => creators.find((c) => c.id === id);
+
+  const hasFollowing = creators.some((c) => c.following);
+  const storyCreatorIds = new Set(stories.map((s) => s.creatorId));
+  const barCreators = hasFollowing
+    ? creators.filter((c) => c.following && !storyCreatorIds.has(c.id))
+    : creators.filter((c) => !storyCreatorIds.has(c.id));
 
   return (
     <div className="fs-home-tab">
@@ -88,44 +96,87 @@ export function HomeTab({
           );
         })}
 
-        {creators
-          .filter((c) => c.following && !stories.some((s) => s.creatorId === c.id))
-          .map((creator) => (
-            <button
-              key={`creator-ring-${creator.id}`}
-              className="fs-story-item"
-              onClick={() => void onOpenChat(creator)}
-            >
-              <span className="fs-story-ring fs-story-unviewed">
-                <span className="fs-story-ring-inner">
-                  {creator.avatarKey ? (
-                    <img alt={creator.name} src={media(creator.avatarKey)} />
-                  ) : (
-                    creator.name.slice(0, 1)
-                  )}
-                </span>
+        {barCreators.map((creator) => (
+          <button
+            key={`creator-ring-${creator.id}`}
+            className="fs-story-item"
+            onClick={() => void onOpenProfile(creator)}
+            title={creator.name}
+          >
+            <span className="fs-story-ring fs-story-unviewed">
+              <span className="fs-story-ring-inner">
+                {creator.avatarKey ? (
+                  <img alt={creator.name} src={media(creator.avatarKey)} />
+                ) : (
+                  creator.name.slice(0, 1)
+                )}
               </span>
-              <span className="fs-story-name">{creator.name}</span>
-            </button>
-          ))}
+            </span>
+            <span className="fs-story-name">{creator.name}</span>
+          </button>
+        ))}
       </section>
 
-      {/* Empty Feed State */}
+      {/* Empty Feed State / Suggested for You (Instagram Style) */}
       {posts.length === 0 && (
-        <div className="fs-empty-feed">
-          <div className="fs-empty-feed-icon">
-            <IgSearch size={36} />
+        <section className="fs-suggested-section" aria-label={t.suggestedForYou}>
+          <div className="fs-suggested-header">
+            <h2 className="fs-suggested-title">{t.suggestedForYou}</h2>
           </div>
-          <h3>{t.emptyFeedTitle}</h3>
-          <p>{t.emptyFeedDesc}</p>
-          <button
-            type="button"
-            className="fs-empty-feed-btn"
-            onClick={onGoToExplore}
-          >
-            {t.exploreCreators}
-          </button>
-        </div>
+          <div className="fs-suggested-list">
+            {creators.map((creator) => (
+              <article key={creator.id} className="fs-suggested-item">
+                <div
+                  className="fs-suggested-user-click"
+                  onClick={() => onOpenProfile(creator)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onOpenProfile(creator);
+                    }
+                  }}
+                >
+                  <div className="fs-suggested-avatar">
+                    {creator.avatarKey ? (
+                      <img src={media(creator.avatarKey)} alt={creator.name} />
+                    ) : (
+                      creator.name.slice(0, 1)
+                    )}
+                  </div>
+                  <div className="fs-suggested-meta">
+                    <div className="fs-suggested-name-row">
+                      <span className="fs-suggested-handle">{creator.id.replace('-', '.')}</span>
+                      <IgVerified size={13} className="fs-verified" />
+                    </div>
+                    <span className="fs-suggested-fullname">{creator.name}</span>
+                    <span className="fs-suggested-reason">{t.suggestedSubtitle}</span>
+                  </div>
+                </div>
+                <div className="fs-suggested-action">
+                  <button
+                    type="button"
+                    className={`fs-follow-btn ${creator.following ? 'is-following' : 'is-follow'}`}
+                    disabled={busy}
+                    onClick={() => void onToggleFollow(creator)}
+                  >
+                    {creator.following ? t.following : t.follow}
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+          <div className="fs-suggested-footer">
+            <button
+              type="button"
+              className="fs-suggested-explore-btn"
+              onClick={onGoToExplore}
+            >
+              {t.exploreCreators}
+            </button>
+          </div>
+        </section>
       )}
 
       {/* Instagram Authentic Post Feed */}
