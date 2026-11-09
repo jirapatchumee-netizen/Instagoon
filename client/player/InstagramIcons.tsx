@@ -60,15 +60,20 @@ export const IgComment: React.FC<IconProps> = ({ size = 24, className = '', ...p
   </svg>
 );
 
-// 4. Official Instagram Paper Airplane (Share & DM)
-export const IgShare: React.FC<IconProps> = ({ size = 24, className = '', ...props }) => (
+// 4. Official Instagram Paper Airplane (Share & DM / Inbox)
+export const IgShare: React.FC<IconProps & { active?: boolean }> = ({
+  size = 24,
+  active = false,
+  className = '',
+  ...props
+}) => (
   <svg
     viewBox="0 0 24 24"
     width={size}
     height={size}
-    fill="none"
+    fill={active ? 'currentColor' : 'none'}
     stroke="currentColor"
-    strokeWidth="2"
+    strokeWidth={active ? '2.5' : '2'}
     strokeLinecap="round"
     strokeLinejoin="round"
     className={className}
