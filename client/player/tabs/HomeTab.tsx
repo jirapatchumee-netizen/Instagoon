@@ -27,6 +27,25 @@ interface HomeTabProps {
   onGoToExplore: () => void;
 }
 
+const FAN_CROWD_USERNAMES = [
+  'alex.k',
+  'kaew_s',
+  'pat_sky',
+  'beam.p',
+  'ploy_n',
+  'charlie.d',
+  'sky_walker',
+  'mint.c',
+];
+
+function getFanCrowdUsername(seed: string): string {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) {
+    h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  }
+  return FAN_CROWD_USERNAMES[h % FAN_CROWD_USERNAMES.length];
+}
+
 export function HomeTab({
   posts,
   stories,
@@ -351,7 +370,7 @@ export function HomeTab({
                     <span className="fs-liked-by-text">
                       {isLiked
                         ? t.likedByOthers(t.likedByYou, Math.max(0, totalLikes - 1))
-                        : t.likedByOthers(creator?.name || 'fan', Math.max(0, totalLikes - 1))}
+                        : t.likedByOthers(getFanCrowdUsername(post.id), Math.max(0, totalLikes - 1))}
                     </span>
                   </div>
                 )}

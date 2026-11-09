@@ -668,15 +668,22 @@ export function FrostStoryApp() {
     void sendAiMessage(queuedStoryReply.text);
   }, [queuedStoryReply, chat, selectedCreator?.id, aiSending]);
 
+  const [openingStoryId, setOpeningStoryId] = useState<string | null>(null);
+
   async function openStory(story: Story) {
-    await action(async () => {
-      const result = await api<{ story: Story }>(
-        `/api/stories/${encodeURIComponent(story.id)}/view`,
-        json({})
-      );
-      setSelectedStory(result.story);
-      await loadFeed();
-    });
+    setOpeningStoryId(story.id);
+    try {
+      await action(async () => {
+        const result = await api<{ story: Story }>(
+          `/api/stories/${encodeURIComponent(story.id)}/view`,
+          json({})
+        );
+        setSelectedStory(result.story);
+        await loadFeed();
+      });
+    } finally {
+      setOpeningStoryId(null);
+    }
   }
 
   const [activityOpen, setActivityOpen] = useState(false);
@@ -861,9 +868,16 @@ export function FrostStoryApp() {
             stories={stories}
             creators={creators}
             lang={lang}
-            onOpenStory={(story) => setSelectedStory(story)}
+            onOpenStory={(story) => {
+              if (story.type === 'unlockable' && !story.firstViewedAt) {
+                void openStory(story);
+              } else {
+                setSelectedStory(story);
+              }
+            }}
             onOpenChat={(creator) => void openChat(creator)}
             onViewProfile={(creator) => void openProfile(creator)}
+            busy={busy || !!openingStoryId}
           />
         )}
 
@@ -1030,10 +1044,14 @@ export function FrostStoryApp() {
                   <p>{t.unlockableGateDesc}</p>
                   <button
                     className="fs-primary"
-                    disabled={busy}
+                    disabled={busy || openingStoryId === selectedStory.id}
                     onClick={() => void openStory(selectedStory)}
                   >
-                    {t.openStoryBtn}
+                    {openingStoryId === selectedStory.id ? (
+                      <Loader2 size={16} className="fs-spin" />
+                    ) : (
+                      t.openStoryBtn
+                    )}
                   </button>
                 </div>
               ) : (
@@ -1182,7 +1200,7 @@ export function FrostStoryApp() {
                           </span>
                         )}
                         <span className="fs-profile-score-text">
-                          {t.relationshipLabel(profileData.creator.relationship || 0)}
+                          {t.relationshipLabel(Math.round(profileData.creator.relationship || 0))}
                         </span>
                       </div>
                       <div className="fs-profile-dim-bars">
@@ -1223,6 +1241,9 @@ export function FrostStoryApp() {
                           </div>
                         </div>
                       </div>
+                      <p className="fs-profile-rel-formula">
+                        {t.relationshipFormula}
+                      </p>
                     </div>
 
                     <div className="fs-profile-actions-bar">
@@ -1604,7 +1625,7 @@ export function FrostStoryApp() {
                       <div className="fs-bubble">
                         {selectedCreator.id === 'milin'
                           ? 'จัดห้องเสร็จแล้ว มัวแต่นั่งมองเพดาน... ดีใจจังที่แวะเข้ามาหา 🥺✨ วันนี้ทำงานเหนื่อยไหมน้า?'
-                          : `สวัสดีค่ะ แวะมาคุยกับ ${selectedCreator.name} ได้ตลอดเลยน้า ✨`}
+                          : `สวัสดีค่ะ แวะมาคุยกับ ${selectedCreator.name.replace(/\s*\([^)]*\)/, '')} ได้ตลอดเลยน้า ✨`}
                       </div>
                     </div>
                   )}
@@ -1935,7 +1956,7 @@ export function FrostStoryApp() {
                 {node ? (
                   node.end ? (
                     <div className="fs-dm-ended-box">
-                      <p className="fs-dm-ended">✨ {t.episodeEnded}</p>
+                      <p className="fs-dm-ended">{t.episodeEnded}</p>
                       <button
                         type="button"
                         className="fs-dm-switch-chat-btn"

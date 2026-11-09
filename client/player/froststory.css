@@ -6262,3 +6262,10 @@ dialog.fs-overlay[open]::backdrop {
 .fs-main > .fs-reels-tab {
   height: 100%;
 }
+
+.fs-profile-rel-formula {
+  margin: 10px 0 0;
+  font-size: 0.72rem;
+  color: #a1a1aa;
+  text-align: center;
+}

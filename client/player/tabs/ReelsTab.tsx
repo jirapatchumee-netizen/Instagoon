@@ -3,7 +3,7 @@ import { type Story, type Creator } from '../types';
 import { TRANSLATIONS, type Lang } from '../i18n';
 import { media, AvatarImg, StoryContent } from '../ui';
 import { IgHeart, IgComment, IgShare, IgVerified } from '../InstagramIcons';
-import { Film, Sparkles } from 'lucide-react';
+import { Film, Sparkles, Loader2 } from 'lucide-react';
 
 interface ReelsTabProps {
   stories: Story[];
@@ -12,6 +12,7 @@ interface ReelsTabProps {
   onOpenStory: (story: Story) => void;
   onOpenChat: (creator: Creator) => void;
   onViewProfile: (creator: Creator) => void;
+  busy?: boolean;
 }
 
 export function ReelsTab({
@@ -21,6 +22,7 @@ export function ReelsTab({
   onOpenStory,
   onOpenChat,
   onViewProfile,
+  busy,
 }: ReelsTabProps) {
   const t = TRANSLATIONS[lang];
   const [activeIndex, setActiveIndex] = useState(0);
@@ -92,8 +94,13 @@ export function ReelsTab({
             <div className="fs-story-unlock-gate fs-reels-unlock-gate">
               <Sparkles size={36} className="fs-unlock-icon" />
               <p>{t.unlockableGateDesc}</p>
-              <button type="button" className="fs-primary" onClick={() => onOpenStory(currentStory)}>
-                {t.openStoryBtn}
+              <button
+                type="button"
+                className="fs-primary"
+                disabled={busy}
+                onClick={() => onOpenStory(currentStory)}
+              >
+                {busy ? <Loader2 size={16} className="fs-spin" /> : t.openStoryBtn}
               </button>
             </div>
           ) : (
