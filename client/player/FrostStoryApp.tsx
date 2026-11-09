@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useState, useRef, type FormEve
 import { readSceneHeader } from './message-format';
 import { useOverlayHistory } from './overlay-history';
 import { ArrowLeft, Loader2, MessageSquareX, Pencil, RotateCcw, Send, Settings, Sparkles, User as UserIcon, Volume2, VolumeX, X, Zap } from 'lucide-react';
-import { IgHeart, IgShare, IgHome, IgSearch, IgReels, IgVerified } from './InstagramIcons';
+import { IgShare, IgHome, IgSearch, IgReels, IgVerified } from './InstagramIcons';
 import { EnergyShop } from './EnergyShop';
 import { type Lang, LANGS, TRANSLATIONS } from './i18n';
 import { LangSelect } from './LangSelect';
@@ -59,7 +59,7 @@ export function FrostStoryApp() {
   const [likedPostIds, setLikedPostIds] = useState<Record<string, boolean>>({});
   const [savedPostIds, setSavedPostIds] = useState<Record<string, boolean>>({});
   const [heartBurstPostId, setHeartBurstPostId] = useState<string | null>(null);
-  const [notifications, setNotifications] = useState<
+  const [notifications] = useState<
     { id: string; text: string; createdAt: number }[]
   >([]);
   const msgsRef = useRef<HTMLDivElement>(null);
@@ -656,15 +656,6 @@ export function FrostStoryApp() {
     }
   };
 
-  const openNotifications = () => {
-    setActivityOpen(true);
-    void action(async () => {
-      const result = await api<{
-        notifications: { id: string; text: string; createdAt: number }[];
-      }>('/api/notifications');
-      setNotifications(result.notifications);
-    });
-  };
 
   useOverlayHistory(!!selectedStory, () => setSelectedStory(null));
   useOverlayHistory(!!profileCreator, closeProfile);
@@ -755,17 +746,6 @@ export function FrostStoryApp() {
                 <Zap size={13} className="fs-energy-icon" />
                 {energy ? `${energy.free} + ${energy.purchased}` : '–'}
                 {Boolean(energy?.diamonds) && <span style={{ marginLeft: 3, color: '#38bdf8' }}>💎{energy?.diamonds}</span>}
-              </button>
-
-              {/* Activity Heart */}
-              <button
-                type="button"
-                className="fs-header-icon-btn"
-                title={t.notifications}
-                onClick={openNotifications}
-                aria-label={t.notifications}
-              >
-                <IgHeart size={24} />
               </button>
             </div>
           </div>
