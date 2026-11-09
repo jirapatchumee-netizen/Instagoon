@@ -229,8 +229,8 @@ export function HomeTab({
                       <span className="fs-author-name">{post.creatorName}</span>
                       <IgVerified size={13} className="fs-verified" />
                       {creator && creator.relationship >= 100 && (
-                        <span className="fs-top-fan-pill" title="💎 แฟนตัวยง">
-                          💎 แฟนตัวยง
+                        <span className="fs-top-fan-pill" title={t.topFanTitle}>
+                          {t.topFanBadge}
                         </span>
                       )}
                     </div>
@@ -309,7 +309,8 @@ export function HomeTab({
                   <button
                     type="button"
                     className="fs-action-icon-btn"
-                    aria-label="Share"
+                    aria-label={t.postMenuMessage(creator?.name ?? post.creatorName)}
+                    title={t.postMenuMessage(creator?.name ?? post.creatorName)}
                     onClick={() => {
                       if (creator) void onOpenChat(creator);
                     }}

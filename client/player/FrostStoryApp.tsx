@@ -239,7 +239,7 @@ export function FrostStoryApp() {
 
   async function forgetMemory(key: string) {
     if (!selectedCreator) return;
-    if (!window.confirm(`ให้ ${selectedCreator.name} ลืมเรื่องนี้ใช่ไหม?`)) return;
+    if (!window.confirm(t.forgetMemoryConfirm(selectedCreator.name))) return;
     try {
       await api(`/api/chats/${encodeURIComponent(selectedCreator.id)}/memories/${encodeURIComponent(key)}`, { method: 'DELETE' });
       setMemoryPanel((prev) => ({ ...prev, items: prev.items.filter((m) => m.key !== key) }));
@@ -279,7 +279,7 @@ export function FrostStoryApp() {
       if (typeof res.relationship === 'number') {
         const prevRel = selectedCreator.relationship || 0;
         if (prevRel < 100 && res.relationship >= 100) {
-          alert(`🎉 ยินดีด้วย! ความสัมพันธ์ครบ 100 คุณได้รับตรา "💎 แฟนตัวยง" ของ ${selectedCreator.name} แล้ว!`);
+          alert(t.topFanCongrats(selectedCreator.name));
         }
         setSelectedCreator((prev) => (prev ? { ...prev, relationship: res.relationship } : prev));
         setCreators((prev) =>
@@ -290,15 +290,15 @@ export function FrostStoryApp() {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes('energy_empty')) setShopOpen(true);
       const reason = msg.includes('thread_busy')
-        ? `${selectedCreator.name} กำลังพิมพ์ตอบข้อความก่อนหน้าอยู่`
+        ? t.chatBusyPrev(selectedCreator.name)
         : msg.includes('energy_empty')
-          ? 'พลังงานหมด (1⚡ ต่อข้อความ) แตะ ⚡ ด้านบนเพื่อเติม'
+          ? t.chatEnergyEmpty
           : msg.includes('rate_limit')
-            ? 'ระบบ AI มีคนใช้เยอะ รอสักครู่ คืนพลังงานให้แล้ว'
+            ? t.chatRateLimited
             : msg.includes('ai_unavailable')
-              ? 'AI ตอบไม่ได้ชั่วคราว คืนพลังงานให้แล้ว'
+              ? t.chatAiUnavailable
               : msg.startsWith('deepseek_') || msg.startsWith('experiment_')
-                ? `การทดลอง DeepSeek ไม่สำเร็จ (${msg}) — ไม่มีการสลับโมเดลสำรอง`
+                ? t.chatExperimentFailed(msg)
                 : msg;
       setPending((prev) => prev.map((item) => (item.id === id ? { ...item, failed: reason } : item)));
     } finally {
@@ -341,7 +341,7 @@ export function FrostStoryApp() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes('energy_empty')) setShopOpen(true);
-      alert('ไม่สามารถแก้ไขข้อความได้: ' + msg);
+      alert(t.editMessageFailed(msg));
       void openChat(selectedCreator);
     } finally {
       setAiSending(false);
@@ -362,7 +362,7 @@ export function FrostStoryApp() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes('level_too_low')) {
-        alert('ระดับความสัมพันธ์ยังไม่ถึงเกณฑ์ หรือสามารถเลือกกดปลดล็อกทันทีด้วย 3⚡ ได้ค่ะ');
+        alert(t.rewardLevelTooLow);
       } else if (msg.includes('energy_empty')) {
         setShopOpen(true);
       } else {
@@ -519,6 +519,7 @@ export function FrostStoryApp() {
     setChat(null);
     setPending([]);
     setDmMenuOpen(false);
+    setAiDmTab('ai'); // a DM always opens on the chat, not on whichever tab was used last
     setSelectedCreator(creator);
     chatOpenedAtRef.current = Date.now();
     try {
@@ -584,7 +585,7 @@ export function FrostStoryApp() {
       const res = await api<ProfileData>(`/api/creators/${encodeURIComponent(creator.id)}/profile`);
       setProfileData(res);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'ไม่สามารถโหลดโปรไฟล์ได้');
+      setError(e instanceof Error ? e.message : t.profileLoadFailed);
     } finally {
       setProfileLoading(false);
     }
@@ -636,7 +637,7 @@ export function FrostStoryApp() {
       setCreators((prev) =>
         prev.map((c) => (c.id === story.creatorId ? { ...c, relationship: res.relationship } : c))
       );
-      setStoryToast(`ส่งความรู้สึก ${reaction} ถึง ${creatorName(story.creatorId)} แล้ว 💕`);
+      setStoryToast(t.storyReactionSent(reaction, creatorName(story.creatorId)));
       window.setTimeout(() => setStoryToast(null), 3000);
     } catch {
       // silent
@@ -1069,7 +1070,7 @@ export function FrostStoryApp() {
                 <input
                   type="text"
                   className="fs-story-reply-input"
-                  placeholder={`ส่งข้อความหา ${creatorName(selectedStory.creatorId)}…`}
+                  placeholder={t.messageTo(creatorName(selectedStory.creatorId))}
                   value={storyReplyText}
                   onChange={(e) => setStoryReplyText(e.target.value)}
                 />
@@ -1121,7 +1122,7 @@ export function FrostStoryApp() {
                       className={`fs-profile-avatar-wrap ${profileData.creator.avatarKey ? 'is-clickable' : ''}`}
                       role={profileData.creator.avatarKey ? 'button' : undefined}
                       tabIndex={profileData.creator.avatarKey ? 0 : undefined}
-                      title={profileData.creator.avatarKey ? 'แตะเพื่อดูภาพโปรไฟล์ขนาดเต็ม' : undefined}
+                      title={profileData.creator.avatarKey ? t.tapToViewAvatar : undefined}
                       onClick={() => {
                         if (profileData.creator.avatarKey) {
                           setExpandedMedia({
@@ -1167,22 +1168,22 @@ export function FrostStoryApp() {
                     <div className="fs-profile-rel-card">
                       <div className="fs-profile-rel-top">
                         {(profileData.creator.relationship ?? 0) >= 100 ? (
-                          <span className="fs-profile-topfan-badge" title="คุณคือแฟนตัวยง (ความสัมพันธ์ครบ 100)">
-                            💎 แฟนตัวยง (TOP FAN)
+                          <span className="fs-profile-topfan-badge" title={t.topFanTitle}>
+                            {t.topFanBadge}
                           </span>
                         ) : (
                           <span className="fs-profile-topfan-target">
-                            สะสมครบ 100 เพื่อรับตราแฟนตัวยง
+                            {t.topFanGoal}
                           </span>
                         )}
                         <span className="fs-profile-score-text">
-                          ความสัมพันธ์: {profileData.creator.relationship || 0}/100
+                          {t.relationshipLabel(profileData.creator.relationship || 0)}
                         </span>
                       </div>
                       <div className="fs-profile-dim-bars">
                         <div className="fs-profile-dim-item">
                           <span className="fs-profile-dim-label">
-                            <span>🤍 ใกล้ชิด</span>
+                            <span>{t.axisCloseness}</span>
                             <span>{profileData.creator.closeness || 0}%</span>
                           </span>
                           <div className="fs-profile-dim-track">
@@ -1194,7 +1195,7 @@ export function FrostStoryApp() {
                         </div>
                         <div className="fs-profile-dim-item">
                           <span className="fs-profile-dim-label">
-                            <span>✨ ไว้ใจ</span>
+                            <span>{t.axisTrust}</span>
                             <span>{profileData.creator.trust || 0}%</span>
                           </span>
                           <div className="fs-profile-dim-track">
@@ -1206,7 +1207,7 @@ export function FrostStoryApp() {
                         </div>
                         <div className="fs-profile-dim-item">
                           <span className="fs-profile-dim-label">
-                            <span>💖 โรแมนติก</span>
+                            <span>{t.axisRomance}</span>
                             <span>{profileData.creator.romance || 0}%</span>
                           </span>
                           <div className="fs-profile-dim-track">
@@ -1249,7 +1250,7 @@ export function FrostStoryApp() {
                       className={`fs-profile-tab-btn ${profileTab === 'feed' ? 'is-active' : ''}`}
                       onClick={() => setProfileTab('feed')}
                     >
-                      📸 โพสต์ ({profileData.posts.length})
+                      {t.profilePostsTab(profileData.posts.length)}
                     </button>
                     <button
                       type="button"
@@ -1267,7 +1268,7 @@ export function FrostStoryApp() {
                       className={`fs-profile-tab-btn ${profileTab === 'episodes' ? 'is-active' : ''}`}
                       onClick={() => setProfileTab('episodes')}
                     >
-                      📖 ตอนทั้งหมด ({profileData.episodes.length})
+                      {t.profileEpisodesTab(profileData.episodes.length)}
                     </button>
                   </div>
 
@@ -1275,7 +1276,7 @@ export function FrostStoryApp() {
                   {profileTab === 'feed' && (
                     <div className="fs-profile-posts-grid">
                       {profileData.posts.length === 0 ? (
-                        <p className="fs-dm-empty" style={{ gridColumn: '1 / -1' }}>ยังไม่มีโพสต์</p>
+                        <p className="fs-dm-empty" style={{ gridColumn: '1 / -1' }}>{t.noPostsYet}</p>
                       ) : (
                         profileData.posts.map((p) => (
                           <div
@@ -1283,7 +1284,7 @@ export function FrostStoryApp() {
                             className={`fs-profile-post-thumb ${p.mediaKey ? 'is-clickable' : ''}`}
                             role={p.mediaKey ? 'button' : undefined}
                             tabIndex={p.mediaKey ? 0 : undefined}
-                            title={p.mediaKey ? 'แตะเพื่อดูภาพขนาดเต็ม' : undefined}
+                            title={p.mediaKey ? t.tapToViewFull : undefined}
                             onClick={() => {
                               if (p.mediaKey) {
                                 setExpandedMedia({
@@ -1318,7 +1319,7 @@ export function FrostStoryApp() {
                   {profileTab === 'vault' && (
                     <div className="fs-profile-vault-grid">
                       {profileData.vault.length === 0 ? (
-                        <p className="fs-dm-empty" style={{ gridColumn: '1 / -1' }}>ยังไม่มีรางวัลในคลัง</p>
+                        <p className="fs-dm-empty" style={{ gridColumn: '1 / -1' }}>{t.vaultEmpty}</p>
                       ) : (
                         profileData.vault.map((item) => (
                           <div key={item.id} className="fs-vault-card">
@@ -1327,7 +1328,7 @@ export function FrostStoryApp() {
                                 className="fs-vault-card-inner is-clickable"
                                 role="button"
                                 tabIndex={0}
-                                title="แตะเพื่อดูภาพขนาดเต็ม"
+                                title={t.tapToViewFull}
                                 onClick={() =>
                                   setExpandedMedia({
                                     mediaKey: item.asset,
@@ -1346,7 +1347,7 @@ export function FrostStoryApp() {
                                 }}
                               >
                                 <img src={media(item.asset)} alt={item.name} className="fs-vault-img" />
-                                <div className="fs-vault-badge-unlocked">✨ {item.name} · แตะขยาย 🔍</div>
+                                <div className="fs-vault-badge-unlocked">{t.vaultUnlockedBadge(item.name)}</div>
                               </div>
                             ) : (
                               <>
@@ -1354,7 +1355,7 @@ export function FrostStoryApp() {
                                 <div className="fs-vault-overlay">
                                   <div className="fs-vault-lock-icon">🔒</div>
                                   <p className="fs-vault-title">{item.name}</p>
-                                  <p className="fs-vault-req">ใช้ 3⚡ ปลดล็อกดูภาพส่วนตัว</p>
+                                  <p className="fs-vault-req">{t.vaultUnlockHint}</p>
                                   <div className="fs-vault-btns">
                                     <button
                                       type="button"
@@ -1364,7 +1365,7 @@ export function FrostStoryApp() {
                                         if (profileCreator) void openProfile(profileCreator, 'vault');
                                       }}
                                     >
-                                      ⚡ ปลดล็อกทันที (3⚡)
+                                      {t.unlockNow}
                                     </button>
                                   </div>
                                 </div>
@@ -1380,7 +1381,7 @@ export function FrostStoryApp() {
                   {profileTab === 'episodes' && (
                     <div className="fs-profile-episodes-list">
                       {profileData.episodes.length === 0 ? (
-                        <p className="fs-dm-empty">ยังไม่มีตอนในเนื้อเรื่อง</p>
+                        <p className="fs-dm-empty">{t.noEpisodesYet}</p>
                       ) : (
                         profileData.episodes.map((ep) => (
                           <button
@@ -1399,7 +1400,7 @@ export function FrostStoryApp() {
                                 ep.completed ? 'is-done' : !ep.accessible ? 'is-locked' : ''
                               }`}
                             >
-                              {ep.completed ? '✨ จบแล้ว' : ep.accessible ? '▶️ เล่นได้' : '🔒 ล็อกอยู่'}
+                              {ep.completed ? t.episodeDone : ep.accessible ? t.episodePlayable : t.episodeLocked}
                             </span>
                           </button>
                         ))
@@ -1429,7 +1430,7 @@ export function FrostStoryApp() {
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') void openProfile(selectedCreator);
                 }}
-                title={`ดูโปรไฟล์ของ ${selectedCreator.name}`}
+                title={t.viewProfileOf(selectedCreator.name)}
               >
                 <div className="fs-creator-avatar-wrap">
                   <div className="fs-avatar">
@@ -1446,8 +1447,8 @@ export function FrostStoryApp() {
                     <h2 id="fs-chat-title">{selectedCreator.name}</h2>
                     <IgVerified size={14} />
                     {selectedCreator.relationship >= 100 && (
-                      <span className="fs-top-fan-badge" title="คุณคือแฟนตัวยง (ความสัมพันธ์ครบ 100)">
-                        💎 แฟนตัวยง
+                      <span className="fs-top-fan-badge" title={t.topFanTitle}>
+                        {t.topFanBadge}
                       </span>
                     )}
                   </div>
@@ -1637,7 +1638,7 @@ export function FrostStoryApp() {
                                   setEditingText('');
                                 }}
                               >
-                                ยกเลิก
+                                {t.postMenuCancel}
                               </button>
                               <button
                                 type="button"
@@ -1645,7 +1646,7 @@ export function FrostStoryApp() {
                                 disabled={aiSending || !editingText.trim()}
                                 onClick={() => void editAiMessage(msg.id, editingText.trim())}
                               >
-                                ส่งใหม่
+                                {t.resend}
                               </button>
                             </div>
                           </div>
@@ -1654,8 +1655,8 @@ export function FrostStoryApp() {
                             <button
                               type="button"
                               className="fs-msg-edit-btn"
-                              title="แก้ไขข้อความนี้"
-                              aria-label="แก้ไขข้อความ"
+                              title={t.editThisMessage}
+                              aria-label={t.editThisMessage}
                               disabled={aiSending}
                               onClick={() => {
                                 setEditingMessageId(msg.id);
@@ -1685,7 +1686,7 @@ export function FrostStoryApp() {
                                 (k) =>
                                   setExpandedMedia({
                                     mediaKey: k,
-                                    title: `ภาพจาก ${selectedCreator.name}`,
+                                    title: t.photoFrom(selectedCreator.name),
                                   }),
                                 !aiSending ? (ff) => {
                                   const actionText = formatFastForwardAction(ff);
@@ -1718,40 +1719,40 @@ export function FrostStoryApp() {
                                   className="fs-teaser-media-wrap is-unlocked is-clickable"
                                   role="button"
                                   tabIndex={0}
-                                  title="แตะเพื่อดูภาพขนาดเต็ม"
+                                  title={t.tapToViewFull}
                                   onClick={() =>
                                     setExpandedMedia({
                                       mediaKey: msg.mediaKey!,
-                                      title: `ภาพพิเศษจาก ${selectedCreator.name}`,
-                                      caption: 'Exclusive Photo · ปลดล็อกแล้ว',
+                                      title: t.exclusivePhotoFrom(selectedCreator.name),
+                                      caption: t.exclusivePhotoCaption,
                                     })
                                   }
                                   onKeyDown={(e) => {
                                     if (e.key === 'Enter' || e.key === ' ') {
                                       setExpandedMedia({
                                         mediaKey: msg.mediaKey!,
-                                        title: `ภาพพิเศษจาก ${selectedCreator.name}`,
-                                        caption: 'Exclusive Photo · ปลดล็อกแล้ว',
+                                        title: t.exclusivePhotoFrom(selectedCreator.name),
+                                        caption: t.exclusivePhotoCaption,
                                       });
                                     }
                                   }}
                                 >
                                   <img src={media(msg.mediaKey)} alt="Exclusive photo" className="fs-teaser-img" />
-                                  <div className="fs-teaser-badge fs-badge-unlocked">✨ ปลดล็อกแล้ว · แตะขยาย 🔍</div>
+                                  <div className="fs-teaser-badge fs-badge-unlocked">{t.unlockedTapToEnlarge}</div>
                                 </div>
                               ) : (
                                 <div className="fs-teaser-media-wrap is-locked">
                                   <img src={media(msg.mediaKey)} alt="Locked photo teaser" className="fs-teaser-img is-blurred" />
                                   <div className="fs-teaser-overlay">
                                     <div className="fs-teaser-lock-icon">🔒</div>
-                                    <p className="fs-teaser-hint">รูปถ่ายส่วนตัวจาก {selectedCreator.name}</p>
+                                    <p className="fs-teaser-hint">{t.privatePhotoFrom(selectedCreator.name)}</p>
                                     <div className="fs-teaser-actions">
                                       <button
                                         type="button"
                                         className="fs-teaser-btn fs-teaser-btn-instant"
                                         onClick={() => void unlockReward(msg.mediaKey!, 'energy')}
                                       >
-                                        ⚡ ปลดล็อกทันที (3⚡)
+                                        {t.unlockNow}
                                       </button>
                                     </div>
                                   </div>
@@ -1820,7 +1821,7 @@ export function FrostStoryApp() {
                               {renderBubbleContent(entry.text, (k) =>
                                 setExpandedMedia({
                                   mediaKey: k,
-                                  title: `ภาพจาก ${selectedCreator.name}`,
+                                  title: t.photoFrom(selectedCreator.name),
                                 })
                               )}
                             </div>
@@ -1865,7 +1866,7 @@ export function FrostStoryApp() {
                           {renderBubbleContent(node.text, (k) =>
                             setExpandedMedia({
                               mediaKey: k,
-                              title: `ภาพจาก ${selectedCreator.name}`,
+                              title: t.photoFrom(selectedCreator.name),
                             })
                           )}
                         </div>
@@ -1898,18 +1899,18 @@ export function FrostStoryApp() {
             {aiDmTab === 'ai' && chat && !chat.experiment && (
               <div className="fs-dm-memory">
                 <button type="button" className="fs-dm-memory-toggle" aria-expanded={memoryPanel.open} onClick={toggleMemoryPanel}>
-                  🧠 สิ่งที่ {selectedCreator.name} จำเกี่ยวกับคุณ
+                  {t.memoryTitle(selectedCreator.name)}
                 </button>
                 {memoryPanel.open &&
                   (memoryPanel.items.length === 0 ? (
-                    <p className="fs-dm-memory-empty">ยังไม่มีเรื่องที่จำไว้</p>
+                    <p className="fs-dm-memory-empty">{t.memoryEmpty}</p>
                   ) : (
                     <ul className="fs-dm-memory-list">
                       {memoryPanel.items.map((m) => (
                         <li key={m.key}>
                           <span>{m.value}</span>
                           <button type="button" onClick={() => forgetMemory(m.key)}>
-                            ลืม
+                            {t.forget}
                           </button>
                         </li>
                       ))}
@@ -1920,7 +1921,7 @@ export function FrostStoryApp() {
 
             {aiDmTab === 'ai' ? (
               <ChatComposer
-                placeholder={`ส่งข้อความหา ${selectedCreator.name}…`}
+                placeholder={t.messageTo(selectedCreator.name)}
                 disabled={!chat || aiSending}
                 onSend={(text) => void sendAiMessage(text)}
               />
@@ -1935,7 +1936,7 @@ export function FrostStoryApp() {
                         className="fs-dm-switch-chat-btn"
                         onClick={() => setAiDmTab('ai')}
                       >
-                        <Sparkles size={14} /> สานสัมพันธ์ต่อในแชทอิสระ &rarr;
+                        <Sparkles size={14} /> {t.continueFreeChat}
                       </button>
                     </div>
                   ) : (
@@ -1991,7 +1992,7 @@ export function FrostStoryApp() {
             <div className="fs-glossy-glow" aria-hidden="true" />
             <div className="fs-glossy-badge">
               <Sparkles size={13} />
-              <span>ปลดล็อกเนื้อเรื่องสำเร็จ!</span>
+              <span>{t.storyUnlockedTitle}</span>
             </div>
             <div className="fs-glossy-avatar-wrap">
               <div className="fs-avatar fs-avatar-large fs-glossy-avatar">
@@ -2004,10 +2005,10 @@ export function FrostStoryApp() {
               <div className="fs-glossy-avatar-ring" aria-hidden="true" />
             </div>
             <h3 className="fs-glossy-title">
-              พร้อมคุยกับน้อง{unlockedStoryModal.creatorName}แล้ว! ✨
+              {t.storyUnlockedReady(unlockedStoryModal.creatorName)}
             </h3>
             <p className="fs-glossy-desc">
-              ปลดล็อกเนื้อเรื่องสำเร็จ! สานสัมพันธ์กับน้อง{unlockedStoryModal.creatorName}ต่อในแชทได้ตลอดเวลาเลยนะ 🐱🤍
+              {t.storyUnlockedDesc(unlockedStoryModal.creatorName)}
             </p>
             <div className="fs-glossy-actions">
               <button
@@ -2019,14 +2020,14 @@ export function FrostStoryApp() {
                 }}
               >
                 <Sparkles size={16} />
-                <span>เริ่มคุยกับ{unlockedStoryModal.creatorName}เลย 💬</span>
+                <span>{t.startChatWith(unlockedStoryModal.creatorName)}</span>
               </button>
               <button
                 type="button"
                 className="fs-btn-glossy-secondary"
                 onClick={() => setUnlockedStoryModal({ open: false, creatorName: '' })}
               >
-                ดูเนื้อเรื่องต่อ
+                {t.continueStory}
               </button>
             </div>
           </div>
@@ -2041,11 +2042,11 @@ export function FrostStoryApp() {
               <button
                 type="button"
                 className="fs-lightbox-back-btn"
-                aria-label="ย้อนกลับ"
+                aria-label={t.goBack}
                 onClick={() => setExpandedMedia(null)}
               >
                 <ArrowLeft size={18} />
-                <span>ย้อนกลับ</span>
+                <span>{t.goBack}</span>
               </button>
               {expandedMedia.title && (
                 <span id="fs-lightbox-title" className="fs-lightbox-title">
@@ -2096,7 +2097,7 @@ export function FrostStoryApp() {
                 void openChat(target);
               }
             } catch (e) {
-              setError(e instanceof Error ? e.message : 'บันทึกโปรไฟล์ไม่สำเร็จ');
+              setError(e instanceof Error ? e.message : t.profileSaveFailed);
             } finally {
               setSavingProfile(false);
             }
