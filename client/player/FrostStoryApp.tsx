@@ -1193,7 +1193,6 @@ export function FrostStoryApp() {
                         className="fs-profile-dm-btn"
                         onClick={() => {
                           const c = profileCreator;
-                          closeProfile();
                           void openChat(c);
                         }}
                       >
@@ -1352,7 +1351,6 @@ export function FrostStoryApp() {
                             disabled={!ep.accessible}
                             onClick={() => {
                               const c = profileCreator;
-                              closeProfile();
                               void openChat(c);
                             }}
                           >
