@@ -330,26 +330,50 @@ export function HomeTab({
                   </div>
                 )}
 
-                {/* Comment Input */}
+                {/* Authentic Instagram Comment Input */}
                 <form
-                  className="fs-comment-input-form"
+                  className="fs-comment-input-row"
                   onSubmit={(e) => onCommentSubmit(post, e)}
                 >
-                  <input
-                    id={`comment-input-${post.id}`}
-                    type="text"
-                    className="fs-comment-input"
-                    placeholder={t.commentPlaceholder}
-                    value={comments[post.id] || ''}
-                    onChange={(e) => onCommentChange(post.id, e.target.value)}
-                  />
-                  <button
-                    type="submit"
-                    className="fs-comment-post-btn"
-                    disabled={busy || !(comments[post.id] || '').trim()}
-                  >
-                    {t.postBtn}
-                  </button>
+                  <div className="fs-avatar fs-avatar-tiny fs-comment-user-avatar">
+                    {user?.avatarId && getAvatarSrc(user.avatarId) ? (
+                      <img src={getAvatarSrc(user.avatarId)!} alt="" className="fs-avatar-img" />
+                    ) : (
+                      user?.nickname?.slice(0, 1) || 'U'
+                    )}
+                  </div>
+                  <div className="fs-comment-input-wrap">
+                    <input
+                      id={`comment-input-${post.id}`}
+                      type="text"
+                      className="fs-comment-input-field"
+                      placeholder={t.commentPlaceholder}
+                      value={comments[post.id] || ''}
+                      onChange={(e) => onCommentChange(post.id, e.target.value)}
+                    />
+                    {(comments[post.id] || '').trim() ? (
+                      <button
+                        type="submit"
+                        className="fs-comment-submit-btn"
+                        disabled={busy}
+                      >
+                        {t.postBtn}
+                      </button>
+                    ) : (
+                      <div className="fs-comment-quick-emojis">
+                        {['❤️', '🙌', '🔥'].map((emoji) => (
+                          <button
+                            key={emoji}
+                            type="button"
+                            className="fs-quick-emoji-btn"
+                            onClick={() => onCommentChange(post.id, (comments[post.id] || '') + emoji)}
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </form>
               </div>
             </article>
