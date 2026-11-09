@@ -20,6 +20,10 @@ import { ActivityOverlay } from './overlays/ActivityOverlay';
 import { PostMenuSheet } from './overlays/PostMenuSheet';
 import './froststory.css';
 
+// Character voice (TTS) is not officially launched yet: the buttons stay hidden until it is. The server
+// endpoint still exists and still charges/refunds Energy as before when called.
+const TTS_ENABLED = false;
+
 export function FrostStoryApp() {
   const [lang, setLang] = useState<Lang>(() => {
     if (typeof window !== 'undefined') {
@@ -1695,7 +1699,7 @@ export function FrostStoryApp() {
                                 } : undefined
                               )}
                             </div>
-                            {hasSpokenDialogue(msg.content) && (
+                            {TTS_ENABLED && hasSpokenDialogue(msg.content) && (
                               <button
                                 type="button"
                                 className={`fs-tts-btn${ttsPlayingId === msg.id ? ' is-playing' : ''}${ttsLoadingId === msg.id ? ' is-loading' : ''}`}
@@ -1826,7 +1830,7 @@ export function FrostStoryApp() {
                                 })
                               )}
                             </div>
-                            {hasSpokenDialogue(entry.text) && (
+                            {TTS_ENABLED && hasSpokenDialogue(entry.text) && (
                               <button
                                 type="button"
                                 className={`fs-tts-btn${ttsPlayingId === entry.id ? ' is-playing' : ''}${ttsLoadingId === entry.id ? ' is-loading' : ''}`}
@@ -1871,7 +1875,7 @@ export function FrostStoryApp() {
                             })
                           )}
                         </div>
-                        {hasSpokenDialogue(node.text) && (
+                        {TTS_ENABLED && hasSpokenDialogue(node.text) && (
                           <button
                             type="button"
                             className={`fs-tts-btn${ttsPlayingId === node.id ? ' is-playing' : ''}${ttsLoadingId === node.id ? ' is-loading' : ''}`}
