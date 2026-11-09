@@ -670,7 +670,13 @@ export function FrostStoryApp() {
     setPostMenuCreator(null);
   });
 
-  if (loading) return null;
+  // Shown while /api/me answers (about a second on a cold start) instead of a blank screen.
+  if (loading)
+    return (
+      <main className="fs-splash" aria-busy="true">
+        <span className="fs-wordmark">instagoon</span>
+      </main>
+    );
 
   if (!user)
     return (

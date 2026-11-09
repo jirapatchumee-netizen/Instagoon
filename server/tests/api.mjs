@@ -55,6 +55,16 @@ sql.prepare("INSERT INTO posts(id,creator_id,caption,published_at,relationship_r
 assert.equal((await request('/api/posts/locked/comments',{method:'POST',data:{requestId:'request-locked',content:'peek'}})).status,404,'no comments on a post the player cannot see');
 for(let i=0;i<8;i++)assert.equal((await request('/api/posts/p/comments',{method:'POST',data:{requestId:'burst'+i,content:'spam'+i}})).status,200);
 assert.equal((await request('/api/posts/p/comments',{method:'POST',data:{requestId:'burst-over',content:'too many'}})).status,429,'at most 10 comments a minute');
+// The feed attaches each post's comments (oldest first) in one query, and a post without comments gets [].
+{
+ sql.prepare("INSERT INTO follows(user_id,creator_id,created_at) VALUES('u','c',?)").run(now);
+ sql.prepare("INSERT INTO posts(id,creator_id,caption,published_at,status) VALUES('p_quiet','c','Quiet',?,'published')").run(now-20000);
+ const feed=(await request('/api/feed')).payload.posts;
+ const p=feed.find(x=>x.id==='p'),quiet=feed.find(x=>x.id==='p_quiet');
+ assert.equal(p.comments.length,10);assert.equal(p.comments[0].content,'Hi');assert.ok(p.comments.every(c=>c.own));
+ assert.deepEqual(quiet.comments,[]);
+ sql.prepare("DELETE FROM follows WHERE user_id='u' AND creator_id='c'").run();sql.prepare("DELETE FROM posts WHERE id='p_quiet'").run();
+}
 // Free energy is a one-time grant (0009): a comment does not start a refill timer, and the database
 // itself still refuses comments the API would refuse, even if a request slipped past the API checks.
 assert.equal(sql.prepare("SELECT next_refill_at t FROM energy WHERE user_id='u'").get().t,null,'a comment does not start a refill timer');

@@ -92,7 +92,7 @@ export function Media({
   return /\.(mp4|webm)$/i.test(mediaKey) ? (
     <video className={className} src={media(mediaKey)} controls playsInline aria-label={label} />
   ) : (
-    <img className={className} src={media(mediaKey)} alt={label} />
+    <img className={className} src={media(mediaKey)} alt={label} loading="lazy" decoding="async" />
   );
 }
 
@@ -367,12 +367,12 @@ export function Modal({
 }
 
 export const PRESET_AVATARS = [
-  { id: 'user_m1', label: 'หนุ่มหล่อ CEO', src: '/avatars/user_m1.jpg' },
-  { id: 'user_m2', label: 'หนุ่มแบดบอย', src: '/avatars/user_m2.jpg' },
-  { id: 'user_m3', label: 'หนุ่มแว่นสุขุม', src: '/avatars/user_m3.jpg' },
-  { id: 'user_f1', label: 'สาวชิค เกิร์ลครัช', src: '/avatars/user_f1.jpg' },
-  { id: 'user_f2', label: 'สาวหวาน หรูหรา', src: '/avatars/user_f2.jpg' },
-  { id: 'user_f3', label: 'สาวมั่น คมเฉี่ยว', src: '/avatars/user_f3.jpg' },
+  { id: 'user_m1', label: 'หนุ่มหล่อ CEO', src: '/avatars/user_m1.webp' },
+  { id: 'user_m2', label: 'หนุ่มแบดบอย', src: '/avatars/user_m2.webp' },
+  { id: 'user_m3', label: 'หนุ่มแว่นสุขุม', src: '/avatars/user_m3.webp' },
+  { id: 'user_f1', label: 'สาวชิค เกิร์ลครัช', src: '/avatars/user_f1.webp' },
+  { id: 'user_f2', label: 'สาวหวาน หรูหรา', src: '/avatars/user_f2.webp' },
+  { id: 'user_f3', label: 'สาวมั่น คมเฉี่ยว', src: '/avatars/user_f3.webp' },
 ];
 
 export function getAvatarSrc(avatarId?: string | null) {
