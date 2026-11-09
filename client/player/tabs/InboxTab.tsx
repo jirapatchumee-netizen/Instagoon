@@ -15,10 +15,11 @@ export function InboxTab({ creators, lang, onOpenChat }: InboxTabProps) {
   const t = TRANSLATIONS[lang];
   const [query, setQuery] = useState('');
 
-  const filtered = creators.filter((c) =>
-    c.name.toLowerCase().includes(query.toLowerCase()) ||
-    c.bio?.toLowerCase().includes(query.toLowerCase())
-  );
+  const q = query.trim().toLowerCase();
+  // Newest conversation first, then creators the player has not messaged yet.
+  const filtered = creators
+    .filter((c) => !q || c.name.toLowerCase().includes(q) || c.bio?.toLowerCase().includes(q))
+    .sort((a, b) => (b.lastMessage?.at ?? 0) - (a.lastMessage?.at ?? 0));
 
   return (
     <div className="fs-inbox-tab">
@@ -30,7 +31,8 @@ export function InboxTab({ creators, lang, onOpenChat }: InboxTabProps) {
         <Search size={16} className="fs-search-icon" />
         <input
           type="text"
-          placeholder={t.creators}
+          placeholder={t.inboxSearch}
+          aria-label={t.inboxSearch}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="fs-inbox-search-input"
@@ -41,7 +43,14 @@ export function InboxTab({ creators, lang, onOpenChat }: InboxTabProps) {
         {filtered.length > 0 ? (
           filtered.map((creator) => {
             const hasCloseFriends = (creator.relationship ?? 0) >= 1;
-            const snippet = creator.bio ? creator.bio.slice(0, 48) : t.openDM;
+            const last = creator.lastMessage;
+            const snippet = last
+              ? last.fromCreator
+                ? last.text
+                : `${t.inboxYouPrefix}: ${last.text}`
+              : creator.bio
+              ? Array.from(creator.bio).slice(0, 48).join('')
+              : t.openDM;
 
             return (
               <div
@@ -71,7 +80,7 @@ export function InboxTab({ creators, lang, onOpenChat }: InboxTabProps) {
                 </div>
 
                 <div className="fs-inbox-item-meta">
-                  <div className="fs-inbox-unread-dot" />
+                  {creator.unread && <div className="fs-inbox-unread-dot" />}
                 </div>
               </div>
             );
@@ -81,8 +90,14 @@ export function InboxTab({ creators, lang, onOpenChat }: InboxTabProps) {
             <div className="fs-empty-icon-circle">
               <MessageSquare size={32} />
             </div>
-            <h2>{t.emptyInboxTitle}</h2>
-            <p>{t.emptyInboxDesc}</p>
+            {q ? (
+              <h2>{t.inboxNoResults(query.trim())}</h2>
+            ) : (
+              <>
+                <h2>{t.emptyInboxTitle}</h2>
+                <p>{t.emptyInboxDesc}</p>
+              </>
+            )}
           </div>
         )}
       </div>

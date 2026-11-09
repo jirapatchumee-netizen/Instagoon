@@ -334,7 +334,7 @@ async function energy(env,uid,now) {
  const row=await one(env,'SELECT free,purchased,COALESCE(diamonds,0) diamonds FROM energy WHERE user_id=?',uid);
  return {free:row.free,purchased:row.purchased,diamonds:row.diamonds??0,nextRefillAt:null};
 }
-const postShape = p=>({id:p.id,creatorId:p.creator_id,creatorName:p.creator_name,caption:p.caption,mediaKey:p.media_key,publishedAt:p.published_at,relationshipRequired:p.relationship_required,simulatedLikes:p.simulated_likes,likes:p.likes,firstCommentUsed:!!p.claimed});
+const postShape = p=>({id:p.id,creatorId:p.creator_id,creatorName:p.creator_name,caption:p.caption,mediaKey:p.media_key,publishedAt:p.published_at,relationshipRequired:p.relationship_required,simulatedLikes:p.simulated_likes,likes:p.likes,liked:!!p.liked,saved:!!p.saved,firstCommentUsed:!!p.claimed});
 const storyShape = s=>({id:s.id,creatorId:s.creator_id,type:s.type,mediaKey:s.media_key,publishedAt:s.published_at,expiresAt:s.type==='broadcast'?s.published_at+86400000:s.first_viewed_at==null?null:s.first_viewed_at+86400000,firstViewedAt:s.first_viewed_at});
 async function visiblePost(env,user,pid,now){return one(env,`SELECT p.* FROM posts p LEFT JOIN relationships r ON r.creator_id=p.creator_id AND r.user_id=? WHERE p.id=? AND p.status='published' AND p.published_at<=? AND COALESCE(r.score,0)>=p.relationship_required`,user.id,pid,now);}
 // A scripted episode node can show a picture with [img:<key>]. The picture is the player's once they have
@@ -345,6 +345,8 @@ async function episodeMediaReached(env,uid,mediaKey){
  for(const r of rows){const seen=new Set(String(r.visited||'').split('\x1f'));let nodes=[];try{nodes=JSON.parse(r.nodes);}catch{}if(nodes.some(n=>seen.has(n.id)&&String(n.text||'').includes(tag)))return true;}
  return false;
 }
+// One plain line for the inbox: no stage directions, inner thoughts or picture tags.
+const inboxPreview=text=>{const t=String(text||'').replace(/\[img:[^\]]+\]/g,'📷').replace(/\[(?:thought|visual|action)[^\]]*\]/gi,'').replace(/\*[^*]*\*/g,'').replace(/\s+/g,' ').trim();const chars=Array.from(t);return chars.length>80?chars.slice(0,80).join('')+'…':t;};
 const storyLive=(s,now)=>!!s&&!(s.type==='broadcast'&&now>=s.published_at+86400000)&&!(s.first_viewed_at!=null&&s.type==='unlockable'&&now>=s.first_viewed_at+86400000);
 async function visibleStory(env,user,sid,now){const s=await one(env,`SELECT s.*,v.first_viewed_at FROM stories s LEFT JOIN relationships r ON r.creator_id=s.creator_id AND r.user_id=? LEFT JOIN story_views v ON v.story_id=s.id AND v.user_id=? WHERE s.id=? AND s.status='published' AND s.published_at<=? AND COALESCE(r.score,0)>=s.relationship_required`,user.id,user.id,sid,now);return storyLive(s,now)?s:null;}
 // Same rules as visibleStory for every followed creator, in one query.
@@ -448,7 +450,15 @@ async function player(req,env,user,path,now,ctx) {
  if(path==='/api/creators'&&method==='GET'){
   const removed=new Set(await removedCreators(env));
   const rows=await all(env,'SELECT c.*,COALESCE(r.score,0) AS relationship,EXISTS(SELECT 1 FROM follows f WHERE f.creator_id=c.id AND f.user_id=?) AS following FROM creators c LEFT JOIN relationships r ON r.creator_id=c.id AND r.user_id=? ORDER BY c.name',user.id,user.id);
-  return json({creators:rows.filter(c=>!removed.has(c.id)).map(c=>({id:c.id,name:c.name,bio:c.bio,avatarKey:c.avatar_key,relationship:c.relationship,following:!!c.following}))});
+  // Inbox preview: the newest DM per creator (story-mode and experiment chats both count) and whether it
+  // arrived after the player last opened that thread.
+  const [lastRows,readRows]=await Promise.all([
+   all(env,`SELECT creator_id,role,content,created_at FROM (SELECT creator_id,role,content,created_at,ROW_NUMBER() OVER (PARTITION BY creator_id ORDER BY created_at DESC) n FROM (SELECT creator_id,role,content,created_at FROM ai_chat_messages WHERE user_id=? UNION ALL SELECT creator_id,role,content,created_at FROM experiment_chat_messages WHERE user_id=?)) WHERE n=1`,user.id,user.id),
+   all(env,'SELECT creator_id,read_at FROM inbox_reads WHERE user_id=?',user.id)
+  ]);
+  const last=new Map(lastRows.map(r=>[r.creator_id,r])),readAt=new Map(readRows.map(r=>[r.creator_id,r.read_at]));
+  const preview=r=>r?{text:inboxPreview(r.content),at:r.created_at,fromCreator:r.role==='assistant'}:null;
+  return json({creators:rows.filter(c=>!removed.has(c.id)).map(c=>{const l=last.get(c.id);return {id:c.id,name:c.name,bio:c.bio,avatarKey:c.avatar_key,relationship:c.relationship,following:!!c.following,lastMessage:preview(l),unread:!!l&&l.role==='assistant'&&l.created_at>(readAt.get(c.id)||0)};})});
  }
  let m=path.match(/^\/api\/creators\/([\w-]+)\/follow$/);
  if(m&&method==='POST'){
@@ -520,7 +530,7 @@ async function player(req,env,user,path,now,ctx) {
   });
  }
  if(path==='/api/feed'&&method==='GET'){
-  const posts=await all(env,`SELECT p.*,c.name creator_name,(SELECT COUNT(*) FROM likes l WHERE l.post_id=p.id) likes,EXISTS(SELECT 1 FROM comment_claims x WHERE x.user_id=? AND x.post_id=p.id) claimed FROM posts p JOIN creators c ON c.id=p.creator_id JOIN follows f ON f.creator_id=p.creator_id AND f.user_id=? LEFT JOIN relationships r ON r.creator_id=p.creator_id AND r.user_id=? WHERE p.status='published' AND p.published_at<=? AND COALESCE(r.score,0)>=p.relationship_required ORDER BY p.published_at DESC LIMIT 100`,user.id,user.id,user.id,now);
+  const posts=await all(env,`SELECT p.*,c.name creator_name,(SELECT COUNT(*) FROM likes l WHERE l.post_id=p.id) likes,EXISTS(SELECT 1 FROM likes l WHERE l.post_id=p.id AND l.user_id=?) liked,EXISTS(SELECT 1 FROM saves sv WHERE sv.post_id=p.id AND sv.user_id=?) saved,EXISTS(SELECT 1 FROM comment_claims x WHERE x.user_id=? AND x.post_id=p.id) claimed FROM posts p JOIN creators c ON c.id=p.creator_id JOIN follows f ON f.creator_id=p.creator_id AND f.user_id=? LEFT JOIN relationships r ON r.creator_id=p.creator_id AND r.user_id=? WHERE p.status='published' AND p.published_at<=? AND COALESCE(r.score,0)>=p.relationship_required ORDER BY p.published_at DESC LIMIT 100`,user.id,user.id,user.id,user.id,user.id,now);
   // One query for every post's comments (first 100 each) instead of one round trip per post.
   const commentRows=posts.length?await all(env,'SELECT post_id,id,user_id,content,created_at FROM (SELECT c.*,ROW_NUMBER() OVER (PARTITION BY c.post_id ORDER BY c.created_at) n FROM comments c WHERE c.post_id IN (SELECT value FROM json_each(?)) AND c.hidden=0) WHERE n<=100 ORDER BY created_at',JSON.stringify(posts.map(p=>p.id))):[];
   const byPost=new Map(posts.map(p=>[p.id,[]]));
@@ -546,7 +556,11 @@ async function player(req,env,user,path,now,ctx) {
  m=path.match(/^\/api\/comments\/([\w-]+)\/report$/);
  if(m&&method==='POST'){const b=await body(req);const comment=await one(env,'SELECT post_id FROM comments WHERE id=? AND hidden=0',id(m[1])); if(!comment||!await visiblePost(env,user,comment.post_id,now))return json({error:'not_found'},404); if((await one(env,'SELECT COUNT(*) n FROM reports WHERE user_id=? AND created_at>?',user.id,now-60000)).n>=10)return json({error:'too_many_requests'},429); await run(env,'INSERT OR IGNORE INTO reports(id,comment_id,user_id,reason,created_at) VALUES(?,?,?,?,?)',crypto.randomUUID(),m[1],user.id,string(b.reason,500),now);return json({ok:true});}
  m=path.match(/^\/api\/posts\/([\w-]+)\/like$/);
- if(m&&method==='POST'){if(!await visiblePost(env,user,id(m[1]),now))return json({error:'not_found'},404);await run(env,'INSERT OR IGNORE INTO likes(user_id,post_id) VALUES(?,?)',user.id,m[1]);return json({ok:true});}
+ if(m&&method==='POST'){if(!await visiblePost(env,user,id(m[1]),now))return json({error:'not_found'},404);await run(env,'INSERT OR IGNORE INTO likes(user_id,post_id) VALUES(?,?)',user.id,m[1]);return json({ok:true,liked:true});}
+ if(m&&method==='DELETE'){await run(env,'DELETE FROM likes WHERE user_id=? AND post_id=?',user.id,id(m[1]));return json({ok:true,liked:false});}
+ m=path.match(/^\/api\/posts\/([\w-]+)\/save$/);
+ if(m&&method==='POST'){if(!await visiblePost(env,user,id(m[1]),now))return json({error:'not_found'},404);await run(env,'INSERT OR IGNORE INTO saves(user_id,post_id,created_at) VALUES(?,?,?)',user.id,m[1],now);return json({ok:true,saved:true});}
+ if(m&&method==='DELETE'){await run(env,'DELETE FROM saves WHERE user_id=? AND post_id=?',user.id,id(m[1]));return json({ok:true,saved:false});}
  if(path==='/api/stories'&&method==='GET'){
   return json({stories:(await visibleFollowedStories(env,user,now)).map(storyShape)});
  }
@@ -1600,6 +1614,8 @@ async fetch(req,env,ctx){
   }
   if(!user)return json({error:'unauthorized'},401);
   const res=await player(req,env,user,path,now,ctx);
+  const thread=path.match(/^\/api\/chats\/([\w-]+)(?:\/(?:message|edit-message|choose|episode))?$/);
+  if(thread&&res.ok){const read=run(env,'INSERT INTO inbox_reads(user_id,creator_id,read_at) VALUES(?,?,?) ON CONFLICT(user_id,creator_id) DO UPDATE SET read_at=excluded.read_at',user.id,thread[1],Date.now()).catch(()=>{});await read;}
   // Time spent in the Worker (D1 included), visible in DevTools > Network > Timing. Compare with the
   // request's total time to tell Worker/D1 cost from network cost.
   try{res.headers.set('server-timing',`app;dur=${Date.now()-now}`);}catch{}

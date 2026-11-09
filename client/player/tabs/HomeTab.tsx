@@ -55,6 +55,12 @@ export function HomeTab({
 
   const hasFollowing = creators.some((c) => c.following);
   const storyCreatorIds = new Set(stories.map((s) => s.creatorId));
+  const storyGroups: { creatorId: string; items: Story[] }[] = [];
+  for (const story of stories) {
+    const group = storyGroups.find((g) => g.creatorId === story.creatorId);
+    if (group) group.items.push(story);
+    else storyGroups.push({ creatorId: story.creatorId, items: [story] });
+  }
   const barCreators = hasFollowing
     ? creators.filter((c) => c.following && !storyCreatorIds.has(c.id))
     : creators.filter((c) => !storyCreatorIds.has(c.id));
@@ -63,29 +69,27 @@ export function HomeTab({
     <div className="fs-home-tab">
       {/* Instagram Stories Row with Exact Gradient Ring */}
       <section className="fs-stories-bar" aria-label="Stories">
-        {stories.map((story) => {
-          const creator = getCreator(story.creatorId);
+        {storyGroups.map(({ creatorId, items }) => {
+          const creator = getCreator(creatorId);
           const name = creator?.name ?? 'Creator';
-          const isUnlockable = story.type === 'unlockable';
-          const isViewed = !!story.firstViewedAt;
+          // One ring per creator, like Instagram. A tap opens the first story not yet seen, else the newest.
+          const next = items.find((s) => !s.firstViewedAt);
+          const target = next ?? items[items.length - 1];
           return (
             <button
-              key={story.id}
+              key={`story-${creatorId}`}
               className="fs-story-item"
-              onClick={() => onOpenStory(story)}
+              aria-label={t.storyOf(name)}
+              onClick={() => onOpenStory(target)}
             >
               <span
                 className={`fs-story-ring ${
-                  isUnlockable
-                    ? 'fs-story-unlock'
-                    : isViewed
-                    ? 'fs-story-viewed'
-                    : 'fs-story-unviewed'
+                  !next ? 'fs-story-viewed' : next.type === 'unlockable' ? 'fs-story-unlock' : 'fs-story-unviewed'
                 }`}
               >
                 <span className="fs-story-ring-inner">
                   {creator?.avatarKey ? (
-                    <AvatarImg src={media(creator.avatarKey)} name={creator.name} alt={name} />
+                    <AvatarImg src={media(creator.avatarKey)} name={creator.name} alt="" />
                   ) : (
                     name.slice(0, 1)
                   )}
@@ -183,7 +187,7 @@ export function HomeTab({
       <div className="fs-posts">
         {posts.map((post) => {
           const creator = getCreator(post.creatorId);
-          const isLiked = !!likedPostIds[post.id] || post.likes > 0;
+          const isLiked = !!likedPostIds[post.id];
           const isSaved = !!savedPostIds[post.id];
           const totalLikes = post.likes + post.simulatedLikes;
 

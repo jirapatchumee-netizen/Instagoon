@@ -385,6 +385,9 @@ export function FrostStoryApp() {
       api<{ stories: Story[] }>('/api/stories'),
     ]);
     setPosts(feed.posts);
+    // Likes and saves come from the server so they survive a reload.
+    setLikedPostIds(Object.fromEntries(feed.posts.filter((p) => p.liked).map((p) => [p.id, true])));
+    setSavedPostIds(Object.fromEntries(feed.posts.filter((p) => p.saved).map((p) => [p.id, true])));
     setCreators(people.creators);
     setStories(highlights.stories);
   }, []);
@@ -406,6 +409,18 @@ export function FrostStoryApp() {
       active = false;
     };
   }, [loadMe, loadFeed, t.connectionError]);
+
+  // Closing a DM thread refreshes the inbox preview and unread dots (the server marked the thread read).
+  const openThreadId = selectedCreator?.id ?? null;
+  const lastThreadRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (lastThreadRef.current && !openThreadId) {
+      api<{ creators: Creator[] }>('/api/creators')
+        .then((r) => setCreators(r.creators))
+        .catch(() => {});
+    }
+    lastThreadRef.current = openThreadId;
+  }, [openThreadId]);
 
   const chatLoaded = Boolean(chat);
   useLayoutEffect(() => {
@@ -461,11 +476,33 @@ export function FrostStoryApp() {
         setHeartBurstPostId((prev) => (prev === postId ? null : prev));
       }, 750);
     }
-    setLikedPostIds((prev) => ({ ...prev, [postId]: true }));
-    await action(async () => {
-      await api(`/api/posts/${encodeURIComponent(postId)}/like`, json({}));
-      await loadFeed();
-    });
+    const wasLiked = !!likedPostIds[postId];
+    if (wasLiked && showBurst) return; // a double tap only ever likes
+    const liked = !wasLiked;
+    const applyLike = (on: boolean) => {
+      setLikedPostIds((prev) => ({ ...prev, [postId]: on }));
+      setPosts((prev) =>
+        prev.map((p) => (p.id === postId ? { ...p, likes: Math.max(0, p.likes + (on ? 1 : -1)) } : p))
+      );
+    };
+    applyLike(liked);
+    try {
+      await api(`/api/posts/${encodeURIComponent(postId)}/like`, liked ? json({}) : { method: 'DELETE' });
+    } catch (e) {
+      applyLike(!liked);
+      setError(e instanceof Error ? e.message : t.genericError);
+    }
+  }
+
+  async function toggleSave(postId: string) {
+    const saved = !savedPostIds[postId];
+    setSavedPostIds((prev) => ({ ...prev, [postId]: saved }));
+    try {
+      await api(`/api/posts/${encodeURIComponent(postId)}/save`, saved ? json({}) : { method: 'DELETE' });
+    } catch (e) {
+      setSavedPostIds((prev) => ({ ...prev, [postId]: !saved }));
+      setError(e instanceof Error ? e.message : t.genericError);
+    }
   }
 
   function chatPath(creatorId: string) {
@@ -789,9 +826,7 @@ export function FrostStoryApp() {
             onOpenChat={(creator) => void openChat(creator)}
             onToggleFollow={(creator) => void toggleFollow(creator)}
             onLikePost={(postId, fromDoubleTap) => void likePost(postId, fromDoubleTap)}
-            onToggleSave={(postId) =>
-              setSavedPostIds((prev) => ({ ...prev, [postId]: !prev[postId] }))
-            }
+            onToggleSave={(postId) => void toggleSave(postId)}
             onCommentChange={(postId, val) =>
               setComments((prev) => ({ ...prev, [postId]: val }))
             }
@@ -937,9 +972,7 @@ export function FrostStoryApp() {
           setPostMenuCreator(null);
         }}
         onViewProfile={(c) => void openProfile(c)}
-        onToggleSave={(postId) =>
-          setSavedPostIds((prev) => ({ ...prev, [postId]: !prev[postId] }))
-        }
+        onToggleSave={(postId) => void toggleSave(postId)}
         onMessage={(c) => void openChat(c)}
       />
 
