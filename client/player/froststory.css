@@ -6169,7 +6169,7 @@ dialog.fs-overlay[open]::backdrop {
   background: none;
   border: none;
   color: #f4f4f5;
-  font-size: 0.85rem;
+  font-size: 16px; /* below 16px iOS Safari zooms the page on focus */
   outline: none;
   padding: 0;
 }
@@ -6219,4 +6219,46 @@ dialog.fs-overlay[open]::backdrop {
 
 .fs-quick-emoji-btn:active {
   transform: scale(0.9);
+}
+
+/* Touch targets: the icons stay 24px, but the tappable area grows to about 40-44px (WCAG 2.5.8 /
+   Apple HIG) through an invisible ::after, so the layout does not move. */
+.fs-action-icon-btn,
+.fs-quick-emoji-btn {
+  position: relative;
+}
+
+.fs-action-icon-btn::after,
+.fs-quick-emoji-btn::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+}
+
+.fs-quick-emoji-btn::after {
+  inset: -8px -3px;
+}
+
+/* "Once opened, this Story expires in 24 hours" was dark grey on black. */
+.fs-story-unlock-gate p {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+/* Reels fills exactly the space between the header and the fixed bottom bar. Its fixed
+   calc(100vh - 104px) left the page 17-23px taller than the screen, so the header scrolled away. */
+.fs-app:has(.fs-reels-tab) {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.fs-app:has(.fs-reels-tab) > .fs-main {
+  flex: 1;
+  min-height: 0;
+  padding-bottom: calc(52px + env(safe-area-inset-bottom, 0px)); /* the fixed .fs-insta-bottom-bar */
+}
+
+.fs-main > .fs-reels-tab {
+  height: 100%;
 }
