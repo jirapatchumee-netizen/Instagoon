@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { LANGS, LoginScreen, TRANSLATIONS, type Lang } from './player/FrostStoryApp';
+import { LANGS, TRANSLATIONS, type Lang } from './player/i18n';
+import { LoginScreen } from './player/LoginScreen';
 
 function StagingLogin() {
   const [lang, setLang] = useState<Lang>(() => {
