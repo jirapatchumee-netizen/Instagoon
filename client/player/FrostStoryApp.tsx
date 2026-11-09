@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useState, useRef, type FormEvent, type ReactNode } from 'react';
 import { readSceneHeader, sceneHeaderLabels, hasNarrativeActions, splitNarrativeBody, quoteDialogue } from './message-format';
+import { useOverlayHistory } from './overlay-history';
 import {
   ArrowLeft,
   Check,
@@ -1749,6 +1750,14 @@ export function FrostStoryApp() {
     });
   };
   void openNotifications;
+
+  useOverlayHistory(!!selectedStory, () => setSelectedStory(null));
+  useOverlayHistory(!!profileCreator, closeProfile);
+  useOverlayHistory(!!selectedCreator, closeChat);
+  useOverlayHistory(unlockedStoryModal.open, () => setUnlockedStoryModal({ open: false, creatorName: '' }));
+  useOverlayHistory(!!expandedMedia, () => setExpandedMedia(null));
+  useOverlayHistory(profileModalOpen, () => setProfileModalOpen(false));
+  useOverlayHistory(shopOpen, () => setShopOpen(false));
 
   if (loading) return null;
 
