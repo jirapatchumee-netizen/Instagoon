@@ -337,6 +337,14 @@ async function energy(env,uid,now) {
 const postShape = p=>({id:p.id,creatorId:p.creator_id,creatorName:p.creator_name,caption:p.caption,mediaKey:p.media_key,publishedAt:p.published_at,relationshipRequired:p.relationship_required,simulatedLikes:p.simulated_likes,likes:p.likes,firstCommentUsed:!!p.claimed});
 const storyShape = s=>({id:s.id,creatorId:s.creator_id,type:s.type,mediaKey:s.media_key,publishedAt:s.published_at,expiresAt:s.type==='broadcast'?s.published_at+86400000:s.first_viewed_at==null?null:s.first_viewed_at+86400000,firstViewedAt:s.first_viewed_at});
 async function visiblePost(env,user,pid,now){return one(env,`SELECT p.* FROM posts p LEFT JOIN relationships r ON r.creator_id=p.creator_id AND r.user_id=? WHERE p.id=? AND p.status='published' AND p.published_at<=? AND COALESCE(r.score,0)>=p.relationship_required`,user.id,pid,now);}
+// A scripted episode node can show a picture with [img:<key>]. The picture is the player's once they have
+// reached that node, the same rule the chat uses to show it, so it is not visible ahead of the story.
+async function episodeMediaReached(env,uid,mediaKey){
+ const tag='[img:'+mediaKey+']';
+ const rows=await all(env,`SELECT rv.nodes nodes, GROUP_CONCAT(h.node_id, char(31)) visited FROM chat_states s JOIN revisions rv ON rv.id=s.revision_id JOIN chat_history h ON h.user_id=s.user_id AND h.episode_id=s.episode_id WHERE s.user_id=? AND instr(rv.nodes, ?)>0 GROUP BY s.episode_id`,uid,tag);
+ for(const r of rows){const seen=new Set(String(r.visited||'').split('\x1f'));let nodes=[];try{nodes=JSON.parse(r.nodes);}catch{}if(nodes.some(n=>seen.has(n.id)&&String(n.text||'').includes(tag)))return true;}
+ return false;
+}
 async function visibleStory(env,user,sid,now){const s=await one(env,`SELECT s.*,v.first_viewed_at FROM stories s LEFT JOIN relationships r ON r.creator_id=s.creator_id AND r.user_id=? LEFT JOIN story_views v ON v.story_id=s.id AND v.user_id=? WHERE s.id=? AND s.status='published' AND s.published_at<=? AND COALESCE(r.score,0)>=s.relationship_required`,user.id,user.id,sid,now);if(!s||(s.type==='broadcast'&&now>=s.published_at+86400000)||(s.first_viewed_at!=null&&s.type==='unlockable'&&now>=s.first_viewed_at+86400000))return null;return s;}
 let userProfileReady = false;
 async function ensureUserProfileColumns(env) {
@@ -1513,6 +1521,7 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
   for(const p of posts)if(await visiblePost(env,user,p.id,now)){allowed=true;break;}
   if(!allowed){const stories=await all(env,'SELECT id FROM stories WHERE media_key=?',mediaKey);for(const s of stories){const story=await visibleStory(env,user,s.id,now);if(story && (story.type==='broadcast' || story.first_viewed_at!=null)){allowed=true;break;}}}
   if(!allowed){allowed=!!await one(env,'SELECT 1 FROM reward_unlocks WHERE user_id=? AND reward_key=?',user.id,mediaKey);}
+  if(!allowed)allowed=await episodeMediaReached(env,user.id,mediaKey);
   if(!allowed)return json({error:'not_found'},404);const file=await bundledMedia(env,mediaKey)||await mediaStore(env).get(mediaKey);if(!file)return json({error:'not_found'},404);
   return new Response(file.body,{headers:{'content-type':file.httpMetadata?.contentType||'application/octet-stream','cache-control':'private, no-store','x-content-type-options':'nosniff','content-security-policy':"default-src 'none'; img-src 'self' data:; media-src 'self'; style-src 'unsafe-inline'; sandbox"}});
  }

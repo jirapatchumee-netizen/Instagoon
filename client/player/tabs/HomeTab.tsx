@@ -1,7 +1,7 @@
 import { type FormEvent } from 'react';
 import { type Post, type Creator, type Story, type User } from '../types';
 import { TRANSLATIONS, type Lang } from '../i18n';
-import { media, Media, PRESET_AVATARS, getAvatarSrc } from '../ui';
+import { media, AvatarImg, Media, PRESET_AVATARS, getAvatarSrc } from '../ui';
 import { IgHeart, IgComment, IgShare, IgBookmark, IgMore, IgVerified, IgAudio } from '../InstagramIcons';
 
 interface HomeTabProps {
@@ -85,7 +85,7 @@ export function HomeTab({
               >
                 <span className="fs-story-ring-inner">
                   {creator?.avatarKey ? (
-                    <img alt={name} src={media(creator.avatarKey)} />
+                    <AvatarImg src={media(creator.avatarKey)} name={creator.name} alt={name} />
                   ) : (
                     name.slice(0, 1)
                   )}
@@ -106,7 +106,7 @@ export function HomeTab({
             <span className="fs-story-ring fs-story-unviewed">
               <span className="fs-story-ring-inner">
                 {creator.avatarKey ? (
-                  <img alt={creator.name} src={media(creator.avatarKey)} />
+                  <AvatarImg src={media(creator.avatarKey)} name={creator.name} />
                 ) : (
                   creator.name.slice(0, 1)
                 )}
@@ -140,7 +140,7 @@ export function HomeTab({
                 >
                   <div className="fs-suggested-avatar">
                     {creator.avatarKey ? (
-                      <img src={media(creator.avatarKey)} alt={creator.name} />
+                      <AvatarImg src={media(creator.avatarKey)} name={creator.name} />
                     ) : (
                       creator.name.slice(0, 1)
                     )}
@@ -214,7 +214,7 @@ export function HomeTab({
                   <div className="fs-avatar-ring">
                     <div className="fs-avatar">
                       {creator?.avatarKey ? (
-                        <img src={media(creator.avatarKey)} alt={post.creatorName} />
+                        <AvatarImg src={media(creator.avatarKey)} name={creator.name} alt={post.creatorName} />
                       ) : (
                         post.creatorName.slice(0, 1)
                       )}

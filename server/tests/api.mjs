@@ -72,6 +72,18 @@ assert.throws(rawComment('raw-burst','p'),/rate_limit/);
 sql.prepare("UPDATE comments SET created_at=created_at-120000 WHERE user_id='u'").run();
 objects.set('av.webp',{body:'img',httpMetadata:{contentType:'image/svg+xml'}});sql.prepare("UPDATE creators SET avatar_key='av.webp' WHERE id='c'").run();
 {const r=await worker.fetch(new Request(env.PUBLIC_ORIGIN+'/api/media/av.webp',{headers:{cookie:`frost_session=${raw}`}}),env);assert.equal(r.status,200);assert.match(r.headers.get('content-security-policy'),/sandbox/,'media cannot run script');}
+// Episode pictures ([img:key] in a node) open once the player has reached that node, not before.
+{
+ sql.prepare("INSERT INTO creators(id,name,bio) VALUES('cimg','Img','bio')").run();
+ sql.prepare("INSERT INTO episodes(id,creator_id,title,relationship_required,position) VALUES('epimg','cimg','Pic',0,1)").run();
+ sql.prepare("INSERT INTO revisions(id,creator_id,episode_id,nodes,status,created_at) VALUES('rimg','cimg','epimg',?,'published',?)").run(JSON.stringify([{id:'a',text:'hi',choices:[{id:'go',text:'Go',nextNodeId:'b'}],end:false},{id:'b',text:'look\n\n[img:assets/ep_pic.webp]',choices:[],end:true}]),now);
+ objects.set('assets/ep_pic.webp',{body:'img',httpMetadata:{contentType:'image/webp'}});
+ assert.equal((await request('/api/media/assets/ep_pic.webp')).status,404,'episode picture is hidden before the episode starts');
+ sql.prepare("INSERT INTO chat_states(user_id,episode_id,revision_id,current_node_id) VALUES('u','epimg','rimg','a')").run();
+ assert.equal((await request('/api/media/assets/ep_pic.webp')).status,404,'episode picture is hidden until its node is reached');
+ sql.prepare("UPDATE chat_states SET current_node_id='b' WHERE user_id='u' AND episode_id='epimg'").run();
+ assert.equal((await request('/api/media/assets/ep_pic.webp')).status,200,'episode picture opens once its node is reached');
+}
 sql.prepare("INSERT INTO revisions(id,creator_id,episode_id,nodes,status,created_at) VALUES('r2','c','ep1',?,'published',?)").run(n2,now);
 result=await request('/api/chats/c/choose',{method:'POST',data:{choiceId:'go'}});assert.equal(result.payload.chat.revisionId,'r1');assert.equal(result.payload.chat.nodes[0].text,'End');assert.equal(result.payload.chat.episodes[0].completed,true);
 assert.equal(result.payload.chat.history[0].choiceText,'Go');

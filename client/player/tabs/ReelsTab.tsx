@@ -1,9 +1,9 @@
 import { useState, useMemo } from 'react';
 import { type Story, type Creator } from '../types';
 import { TRANSLATIONS, type Lang } from '../i18n';
-import { media, StoryContent } from '../ui';
+import { media, AvatarImg, StoryContent } from '../ui';
 import { IgHeart, IgComment, IgShare, IgVerified } from '../InstagramIcons';
-import { Film } from 'lucide-react';
+import { Film, Sparkles } from 'lucide-react';
 
 interface ReelsTabProps {
   stories: Story[];
@@ -86,11 +86,23 @@ export function ReelsTab({
       <div className="fs-reels-container">
         {/* Story / Reel Content */}
         <div className="fs-reels-viewport">
-          <StoryContent
-            story={currentStory}
-            name={creator?.name ?? 'Creator'}
-            lang={lang}
-          />
+          {currentStory.type === 'unlockable' && !currentStory.firstViewedAt ? (
+            // An Exclusive Story starts its 24h clock only when the player chooses to open it, and the
+            // server does not release its picture before that, so show the same gate as the story viewer.
+            <div className="fs-story-unlock-gate fs-reels-unlock-gate">
+              <Sparkles size={36} className="fs-unlock-icon" />
+              <p>{t.unlockableGateDesc}</p>
+              <button type="button" className="fs-primary" onClick={() => onOpenStory(currentStory)}>
+                {t.openStoryBtn}
+              </button>
+            </div>
+          ) : (
+            <StoryContent
+              story={currentStory}
+              name={creator?.name ?? 'Creator'}
+              lang={lang}
+            />
+          )}
 
           {/* Tap Zones for Next / Prev */}
           <div
@@ -129,7 +141,7 @@ export function ReelsTab({
               <div className={`fs-avatar-ring ${isCloseFriends ? 'is-close-friends' : ''}`}>
                 <div className="fs-avatar fs-avatar-sm">
                   {creator?.avatarKey ? (
-                    <img src={media(creator.avatarKey)} alt={creator.name} />
+                    <AvatarImg src={media(creator.avatarKey)} name={creator.name} />
                   ) : (
                     creator?.name.slice(0, 1) ?? 'C'
                   )}

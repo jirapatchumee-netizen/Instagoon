@@ -9,6 +9,7 @@ content/
   creators/<id>/posts.json       # Feed posts (ไม่บังคับ)
   creators/<id>/stories.json     # Stories (ไม่บังคับ)
   media/<key>                    # เช่น media/avatars/milin_avatar.png → key "avatars/milin_avatar.png"
+  drafts/<id>/                   # ตัวละครที่ซ่อนจากผู้เล่น (ไม่ถูก build) · ย้ายกลับเข้า creators/ เพื่อเปิดใช้
 ```
 
 **posts.json**

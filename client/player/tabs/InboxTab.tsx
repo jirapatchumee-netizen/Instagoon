@@ -1,6 +1,6 @@
 import { type Creator } from '../types';
 import { TRANSLATIONS, type Lang } from '../i18n';
-import { media } from '../ui';
+import { media, AvatarImg } from '../ui';
 import { IgVerified } from '../InstagramIcons';
 import { MessageSquare, Search } from 'lucide-react';
 import { useState } from 'react';
@@ -55,7 +55,7 @@ export function InboxTab({ creators, lang, onOpenChat }: InboxTabProps) {
                 <div className={`fs-avatar-ring ${hasCloseFriends ? 'is-close-friends' : ''}`}>
                   <div className="fs-avatar fs-avatar-md">
                     {creator.avatarKey ? (
-                      <img src={media(creator.avatarKey)} alt={creator.name} />
+                      <AvatarImg src={media(creator.avatarKey)} name={creator.name} />
                     ) : (
                       creator.name.slice(0, 1)
                     )}
