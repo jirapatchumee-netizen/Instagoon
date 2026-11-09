@@ -164,5 +164,49 @@ _Avoid_: Like Button, Free Text Reply
 
 ---
 
+## โครงแอปจำลอง (Simulation Shell)
+
+**Main Tab (แท็บหลัก)**:
+ปลายทางระดับบนสุดที่ผู้เล่นสลับได้จากแถบล่างตลอดเวลา มี 5 แท็บเรียงตามลำดับ: Home, Explore, Reels, Inbox, Player Profile
+_Avoid_: Screen, Page, Menu
+
+**Header Bar (แถบหัว)**:
+แถบด้านบนที่แสดงตลอดบนทุก Main Tab มีเฉพาะโลโก้, Energy Token คงเหลือ และทางเข้า Activity โดยไม่มีปุ่มใดซ้ำหน้าที่กับแถบล่าง
+_Avoid_: Navbar, Top Menu
+
+**Overlay (หน้าซ้อน)**:
+หน้าที่เปิดซ้อนบน Main Tab (เช่น โปรไฟล์ Creator, โพสต์, สตอรี่, DM Thread) และปิดได้ทีละชั้นด้วยปุ่มย้อนกลับของเครื่องหรือการปัดจากขอบจอ
+_Avoid_: Modal, Popup, Dialog
+
+**Reels (แท็บรีลส์)**:
+Main Tab ที่ให้ผู้เล่นปัดดู Broadcast Story, Unlockable Story ที่ปลดล็อกแล้ว และ Living Portrait ของ Creator ทุกรายต่อเนื่องกันในแนวตั้ง
+_Avoid_: Story Viewer, Video Feed
+
+**Inbox (กล่องข้อความ)**:
+Main Tab ที่รวมรายการ DM Thread ทั้งหมดของผู้เล่น เรียงตามความเคลื่อนไหวล่าสุด
+_Avoid_: Chat List, Messenger
+
+**Player Profile (โปรไฟล์ผู้เล่น)**:
+หน้าตัวตนของผู้เล่นในโลกโซเชียลจำลอง แสดงรูปโปรไฟล์ ชื่อเล่น จำนวน Creator ที่ติดตาม และแท็บ Saved, Collection, Following
+_Avoid_: Account, Settings
+
+**Collection (คลังสะสมของผู้เล่น)**:
+ชิ้นงานทั้งหมดที่ผู้เล่นปลดล็อกแล้วจาก Close Friends Vault ของ Creator ทุกราย รวมไว้ในที่เดียวบน Player Profile
+_Avoid_: Close Friends Vault, Inventory, Gallery
+
+**Diegetic Signal (สัญญาณเกมในคราบ Instagram)**:
+ข้อมูลความคืบหน้าของเกมที่แสดงผ่านองค์ประกอบที่มีอยู่จริงใน Instagram (เช่น วงแหวน Close Friends สีเขียวแทนระดับความสัมพันธ์ หรือ Highlight แทน Episode) แทนการแสดงตัวเลขหรือแถบแบบเกม
+_Avoid_: HUD, Stat Bar, Score Popup
+
+**Fan Crowd (ฝูงแฟนคลับจำลอง)**:
+ผู้ติดตามสมมติของ AI Creator ที่ไม่มีตัวตนจริง ใช้แสดงยอดถูกใจและรูปโปรไฟล์ในแถว "ถูกใจโดย" เพื่อให้โลกโซเชียลดูมีชีวิต โดยไม่มีผลต่อความสัมพันธ์หรือ Energy Token ของผู้เล่น
+_Avoid_: ผู้เล่นอื่น, Bot, Fake Account
+
+**Placeholder Copy (ข้อความตัวอย่างแทนเนื้อหา)**:
+ข้อความตัวอย่างที่ทีมกำหนดไว้ล่วงหน้าสำหรับหน้าที่ยังไม่มีเนื้อหาหรือไฟล์จริง (เช่น หน้าว่างของ Inbox หรือ Collection) เพื่อให้ผู้เล่นรู้ว่าต้องทำอะไรต่อ
+_Avoid_: Lorem ipsum, Dummy data
+
+---
+
 
 > คำศัพท์ของ Visual Novel เดิม (Frost Novel Platform, Overtime Secrets) เก็บไว้ในเอกสาร `GLOSSARY_VN.md` บนเครื่องเท่านั้น ไม่อยู่ใน repo นี้
