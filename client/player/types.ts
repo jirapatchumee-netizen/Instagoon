@@ -8,7 +8,16 @@ export type User = {
   nickname?: string | null;
   avatarId?: string | null;
 };
-export type Creator = { id: string; name: string; bio: string; avatarKey: string | null; relationship: number; following?: boolean };
+export type Creator = {
+  id: string;
+  name: string;
+  bio: string;
+  avatarKey: string | null;
+  relationship: number;
+  following?: boolean;
+  lastMessage?: { text: string; at: number; fromCreator: boolean } | null;
+  unread?: boolean;
+};
 export type Comment = { id: string; content: string; createdAt: number; own: boolean };
 export type Post = {
   id: string;
@@ -20,6 +29,8 @@ export type Post = {
   relationshipRequired: number;
   simulatedLikes: number;
   likes: number;
+  liked?: boolean;
+  saved?: boolean;
   comments: Comment[];
   firstCommentUsed: boolean;
 };

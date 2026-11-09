@@ -65,6 +65,29 @@ assert.equal((await request('/api/posts/p/comments',{method:'POST',data:{request
  assert.deepEqual(quiet.comments,[]);
  sql.prepare("DELETE FROM follows WHERE user_id='u' AND creator_id='c'").run();sql.prepare("DELETE FROM posts WHERE id='p_quiet'").run();
 }
+// Likes can be taken back, saves persist on the server, and the feed reports both for the player.
+{
+ sql.prepare("INSERT INTO follows(user_id,creator_id,created_at) VALUES('u','c',?)").run(now);
+ const flags=async()=>{const p=(await request('/api/feed')).payload.posts.find(x=>x.id==='p');return [p.liked,p.saved,p.likes];};
+ assert.deepEqual(await flags(),[false,false,0]);
+ assert.equal((await request('/api/posts/p/like',{method:'POST'})).status,200);
+ assert.equal((await request('/api/posts/p/save',{method:'POST'})).status,200);
+ assert.deepEqual(await flags(),[true,true,1]);
+ assert.equal((await request('/api/posts/p/like',{method:'DELETE'})).status,200);
+ assert.equal((await request('/api/posts/p/save',{method:'DELETE'})).status,200);
+ assert.deepEqual(await flags(),[false,false,0]);
+ assert.equal((await request('/api/posts/locked/save',{method:'POST'})).status,404,'cannot save a post the player cannot see');
+ sql.prepare("DELETE FROM follows WHERE user_id='u' AND creator_id='c'").run();
+}
+// Inbox: newest DM per creator as one clean line, unread until the player opens that thread.
+{
+ sql.prepare("INSERT INTO ai_chat_messages(id,user_id,creator_id,role,content,created_at) VALUES('im1','u','c','user','hello',?),('im2','u','c','assistant','[thought: secret] *waves* hey 😊 [img:assets/x.png]',?)").run(now-2000,now-1000);sql.prepare("DELETE FROM inbox_reads WHERE user_id='u'").run();
+ let c=(await request('/api/creators')).payload.creators.find(x=>x.id==='c');
+ assert.deepEqual(c.lastMessage,{text:'hey 😊 📷',at:now-1000,fromCreator:true});assert.equal(c.unread,true);
+ assert.equal((await request('/api/chats/c')).status,200);
+ c=(await request('/api/creators')).payload.creators.find(x=>x.id==='c');assert.equal(c.unread,false,'opening the thread marks it read');
+ sql.prepare("DELETE FROM ai_chat_messages WHERE id IN ('im1','im2')").run();
+}
 // Free energy is a one-time grant (0009): a comment does not start a refill timer, and the database
 // itself still refuses comments the API would refuse, even if a request slipped past the API checks.
 assert.equal(sql.prepare("SELECT next_refill_at t FROM energy WHERE user_id='u'").get().t,null,'a comment does not start a refill timer');
