@@ -29,3 +29,5 @@ crons = ["0 19 * * *"]
 
 [vars]
 GEMINI_MODEL = "gemini-2.5-flash"
+PRIMARY_AI_PROVIDER = "deepseek"
+DEEPSEEK_MODEL = "deepseek-flash"

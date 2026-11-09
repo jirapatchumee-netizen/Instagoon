@@ -66,11 +66,18 @@ Standalone Web Visual Novel เดิม (Overtime Secrets) พักการ�
      - ล็อกสิทธิ์เฉพาะ `creatorId` ที่ได้รับอนุญาต (เช่น `cheer`) ปฏิเสธตัวละครอื่นด้วย `403 Forbidden`
      - มี Authentication ผ่าน Bearer Token หรือ Custom Header Secret
      - บังคับเป็น Read-Only (`GET` เท่านั้น)
-2. **ห้ามใส่ Secret Token / API Key ใน `[vars]` ของ `wrangler*.toml` เด็ดขาด**:
+2. **ห้ามใส่ Secret Token / API Key ใน `[vars]` ของ `wrangler*.toml` เด็ดขาด (ใช้มาตรฐาน SOT)**:
    - บล็อก `[vars]` ใน `wrangler.toml` เป็น environment variable แบบสาธารณะ ห้ามใส่ Secret, Token หรือ Password ใดๆ
-   - ค่าที่เป็นความลับทั้งหมด (เช่น `AGENT_SECRET`, `GEMINI_API_KEY`, `DEEPSEEK_API_KEY`, `FIFTY_SHADES_SECRET_PROMPT`) **ต้องตั้งผ่าน Cloudflare Worker Secret เท่านั้น**:
+   - **มาตรฐาน Single Source of Truth (SOT) สำหรับ Secret**: ค่าความลับและ API Key ทั้งหมด (`DEEPSEEK_API_KEY`, `GEMINI_API_KEY`, `ELEVENLABS_API_KEY`, `FIFTY_SHADES_SECRET_PROMPT`) เก็บเป็น SOT ไว้ใน `private-docs/shared_secrets.env` (อยู่นอก repo)
+   - **ห้ามอัปเดตเฉพาะ Staging หรือ Prod ตัวใดตัวหนึ่ง**: ให้เพิ่ม/แก้ไขใน `private-docs/shared_secrets.env` แล้วรันสคริปต์ซิงก์เข้าทั้งสองระบบพร้อมกัน:
+     ```bash
+     ./scripts/sync_secrets.sh        # ซิงก์ SOT เข้าทั้ง Staging และ Production พร้อมกัน
+     ./scripts/sync_secrets.sh --list # ตรวจสอบความถูกต้องและ diff ของ Secret
+     ```
+   - หากต้องรันด้วยตนเอง ต้องรันใส่ทั้งสองฝั่งเสมอ:
      ```bash
      npx wrangler secret put <SECRET_NAME> --config server/wrangler.staging.toml
+     npx wrangler secret put <SECRET_NAME> --config server/wrangler.toml
      ```
 3. **ห้ามเปิดเผย Secret ผ่าน Public Surface**:
    - ห้ามใส่ Secret Token ลงใน Git commit message, PR description, หรือ GitHub Issues
