@@ -29,11 +29,11 @@ export function ProfileSetupModal({
     e.preventDefault();
     const trimmed = nickname.trim();
     if (!trimmed) {
-      setErr('กรุณากรอกชื่อเล่นของคุณ');
+      setErr(t.nicknameRequired);
       return;
     }
     if (!selectedAvatar) {
-      setErr('กรุณาเลือกรูปโปรไฟล์');
+      setErr(t.avatarRequired);
       return;
     }
     setErr('');
@@ -70,14 +70,14 @@ export function ProfileSetupModal({
                     onClick={() => setSelectedAvatar(av.id)}
                   >
                     <div className="fs-avatar-card-thumb">
-                      <img src={av.src} alt={av.label} />
+                      <img src={av.src} alt={t.presetAvatarLabels[av.id] ?? av.label} />
                       {isSelected && (
                         <div className="fs-avatar-checkmark">
                           <Check size={12} strokeWidth={3} />
                         </div>
                       )}
                     </div>
-                    <span className="fs-avatar-card-label">{av.label}</span>
+                    <span className="fs-avatar-card-label">{t.presetAvatarLabels[av.id] ?? av.label}</span>
                   </button>
                 );
               })}
@@ -110,7 +110,7 @@ export function ProfileSetupModal({
                 disabled={saving}
                 onClick={onClose}
               >
-                ยกเลิก
+                {t.postMenuCancel}
               </button>
             )}
             <button
@@ -118,7 +118,7 @@ export function ProfileSetupModal({
               className="fs-primary"
               disabled={saving || !nickname.trim() || !selectedAvatar}
             >
-              {saving ? 'กำลังบันทึก...' : isEdit ? t.saveProfileEditBtn : t.saveProfileBtn}
+              {saving ? t.savingProfile : isEdit ? t.saveProfileEditBtn : t.saveProfileBtn}
             </button>
           </div>
         </form>

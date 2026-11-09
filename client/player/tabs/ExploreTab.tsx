@@ -54,8 +54,8 @@ export function ExploreTab({
                 <h2>{creator.name}</h2>
                 <IgVerified size={15} />
                 {creator.relationship >= 100 ? (
-                  <span className="fs-top-fan-pill" title="คุณคือแฟนตัวยง (ความสัมพันธ์ครบ 100)">
-                    💎 แฟนตัวยง
+                  <span className="fs-top-fan-pill" title={t.topFanTitle}>
+                    {t.topFanBadge}
                   </span>
                 ) : (
                   <span className="fs-rel-pill">
