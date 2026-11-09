@@ -5804,16 +5804,14 @@ dialog.fs-overlay[open]::backdrop {
     background: #000000;
   }
   .fs-insta-header {
+    width: 100%;
     max-width: 480px;
-    left: 50% !important;
-    transform: translateX(-50%);
-    border-left: 1px solid #27272a;
-    border-right: 1px solid #27272a;
   }
   .fs-insta-bottom-bar {
+    left: 0;
+    right: 0;
+    margin: 0 auto;
     max-width: 480px;
-    left: 50% !important;
-    transform: translateX(-50%);
     border-left: 1px solid #27272a;
     border-right: 1px solid #27272a;
   }
