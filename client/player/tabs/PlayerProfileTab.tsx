@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { type User, type Creator, type Post } from '../types';
 import { TRANSLATIONS, type Lang } from '../i18n';
-import { getAvatarSrc, media } from '../ui';
+import { getAvatarSrc, media, AvatarImg } from '../ui';
 import { LangSelect } from '../LangSelect';
 import { Bookmark, Sparkles, User as UserIcon, Users, Volume2, Smartphone } from 'lucide-react';
 import { IgVerified } from '../InstagramIcons';
@@ -207,7 +207,7 @@ export function PlayerProfileTab({
                 >
                   <div className="fs-avatar fs-avatar-md">
                     {creator.avatarKey ? (
-                      <img src={media(creator.avatarKey)} alt={creator.name} />
+                      <AvatarImg src={media(creator.avatarKey)} name={creator.name} />
                     ) : (
                       creator.name.slice(0, 1)
                     )}

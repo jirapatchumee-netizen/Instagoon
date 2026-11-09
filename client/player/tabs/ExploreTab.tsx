@@ -1,6 +1,6 @@
 import { type Creator } from '../types';
 import { TRANSLATIONS, type Lang } from '../i18n';
-import { media } from '../ui';
+import { media, AvatarImg } from '../ui';
 import { IgVerified } from '../InstagramIcons';
 
 interface ExploreTabProps {
@@ -41,7 +41,7 @@ export function ExploreTab({
             <div className="fs-creator-avatar-wrap">
               <div className="fs-avatar fs-avatar-large">
                 {creator.avatarKey ? (
-                  <img src={media(creator.avatarKey)} alt={creator.name} />
+                  <AvatarImg src={media(creator.avatarKey)} name={creator.name} />
                 ) : (
                   creator.name.slice(0, 1)
                 )}

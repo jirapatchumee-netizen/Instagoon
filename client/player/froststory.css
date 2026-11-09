@@ -5570,6 +5570,12 @@ dialog.fs-overlay[open]::backdrop {
   right: 0;
 }
 
+.fs-reels-unlock-gate {
+  position: relative;
+  z-index: 21; /* above the next/previous tap zones so the button is always reachable */
+  color: rgba(255, 255, 255, 0.82);
+}
+
 .fs-reels-progress-bar-row {
   position: absolute;
   top: 8px;

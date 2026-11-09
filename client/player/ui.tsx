@@ -71,6 +71,15 @@ export function ChatComposer({
 
 export const media = (key: string) => `/api/media/${key.split('/').map(encodeURIComponent).join('/')}`;
 
+// A creator avatar that falls back to the name's first letter when the picture is missing, instead of
+// the browser's broken-image icon and alt text spilling out of the circle.
+export function AvatarImg({ src, name, alt = name }: { src: string; name: string; alt?: string }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [src]);
+  if (failed) return <span aria-label={alt || undefined}>{Array.from(name)[0] ?? ''}</span>;
+  return <img src={src} alt={alt} onError={() => setFailed(true)} />;
+}
+
 export function Media({
   mediaKey,
   label,

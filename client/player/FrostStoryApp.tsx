@@ -8,7 +8,7 @@ import { type Lang, LANGS, TRANSLATIONS } from './i18n';
 import { LangSelect } from './LangSelect';
 import { type Energy, type User, type Creator, type Post, type Story, type AiChatMessage, type Chat, type Screen, type ProfileData } from './types';
 import { ApiError, api } from './api';
-import { ChatComposer, media, hasSpokenDialogue, renderBubbleContent, json, StoryContent, Modal, getAvatarSrc } from './ui';
+import { ChatComposer, media, AvatarImg, hasSpokenDialogue, renderBubbleContent, json, StoryContent, Modal, getAvatarSrc } from './ui';
 import { ProfileSetupModal } from './overlays/ProfileSetupModal';
 import { LoginScreen } from './LoginScreen';
 import { HomeTab } from './tabs/HomeTab';
@@ -1101,7 +1101,7 @@ export function FrostStoryApp() {
                       }}
                     >
                       {profileData.creator.avatarKey ? (
-                        <img src={media(profileData.creator.avatarKey)} alt={profileData.creator.name} />
+                        <AvatarImg src={media(profileData.creator.avatarKey)} name={profileData.creator.name} />
                       ) : (
                         <div className="fs-avatar-letter">{profileData.creator.name.slice(0, 1)}</div>
                       )}
@@ -1395,7 +1395,7 @@ export function FrostStoryApp() {
                 <div className="fs-creator-avatar-wrap">
                   <div className="fs-avatar">
                     {selectedCreator.avatarKey ? (
-                      <img src={media(selectedCreator.avatarKey)} alt={selectedCreator.name} />
+                      <AvatarImg src={media(selectedCreator.avatarKey)} name={selectedCreator.name} />
                     ) : (
                       selectedCreator.name.slice(0, 1)
                     )}
@@ -1529,7 +1529,7 @@ export function FrostStoryApp() {
               <div className="fs-dm-bio-card">
                 <div className="fs-avatar fs-avatar-large fs-dm-bio-avatar">
                   {selectedCreator.avatarKey ? (
-                            <img src={media(selectedCreator.avatarKey)} alt={selectedCreator.name} />
+                            <AvatarImg src={media(selectedCreator.avatarKey)} name={selectedCreator.name} />
                           ) : (
                             selectedCreator.name.slice(0, 1)
                           )}
@@ -1551,7 +1551,7 @@ export function FrostStoryApp() {
                     <div className="fs-dm-row-left fs-group-end fs-msg-in">
                       <div className="fs-avatar fs-avatar-tiny">
                         {selectedCreator.avatarKey ? (
-                          <img src={media(selectedCreator.avatarKey)} alt="" />
+                          <AvatarImg src={media(selectedCreator.avatarKey)} name={selectedCreator.name} alt="" />
                         ) : (
                           selectedCreator.name.slice(0, 1)
                         )}
@@ -1633,7 +1633,7 @@ export function FrostStoryApp() {
                       <div key={msg.id} className={`fs-dm-row-left${groupEnd ? ' fs-group-end' : ''}${isNew ? ' fs-msg-in' : ''}`}>
                         <div className={`fs-avatar fs-avatar-tiny${groupEnd ? '' : ' is-spacer'}`} aria-hidden={!groupEnd}>
                           {selectedCreator.avatarKey ? (
-                            <img src={media(selectedCreator.avatarKey)} alt="" />
+                            <AvatarImg src={media(selectedCreator.avatarKey)} name={selectedCreator.name} alt="" />
                           ) : (
                             selectedCreator.name.slice(0, 1)
                           )}
@@ -1750,7 +1750,7 @@ export function FrostStoryApp() {
                     <div className="fs-dm-row-left fs-group-end fs-msg-in">
                       <div className="fs-avatar fs-avatar-tiny">
                         {selectedCreator.avatarKey ? (
-                            <img src={media(selectedCreator.avatarKey)} alt="" />
+                            <AvatarImg src={media(selectedCreator.avatarKey)} name={selectedCreator.name} alt="" />
                           ) : (
                             selectedCreator.name.slice(0, 1)
                           )}
@@ -1770,7 +1770,7 @@ export function FrostStoryApp() {
                       <div className="fs-dm-row-left fs-group-end">
                         <div className="fs-avatar fs-avatar-tiny">
                           {selectedCreator.avatarKey ? (
-                            <img src={media(selectedCreator.avatarKey)} alt="" />
+                            <AvatarImg src={media(selectedCreator.avatarKey)} name={selectedCreator.name} alt="" />
                           ) : (
                             selectedCreator.name.slice(0, 1)
                           )}
@@ -1815,7 +1815,7 @@ export function FrostStoryApp() {
                   <div className="fs-dm-row-left fs-group-end fs-msg-in" key={node.id}>
                     <div className="fs-avatar fs-avatar-tiny">
                       {selectedCreator.avatarKey ? (
-                            <img src={media(selectedCreator.avatarKey)} alt="" />
+                            <AvatarImg src={media(selectedCreator.avatarKey)} name={selectedCreator.name} alt="" />
                           ) : (
                             selectedCreator.name.slice(0, 1)
                           )}
@@ -1957,7 +1957,7 @@ export function FrostStoryApp() {
             <div className="fs-glossy-avatar-wrap">
               <div className="fs-avatar fs-avatar-large fs-glossy-avatar">
                 {unlockedStoryModal.avatarKey ? (
-                  <img src={media(unlockedStoryModal.avatarKey)} alt={unlockedStoryModal.creatorName} />
+                  <AvatarImg src={media(unlockedStoryModal.avatarKey)} name={unlockedStoryModal.creatorName} />
                 ) : (
                   unlockedStoryModal.creatorName.slice(0, 1)
                 )}
