@@ -345,7 +345,10 @@ async function episodeMediaReached(env,uid,mediaKey){
  for(const r of rows){const seen=new Set(String(r.visited||'').split('\x1f'));let nodes=[];try{nodes=JSON.parse(r.nodes);}catch{}if(nodes.some(n=>seen.has(n.id)&&String(n.text||'').includes(tag)))return true;}
  return false;
 }
-async function visibleStory(env,user,sid,now){const s=await one(env,`SELECT s.*,v.first_viewed_at FROM stories s LEFT JOIN relationships r ON r.creator_id=s.creator_id AND r.user_id=? LEFT JOIN story_views v ON v.story_id=s.id AND v.user_id=? WHERE s.id=? AND s.status='published' AND s.published_at<=? AND COALESCE(r.score,0)>=s.relationship_required`,user.id,user.id,sid,now);if(!s||(s.type==='broadcast'&&now>=s.published_at+86400000)||(s.first_viewed_at!=null&&s.type==='unlockable'&&now>=s.first_viewed_at+86400000))return null;return s;}
+const storyLive=(s,now)=>!!s&&!(s.type==='broadcast'&&now>=s.published_at+86400000)&&!(s.first_viewed_at!=null&&s.type==='unlockable'&&now>=s.first_viewed_at+86400000);
+async function visibleStory(env,user,sid,now){const s=await one(env,`SELECT s.*,v.first_viewed_at FROM stories s LEFT JOIN relationships r ON r.creator_id=s.creator_id AND r.user_id=? LEFT JOIN story_views v ON v.story_id=s.id AND v.user_id=? WHERE s.id=? AND s.status='published' AND s.published_at<=? AND COALESCE(r.score,0)>=s.relationship_required`,user.id,user.id,sid,now);return storyLive(s,now)?s:null;}
+// Same rules as visibleStory for every followed creator, in one query.
+async function visibleFollowedStories(env,user,now){const rows=await all(env,`SELECT s.*,v.first_viewed_at FROM stories s JOIN follows f ON f.creator_id=s.creator_id AND f.user_id=? LEFT JOIN relationships r ON r.creator_id=s.creator_id AND r.user_id=? LEFT JOIN story_views v ON v.story_id=s.id AND v.user_id=? WHERE s.status='published' AND s.published_at<=? AND COALESCE(r.score,0)>=s.relationship_required`,user.id,user.id,user.id,now);return rows.filter(s=>storyLive(s,now));}
 let userProfileReady = false;
 async function ensureUserProfileColumns(env) {
   if (userProfileReady) return;
@@ -518,8 +521,13 @@ async function player(req,env,user,path,now,ctx) {
  }
  if(path==='/api/feed'&&method==='GET'){
   const posts=await all(env,`SELECT p.*,c.name creator_name,(SELECT COUNT(*) FROM likes l WHERE l.post_id=p.id) likes,EXISTS(SELECT 1 FROM comment_claims x WHERE x.user_id=? AND x.post_id=p.id) claimed FROM posts p JOIN creators c ON c.id=p.creator_id JOIN follows f ON f.creator_id=p.creator_id AND f.user_id=? LEFT JOIN relationships r ON r.creator_id=p.creator_id AND r.user_id=? WHERE p.status='published' AND p.published_at<=? AND COALESCE(r.score,0)>=p.relationship_required ORDER BY p.published_at DESC LIMIT 100`,user.id,user.id,user.id,now);
-  for(const p of posts){p.comments=(await all(env,'SELECT id,user_id,content,created_at FROM comments WHERE post_id=? AND hidden=0 ORDER BY created_at LIMIT 100',p.id)).map(c=>({id:c.id,content:c.content,createdAt:c.created_at,own:c.user_id===user.id}));}
-  await run(env,'INSERT INTO activity(user_id,kind,created_at) VALUES(?,?,?)',user.id,'feed',now);
+  // One query for every post's comments (first 100 each) instead of one round trip per post.
+  const commentRows=posts.length?await all(env,'SELECT post_id,id,user_id,content,created_at FROM (SELECT c.*,ROW_NUMBER() OVER (PARTITION BY c.post_id ORDER BY c.created_at) n FROM comments c WHERE c.post_id IN (SELECT value FROM json_each(?)) AND c.hidden=0) WHERE n<=100 ORDER BY created_at',JSON.stringify(posts.map(p=>p.id))):[];
+  const byPost=new Map(posts.map(p=>[p.id,[]]));
+  for(const c of commentRows)byPost.get(c.post_id)?.push({id:c.id,content:c.content,createdAt:c.created_at,own:c.user_id===user.id});
+  for(const p of posts)p.comments=byPost.get(p.id);
+  const logged=run(env,'INSERT INTO activity(user_id,kind,created_at) VALUES(?,?,?)',user.id,'feed',now);
+  if(ctx?.waitUntil)ctx.waitUntil(logged);else await logged;
   return json({posts:posts.map(p=>({...postShape(p),comments:p.comments}))});
  }
  m=path.match(/^\/api\/posts\/([\w-]+)\/comments$/);
@@ -540,8 +548,7 @@ async function player(req,env,user,path,now,ctx) {
  m=path.match(/^\/api\/posts\/([\w-]+)\/like$/);
  if(m&&method==='POST'){if(!await visiblePost(env,user,id(m[1]),now))return json({error:'not_found'},404);await run(env,'INSERT OR IGNORE INTO likes(user_id,post_id) VALUES(?,?)',user.id,m[1]);return json({ok:true});}
  if(path==='/api/stories'&&method==='GET'){
-  const ids=await all(env,"SELECT s.id FROM stories s JOIN follows f ON f.creator_id=s.creator_id AND f.user_id=? WHERE s.status='published' AND s.published_at<=?",user.id,now); const stories=[];
-  for(const i of ids){const s=await visibleStory(env,user,i.id,now);if(s)stories.push(storyShape(s));}return json({stories});
+  return json({stories:(await visibleFollowedStories(env,user,now)).map(storyShape)});
  }
  m=path.match(/^\/api\/stories\/([\w-]+)\/view$/);
  if(m&&method==='POST'){
@@ -1523,7 +1530,7 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
   if(!allowed){allowed=!!await one(env,'SELECT 1 FROM reward_unlocks WHERE user_id=? AND reward_key=?',user.id,mediaKey);}
   if(!allowed)allowed=await episodeMediaReached(env,user.id,mediaKey);
   if(!allowed)return json({error:'not_found'},404);const file=await bundledMedia(env,mediaKey)||await mediaStore(env).get(mediaKey);if(!file)return json({error:'not_found'},404);
-  return new Response(file.body,{headers:{'content-type':file.httpMetadata?.contentType||'application/octet-stream','cache-control':'private, no-store','x-content-type-options':'nosniff','content-security-policy':"default-src 'none'; img-src 'self' data:; media-src 'self'; style-src 'unsafe-inline'; sandbox"}});
+  return new Response(file.body,{headers:{'content-type':file.httpMetadata?.contentType||'application/octet-stream','cache-control':'private, max-age=86400','x-content-type-options':'nosniff','content-security-policy':"default-src 'none'; img-src 'self' data:; media-src 'self'; style-src 'unsafe-inline'; sandbox"}});
  }
  if(path==='/api/account'&&method==='DELETE'){await run(env,'DELETE FROM users WHERE id=?',user.id);return json({ok:true},200,{'set-cookie':secureCookie('frost_session','',0)});}
  return json({error:'not_found'},404);
@@ -1592,6 +1599,10 @@ async fetch(req,env,ctx){
    return await handleAgentDevRoute(req, env, path, now, user);
   }
   if(!user)return json({error:'unauthorized'},401);
-  return await player(req,env,user,path,now,ctx);
+  const res=await player(req,env,user,path,now,ctx);
+  // Time spent in the Worker (D1 included), visible in DevTools > Network > Timing. Compare with the
+  // request's total time to tell Worker/D1 cost from network cost.
+  try{res.headers.set('server-timing',`app;dur=${Date.now()-now}`);}catch{}
+  return res;
  }catch(e){const msg=String(e?.message||'');if(msg.includes('energy_empty'))return json({error:'energy_empty'},402);if(msg.includes('post_unavailable'))return json({error:'not_found'},404);if(msg.includes('rate_limit'))return json({error:'rate_limit'},429);if(msg.includes('idempotency_conflict'))return json({error:'idempotency_conflict'},409);if(msg.includes('invite_limit'))return json({error:'invite_limit'},409);if(e?.status)return json({error:msg},e.status);console.error('froststory request failed',e?.name);return json({error:'internal_error'},500);}
 }};
