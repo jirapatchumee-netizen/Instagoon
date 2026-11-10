@@ -119,12 +119,36 @@ async function inspect(page, where, { lang, viewport, content, tab }) {
     const out = { broken: [], unnamed: [], smallInputs: [], tiny: [], thai: [], clipped: [] };
     // Content wider than its own box, where the box neither scrolls nor declares an ellipsis: the text is being
     // cut off by an ancestor and the document itself may still fit the screen, so overflowX would miss it.
+    // Measured from the painted boxes, not scrollWidth: the WCAG touch targets in froststory.css are absolutely
+    // positioned ::after overlays that deliberately sit 8px outside their button, which scrollWidth counts as
+    // overflow but nothing is actually cut.
+    const inFlowRight = (el) => {
+      let right = -Infinity;
+      for (const kid of el.children) {
+        const k = getComputedStyle(kid);
+        if (k.position === 'absolute' || k.position === 'fixed' || k.display === 'none' || k.visibility === 'hidden') continue;
+        const b = kid.getBoundingClientRect();
+        if (b.width > 0) right = Math.max(right, b.right);
+      }
+      for (const n of el.childNodes) {
+        if (n.nodeType !== 3 || !n.textContent.trim()) continue;
+        const range = document.createRange();
+        range.selectNodeContents(n);
+        const b = range.getBoundingClientRect();
+        if (b.width > 0) right = Math.max(right, b.right);
+      }
+      return right;
+    };
     for (const el of document.querySelectorAll('*')) {
       if (!visible(el)) continue;
       const cs = getComputedStyle(el);
       if (cs.textOverflow === 'ellipsis' || cs.overflowX === 'auto' || cs.overflowX === 'scroll') continue;
-      if (el.clientWidth > 0 && el.scrollWidth > el.clientWidth + 1)
-        out.clipped.push(`${String(el.className).slice(0, 40) || el.tagName} cuts ${el.scrollWidth - el.clientWidth}px`);
+      if (el.clientWidth <= 0) continue;
+      const box = el.getBoundingClientRect();
+      const limit = box.right - parseFloat(cs.paddingRight) - parseFloat(cs.borderRightWidth);
+      const right = inFlowRight(el);
+      if (Number.isFinite(right) && right > limit + 1)
+        out.clipped.push(`${String(el.className).slice(0, 40) || el.tagName} cuts ${Math.round(right - limit)}px`);
     }
     for (const img of document.images) if (img.complete && img.naturalWidth === 0 && img.getAttribute('src') && visible(img)) out.broken.push(img.getAttribute('src'));
     for (const el of document.querySelectorAll('button, a[href], [role=button], input, textarea')) {
