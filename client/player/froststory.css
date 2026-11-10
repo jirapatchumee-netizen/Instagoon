@@ -5837,14 +5837,34 @@ dialog.fs-overlay[open]::backdrop {
   cursor: pointer;
 }
 
+/* .fs-avatar is width:100%/flex-shrink:0 by design — it fills a wrapper that carries the pixel size. This row
+   has no such wrapper, so the avatar has to be sized here or it takes the whole line. */
+.fs-following-item .fs-avatar {
+  width: 44px;
+  height: 44px;
+}
+
 .fs-following-info {
   flex: 1;
+  min-width: 0;
 }
 
 .fs-following-name-row {
   display: flex;
   align-items: center;
   gap: 5px;
+}
+
+.fs-following-name-row strong,
+.fs-following-info .fs-muted {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fs-following-info .fs-muted {
+  display: block;
 }
 
 .fs-account-settings {

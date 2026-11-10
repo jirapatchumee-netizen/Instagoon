@@ -114,3 +114,20 @@ test('NPC ZIP import unpacks into a folder the build accepts', async () => {
   assert.deepEqual(await importNpcZip(await zip.generateAsync({ type: 'nodebuffer' }), join(root, 'content')), { gameId: 'zipped', assets: 1 });
   assert.equal(buildContent(join(root, 'content'), join(root, 'dist')).creators[0].id, 'zipped');
 });
+
+test('a png is served as its derived webp only to clients that accept webp', async () => {
+  const { content, dist } = fixture();
+  writeFileSync(join(content, 'media', 'avatars', 'tester.png'), 'PNGSOURCE');
+  writeFileSync(join(content, 'creators', 'tester', 'character.json'), JSON.stringify({ ...newNpc('tester'), name: 'Tester', avatar: 'avatars/tester.png' }));
+  buildContent(content, dist);
+  resetContentCache();
+  const { env: e } = env(dist);
+  await ensureContent(e);
+  const served = async (accept) => {
+    const f = await bundledMedia(e, 'avatars/tester.png', accept);
+    return f ? await new Response(f.body).text() : null;
+  };
+  assert.equal(await served('image/avif,image/webp,image/*'), 'RIFFxxxxWEBP', 'a webp-capable client gets the derived file');
+  assert.equal(await served('image/png,image/*'), 'PNGSOURCE', 'a client that cannot decode webp keeps the png');
+  assert.equal(await served(''), 'PNGSOURCE', 'no Accept header keeps the png');
+});

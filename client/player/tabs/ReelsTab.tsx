@@ -146,7 +146,7 @@ export function ReelsTab({
               onClick={() => creator && onViewProfile(creator)}
             >
               <div className={`fs-avatar-ring ${isCloseFriends ? 'is-close-friends' : ''}`}>
-                <div className="fs-avatar fs-avatar-sm">
+                <div className="fs-avatar">
                   {creator?.avatarKey ? (
                     <AvatarImg src={media(creator.avatarKey)} name={creator.name} />
                   ) : (

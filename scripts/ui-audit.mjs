@@ -77,15 +77,19 @@ async function mediaCrawl(page) {
     ];
     const out = [];
     for (const [what, key] of keys) {
-      const r = await fetch('/api/media/' + key.split('/').map(encodeURIComponent).join('/'));
+      // Ask the way an <img> does: /api/media serves the derived .webp to clients that accept it, so the
+      // budget has to be judged on the bytes a player actually downloads, not on the PNG in git.
+      const r = await fetch('/api/media/' + key.split('/').map(encodeURIComponent).join('/'), {
+        headers: { accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8' },
+      });
       const size = (await r.arrayBuffer()).byteLength;
-      out.push({ what, key, status: r.status, size, cache: r.headers.get('cache-control') });
+      out.push({ what, key, status: r.status, size, type: r.headers.get('content-type'), cache: r.headers.get('cache-control') });
     }
     return out;
   });
   for (const m of results) {
     if (m.status !== 200) add('error', 'media-missing', m.what, `${m.key} → HTTP ${m.status}`);
-    else if (m.size > BUDGET.imageBytes) add('warn', 'image-weight', m.what, `${m.key} is ${Math.round(m.size / 1024)} KB (budget ${BUDGET.imageBytes / 1024} KB)`);
+    else if (m.size > BUDGET.imageBytes) add('warn', 'image-weight', m.what, `${m.key} is ${Math.round(m.size / 1024)} KB ${m.type} (budget ${BUDGET.imageBytes / 1024} KB)`);
     if (m.status === 200 && /no-store/.test(m.cache || '')) add('warn', 'media-cache', m.what, `${m.key} is served with cache-control: ${m.cache}`);
   }
 }
@@ -116,7 +120,40 @@ async function inspect(page, where, { lang, viewport, content, tab }) {
       const b = el.getBoundingClientRect(), cs = getComputedStyle(el);
       return b.width > 0 && b.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none';
     };
-    const out = { broken: [], unnamed: [], smallInputs: [], tiny: [], thai: [] };
+    const out = { broken: [], unnamed: [], smallInputs: [], tiny: [], thai: [], clipped: [] };
+    // Content wider than its own box, where the box neither scrolls nor declares an ellipsis: the text is being
+    // cut off by an ancestor and the document itself may still fit the screen, so overflowX would miss it.
+    // Measured from the painted boxes, not scrollWidth: the WCAG touch targets in froststory.css are absolutely
+    // positioned ::after overlays that deliberately sit 8px outside their button, which scrollWidth counts as
+    // overflow but nothing is actually cut.
+    const inFlowRight = (el) => {
+      let right = -Infinity;
+      for (const kid of el.children) {
+        const k = getComputedStyle(kid);
+        if (k.position === 'absolute' || k.position === 'fixed' || k.display === 'none' || k.visibility === 'hidden') continue;
+        const b = kid.getBoundingClientRect();
+        if (b.width > 0) right = Math.max(right, b.right);
+      }
+      for (const n of el.childNodes) {
+        if (n.nodeType !== 3 || !n.textContent.trim()) continue;
+        const range = document.createRange();
+        range.selectNodeContents(n);
+        const b = range.getBoundingClientRect();
+        if (b.width > 0) right = Math.max(right, b.right);
+      }
+      return right;
+    };
+    for (const el of document.querySelectorAll('*')) {
+      if (!visible(el)) continue;
+      const cs = getComputedStyle(el);
+      if (cs.textOverflow === 'ellipsis' || cs.overflowX === 'auto' || cs.overflowX === 'scroll') continue;
+      if (el.clientWidth <= 0) continue;
+      const box = el.getBoundingClientRect();
+      const limit = box.right - parseFloat(cs.paddingRight) - parseFloat(cs.borderRightWidth);
+      const right = inFlowRight(el);
+      if (Number.isFinite(right) && right > limit + 1)
+        out.clipped.push(`${String(el.className).slice(0, 40) || el.tagName} cuts ${Math.round(right - limit)}px`);
+    }
     for (const img of document.images) if (img.complete && img.naturalWidth === 0 && img.getAttribute('src') && visible(img)) out.broken.push(img.getAttribute('src'));
     for (const el of document.querySelectorAll('button, a[href], [role=button], input, textarea')) {
       if (!visible(el)) continue;
@@ -148,6 +185,7 @@ async function inspect(page, where, { lang, viewport, content, tab }) {
   for (const s of new Set(r.smallInputs)) add('error', 'input-under-16px', where, s);
   for (const s of new Set(r.tiny)) add('warn', 'tap-target-under-24px', where, s);
   for (const s of new Set(r.thai)) add('error', 'untranslated-ui', where, s);
+  for (const s of new Set(r.clipped)) add('warn', 'content-clipped', where, s);
   if (r.overflowX > 0) add('error', 'horizontal-overflow', where, `${r.overflowX}px wider than the screen`);
   if (r.overflowY > 0) add('error', 'reels-taller-than-screen', where, `${r.overflowY}px taller than the screen`);
 }
@@ -180,7 +218,18 @@ try {
         await page.waitForLoadState('networkidle');
         await page.waitForTimeout(300);
         await inspect(page, `${viewport.name}/${lang}/${tab}`, { lang, viewport, content, tab });
-        if (viewport.name === 'phone') await page.screenshot({ path: join(OUT, `${viewport.name}-${lang}-${tab}.png`) }).catch(() => {});
+        if (viewport.name !== 'iphone-se') await page.screenshot({ path: join(OUT, `${viewport.name}-${lang}-${tab}.png`) }).catch(() => {});
+        // The account tab holds three sub-tabs whose contents are React state, invisible until clicked.
+        if (tab === 'profile') {
+          const subtabs = page.locator('.fs-player-subtab');
+          for (let s = 0, n = await subtabs.count(); s < n; s++) {
+            await subtabs.nth(s).click();
+            await page.waitForTimeout(200);
+            await inspect(page, `${viewport.name}/${lang}/${tab}/subtab-${s}`, { lang, viewport, content, tab });
+            if (viewport.name !== 'iphone-se')
+              await page.screenshot({ path: join(OUT, `${viewport.name}-${lang}-profile-subtab-${s}.png`) }).catch(() => {});
+          }
+        }
       }
       for (const [check, detail] of new Map(bad.map(([c, d]) => [c + d, [c, d]])).values()) add('error', check, `${viewport.name}/${lang}`, detail);
       await context.close();
