@@ -8,8 +8,8 @@ import { ArrowLeft, BadgeCheck, Check, Copy, Paperclip, Zap } from 'lucide-react
 // only what the order carries; the player never types or confirms an amount in the chat.
 
 type Energy = { free: number; purchased: number; diamonds: number; nextRefillAt: number | null };
-type Product = { sku: string; name: string; priceSatang: number; energy: number; purchasedToday?: boolean };
-type Order = { id: string; sku: string; priceSatang: number; amountSatang: number; energy: number; status: 'pending' | 'paid' | 'expired' | 'refunded' | 'revoked'; expiresAt: number; payTo: PayTo | null };
+type Product = { sku: string; name: string; priceSatang: number; energy: number; diamonds?: number; purchasedToday?: boolean };
+type Order = { id: string; sku: string; priceSatang: number; amountSatang: number; energy: number; diamonds?: number; status: 'pending' | 'paid' | 'expired' | 'refunded' | 'revoked'; expiresAt: number; payTo: PayTo | null };
 type PayTo = { bank: string; accountNo: string; accountName: string };
 type ShopInfo = { enabled: boolean; blocked?: boolean; ageConfirmed?: boolean; purchasedToday?: boolean; purchasedSkusToday?: string[]; diamonds?: number; nextAvailableAt?: number; products: Product[]; openOrder?: Order | null };
 type Msg = { id: number; from: 'bot' | 'me'; text?: string; card?: boolean; image?: string };
@@ -29,11 +29,11 @@ const TEXT = {
     ageAsk: 'ก่อนซื้อครั้งแรก ขอยืนยันว่าคุณอายุ 20 ปีบริบูรณ์ขึ้นไป และรับทราบว่า Energy ใช้ได้ในเกมเท่านั้น แลกคืนเป็นเงินไม่ได้ค่ะ',
     ageYes: 'ยืนยัน ฉันอายุ 20 ปีขึ้นไป',
     pickAsk: 'เลือกแพ็กที่ต้องการได้เลยค่ะ ⚡',
-    pack: (p: Product) => `฿${p.priceSatang / 100} → ${p.energy} ⚡`,
+    pack: (p: Product) => `฿${p.priceSatang / 100} → ${p.energy} ⚡${p.diamonds ? ` (+${p.diamonds} 💎)` : ''}`,
     packBought: '(วันนี้ซื้อแล้ว)',
     picked: (p: Product) => `ขอแพ็ก ฿${p.priceSatang / 100} ค่ะ`,
     howTo: 'โอนตามยอดในการ์ดให้ตรงทุกสตางค์ (สตางค์ท้ายคือรหัสของรายการคุณ) แล้วกด "ส่งสลิป" ได้เลยค่ะ',
-    cardTitle: (o: Order) => `แพ็ก ${o.priceSatang / 100} บาท · ${o.energy} Energy`,
+    cardTitle: (o: Order) => `แพ็ก ${o.priceSatang / 100} บาท · ${o.energy} Energy${o.diamonds ? ` · ${o.diamonds} 💎` : ''}`,
     toPay: 'ยอดที่ต้องโอน',
     exact: 'โอนให้ตรงทุกสตางค์',
     copyAmount: 'คัดลอกยอด',
@@ -47,7 +47,7 @@ const TEXT = {
     change: 'เปลี่ยนแพ็ก',
     reading: 'กำลังอ่านสลิป…',
     noQr: 'อ่าน QR บนสลิปไม่เจอค่ะ ส่งรูปสลิปเต็มใบจากแอปธนาคาร (ไม่ครอบตัด ไม่ถ่ายจากหน้าจอ) อีกครั้งนะคะ',
-    paid: (n: number) => `ได้รับสลิปแล้ว ✅ เติม +${n} ⚡ และได้รับแต้มสะสม +${n} 💎 เรียบร้อยค่ะ ขอบคุณนะคะ`,
+    paid: (n: number, d?: number) => `ได้รับสลิปแล้ว ✅ เติม +${n} ⚡${d ? ` และได้รับแต้มสะสม +${d} 💎` : ''} เรียบร้อยค่ะ ขอบคุณนะคะ`,
     back: 'กลับไปเล่นต่อ',
     errors: {
       slip_unreadable: 'QR บนสลิปไม่ถูกต้องค่ะ ลองส่งรูปสลิปต้นฉบับอีกครั้ง',
@@ -75,11 +75,11 @@ const TEXT = {
     ageAsk: 'Before your first purchase, please confirm you are 20 or older and understand Energy is for in-game use only and cannot be exchanged for money.',
     ageYes: 'I confirm I am 20+',
     pickAsk: 'Pick a pack ⚡',
-    pack: (p: Product) => `฿${p.priceSatang / 100} → ${p.energy} ⚡`,
+    pack: (p: Product) => `฿${p.priceSatang / 100} → ${p.energy} ⚡${p.diamonds ? ` (+${p.diamonds} 💎)` : ''}`,
     packBought: '(Bought today)',
     picked: (p: Product) => `The ฿${p.priceSatang / 100} pack, please`,
     howTo: 'Transfer the exact amount on the card (the satang identify your order), then tap "Send slip".',
-    cardTitle: (o: Order) => `฿${o.priceSatang / 100} pack · ${o.energy} Energy`,
+    cardTitle: (o: Order) => `฿${o.priceSatang / 100} pack · ${o.energy} Energy${o.diamonds ? ` · ${o.diamonds} 💎` : ''}`,
     toPay: 'Amount to transfer',
     exact: 'Transfer the exact amount, satang included',
     copyAmount: 'Copy amount',
@@ -93,7 +93,7 @@ const TEXT = {
     change: 'Change pack',
     reading: 'Reading the slip…',
     noQr: 'No QR found on the slip. Send the full slip image from your banking app (not cropped, not a photo of a screen).',
-    paid: (n: number) => `Slip received ✅ +${n} ⚡ and +${n} 💎 added. Thank you!`,
+    paid: (n: number, d?: number) => `Slip received ✅ +${n} ⚡${d ? ` and +${d} 💎 added` : ''}. Thank you!`,
     back: 'Back to the game',
     errors: {
       slip_unreadable: 'The slip QR is not valid. Try the original slip image.',
@@ -296,7 +296,7 @@ export function EnergyShop({ lang, onClose, onEnergy }: { lang: string; onClose:
       } : s);
       // The server drops the account once paid; keep it so the card stays and just shows "credited".
       setOrder((o) => ({ ...res.order, payTo: res.order.payTo ?? o?.payTo ?? null }));
-      say('bot', { text: t.paid(res.order.energy) });
+      say('bot', { text: t.paid(res.order.energy, res.order.diamonds) });
       setStage('done');
     } catch (err) {
       explain(err);

@@ -34,7 +34,7 @@ const payTo = env => {
 export const shopReady = env => !!payTo(env);
 
 const orderShape = (o, env) => ({
-  id: o.id, sku: o.sku, priceSatang: o.price_satang, amountSatang: o.amount_satang, energy: o.energy, status: o.status,
+  id: o.id, sku: o.sku, priceSatang: o.price_satang, amountSatang: o.amount_satang, energy: o.energy, diamonds: o.diamonds ?? o.energy, status: o.status,
   createdAt: o.created_at, expiresAt: o.expires_at, paidAt: o.paid_at, confirmed: !!o.reconciled_at,
   payTo: o.status === 'pending' ? payTo(env) : null,
 });
@@ -102,8 +102,8 @@ async function createOrder(req, env, user, now) {
     if (!amount) return err('shop_busy', 503);
     const id = crypto.randomUUID();
     try {
-      await env.DB.prepare('INSERT INTO orders(id,user_id,request_id,sku,price_satang,amount_satang,energy,created_at,expires_at) VALUES(?,?,?,?,?,?,?,?,?)')
-        .bind(id, user.id, requestId, sku, product.price_satang, amount, product.energy, now, now + ORDER_TTL_MS).run();
+      await env.DB.prepare('INSERT INTO orders(id,user_id,request_id,sku,price_satang,amount_satang,energy,diamonds,created_at,expires_at) VALUES(?,?,?,?,?,?,?,?,?,?)')
+        .bind(id, user.id, requestId, sku, product.price_satang, amount, product.energy, product.diamonds ?? 0, now, now + ORDER_TTL_MS).run();
     } catch (e) {
       if (/orders_pending_amount|amount_satang/.test(String(e?.message))) continue;
       throw e;
@@ -123,8 +123,8 @@ async function credit(env, order, transRef, bank, now) {
   try {
     const [paid] = await env.DB.batch([
       env.DB.prepare("UPDATE orders SET status='paid', paid_at=?, trans_ref=?, slip_bank=? WHERE id=? AND status='pending'").bind(now, transRef, bank, order.id),
-      env.DB.prepare("INSERT INTO token_ledger(id,user_id,delta_free,delta_purchased,delta_diamonds,reason,order_id,created_at) SELECT ?,user_id,0,energy,energy,'purchase',id,? FROM orders WHERE id=? AND status='paid' AND trans_ref=?").bind(ledgerId, now, order.id, transRef),
-      env.DB.prepare('UPDATE energy SET purchased=purchased+?, diamonds=diamonds+? WHERE user_id=? AND EXISTS(SELECT 1 FROM token_ledger WHERE id=?)').bind(order.energy, order.energy, order.user_id, ledgerId),
+      env.DB.prepare("INSERT INTO token_ledger(id,user_id,delta_free,delta_purchased,delta_diamonds,reason,order_id,created_at) SELECT ?,user_id,0,energy,diamonds,'purchase',id,? FROM orders WHERE id=? AND status='paid' AND trans_ref=?").bind(ledgerId, now, order.id, transRef),
+      env.DB.prepare('UPDATE energy SET purchased=purchased+?, diamonds=diamonds+? WHERE user_id=? AND EXISTS(SELECT 1 FROM token_ledger WHERE id=?)').bind(order.energy, order.diamonds ?? order.energy, order.user_id, ledgerId),
     ]);
     return paid.meta.changes ? 'credited' : 'not_pending';
   } catch (e) {
@@ -197,7 +197,7 @@ export async function shopPlayer(req, env, user, path, now) {
     const ready = shopReady(env);
     if (!ready) return json({ enabled: false, products: [] });
     await expireStale(env, user.id, now);
-    const { results } = await env.DB.prepare('SELECT * FROM products WHERE active=1 ORDER BY position').all();
+    const { results } = await env.DB.prepare('SELECT * FROM products WHERE active=1 AND is_offer=0 ORDER BY position').all();
     const open = await env.DB.prepare("SELECT * FROM orders WHERE user_id=? AND status='pending' ORDER BY created_at DESC LIMIT 1").bind(user.id).first();
     const daily = await dailyState(env, user.id, now);
     const allPurchased = results.length > 0 && results.every(p => daily.purchasedSkusToday.includes(p.sku));
@@ -215,6 +215,7 @@ export async function shopPlayer(req, env, user, path, now) {
         name: p.name,
         priceSatang: p.price_satang,
         energy: p.energy,
+        diamonds: p.diamonds ?? 0,
         purchasedToday: daily.purchasedSkusToday.includes(p.sku),
       })),
       openOrder: open ? orderShape(open, env) : null,
@@ -248,8 +249,8 @@ const adminOrder = o => ({ id: o.id, userId: o.user_id, email: o.email, sku: o.s
 async function reverse(env, order, status, note, now) {
   const stmts = [
     env.DB.prepare("UPDATE orders SET status=?, note=? WHERE id=? AND status='paid'").bind(status, note, order.id),
-    env.DB.prepare("INSERT INTO token_ledger(id,user_id,delta_free,delta_purchased,delta_diamonds,reason,order_id,created_at) SELECT ?,user_id,0,-energy,-energy,?,id,? FROM orders WHERE id=? AND status=?").bind(crypto.randomUUID(), status, now, order.id, status),
-    env.DB.prepare('UPDATE energy SET purchased=purchased-?, diamonds=MAX(0, diamonds-?) WHERE user_id=? AND EXISTS(SELECT 1 FROM orders WHERE id=? AND status=?)').bind(order.energy, order.energy, order.user_id, order.id, status),
+    env.DB.prepare("INSERT INTO token_ledger(id,user_id,delta_free,delta_purchased,delta_diamonds,reason,order_id,created_at) SELECT ?,user_id,0,-energy,-diamonds,?,id,? FROM orders WHERE id=? AND status=?").bind(crypto.randomUUID(), status, now, order.id, status),
+    env.DB.prepare('UPDATE energy SET purchased=purchased-?, diamonds=MAX(0, diamonds-?) WHERE user_id=? AND EXISTS(SELECT 1 FROM orders WHERE id=? AND status=?)').bind(order.energy, order.diamonds ?? order.energy, order.user_id, order.id, status),
   ];
   if (status === 'revoked') stmts.push(env.DB.prepare('UPDATE users SET shop_blocked_at=? WHERE id=? AND EXISTS(SELECT 1 FROM orders WHERE id=? AND status=?)').bind(now, order.user_id, order.id, status));
   const [changed] = await env.DB.batch(stmts);
@@ -318,8 +319,8 @@ async function paymentsOf(env, from, to) {
 async function dailySummary(env, day) {
   const from = dayStartOf(day);
   const payments = await paymentsOf(env, from, from + DAY_MS);
-  const { results: products } = await env.DB.prepare('SELECT sku,price_satang,active FROM products ORDER BY position, sku').all();
-  const summary = buildDailyClose(day, products, payments.map(p => ({ sku: p.sku, price_satang: p.price_satang, deposit_satang: p.amount_satang })));
+  const { results: products } = await env.DB.prepare('SELECT sku,price_satang,active,COALESCE(is_offer,0) is_offer FROM products ORDER BY position, sku').all();
+  const summary = buildDailyClose(day, products.map(p => ({ sku: p.sku, price_satang: p.price_satang, active: p.active && !p.is_offer })), payments.map(p => ({ sku: p.sku, price_satang: p.price_satang, deposit_satang: p.amount_satang })));
   return { summary, text: formatDailyClose(summary), payments };
 }
 
