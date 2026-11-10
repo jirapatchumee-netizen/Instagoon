@@ -1,0 +1,32 @@
+# Instagoon (อินสตาโกน)
+> A social media simulation and interactive romance game where players connect, chat, and build deep relationships with AI characters.
+
+## Overview
+Instagoon (https://instagoon.app) is an interactive story simulation game set in a modern social media environment. Players follow virtual creators, view their social media posts and unlockable stories, and chat with them in private one-on-one direct messages (DMs). Each character possesses a unique personality, evolving relationship progression, and responsive AI conversation engine tailored for romance, drama, and intimacy.
+
+## Main Creators
+- **Milin (มิลิน)**: A sweet, shy, and gentle 24-year-old content creator. Beneath her timid exterior lies an affectionate and deeply romantic soul who yearns for genuine closeness. She enjoys late-night chats in cozy bedrooms, quiet moments, and heartfelt confessions.
+  - Profile URL: https://instagoon.app/milin
+- **Mook (มุก)**: A fierce, confident, and magnetic 23-year-old Girl Crush. Unapologetic and playful, Mook loves modern fashion, vibrant nightlife, luxury rooftop lounges, and bold flirtatious chemistry.
+  - Profile URL: https://instagoon.app/mook
+- **Noey (เนย)**: A sweet, hardworking 22-year-old corporate intern featuring irresistible 'gap moe'. Professional and polite during work hours, but intimately playful, caring, and teasing in private after-hours conversations.
+  - Profile URL: https://instagoon.app/noey
+
+## Core Features
+1. **Interactive Social Feed & Stories**: Experience realistic social media posts, photo updates, and special unlockable stories reflecting daily life and hidden secrets.
+2. **Context-Aware Dynamic AI Chat**: Natural, emotionally resonant Thai-language conversation with adaptive memory, relationship levels, and sensory romance storytelling.
+3. **Privacy & Security**: Built on Google OAuth 2.0 PKCE authentication with strict edge privacy safeguards. All chat threads are private to the individual player. No passwords are stored on servers.
+4. **Instant Web Play**: Playable directly in modern web browsers across mobile devices (iOS, Android) and desktop computers with no download required.
+
+## Key Terminology
+- **Instagoon**: The social media platform where creators and players interact.
+- **Relationship Score**: Metric representing the bond, trust, and intimacy between the player and each creator. Higher scores unlock exclusive episodes, intimate stories, and deep conversational branches.
+- **Energy**: System allowing daily free messages and interactions, refilled over time.
+
+## Canonical Links
+- Main Website: https://instagoon.app/
+- Milin Profile: https://instagoon.app/milin
+- Mook Profile: https://instagoon.app/mook
+- Noey Profile: https://instagoon.app/noey
+- Privacy Policy: https://instagoon.app/privacy.html
+- Terms of Service: https://instagoon.app/terms.html

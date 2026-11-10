@@ -4,27 +4,110 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
   <meta name="theme-color" content="#0a0c14" />
-  <meta name="description" content="Instagoon: a social media simulation game where you chat with AI characters. 18+." />
-  <title>instagoon</title>
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <title>Instagoon - เกมจำลองโซเชียลมีเดียและแชทกับสาว AI เสมือนจริง</title>
+  <meta name="description" content="ยิ่งคุย ยิ่งสนิท ยิ่งปลดล็อกความลับที่คุณเท่านั้นที่รู้ · Instagoon เกมจำลองโซเชียลมีเดีย แชท 1-ต่อ-1 กับ 3 สาว AI เสมือนจริง (มิลิน, มุก, เนย) เล่นฟรีบนเว็บ ไม่ต้องดาวน์โหลด" />
+  <meta name="keywords" content="Instagoon, เกมจีบสาว, แชทกับสาว AI, AI Girlfriend, Virtual Idol, เกมจำลองชีวิต, มิลิน, มุก, เนย, แชทบอทภาษาไทย" />
+  <link rel="canonical" href="https://instagoon.app/" />
+
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <link rel="icon" href="/favicon.ico" sizes="any" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <link rel="manifest" href="/manifest.webmanifest" />
-  <meta property="og:title" content="instagoon" />
-  <meta property="og:description" content="ยิ่งคุย ยิ่งสนิท ยิ่งปลดล็อกความลับที่คุณเท่านั้นที่รู้ · A social media simulation game where you chat with AI characters. 18+." />
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Instagoon" />
+  <meta property="og:title" content="Instagoon - แชทและสร้างความสัมพันธ์กับสาว AI เสมือนจริง" />
+  <meta property="og:description" content="ยิ่งคุย ยิ่งสนิท ยิ่งปลดล็อกความลับที่คุณเท่านั้นที่รู้ แชท 1-ต่อ-1 กับ มิลิน, มุก และเนย เล่นได้ทันทีบนเว็บ" />
+  <meta property="og:url" content="https://instagoon.app/" />
   <meta property="og:image" content="https://instagoon.app/icon-512.png" />
+  <meta property="og:image:width" content="512" />
+  <meta property="og:image:height" content="512" />
+  <meta property="og:locale" content="th_TH" />
+
+  <!-- Twitter / X -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Instagoon - เกมจำลองโซเชียลมีเดียและแชทกับสาว AI" />
+  <meta name="twitter:description" content="ยิ่งคุย ยิ่งสนิท ยิ่งปลดล็อกความลับที่คุณเท่านั้นที่รู้ แชท 1-ต่อ-1 กับ มิลิน, มุก และเนย" />
+  <meta name="twitter:image" content="https://instagoon.app/icon-512.png" />
+
+  <!-- Preconnect & Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@700&family=Mitr:wght@300;400;500;600;700&family=Zen+Maru+Gothic:wght@400;500;700;900&display=swap" rel="stylesheet" />
+
+  <!-- Schema.org Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://instagoon.app/#website",
+        "url": "https://instagoon.app/",
+        "name": "Instagoon",
+        "description": "เกมจำลองโซเชียลมีเดียและแชทกับสาว AI เสมือนจริง",
+        "inLanguage": "th-TH"
+      },
+      {
+        "@type": "VideoGame",
+        "@id": "https://instagoon.app/#game",
+        "name": "Instagoon",
+        "description": "เกมจำลองโซเชียลมีเดียและแชทกับสาว AI เสมือนจริง สร้างความสัมพันธ์ 1-ต่อ-1 กับ 3 สาว มิลิน มุก และเนย",
+        "genre": ["Simulation", "Visual Novel", "Romance", "Interactive Story"],
+        "gamePlatform": ["Web Browser", "Mobile Web", "Desktop Web"],
+        "applicationCategory": "Game",
+        "inLanguage": "th",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "THB"
+        }
+      }
+    ]
+  }
+  </script>
+
+  <!-- Google Analytics 4 (GA4) Privacy-First Lightweight Loader -->
+  <script>
+    (function() {
+      var gaId = window.GA_MEASUREMENT_ID || 'G-PLACEHOLDER';
+      if (gaId && gaId !== 'G-PLACEHOLDER') {
+        var s = document.createElement('script');
+        s.async = true;
+        s.src = 'https://www.googletagmanager.com/gtag/js?id=' + gaId;
+        document.head.appendChild(s);
+
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        window.gtag = gtag;
+        gtag('js', new Date());
+        gtag('config', gaId, {
+          anonymize_ip: true,
+          send_page_view: true
+        });
+      } else {
+        window.dataLayer = window.dataLayer || [];
+        window.gtag = function(){ dataLayer.push(arguments); };
+      }
+    })();
+  </script>
 </head>
 <body style="margin: 0; background: #09090b">
   <div id="root"></div>
   <noscript>
     <main style="max-width: 640px; margin: 0 auto; padding: 32px 20px; font-family: sans-serif; color: #fff3f8; background: #1a0b26;">
-      <h1>instagoon</h1>
+      <h1>Instagoon (อินสตาโกน)</h1>
       <p>ยิ่งคุย ยิ่งสนิท ยิ่งปลดล็อกความลับที่คุณเท่านั้นที่รู้</p>
-      <p>Instagoon is a social media simulation game for adults (18+). Follow AI characters' posts and stories, chat with them one-on-one in DMs, and grow closer over time. Sign in with Google to play.</p>
-      <p><a href="/privacy.html" style="color: #ffb3d4;">Privacy Policy</a> &nbsp; <a href="/terms.html" style="color: #ffb3d4;">Terms of Service</a></p>
+      <p>Instagoon คือเกมจำลองโซเชียลมีเดียและแชทกับสาว AI เสมือนจริง 1-ต่อ-1 ติดตามโพสต์และสตอรี่ของสาวๆ ทั้ง 3 คน:</p>
+      <ul>
+        <li><a href="/milin" style="color: #ffb3d4;"><b>มิลิน (Milin)</b></a> - สาวหวานขี้อาย ซ่อนความแซ่บและเสน่ห์ชวนค้นหา</li>
+        <li><a href="/mook" style="color: #ffb3d4;"><b>มุก (Mook)</b></a> - สาวมั่น Girl Crush สไตล์โมเดิร์น สเน่ห์เกินต้าน</li>
+        <li><a href="/noey" style="color: #ffb3d4;"><b>เนย (Noey)</b></a> - เด็กฝึกงานน่ารัก Gap Moe ชวนหลงใหลในทุกโมเมนต์</li>
+      </ul>
+      <p>เข้าสู่ระบบด้วย Google เพื่อเริ่มคุยได้ทันที เล่นฟรีบนเว็บ ไม่ต้องดาวน์โหลด</p>
+      <p><a href="/privacy.html" style="color: #ffb3d4;">นโยบายความเป็นส่วนตัว (Privacy Policy)</a> &nbsp; <a href="/terms.html" style="color: #ffb3d4;">ข้อกำหนดการใช้งาน (Terms of Service)</a></p>
     </main>
   </noscript>
   <script type="module" src="/main.tsx"></script>

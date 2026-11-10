@@ -275,9 +275,14 @@ async function auth(req,env,url) {
  const authError=code=>new Response(null,{status:302,headers:{location:'/?auth_error='+code,'cache-control':'no-store'}});
  if(url.pathname==='/auth/google') {
   const state=token(), verifier=token(), challenge=base64url(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(verifier))));
+  const target = url.searchParams.get('redirect') || '';
+  const safeTarget = target.startsWith('/') && !target.startsWith('//') ? target : '';
   await run(env,'INSERT INTO oauth_states(id,verifier,expires_at) VALUES(?,?,?)',await hash(state),verifier,Date.now()+600000);
   const q=new URLSearchParams({client_id:env.GOOGLE_CLIENT_ID,redirect_uri:redirect,response_type:'code',scope:'openid email',state,code_challenge:challenge,code_challenge_method:'S256'});
-  return new Response(null,{status:302,headers:{location:'https://accounts.google.com/o/oauth2/v2/auth?'+q,'set-cookie':secureCookie('frost_oauth',state,600),'cache-control':'no-store'}});
+  const headers = new Headers({location:'https://accounts.google.com/o/oauth2/v2/auth?'+q,'cache-control':'no-store'});
+  headers.append('set-cookie', secureCookie('frost_oauth',state,600));
+  if (safeTarget) headers.append('set-cookie', secureCookie('frost_redirect', safeTarget, 600));
+  return new Response(null,{status:302,headers});
  }
  if(url.searchParams.get('error')==='access_denied')return authError('login_cancelled');
  const state=url.searchParams.get('state'), code=url.searchParams.get('code'); if(!state||!code||state!==cookie(req,'frost_oauth'))return authError('invalid_oauth_state');
@@ -299,7 +304,12 @@ async function auth(req,env,url) {
  if(user && user.email.toLowerCase()!==email) { await run(env,'UPDATE users SET email=? WHERE id=?',email,user.id); }
  if(!user){const uid=crypto.randomUUID(); await env.DB.batch([env.DB.prepare('INSERT INTO users(id,email,google_id,created_at) VALUES(?,?,?,?)').bind(uid,email,profile.sub,now),env.DB.prepare('INSERT OR IGNORE INTO energy(user_id,free) VALUES(?,?)').bind(uid,freeEnergyGrant(env))]); user={id:uid};}
  const raw=token(); await run(env,'INSERT INTO sessions(id,user_id,expires_at) VALUES(?,?,?)',await hash(raw),user.id,now+604800000);
- return new Response(null,{status:302,headers:{location:'/', 'set-cookie':secureCookie('frost_session',raw,604800),'cache-control':'no-store'}});
+ const redirectTarget = cookie(req, 'frost_redirect');
+ const safeTarget = redirectTarget && redirectTarget.startsWith('/') && !redirectTarget.startsWith('//') ? redirectTarget : '/';
+ const headers = new Headers({location: safeTarget, 'cache-control':'no-store'});
+ headers.append('set-cookie', secureCookie('frost_session',raw,604800));
+ if (redirectTarget) headers.append('set-cookie', secureCookie('frost_redirect', '', 0));
+ return new Response(null,{status:302,headers});
 }
 // Choice outcomes of a scripted episode (ADR 0008). Score is recomputed from the three axes with the character's
 // own weights, so a script can never hand out more weighted progress than its validator allowed. Each choice is

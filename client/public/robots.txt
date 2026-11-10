@@ -1,3 +1,7 @@
 User-agent: *
 Allow: /
 Disallow: /api/
+Disallow: /auth/
+Disallow: /_content/
+
+Sitemap: https://instagoon.app/sitemap.xml
