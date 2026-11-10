@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { type User, type Creator, type Post } from '../types';
 import { TRANSLATIONS, type Lang } from '../i18n';
-import { getAvatarSrc, media, AvatarImg } from '../ui';
+import { getAvatarSrc, media, AvatarImg, truncate } from '../ui';
 import { LangSelect } from '../LangSelect';
 import { Bookmark, Sparkles, User as UserIcon, Users, Volume2, Smartphone } from 'lucide-react';
 import { IgVerified } from '../InstagramIcons';
@@ -205,7 +205,7 @@ export function PlayerProfileTab({
                   className="fs-following-item"
                   onClick={() => onViewProfile(creator)}
                 >
-                  <div className="fs-avatar fs-avatar-md">
+                  <div className="fs-avatar">
                     {creator.avatarKey ? (
                       <AvatarImg src={media(creator.avatarKey)} name={creator.name} />
                     ) : (
@@ -217,7 +217,7 @@ export function PlayerProfileTab({
                       <strong>{creator.name}</strong>
                       <IgVerified size={13} className="fs-verified" />
                     </div>
-                    <span className="fs-muted">{creator.bio?.slice(0, 36)}</span>
+                    <span className="fs-muted">{truncate(creator.bio, 36)}</span>
                   </div>
                 </div>
               ))}

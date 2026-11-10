@@ -62,7 +62,7 @@ export function InboxTab({ creators, lang, onOpenChat }: InboxTabProps) {
                 onKeyDown={(e) => e.key === 'Enter' && onOpenChat(creator)}
               >
                 <div className={`fs-avatar-ring ${hasCloseFriends ? 'is-close-friends' : ''}`}>
-                  <div className="fs-avatar fs-avatar-md">
+                  <div className="fs-avatar">
                     {creator.avatarKey ? (
                       <AvatarImg src={media(creator.avatarKey)} name={creator.name} />
                     ) : (

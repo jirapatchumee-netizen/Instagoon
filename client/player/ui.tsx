@@ -80,6 +80,15 @@ export function AvatarImg({ src, name, alt = name }: { src: string; name: string
   return <img src={src} alt={alt} onError={() => setFailed(true)} />;
 }
 
+// Thai writes vowels and tone marks as combining code points stacked on the consonant, so slicing by code unit
+// or code point can leave a dangling mark. Cluster on "base + its marks" instead.
+export function truncate(text: string | undefined, max: number): string {
+  if (!text) return '';
+  const clusters = text.match(/\P{M}\p{M}*/gu);
+  if (!clusters || clusters.length <= max) return text;
+  return clusters.slice(0, max).join('');
+}
+
 export function Media({
   mediaKey,
   label,
