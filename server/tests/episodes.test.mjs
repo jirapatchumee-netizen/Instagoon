@@ -166,3 +166,63 @@ test('choose: effects, memory and chat history land once per pinned revision', a
   assert.ok(history.length >= 5, 'the walk and the replay are both recorded');
   assert.equal(history[0].choice_id, 'a');
 });
+
+test('story progression: EP 1 is free, EP 2 requires 25 energy to unlock with cliffhanger offer on energy_empty', async () => {
+  resetContentCache();
+  const sql = dbOf();
+  const ep1 = episode({ id: 'ep_1', title: 'ตอนที่ 1', position: 0 });
+  const ep2 = episode({ id: 'ep_2', title: 'ตอนที่ 2', position: 1 });
+  const root = mkdtempSync(join(tmpdir(), 'ep-two-'));
+  const content = join(root, 'content'), dist = join(root, 'dist');
+  mkdirSync(join(content, 'creators', 'tester'), { recursive: true });
+  mkdirSync(join(content, 'media', 'avatars'), { recursive: true });
+  writeFileSync(join(content, 'media', 'avatars', 'tester.webp'), 'RIFFxxxxWEBP');
+  writeFileSync(join(content, 'creators', 'tester', 'character.json'), JSON.stringify({ ...newNpc('tester'), avatar: 'avatars/tester.webp' }));
+  writeFileSync(join(content, 'creators', 'tester', 'episodes.json'), JSON.stringify([ep1, ep2]));
+  buildContent(content, dist);
+  await ensureContent({ ...envOf(sql), ASSETS: assetsOf(dist) });
+
+  // 1. Initial chat fetch: EP 1 is unlocked, EP 2 is locked
+  const initial = await get(sql, '/api/chats/tester');
+  const chatData = (await initial.json()).chat;
+  assert.equal(chatData.episodes.length, 2);
+  assert.equal(chatData.episodes[0].unlocked, true);
+  assert.equal(chatData.episodes[0].energyCost, 0);
+  assert.equal(chatData.episodes[1].unlocked, false);
+  assert.equal(chatData.episodes[1].energyCost, 25);
+
+  // 2. Switching to locked EP 2 without unlocking fails with 403 episode_locked
+  const trySwitch = await post(sql, '/api/chats/tester/episode', { episodeId: 'ep_2' });
+  assert.equal(trySwitch.status, 403);
+  const switchErr = await trySwitch.json();
+  assert.equal(switchErr.error, 'episode_locked');
+
+  // 3. Trying to unlock with insufficient energy (free=3 in dbOf) returns 402 energy_empty + cliffhangerOffer
+  const tryUnlockNoEnergy = await post(sql, '/api/chats/tester/unlock-episode', { episodeId: 'ep_2' });
+  assert.equal(tryUnlockNoEnergy.status, 402);
+  const noEnergyErr = await tryUnlockNoEnergy.json();
+  assert.equal(noEnergyErr.error, 'energy_empty');
+  assert.equal(noEnergyErr.cliffhangerOffer?.sku, 'offer_cliffhanger_49');
+  assert.equal(noEnergyErr.cliffhangerOffer?.priceThb, 49);
+
+  // 4. Grant energy and unlock EP 2
+  sql.prepare('UPDATE energy SET purchased = 50 WHERE user_id = ?').run('u');
+  const unlockSuccess = await post(sql, '/api/chats/tester/unlock-episode', { episodeId: 'ep_2' });
+  assert.equal(unlockSuccess.status, 200);
+  const unlockRes = await unlockSuccess.json();
+  assert.equal(unlockRes.ok, true);
+  assert.equal(unlockRes.unlocked, true);
+  assert.equal(unlockRes.episodeId, 'ep_2');
+
+  // Verify 25 energy was deducted (spent 3 free + 22 purchased from 50)
+  const userEnergy = sql.prepare('SELECT free, purchased FROM energy WHERE user_id = ?').get('u');
+  assert.equal(userEnergy.free, 0);
+  assert.equal(userEnergy.purchased, 28); // 53 total - 25 = 28 total
+
+  // 5. Subsequent chat fetch confirms EP 2 is unlocked and active
+  const after = await get(sql, '/api/chats/tester');
+  const afterChat = (await after.json()).chat;
+  assert.equal(afterChat.episodeId, 'ep_2');
+  assert.equal(afterChat.episodes[1].unlocked, true);
+  assert.equal(afterChat.episodes[1].energyCost, 0);
+});

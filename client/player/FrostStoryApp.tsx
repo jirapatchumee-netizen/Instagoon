@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useLayoutEffect, useState, useRef, type FormEvent } from 'react';
 import { formatFastForwardAction } from './message-format';
 import { useOverlayHistory } from './overlay-history';
-import { ArrowLeft, Loader2, MessageSquareX, Pencil, RotateCcw, Send, Settings, Sparkles, User as UserIcon, Volume2, VolumeX, X, Zap } from 'lucide-react';
+import { ArrowLeft, Loader2, Lock, MessageSquareX, Pencil, RotateCcw, Send, Settings, Sparkles, User as UserIcon, Volume2, VolumeX, X, Zap } from 'lucide-react';
 import { IgShare, IgHome, IgSearch, IgReels, IgVerified } from './InstagramIcons';
 import { EnergyShop } from './EnergyShop';
 import { type Lang, LANGS, TRANSLATIONS } from './i18n';
 import { LangSelect } from './LangSelect';
-import { type Energy, type User, type Creator, type Post, type Story, type AiChatMessage, type Chat, type Screen, type ProfileData } from './types';
+import { type Energy, type User, type Creator, type Post, type Story, type AiChatMessage, type Chat, type Screen, type ProfileData, type EpisodeInfo } from './types';
 import { ApiError, api } from './api';
 import { ChatComposer, media, AvatarImg, hasSpokenDialogue, renderBubbleContent, json, StoryContent, Modal, getAvatarSrc } from './ui';
 import { ProfileSetupModal } from './overlays/ProfileSetupModal';
 import { BugReportModal } from './overlays/BugReportModal';
+import { CliffhangerOfferModal, type CliffhangerOffer } from './overlays/CliffhangerOfferModal';
+import { UnlockEpisodeModal } from './overlays/UnlockEpisodeModal';
 import { LoginScreen } from './LoginScreen';
 import { HomeTab } from './tabs/HomeTab';
 import { ExploreTab } from './tabs/ExploreTab';
@@ -50,6 +52,17 @@ export function FrostStoryApp() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [pendingChatCreator, setPendingChatCreator] = useState<Creator | null>(null);
   const [shopOpen, setShopOpen] = useState(false);
+  const [shopInitialSku, setShopInitialSku] = useState<string | undefined>(undefined);
+  const [cliffhangerModal, setCliffhangerModal] = useState<{
+    open: boolean;
+    creatorName: string;
+    avatarUrl?: string;
+    offer?: CliffhangerOffer | null;
+  }>({ open: false, creatorName: '' });
+  const [unlockEpisodeModal, setUnlockEpisodeModal] = useState<{
+    open: boolean;
+    episode: EpisodeInfo | null;
+  }>({ open: false, episode: null });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -300,7 +313,15 @@ export function FrostStoryApp() {
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes('energy_empty')) setShopOpen(true);
+      if (msg.includes('energy_empty')) {
+        const offer = err instanceof ApiError ? err.data?.cliffhangerOffer : null;
+        setCliffhangerModal({
+          open: true,
+          creatorName: selectedCreator.name,
+          avatarUrl: selectedCreator.avatarKey ? media(selectedCreator.avatarKey) : undefined,
+          offer,
+        });
+      }
       const isExperimentOrNetwork = msg.startsWith('deepseek_') || msg.startsWith('experiment_') || msg.includes('network') || msg.includes('Failed to fetch');
       const baseReason = msg.includes('thread_busy')
         ? t.chatBusyPrev(selectedCreator.name)
@@ -361,11 +382,47 @@ export function FrostStoryApp() {
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes('energy_empty')) setShopOpen(true);
+      if (msg.includes('energy_empty')) {
+        const offer = err instanceof ApiError ? err.data?.cliffhangerOffer : null;
+        setCliffhangerModal({
+          open: true,
+          creatorName: selectedCreator.name,
+          avatarUrl: selectedCreator.avatarKey ? media(selectedCreator.avatarKey) : undefined,
+          offer,
+        });
+      }
       alert(t.editMessageFailed(msg));
       void openChat(selectedCreator);
     } finally {
       setAiSending(false);
+    }
+  }
+
+  async function handleUnlockEpisode(targetEp: EpisodeInfo) {
+    if (!selectedCreator) return;
+    setUnlockEpisodeModal({ open: false, episode: null });
+    setBusy(true);
+    try {
+      const res = await api<{ ok: boolean; unlocked: boolean; episodeId: string; energy?: Energy }>(
+        `/api/chats/${encodeURIComponent(selectedCreator.id)}/unlock-episode`,
+        json({ episodeId: targetEp.id })
+      );
+      if (res.energy) setEnergy(res.energy);
+      const chatRes = await api<{ chat: Chat }>(`/api/chats/${encodeURIComponent(selectedCreator.id)}`);
+      setChat(chatRes.chat);
+    } catch (err) {
+      if (err instanceof ApiError && (err.message === 'energy_empty' || err.data?.error === 'energy_empty')) {
+        setCliffhangerModal({
+          open: true,
+          creatorName: selectedCreator.name,
+          avatarUrl: selectedCreator.avatarKey ? media(selectedCreator.avatarKey) : undefined,
+          offer: err.data?.cliffhangerOffer,
+        });
+      } else {
+        alert(err instanceof Error ? err.message : String(err));
+      }
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -385,7 +442,13 @@ export function FrostStoryApp() {
       if (msg.includes('level_too_low')) {
         alert(t.rewardLevelTooLow);
       } else if (msg.includes('energy_empty')) {
-        setShopOpen(true);
+        const offer = err instanceof ApiError ? err.data?.cliffhangerOffer : null;
+        setCliffhangerModal({
+          open: true,
+          creatorName: selectedCreator.name,
+          avatarUrl: selectedCreator.avatarKey ? media(selectedCreator.avatarKey) : undefined,
+          offer,
+        });
       } else {
         setError(msg);
       }
@@ -1583,28 +1646,39 @@ export function FrostStoryApp() {
                 onMouseLeave={handleEpisodesMouseUpOrLeave}
                 aria-label={t.selectEpisode}
               >
-                {chat.episodes.map((episode) => (
-                  <button
-                    className="fs-episode-pill"
-                    key={episode.id}
-                    aria-current={episode.id === chat.episodeId ? 'true' : undefined}
-                    disabled={busy || !episode.accessible || episode.id === chat.episodeId}
-                    onClick={() => {
-                      if (hasEpisodesDraggedRef.current) return;
-                      void action(async () => {
-                        const result = await api<{ chat: Chat }>(
-                          `/api/chats/${encodeURIComponent(selectedCreator.id)}/episode`,
-                          json({ episodeId: episode.id })
-                        );
-                        setChat(result.chat);
-                      });
-                    }}
-                  >
-                    {episode.title}
-                    {episode.completed ? ` · ${t.completed}` : ''}
-                    {!episode.accessible ? ` · ${t.locked}` : ''}
-                  </button>
-                ))}
+                {chat.episodes.map((episode) => {
+                  const isCurrent = episode.id === chat.episodeId;
+                  const isLocked = !episode.unlocked;
+                  return (
+                    <button
+                      className={`fs-episode-pill ${isLocked ? 'fs-episode-locked opacity-75' : ''}`}
+                      key={episode.id}
+                      aria-current={isCurrent ? 'true' : undefined}
+                      disabled={busy || isCurrent}
+                      onClick={() => {
+                        if (hasEpisodesDraggedRef.current) return;
+                        if (isLocked) {
+                          setUnlockEpisodeModal({
+                            open: true,
+                            episode,
+                          });
+                        } else {
+                          void action(async () => {
+                            const result = await api<{ chat: Chat }>(
+                              `/api/chats/${encodeURIComponent(selectedCreator.id)}/episode`,
+                              json({ episodeId: episode.id })
+                            );
+                            setChat(result.chat);
+                          });
+                        }
+                      }}
+                    >
+                      {isLocked ? <Lock size={12} className="inline mr-1 text-amber-400" /> : null}
+                      {episode.title}
+                      {isLocked ? ' · 25 ⚡' : episode.completed ? ` · ${t.completed}` : ''}
+                    </button>
+                  );
+                })}
               </div>
             )}
 
@@ -2086,9 +2160,44 @@ export function FrostStoryApp() {
               {t.storyUnlockedDesc(unlockedStoryModal.creatorName)}
             </p>
             <div className="fs-glossy-actions">
+              {(() => {
+                const curEpIdx = chat?.episodes?.findIndex((e) => e.id === chat.episodeId) ?? -1;
+                const nextEpisode = (curEpIdx >= 0 && curEpIdx < (chat?.episodes?.length ?? 0) - 1) ? chat!.episodes[curEpIdx + 1] : null;
+                if (!nextEpisode) return null;
+                return (
+                  <button
+                    type="button"
+                    className="fs-btn-glossy-primary"
+                    onClick={() => {
+                      setUnlockedStoryModal({ open: false, creatorName: '' });
+                      if (nextEpisode.unlocked) {
+                        void action(async () => {
+                          const result = await api<{ chat: Chat }>(
+                            `/api/chats/${encodeURIComponent(selectedCreator!.id)}/episode`,
+                            json({ episodeId: nextEpisode.id })
+                          );
+                          setChat(result.chat);
+                        });
+                      } else {
+                        setUnlockEpisodeModal({
+                          open: true,
+                          episode: nextEpisode,
+                        });
+                      }
+                    }}
+                  >
+                    <Sparkles size={16} />
+                    <span>
+                      {nextEpisode.unlocked
+                        ? `อ่านตอนต่อไป: ${nextEpisode.title}`
+                        : `🔓 ปลดล็อกตอนต่อไป: ${nextEpisode.title} (25 ⚡)`}
+                    </span>
+                  </button>
+                );
+              })()}
               <button
                 type="button"
-                className="fs-btn-glossy-primary"
+                className="fs-btn-glossy-secondary"
                 onClick={() => {
                   setUnlockedStoryModal({ open: false, creatorName: '' });
                   setAiDmTab('ai');
@@ -2182,7 +2291,58 @@ export function FrostStoryApp() {
 
       {/* Energy Top-up Shop */}
       {shopOpen && (
-        <EnergyShop lang={lang} onClose={() => setShopOpen(false)} onEnergy={setEnergy} />
+        <EnergyShop
+          lang={lang}
+          initialSku={shopInitialSku}
+          onClose={() => {
+            setShopOpen(false);
+            setShopInitialSku(undefined);
+          }}
+          onEnergy={setEnergy}
+        />
+      )}
+
+      {/* Cliffhanger 10-minute Flash Sale Modal */}
+      {cliffhangerModal.open && (
+        <CliffhangerOfferModal
+          open={cliffhangerModal.open}
+          creatorName={cliffhangerModal.creatorName}
+          avatarUrl={cliffhangerModal.avatarUrl}
+          offer={cliffhangerModal.offer}
+          onClose={() => setCliffhangerModal({ open: false, creatorName: '' })}
+          onAccept={(sku) => {
+            setCliffhangerModal({ open: false, creatorName: '' });
+            setShopInitialSku(sku);
+            setShopOpen(true);
+          }}
+          onOpenNormalShop={() => {
+            setCliffhangerModal({ open: false, creatorName: '' });
+            setShopInitialSku(undefined);
+            setShopOpen(true);
+          }}
+        />
+      )}
+
+      {/* Story Mode Episode Unlock Modal */}
+      {unlockEpisodeModal.open && unlockEpisodeModal.episode && (
+        <UnlockEpisodeModal
+          open={unlockEpisodeModal.open}
+          episodeTitle={unlockEpisodeModal.episode.title}
+          energyCost={unlockEpisodeModal.episode.energyCost || 25}
+          currentEnergy={(energy?.free ?? 0) + (energy?.purchased ?? 0)}
+          creatorName={selectedCreator?.name || ''}
+          avatarUrl={selectedCreator?.avatarKey ? media(selectedCreator.avatarKey) : undefined}
+          onClose={() => setUnlockEpisodeModal({ open: false, episode: null })}
+          onUnlock={() => void handleUnlockEpisode(unlockEpisodeModal.episode!)}
+          onEnergyShop={() => {
+            setUnlockEpisodeModal({ open: false, episode: null });
+            setCliffhangerModal({
+              open: true,
+              creatorName: selectedCreator?.name || '',
+              avatarUrl: selectedCreator?.avatarKey ? media(selectedCreator.avatarKey) : undefined,
+            });
+          }}
+        />
       )}
 
       {/* Bug Report Modal */}

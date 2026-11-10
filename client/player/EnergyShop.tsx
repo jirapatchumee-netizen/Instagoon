@@ -146,7 +146,17 @@ const clock = (ms: number) => {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 };
 
-export function EnergyShop({ lang, onClose, onEnergy }: { lang: string; onClose: () => void; onEnergy: (energy: Energy) => void }) {
+export function EnergyShop({
+  lang,
+  onClose,
+  onEnergy,
+  initialSku,
+}: {
+  lang: string;
+  onClose: () => void;
+  onEnergy: (energy: Energy) => void;
+  initialSku?: string;
+}) {
   const t = lang === 'th' ? TEXT.th : TEXT.en;
   const ref = useRef<HTMLDialogElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -181,13 +191,26 @@ export function EnergyShop({ lang, onClose, onEnergy }: { lang: string; onClose:
     }
     say('bot', { text: t.hello });
     call<ShopInfo>('/api/shop')
-      .then((s) => {
+      .then(async (s) => {
         setInfo(s);
         const userDiamonds = s.diamonds ?? 0;
         setDiamonds(userDiamonds);
         if (!s.enabled) return (say('bot', { text: t.closed }), setStage('closed'));
         if (s.blocked) return (say('bot', { text: t.blocked }), setStage('closed'));
         if (s.openOrder?.payTo) return showOrder(s.openOrder);
+        if (initialSku) {
+          try {
+            setStage('busy');
+            const res = await call<{ order: Order }>('/api/shop/orders', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ sku: initialSku, requestId: crypto.randomUUID(), confirmAge20: true }),
+            });
+            return showOrder(res.order);
+          } catch (err) {
+            explain(err);
+          }
+        }
         if (userDiamonds >= 10) {
           say('bot', { text: t.diamondsInfo(userDiamonds, Math.floor(userDiamonds / 10)) });
         }

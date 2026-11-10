@@ -1,5 +1,5 @@
 export class ApiError extends Error {
-  constructor(message: string, readonly status: number) {
+  constructor(message: string, readonly status: number, readonly data?: any) {
     super(message);
   }
 }
@@ -19,7 +19,7 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
       data && typeof data === 'object' && 'error' in data && typeof data.error === 'string'
         ? data.error
         : `เกิดข้อผิดพลาด (${response.status})`;
-    throw new ApiError(message, response.status);
+    throw new ApiError(message, response.status, data);
   }
   return data as T;
 }

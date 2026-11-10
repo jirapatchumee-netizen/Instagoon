@@ -61,7 +61,7 @@ async function ensureExperimentOpening(db, npc, scope, now) {
 }
 
 export async function characterOnlyChat(req, env, user, npc, action, now, services) {
-  const { json, takeEnergy, refundEnergy, energy, recordTurn } = services;
+  const { json, takeEnergy, refundEnergy, energy, recordTurn, cliffhangerOffer } = services;
   await ensureExperimentStorage(env.DB);
   let body = {};
   if (req.method === 'POST' && ['message', 'edit-message', 'reset-chat'].includes(action)) {
@@ -120,7 +120,7 @@ export async function characterOnlyChat(req, env, user, npc, action, now, servic
     // Never silently trim or summarize a controlled experiment.
     if (history.length + 2 > 200) return json({ error: 'experiment_history_full' }, 409);
     charged = await takeEnergy(env, user.id, now);
-    if (!charged) return json({ error: 'energy_empty' }, 402);
+    if (!charged) return json({ error: 'energy_empty', cliffhangerOffer }, 402);
     const providerStarted = Date.now();
     const response = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.DEEPSEEK_API_KEY}` },
