@@ -77,15 +77,19 @@ async function mediaCrawl(page) {
     ];
     const out = [];
     for (const [what, key] of keys) {
-      const r = await fetch('/api/media/' + key.split('/').map(encodeURIComponent).join('/'));
+      // Ask the way an <img> does: /api/media serves the derived .webp to clients that accept it, so the
+      // budget has to be judged on the bytes a player actually downloads, not on the PNG in git.
+      const r = await fetch('/api/media/' + key.split('/').map(encodeURIComponent).join('/'), {
+        headers: { accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8' },
+      });
       const size = (await r.arrayBuffer()).byteLength;
-      out.push({ what, key, status: r.status, size, cache: r.headers.get('cache-control') });
+      out.push({ what, key, status: r.status, size, type: r.headers.get('content-type'), cache: r.headers.get('cache-control') });
     }
     return out;
   });
   for (const m of results) {
     if (m.status !== 200) add('error', 'media-missing', m.what, `${m.key} → HTTP ${m.status}`);
-    else if (m.size > BUDGET.imageBytes) add('warn', 'image-weight', m.what, `${m.key} is ${Math.round(m.size / 1024)} KB (budget ${BUDGET.imageBytes / 1024} KB)`);
+    else if (m.size > BUDGET.imageBytes) add('warn', 'image-weight', m.what, `${m.key} is ${Math.round(m.size / 1024)} KB ${m.type} (budget ${BUDGET.imageBytes / 1024} KB)`);
     if (m.status === 200 && /no-store/.test(m.cache || '')) add('warn', 'media-cache', m.what, `${m.key} is served with cache-control: ${m.cache}`);
   }
 }

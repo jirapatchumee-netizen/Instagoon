@@ -82,10 +82,16 @@ export async function removedCreators(env) {
 }
 
 // Media file shipped in the bundle, or null so the caller falls back to D1/R2.
-export async function bundledMedia(env, key) {
+// A browser that accepts webp is given the .webp that scripts/gen-webp.mjs derived beside the PNG (~10% of the
+// bytes); the swap happens here, after the caller already authorised `key`, so it changes bytes and never
+// permissions. Clients that do not accept webp, and any bundle without the derived file, keep the PNG.
+export async function bundledMedia(env, key, accept = '') {
   const b = await loadBundle(env);
-  if (!b?.media.includes(key)) return null;
-  const r = await env.ASSETS.fetch(BASE + 'media/' + key.split('/').map(encodeURIComponent).join('/'));
+  if (!b?.media) return null;
+  const webp = /\.png$/i.test(key) && /webp/i.test(accept) ? key.replace(/\.png$/i, '.webp') : null;
+  const served = webp && b.media.includes(webp) ? webp : key;
+  if (!b.media.includes(served)) return null;
+  const r = await env.ASSETS.fetch(BASE + 'media/' + served.split('/').map(encodeURIComponent).join('/'));
   return r.ok ? { body: r.body, httpMetadata: { contentType: r.headers.get('content-type') } } : null;
 }
 

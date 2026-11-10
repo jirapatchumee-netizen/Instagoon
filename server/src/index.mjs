@@ -1543,8 +1543,8 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
   if(!allowed){const stories=await all(env,'SELECT id FROM stories WHERE media_key=?',mediaKey);for(const s of stories){const story=await visibleStory(env,user,s.id,now);if(story && (story.type==='broadcast' || story.first_viewed_at!=null)){allowed=true;break;}}}
   if(!allowed){allowed=!!await one(env,'SELECT 1 FROM reward_unlocks WHERE user_id=? AND reward_key=?',user.id,mediaKey);}
   if(!allowed)allowed=await episodeMediaReached(env,user.id,mediaKey);
-  if(!allowed)return json({error:'not_found'},404);const file=await bundledMedia(env,mediaKey)||await mediaStore(env).get(mediaKey);if(!file)return json({error:'not_found'},404);
-  return new Response(file.body,{headers:{'content-type':file.httpMetadata?.contentType||'application/octet-stream','cache-control':'private, max-age=86400','x-content-type-options':'nosniff','content-security-policy':"default-src 'none'; img-src 'self' data:; media-src 'self'; style-src 'unsafe-inline'; sandbox"}});
+  if(!allowed)return json({error:'not_found'},404);const file=await bundledMedia(env,mediaKey,req.headers.get('accept')||'')||await mediaStore(env).get(mediaKey);if(!file)return json({error:'not_found'},404);
+  return new Response(file.body,{headers:{'content-type':file.httpMetadata?.contentType||'application/octet-stream','cache-control':'private, max-age=86400','vary':'Accept','x-content-type-options':'nosniff','content-security-policy':"default-src 'none'; img-src 'self' data:; media-src 'self'; style-src 'unsafe-inline'; sandbox"}});
  }
  if(path==='/api/account'&&method==='DELETE'){await run(env,'DELETE FROM users WHERE id=?',user.id);return json({ok:true},200,{'set-cookie':secureCookie('frost_session','',0)});}
  return json({error:'not_found'},404);
