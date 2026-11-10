@@ -57,11 +57,22 @@ export type PlayerMemory = {
   value: string;
   createdAt: number;
 };
+export type EpisodeInfo = {
+  id: string;
+  title: string;
+  completed: boolean;
+  accessible: boolean;
+  unlocked?: boolean;
+  energyCost?: number;
+  position?: number;
+  relationshipRequired?: number;
+};
+
 export type Chat = {
   experiment?: { mode: 'character-only'; provider: 'deepseek'; model: string; sourceHash: string; runId: string; presentation?: 'scene-v1'; activeMode?: 'normal' | 'master-template' };
   revisionId: string;
   episodeId: string;
-  episodes: { id: string; title: string; completed: boolean; accessible: boolean }[];
+  episodes: EpisodeInfo[];
   currentNodeId: string;
   nodes: { id: string; text: string; choices: Choice[]; end: boolean }[];
   history: { id: string; text: string; end: boolean; choiceText?: string }[];
@@ -97,5 +108,5 @@ export type ProfileData = {
   };
   posts: Post[];
   vault: ProfileVaultItem[];
-  episodes: { id: string; title: string; completed: boolean; accessible: boolean }[];
+  episodes: EpisodeInfo[];
 };

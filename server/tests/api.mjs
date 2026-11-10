@@ -123,6 +123,7 @@ assert.equal(result.payload.chat.history[0].choiceText,'Go');
 sql.prepare("INSERT INTO revisions(id,creator_id,episode_id,nodes,status,created_at) VALUES('r3','c','ep2',?,'published',?)").run(n2,now);
 result=await request('/api/chats/c/episode',{method:'POST',data:{episodeId:'ep2'}});assert.equal(result.status,403);
 sql.prepare("UPDATE relationships SET score=2 WHERE user_id='u' AND creator_id='c'").run();
+sql.prepare("INSERT INTO episode_unlocks(user_id,episode_id,unlocked_at) VALUES('u','ep2',?)").run(now);
 result=await request('/api/chats/c/episode',{method:'POST',data:{episodeId:'ep2'}});assert.equal(result.payload.chat.episodeId,'ep2');
 result=await request('/api/chats/c/episode',{method:'POST',data:{episodeId:'ep1'}});assert.equal(result.payload.chat.revisionId,'r1');assert.equal(result.payload.chat.history[0].text,'First revision');
 sql.prepare("UPDATE revisions SET status='suspended' WHERE id='r1'").run();assert.equal((await request('/api/chats/c')).status,403);

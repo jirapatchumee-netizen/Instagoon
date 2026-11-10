@@ -108,6 +108,18 @@ const SAFETY_FINISH = new Set(['SAFETY', 'PROHIBITED_CONTENT', 'BLOCKLIST', 'SPI
 // Failed turns that are not quota limits are refunded at most this many times per window.
 const FAILED_TURN_WINDOW_MS = 10 * 60000;
 const REFUNDS_PER_WINDOW = 3;
+export const CLIFFHANGER_OFFER = {
+  sku: 'offer_cliffhanger_49',
+  name: 'แพ็กอยู่ต่อกับเธอ (Cliffhanger Special)',
+  priceSatang: 4900,
+  priceThb: 49,
+  originalPriceThb: 120,
+  discountPercent: 59,
+  energy: 180,
+  diamonds: 20,
+  expiresInSeconds: 600
+};
+export const EPISODE_UNLOCK_ENERGY = 25;
 const defer = (ctx, promise) => { const guarded = promise.catch(e => console.error('background task failed', e?.name)); if(ctx?.waitUntil) ctx.waitUntil(guarded); return guarded; };
 async function takeEnergy(env, uid, now, reason = 'ai_chat') {
  await energy(env, uid, now);
@@ -504,7 +516,7 @@ async function player(req,env,user,path,now,ctx) {
  if (experimentRoute) {
   const row = await one(env, 'SELECT definition_json FROM npc_definitions WHERE creator_id=?', experimentRoute[1]);
   let definition; try { definition = JSON.parse(row?.definition_json || 'null'); } catch {}
-  if (characterOnlyEnabled(definition)) return characterOnlyChat(req, env, user, definition, experimentRoute[2], now, { json, takeEnergy, refundEnergy, energy, recordTurn });
+  if (characterOnlyEnabled(definition)) return characterOnlyChat(req, env, user, definition, experimentRoute[2], now, { json, takeEnergy, refundEnergy, energy, recordTurn, cliffhangerOffer: CLIFFHANGER_OFFER });
  }
  if(path==='/api/creators'&&method==='GET'){
   const removed=new Set(await removedCreators(env));
@@ -879,7 +891,7 @@ async function player(req,env,user,path,now,ctx) {
     }
   });
  }
- m=path.match(/^\/api\/chats\/([\w-]+)(?:\/(choose|episode|message|edit-message))?$/);
+ m=path.match(/^\/api\/chats\/([\w-]+)(?:\/(choose|episode|unlock-episode|message|edit-message))?$/);
  if(m){
   const creator=id(m[1]);
   if(method==='POST'&&m[2]==='message'){
@@ -906,7 +918,7 @@ async function player(req,env,user,path,now,ctx) {
    let visitId = 'none', energyBucket = null, charged = null;
    try {
    const charge = await takeEnergy(env, user.id, now);
-   if(!charge) return json({error:'energy_empty'}, 402);
+   if(!charge) return json({error:'energy_empty', cliffhangerOffer: CLIFFHANGER_OFFER}, 402);
    energyBucket = charge;
    charged = energyBucket;
    // These four reads never depend on each other, so they share one D1 round trip. Only reads are
@@ -1546,8 +1558,9 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
   let npcDef = null;
   if(npcDefRow?.definition_json){try{npcDef=JSON.parse(npcDefRow.definition_json);}catch(e){}}
 
-  const episodes=await all(env,`SELECT e.*,s.current_node_id,s.revision_id FROM episodes e LEFT JOIN chat_states s ON s.episode_id=e.id AND s.user_id=? WHERE e.creator_id=? AND EXISTS(SELECT 1 FROM revisions r WHERE r.episode_id=e.id AND r.status='published') ORDER BY e.position,e.id`,user.id,creator);
+  const episodes=await all(env,`SELECT e.*,s.current_node_id,s.revision_id,u.unlocked_at FROM episodes e LEFT JOIN chat_states s ON s.episode_id=e.id AND s.user_id=? LEFT JOIN episode_unlocks u ON u.episode_id=e.id AND u.user_id=? WHERE e.creator_id=? AND EXISTS(SELECT 1 FROM revisions r WHERE r.episode_id=e.id AND r.status='published') ORDER BY e.position,e.id`,user.id,user.id,creator);
   const score = relRow?.score || 0;
+  const isEpUnlocked = (e, index) => index === 0 || !!e.unlocked_at || !!e.current_node_id;
 
   if(!episodes || episodes.length === 0){
     if (method === 'GET' && !m[2] && allAiMessages.length === 0 && narrativeEnabled(npcDef) && npcDef.narrative.opening) {
@@ -1575,18 +1588,62 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
   }
   let active=await one(env,'SELECT episode_id FROM chat_active WHERE user_id=? AND creator_id=?',user.id,creator);
   if(method==='POST'&&m[2]==='episode'){
-   const b=await body(req), episode=episodes.find(e=>e.id===b.episodeId);if(!episode||episode.relationship_required>score)return json({error:'episode_unavailable'},403);
-   await run(env,'INSERT INTO chat_active(user_id,creator_id,episode_id) VALUES(?,?,?) ON CONFLICT(user_id,creator_id) DO UPDATE SET episode_id=excluded.episode_id',user.id,creator,episode.id);active={episode_id:episode.id};
-  }else if(!active){const episode=episodes.find(e=>e.relationship_required<=score);if(!episode)return json({error:'not_found'},404);await run(env,'INSERT INTO chat_active(user_id,creator_id,episode_id) VALUES(?,?,?) ON CONFLICT(user_id,creator_id) DO NOTHING',user.id,creator,episode.id);active=await one(env,'SELECT episode_id FROM chat_active WHERE user_id=? AND creator_id=?',user.id,creator);}
-  const episode=episodes.find(e=>e.id===active.episode_id);if(!episode||episode.relationship_required>score)return json({error:'episode_unavailable'},403);
+   const b=await body(req), targetEpisode=episodes.find(e=>e.id===b.episodeId);
+   if(!targetEpisode) return json({error:'not_found'}, 404);
+   if(targetEpisode.relationship_required>score) return json({error:'episode_unavailable'}, 403);
+   const epIdx = episodes.findIndex(e=>e.id===targetEpisode.id);
+   if(!isEpUnlocked(targetEpisode, epIdx)) return json({error:'episode_locked', energyCost: EPISODE_UNLOCK_ENERGY, episodeId: targetEpisode.id}, 403);
+   await run(env,'INSERT INTO chat_active(user_id,creator_id,episode_id) VALUES(?,?,?) ON CONFLICT(user_id,creator_id) DO UPDATE SET episode_id=excluded.episode_id',user.id,creator,targetEpisode.id);
+   active={episode_id:targetEpisode.id};
+  }else if(method==='POST'&&m[2]==='unlock-episode'){
+   const b=await body(req), targetEpisode=episodes.find(e=>e.id===b.episodeId);
+   if(!targetEpisode) return json({error:'not_found'}, 404);
+   if(targetEpisode.relationship_required>score) return json({error:'episode_unavailable'}, 403);
+   const epIdx = episodes.findIndex(e=>e.id===targetEpisode.id);
+   if(isEpUnlocked(targetEpisode, epIdx)){
+    await run(env,'INSERT INTO chat_active(user_id,creator_id,episode_id) VALUES(?,?,?) ON CONFLICT(user_id,creator_id) DO UPDATE SET episode_id=excluded.episode_id',user.id,creator,targetEpisode.id);
+    active={episode_id:targetEpisode.id};
+    return json({ok:true, unlocked:true, already:true, episodeId:targetEpisode.id, energy:await energy(env,user.id,now)});
+   }
+   const spent = await spendEnergy(env, user.id, EPISODE_UNLOCK_ENERGY, 'unlock_episode:'+targetEpisode.id, now);
+   if(!spent) return json({error:'energy_empty', requiredEnergy: EPISODE_UNLOCK_ENERGY, cliffhangerOffer: CLIFFHANGER_OFFER}, 402);
+   await run(env,'INSERT OR IGNORE INTO episode_unlocks(user_id,episode_id,unlocked_at) VALUES(?,?,?)',user.id,targetEpisode.id,now);
+   await run(env,'INSERT INTO chat_active(user_id,creator_id,episode_id) VALUES(?,?,?) ON CONFLICT(user_id,creator_id) DO UPDATE SET episode_id=excluded.episode_id',user.id,creator,targetEpisode.id);
+   active={episode_id:targetEpisode.id};
+   return json({ok:true, unlocked:true, episodeId:targetEpisode.id, energy:spent.energy});
+  }else if(!active){
+   const targetEpisode=episodes.find((e, idx)=>e.relationship_required<=score && isEpUnlocked(e, idx));
+   if(!targetEpisode)return json({error:'not_found'},404);
+   await run(env,'INSERT INTO chat_active(user_id,creator_id,episode_id) VALUES(?,?,?) ON CONFLICT(user_id,creator_id) DO NOTHING',user.id,creator,targetEpisode.id);
+   active=await one(env,'SELECT episode_id FROM chat_active WHERE user_id=? AND creator_id=?',user.id,creator);
+  }
+  const episode=episodes.find(e=>e.id===active?.episode_id);if(!episode||episode.relationship_required>score)return json({error:'episode_unavailable'},403);
   let state=await one(env,'SELECT * FROM chat_states WHERE user_id=? AND episode_id=?',user.id,episode.id);
   if(!state){const rev=await one(env,"SELECT * FROM revisions WHERE episode_id=? AND status='published' ORDER BY created_at DESC,id DESC LIMIT 1",episode.id);if(!rev)return json({error:'not_found'},404);const nodes=JSON.parse(rev.nodes);if(!nodes.length)return json({error:'not_found'},404);const inserted=await run(env,'INSERT OR IGNORE INTO chat_states(user_id,episode_id,revision_id,current_node_id) VALUES(?,?,?,?)',user.id,episode.id,rev.id,nodes[0].id);if(inserted.meta.changes){await run(env,'INSERT INTO activity(user_id,kind,created_at) VALUES(?,?,?)',user.id,'dm_start',now);if(nodes[0].end)await run(env,'INSERT INTO activity(user_id,kind,created_at) VALUES(?,?,?)',user.id,'dm_end',now);}state=await one(env,'SELECT * FROM chat_states WHERE user_id=? AND episode_id=?',user.id,episode.id);}
   const rev=await one(env,'SELECT * FROM revisions WHERE id=?',state.revision_id);if(!rev||rev.status==='suspended')return json({error:'content_suspended'},403);const nodes=JSON.parse(rev.nodes);let node=nodes.find(n=>n.id===state.current_node_id);if(!node){node=nodes[0];if(!node)return json({error:'invalid_revision'},500);await run(env,'UPDATE chat_states SET current_node_id=? WHERE user_id=? AND episode_id=?',node.id,user.id,episode.id);}
   if(method==='POST'&&m[2]==='choose'){const b=await body(req), choice=node.choices?.find(c=>c.id===b.choiceId);if(!choice)return json({error:'invalid_choice'},400);const next=nodes.find(n=>n.id===choice.nextNodeId);if(!next)return json({error:'invalid_revision'},500);const result=await run(env,'UPDATE chat_states SET current_node_id=?,last_choice_id=? WHERE user_id=? AND episode_id=? AND current_node_id=?',next.id,choice.id,user.id,episode.id,node.id);if(!result.meta.changes)return json({error:'state_changed'},409);if(next.end)await run(env,'INSERT INTO activity(user_id,kind,created_at) VALUES(?,?,?)',user.id,'dm_end',now);await applyChoiceOutcome(env,user.id,creator,rev,choice,now);node=next;}
-  else if(!(method==='GET'&&!m[2])&&!(method==='POST'&&m[2]==='episode'))return json({error:'not_found'},404);
+  else if(!(method==='GET'&&!m[2])&&!(method==='POST'&&m[2]==='episode')&&!(method==='POST'&&m[2]==='unlock-episode'))return json({error:'not_found'},404);
   await run(env,'INSERT INTO activity(user_id,kind,created_at) VALUES(?,?,?)',user.id,'dm',now);
   const visited=await all(env,'SELECT node_id,choice_id FROM chat_history WHERE user_id=? AND episode_id=? ORDER BY position',user.id,episode.id);const history=visited.slice(0,-1).map(v=>{const n=nodes.find(x=>x.id===v.node_id);if(!n)return null;return {id:n.id,text:n.text,end:n.end,choiceText:n.choices?.find(c=>c.id===v.choice_id)?.text||''};}).filter(Boolean);
-  const episodeList=[];for(const e of episodes){let completed=e.id===episode.id?!!node.end:false;if(e.id!==episode.id&&e.revision_id){const pinned=await one(env,'SELECT nodes,status FROM revisions WHERE id=?',e.revision_id);if(pinned&&pinned.status!=='suspended')completed=!!JSON.parse(pinned.nodes).find(n=>n.id===e.current_node_id)?.end;}episodeList.push({id:e.id,title:e.title,accessible:e.relationship_required<=score,completed});}
+  const episodeList=[];for(let i=0;i<episodes.length;i++){
+   const e=episodes[i];
+   let completed=e.id===episode.id?!!node.end:false;
+   if(e.id!==episode.id&&e.revision_id){
+    const pinned=await one(env,'SELECT nodes,status FROM revisions WHERE id=?',e.revision_id);
+    if(pinned&&pinned.status!=='suspended')completed=!!JSON.parse(pinned.nodes).find(n=>n.id===e.current_node_id)?.end;
+   }
+   const unlocked=isEpUnlocked(e, i);
+   episodeList.push({
+    id:e.id,
+    title:e.title,
+    relationshipRequired:e.relationship_required,
+    position:e.position,
+    unlocked,
+    accessible:e.relationship_required<=score && unlocked,
+    energyCost:unlocked?0:EPISODE_UNLOCK_ENERGY,
+    completed
+   });
+  }
   return json({chat:{episodeId:episode.id,revisionId:rev.id,currentNodeId:node.id,nodes:[node],history,episodes:episodeList,aiMessages:allAiMessages,memories:memList,unlockedRewards,closeness:relRow?.closeness||0,trust:relRow?.trust||0,romance:relRow?.romance||0,score}});
  }
  if(path==='/api/notifications'&&method==='GET'){
@@ -1673,11 +1730,11 @@ async fetch(req,env,ctx){
   }
   if(!user)return json({error:'unauthorized'},401);
   const res=await player(req,env,user,path,now,ctx);
-  const thread=path.match(/^\/api\/chats\/([\w-]+)(?:\/(?:message|edit-message|choose|episode))?$/);
+  const thread=path.match(/^\/api\/chats\/([\w-]+)(?:\/(?:message|edit-message|choose|episode|unlock-episode))?$/);
   if(thread&&res.ok){const read=run(env,'INSERT INTO inbox_reads(user_id,creator_id,read_at) VALUES(?,?,?) ON CONFLICT(user_id,creator_id) DO UPDATE SET read_at=excluded.read_at',user.id,thread[1],Date.now()).catch(()=>{});await read;}
   // Time spent in the Worker (D1 included), visible in DevTools > Network > Timing. Compare with the
   // request's total time to tell Worker/D1 cost from network cost.
   try{res.headers.set('server-timing',`app;dur=${Date.now()-now}`);}catch{}
   return res;
- }catch(e){const msg=String(e?.message||'');if(msg.includes('energy_empty'))return json({error:'energy_empty'},402);if(msg.includes('post_unavailable'))return json({error:'not_found'},404);if(msg.includes('rate_limit'))return json({error:'rate_limit'},429);if(msg.includes('idempotency_conflict'))return json({error:'idempotency_conflict'},409);if(msg.includes('invite_limit'))return json({error:'invite_limit'},409);if(e?.status)return json({error:msg},e.status);console.error('froststory request failed',e?.name);return json({error:'internal_error'},500);}
+ }catch(e){const msg=String(e?.message||'');if(msg.includes('energy_empty'))return json({error:'energy_empty', cliffhangerOffer: CLIFFHANGER_OFFER},402);if(msg.includes('post_unavailable'))return json({error:'not_found'},404);if(msg.includes('rate_limit'))return json({error:'rate_limit'},429);if(msg.includes('idempotency_conflict'))return json({error:'idempotency_conflict'},409);if(msg.includes('invite_limit'))return json({error:'invite_limit'},409);if(e?.status)return json({error:msg},e.status);console.error('froststory request failed',e?.name);return json({error:'internal_error'},500);}
 }};
