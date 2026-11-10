@@ -3430,6 +3430,33 @@ dialog.fs-overlay[open]::backdrop {
   color: #ff8fa8;
 }
 
+.fs-dm-failed-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.fs-dm-report-btn {
+  background: rgba(255, 99, 132, 0.15);
+  border: 1px solid rgba(255, 99, 132, 0.35);
+  color: #ff9cc6;
+  font-size: 0.72rem;
+  padding: 3px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+
+.fs-dm-report-btn:hover {
+  background: rgba(255, 99, 132, 0.25);
+  color: #fff;
+}
+
 .fs-dm-affection {
   font-size: 0.72rem;
   color: #ff9cc6;
@@ -5171,6 +5198,113 @@ dialog.fs-overlay[open]::backdrop {
 .fs-profile-edit-btn:hover {
   background: rgba(244, 114, 182, 0.28);
   border-color: #f472b6;
+}
+
+/* Bug Report Modal & In-App Reporting */
+.fs-bug-report-modal {
+  max-width: 440px;
+}
+
+.fs-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.fs-form-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #f472b6;
+}
+
+.fs-select {
+  width: 100%;
+  padding: 10px 14px;
+  background: #181124;
+  border: 1px solid rgba(244, 114, 182, 0.3);
+  border-radius: 12px;
+  color: #fce7f3;
+  font-size: 0.9rem;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.fs-select:focus {
+  border-color: #ec4899;
+  box-shadow: 0 0 8px rgba(236, 72, 153, 0.3);
+}
+
+.fs-textarea {
+  width: 100%;
+  padding: 10px 14px;
+  background: #181124;
+  border: 1px solid rgba(244, 114, 182, 0.3);
+  border-radius: 12px;
+  color: #fce7f3;
+  font-size: 0.9rem;
+  outline: none;
+  resize: vertical;
+  min-height: 84px;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.fs-textarea:focus {
+  border-color: #ec4899;
+  box-shadow: 0 0 8px rgba(236, 72, 153, 0.3);
+}
+
+.fs-report-context-badge {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-family: monospace;
+  word-break: break-all;
+  margin-bottom: 12px;
+}
+
+.fs-report-success-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px 10px;
+  gap: 12px;
+  text-align: center;
+}
+
+.fs-report-success-icon {
+  color: #10b981;
+}
+
+.fs-report-success-text {
+  font-size: 0.95rem;
+  color: #d1fae5;
+  margin: 0;
+}
+
+.fs-settings-report-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  color: #f3e8ff;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 10px;
+}
+
+.fs-settings-report-btn:hover {
+  background: rgba(244, 114, 182, 0.12);
+  border-color: rgba(244, 114, 182, 0.3);
+  color: #fff;
 }
 
 .fs-account-info {

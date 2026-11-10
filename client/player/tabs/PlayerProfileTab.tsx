@@ -3,7 +3,7 @@ import { type User, type Creator, type Post } from '../types';
 import { TRANSLATIONS, type Lang } from '../i18n';
 import { getAvatarSrc, media, AvatarImg, truncate } from '../ui';
 import { LangSelect } from '../LangSelect';
-import { Bookmark, Sparkles, User as UserIcon, Users, Volume2, Smartphone } from 'lucide-react';
+import { Bookmark, Sparkles, User as UserIcon, Users, Volume2, Smartphone, LifeBuoy } from 'lucide-react';
 import { IgVerified } from '../InstagramIcons';
 
 interface PlayerProfileTabProps {
@@ -18,6 +18,7 @@ interface PlayerProfileTabProps {
   onViewProfile: (creator: Creator) => void;
   onLogout: () => void;
   onDeleteAccount: () => void;
+  onReportIssue?: () => void;
 }
 
 export function PlayerProfileTab({
@@ -32,6 +33,7 @@ export function PlayerProfileTab({
   onViewProfile,
   onLogout,
   onDeleteAccount,
+  onReportIssue,
 }: PlayerProfileTabProps) {
   const t = TRANSLATIONS[lang];
   const [activeSubTab, setActiveSubTab] = useState<'saved' | 'collection' | 'following'>('saved');
@@ -272,6 +274,17 @@ export function PlayerProfileTab({
             <span className="fs-toggle-knob" />
           </button>
         </div>
+
+        {onReportIssue && (
+          <button
+            type="button"
+            className="fs-settings-report-btn"
+            onClick={onReportIssue}
+          >
+            <LifeBuoy size={18} />
+            <span>{t.reportIssue}</span>
+          </button>
+        )}
 
         <button
           type="button"

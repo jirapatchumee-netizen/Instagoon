@@ -558,4 +558,34 @@ assert.equal((await call('/api/dev/test-models',{method:'POST',data:{models:['..
   assert.equal(unfolRes.payload.following, false);
   assert.equal(sql.prepare("SELECT COUNT(*) n FROM follows WHERE user_id=? AND creator_id='c'").get(gid).n, 0);
 }
+{
+  const repRes = await request('/api/reports', {
+    method: 'POST',
+    data: {
+      category: 'chat',
+      creatorId: 'c',
+      errorCode: 'deepseek_unavailable',
+      userMessage: 'แชทไม่ตอบสนองครับ',
+      clientContext: { route: 'chat', lang: 'th' }
+    }
+  });
+  assert.equal(repRes.status, 200);
+  assert.ok(repRes.payload.reportId);
+  const row = sql.prepare("SELECT * FROM user_bug_reports WHERE id=?").get(repRes.payload.reportId);
+  assert.ok(row);
+  assert.equal(row.user_id, 'u');
+  assert.equal(row.category, 'chat');
+  assert.equal(row.creator_id, 'c');
+  assert.equal(row.error_code, 'deepseek_unavailable');
+  assert.equal(row.user_message, 'แชทไม่ตอบสนองครับ');
+  assert.ok(row.client_context_json.includes('chat'));
+
+  // Rate limit: 4 more make 5 total
+  for (let i = 0; i < 4; i++) {
+    const r = await request('/api/reports', { method: 'POST', data: { category: 'other' } });
+    assert.equal(r.status, 200);
+  }
+  const blocked = await request('/api/reports', { method: 'POST', data: { category: 'other' } });
+  assert.equal(blocked.status, 429);
+}
 console.log('Worker API authentication, comments, stories, revision and deletion checks passed');
