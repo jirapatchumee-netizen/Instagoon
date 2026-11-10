@@ -1,0 +1,40 @@
+{
+  "stats": {
+    "activeUsers24h": "158",
+    "totalMessages": "7,420",
+    "avgPerUser": "47",
+    "unlockedStories": "312",
+    "unlockPaceSec": "18",
+    "totalPlayHours": "68",
+    "equivDays": "3",
+    "milestoneLevel2": "34",
+    "milestoneSecret": "12",
+    "satisfactionRate": "99%",
+    "creators": [
+      { "name": "มิลิน (Milin)", "desc": "สาวหวานขี้อาย ซ่อนความแซ่บ", "pct": 55, "color": "linear-gradient(90deg, #f43f5e, #fb7185)" },
+      { "name": "มุก (Mook)", "desc": "สาวมั่น Girl Crush สุดเย้ายวน", "pct": 30, "color": "linear-gradient(90deg, #8b5cf6, #c084fc)" },
+      { "name": "เนย (Noey)", "desc": "เด็กฝึกงานน่ารัก Gap Moe ชวนหลง", "pct": 15, "color": "linear-gradient(90deg, #06b6d4, #38bdf8)" }
+    ],
+    "moments": [
+      { "name": "ห้องนอนตอนดึก (Milin)", "pct": 42 },
+      { "name": "ระเบียงเพนต์เฮาส์ (Mook)", "pct": 28 },
+      { "name": "แอบคุยในออฟฟิศ (Noey)", "pct": 18 },
+      { "name": "ช็อปปิ้งเดทวันหยุด", "pct": 12 }
+    ],
+    "hourlyPeak": "23:00 - 01:00",
+    "peakUsers": "48"
+  },
+  "security": {
+    "scanAttemptsMonth": "4,850+",
+    "blockedIps": "216",
+    "dataBreachCount": "0",
+    "topAttacks": [
+      { "target": "/wp-login.php / admin", "count": "1,840", "pct": 82 },
+      { "target": ".env / credentials", "count": "1,220", "pct": 54 },
+      { "target": "SSH / FTP probe", "count": "980", "pct": 43 },
+      { "target": "SQLi & API scan", "count": "510", "pct": 22 },
+      { "target": "Password brute-force", "count": "300", "pct": 13 }
+    ],
+    "timeframe": "รอบสัปดาห์ล่าสุด (Weekly Live Audit)"
+  }
+}
