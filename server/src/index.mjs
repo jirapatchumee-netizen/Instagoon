@@ -368,6 +368,25 @@ async function ensureUserProfileColumns(env) {
   try { await env.DB.exec('ALTER TABLE users ADD COLUMN nickname TEXT'); } catch {}
   userProfileReady = true;
 }
+let bugReportsReady = false;
+async function ensureBugReportsStorage(env) {
+  if (bugReportsReady) return;
+  try {
+    await env.DB.exec(`CREATE TABLE IF NOT EXISTS user_bug_reports (
+      id TEXT PRIMARY KEY,
+      user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      category TEXT NOT NULL,
+      creator_id TEXT REFERENCES creators(id) ON DELETE SET NULL,
+      error_code TEXT,
+      user_message TEXT,
+      client_context_json TEXT,
+      created_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_user_bug_reports_time ON user_bug_reports(created_at);
+    CREATE INDEX IF NOT EXISTS idx_user_bug_reports_user ON user_bug_reports(user_id, created_at);`);
+    bugReportsReady = true;
+  } catch {}
+}
 
 async function player(req,env,user,path,now,ctx) {
  const method=req.method;
@@ -388,6 +407,36 @@ async function player(req,env,user,path,now,ctx) {
   }
   const uRow = await one(env, 'SELECT nickname, avatar_id FROM users WHERE id=?', user.id);
   return json({ok:true, nickname:uRow?.nickname||null, avatarId:uRow?.avatar_id||null});
+ }
+ if(path==='/api/reports' && method==='POST'){
+  await ensureBugReportsStorage(env);
+  const b = await body(req);
+  const category = typeof b.category === 'string' && ['chat','payment','audio','visual','other'].includes(b.category) ? b.category : 'other';
+  const creatorId = typeof b.creatorId === 'string' && /^[a-zA-Z0-9_-]{1,80}$/.test(b.creatorId.trim()) ? b.creatorId.trim() : null;
+  const errorCode = typeof b.errorCode === 'string' && b.errorCode.trim() ? b.errorCode.trim().slice(0, 100) : null;
+  const userMessage = typeof b.userMessage === 'string' && b.userMessage.trim() ? b.userMessage.trim().slice(0, 1000) : null;
+  const clientContext = b.clientContext && typeof b.clientContext === 'object' ? JSON.stringify(b.clientContext).slice(0, 2000) : null;
+
+  const recent = await one(env, 'SELECT COUNT(*) n FROM user_bug_reports WHERE user_id=? AND created_at>?', user.id, now - 600000);
+  if (recent && recent.n >= 5) {
+    return json({ error: 'rate_limited' }, 429);
+  }
+
+  const reportId = crypto.randomUUID();
+  await run(env, 'INSERT INTO user_bug_reports(id, user_id, category, creator_id, error_code, user_message, client_context_json, created_at) VALUES(?,?,?,?,?,?,?,?)',
+    reportId, user.id, category, creatorId, errorCode, userMessage, clientContext, now
+  );
+
+  if (env.DISCORD_REPORT_WEBHOOK) {
+    const summary = `🚨 **User Bug Report**\n**User:** ${user.email} (${user.id})\n**Category:** ${category}\n**Creator:** ${creatorId || 'N/A'}\n**Error:** ${errorCode || 'None'}\n**Message:** ${userMessage || 'No comment'}`;
+    fetch(env.DISCORD_REPORT_WEBHOOK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: summary })
+    }).catch(() => {});
+  }
+
+  return json({ ok: true, reportId });
  }
  if(path==='/api/dev/energy' && method==='POST'){
   if(!isAdminUser(env,user)) return json({error:'forbidden'}, 403);

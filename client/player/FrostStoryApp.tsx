@@ -10,6 +10,7 @@ import { type Energy, type User, type Creator, type Post, type Story, type AiCha
 import { ApiError, api } from './api';
 import { ChatComposer, media, AvatarImg, hasSpokenDialogue, renderBubbleContent, json, StoryContent, Modal, getAvatarSrc } from './ui';
 import { ProfileSetupModal } from './overlays/ProfileSetupModal';
+import { BugReportModal } from './overlays/BugReportModal';
 import { LoginScreen } from './LoginScreen';
 import { HomeTab } from './tabs/HomeTab';
 import { ExploreTab } from './tabs/ExploreTab';
@@ -187,7 +188,14 @@ export function FrostStoryApp() {
   const [aiSending, setAiSending] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
-  const [pending, setPending] = useState<{ id: string; content: string; failed?: string }[]>([]);
+  const [pending, setPending] = useState<{ id: string; content: string; failed?: string; rawError?: string; retryCount?: number }[]>([]);
+  const [bugReportOpen, setBugReportOpen] = useState(false);
+  const [bugReportConfig, setBugReportConfig] = useState<{
+    category: 'chat' | 'payment' | 'audio' | 'visual' | 'other';
+    creatorId?: string | null;
+    errorCode?: string | null;
+    contextInfo?: Record<string, unknown>;
+  }>({ category: 'other' });
   const [unlockedRewards, setUnlockedRewards] = useState<string[]>([]);
   const [memoryPanel, setMemoryPanel] = useState<{ open: boolean; items: { key: string; value: string }[] }>({ open: false, items: [] });
   const [unlockedStoryModal, setUnlockedStoryModal] = useState<{
@@ -258,8 +266,8 @@ export function FrostStoryApp() {
     const id = retryId ?? crypto.randomUUID();
     setPending((prev) =>
       retryId
-        ? prev.map((item) => (item.id === id ? { id, content: text } : item))
-        : [...prev, { id, content: text }]
+        ? prev.map((item) => (item.id === id ? { ...item, content: text, failed: undefined } : item))
+        : [...prev, { id, content: text, retryCount: 0 }]
     );
     stickToBottomRef.current = true;
     setAiSending(true);
@@ -293,7 +301,8 @@ export function FrostStoryApp() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes('energy_empty')) setShopOpen(true);
-      const reason = msg.includes('thread_busy')
+      const isExperimentOrNetwork = msg.startsWith('deepseek_') || msg.startsWith('experiment_') || msg.includes('network') || msg.includes('Failed to fetch');
+      const baseReason = msg.includes('thread_busy')
         ? t.chatBusyPrev(selectedCreator.name)
         : msg.includes('energy_empty')
           ? t.chatEnergyEmpty
@@ -301,10 +310,18 @@ export function FrostStoryApp() {
             ? t.chatRateLimited
             : msg.includes('ai_unavailable')
               ? t.chatAiUnavailable
-              : msg.startsWith('deepseek_') || msg.startsWith('experiment_')
-                ? t.chatExperimentFailed(msg)
+              : isExperimentOrNetwork
+                ? t.chatRetryPrompt
                 : msg;
-      setPending((prev) => prev.map((item) => (item.id === id ? { ...item, failed: reason } : item)));
+
+      setPending((prev) =>
+        prev.map((item) => {
+          if (item.id !== id) return item;
+          const count = (item.retryCount || 0) + 1;
+          const displayReason = count >= 3 ? t.chatServiceTemporarilyDown : baseReason;
+          return { ...item, failed: displayReason, rawError: msg, retryCount: count };
+        })
+      );
     } finally {
       setAiSending(false);
     }
@@ -900,6 +917,15 @@ export function FrostStoryApp() {
             onSetLang={handleSetLang}
             onEditProfile={() => setProfileModalOpen(true)}
             onViewProfile={(creator) => void openProfile(creator)}
+            onReportIssue={() => {
+              setBugReportConfig({
+                category: 'other',
+                creatorId: selectedCreator?.id || null,
+                errorCode: null,
+                contextInfo: { screen: 'account' },
+              });
+              setBugReportOpen(true);
+            }}
             onLogout={() =>
               void action(async () => {
                 await api("/api/logout", json({}));
@@ -1796,17 +1822,40 @@ export function FrostStoryApp() {
                   {pending.map((item) => (
                     <div key={item.id} className="fs-dm-row-right fs-group-end fs-msg-out">
                       {item.failed ? (
-                        <button
-                          type="button"
-                          className="fs-dm-failed"
-                          disabled={aiSending}
-                          onClick={() => void sendAiMessage(item.content, item.id)}
-                        >
-                          <span className="fs-answer is-failed">{item.content}</span>
-                          <span className="fs-dm-failed-note" role="alert">
-                            {item.failed} · {t.sendFailed}
-                          </span>
-                        </button>
+                        <div className="fs-dm-failed">
+                          <button
+                            type="button"
+                            className="fs-answer is-failed"
+                            disabled={aiSending}
+                            onClick={() => void sendAiMessage(item.content, item.id)}
+                            title={t.chatRetryPrompt}
+                          >
+                            {item.content}
+                          </button>
+                          <div className="fs-dm-failed-row">
+                            <span className="fs-dm-failed-note" role="alert">
+                              {item.failed} · {t.sendFailed}
+                            </span>
+                            {(item.retryCount || 0) >= 3 && (
+                              <button
+                                type="button"
+                                className="fs-dm-report-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setBugReportConfig({
+                                    category: 'chat',
+                                    creatorId: selectedCreator.id,
+                                    errorCode: item.rawError || 'chat_failed',
+                                    contextInfo: { message: item.content, retryCount: item.retryCount },
+                                  });
+                                  setBugReportOpen(true);
+                                }}
+                              >
+                                {t.reportIssue}
+                              </button>
+                            )}
+                          </div>
+                        </div>
                       ) : (
                         <div className="fs-answer is-sending">{item.content}</div>
                       )}
@@ -2134,6 +2183,18 @@ export function FrostStoryApp() {
       {/* Energy Top-up Shop */}
       {shopOpen && (
         <EnergyShop lang={lang} onClose={() => setShopOpen(false)} onEnergy={setEnergy} />
+      )}
+
+      {/* Bug Report Modal */}
+      {bugReportOpen && (
+        <BugReportModal
+          t={t}
+          initialCategory={bugReportConfig.category}
+          creatorId={bugReportConfig.creatorId}
+          errorCode={bugReportConfig.errorCode}
+          contextInfo={bugReportConfig.contextInfo}
+          onClose={() => setBugReportOpen(false)}
+        />
       )}
 
       {/* Dev Tools Telemetry Drawer */}
