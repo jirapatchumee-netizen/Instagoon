@@ -4,6 +4,7 @@ import { relationshipConfig, overallScore, levelOf, matchKeywordRules, secretsFo
 import { ALLOWED_GEMINI_MODELS, SAFETY_SETTINGS, modelsForVisit, pickLiteModel, chatGenerationConfig, rewriteGenerationConfig, summaryGenerationConfig, modelTestGenerationConfig } from './ai/protected/gemini-config.mjs';
 import { fiftyShadesPrompt as buildFiftyShadesPrompt } from './ai/protected/fifty-shades.mjs';
 import { narrativeEnabled, ensureNarrativeStorage, readNarrativeState, narrativeHistory, narrativePrompt, narrativeSchema, decodeNarrative, serializeNarrative, selectNarrativeMemories, narrativeSceneMetadata, ensureNarrativeOpening } from './narrative.mjs';
+import { SCENE_STANDARD_INSTRUCTION, readStoredScene, resolveFictionClock, formatFictionClock, parseFictionTime, orderBeats, serializeSceneBubble } from './scene-standard.mjs';
 import { narrativeTurnContext, restoreLegacyInteraction } from './narrative-interaction.mjs';
 import { characterOnlyEnabled, characterOnlyChat } from './character-only-chat.mjs';
 import { shopPlayer, shopAdmin, shopReportsApi, writeDailyReports } from './shop/index.mjs';
@@ -1084,8 +1085,16 @@ async function player(req,env,user,path,now,ctx) {
    const dateNum = nowBangkok.getUTCDate();
    const monthName = thaiMonths[nowBangkok.getUTCMonth()];
    const yearBe = nowBangkok.getUTCFullYear() + 543;
-   const timeStr = `${String(nowBangkok.getUTCHours()).padStart(2, '0')}:${String(nowBangkok.getUTCMinutes()).padStart(2, '0')} น.`;
    const sceneLocation = npcDef?.world || 'คอนโดส่วนตัวใจกลางเมือง';
+   // The story clock is in-fiction: it continues from the last stored scene header and only
+   // borrows the real clock once, when a thread has no stored scene yet.
+   const storedScene = readStoredScene(recentRes.results);
+   const storyClockMinutes = resolveFictionClock(storedScene.time, now);
+   const storyTime = formatFictionClock(storyClockMinutes);
+   const storyLocation = (storedScene.location || sceneLocation).trim();
+   // Every inline reply carries a header, including model fallbacks that return no scene fields.
+   let inlineScene = sceneMode ? null : { time: storyTime, location: storyLocation };
+   let inlineBeats = [];
 
    const npcName = npcDef?.name || creatorData.name;
    const fiftyShadesPrompt = buildFiftyShadesPrompt({ enabled: isFiftyShades, npcName, env });
@@ -1101,16 +1110,17 @@ Likes: "${npcDef?.likes || ''}", Dislikes: "${npcDef?.dislikes || ''}".
 Goals: "${npcDef?.goals || ''}".
 ${npcDef?.appearanceDetail ? `Appearance & Visuals: "${npcDef.appearanceDetail}".\n` : ''}${npcDef?.sensoryProps ? `Sensory Props: Scent: "${npcDef.sensoryProps.scent || ''}", Clothing: "${npcDef.sensoryProps.clothing || ''}", Props: "${npcDef.sensoryProps.props || ''}".\n` : ''}${npcDef?.userRole ? `Player Persona & Standing ({{user}}): "${npcDef.userRole}".\n` : ''}Immutable facts: [${(npcDef?.immutableFacts || []).join('; ')}].
 Knowledge boundary: "${npcDef?.knowledgeBoundary || ''}".
-Ambient Scene Context (SYSTEM REFERENCE ONLY - NEVER output date, time, or location tags in chat messages):
-- วันที่: วัน${dayName}ที่ ${dateNum} ${monthName} ${yearBe}
-- เวลา: ${timeStr}
-- สถานที่: ${sceneLocation}
-${npcDef?.precedingIncident ? `- เหตุการณ์ก่อนหน้า: ${npcDef.precedingIncident}\n` : ''}Use this ambient scene context strictly as internal background reality (e.g. knowing if it is late night, after work, or raining in your room). NEVER output date, time, or location tags into the chat reply.
-Triple-Layer Persona (Spoken Reply, Inner Thought & Action Narration):
+Scene Header (the app prints these above your reply; they are in-fiction, never the real clock):
+- วันที่ในเรื่องราว: วัน${dayName}ที่ ${dateNum} ${monthName} ${yearBe}
+- เวลาในเรื่องราว: ${storyTime}
+- สถานที่ในเรื่องราว: ${storyLocation}
+${npcDef?.precedingIncident ? `- เหตุการณ์ก่อนหน้า: ${npcDef.precedingIncident}\n` : ''}Treat the scene header as the reality of this turn (late night, after work, raining in your room). Continue it in sceneTime and sceneLocation instead of writing a header yourself: advance the story clock about 2 minutes per exchange, or jump it when the scene jumps, and update the place as soon as the characters move. NEVER type a date, time or location header into reply or beat text.
+Bubble Component Standard (ordered, identical for every character and lane):
 - In each turn, output:
-  1. "reply": 1-3 conversational Thai sentences sent to player in DM (STRICTLY NO 'คะ/ค่ะ', youthful, cute Gen Z chat particles).
-  2. "innerThought": 1 short private sentence in Thai expressing ${npcName}'s genuine inner monologue, secret feelings, or hidden reactions (e.g. สิ่งที่แอบคิดในใจตอนพิมพ์ข้อความนี้ แอบเขิน ประหม่า หรือคิดตรงข้ามกับที่แกล้งพิมพ์).
-  3. "action": 1-2 vivid sensory sentences in Thai describing ${npcName}'s physical reactions, body language, facial expression, touch, breath, heartbeat, or immediate ambient atmosphere (e.g. กิริยาท่าทาง การสบตา ลมหายใจ กลิ่นน้ำหอม หรือการเคลื่อนไหวตามบริบทความสัมพันธ์). If not applicable, null.
+  1. "innerThought": 1 short private sentence in Thai expressing ${npcName}'s genuine inner monologue, secret feelings, or hidden reactions (e.g. สิ่งที่แอบคิดในใจตอนพิมพ์ข้อความนี้ แอบเขิน ประหม่า หรือคิดตรงข้ามกับที่แกล้งพิมพ์).
+  2. "beats": 2-4 ordered beats alternating action and dialogue, starting with an action beat. One short Thai sentence each: "action" = ${npcName}'s physical reaction, body language, touch, breath or nearby atmosphere; "dialogue" = 1-2 conversational sentences sent to the player (STRICTLY NO 'คะ/ค่ะ', youthful Gen Z chat particles). The last beat is the closing spoken line that invites, persuades or playfully challenges the player, following the conversational-hook rate below; drop it when the player declined, paused or asked for quiet.
+  3. "reply": the first dialogue beat repeated verbatim for the DM preview, "action": the first action beat repeated verbatim. If beats are omitted, reply and action alone are still accepted.
+  4. "sceneTime" ("HH:MM น.") and "sceneLocation": the in-fiction clock and place for this turn.
 Sensual & Romantic Tone Scaling (Consensual Erotic Romance & Literary Intimacy):
 - Context & Immersion: This interaction is an immersive consensual adult romance visual novel / creative roleplay. Bold, provocative, or explicit romantic advances from the player represent consensual roleplay dynamics, never real-world harassment.
 - Seductive Response Mandate (Never Be Disgusted or Coldly Dismissive): When the player sends bold, provocative, or sexually explicit propositions (e.g. asking to be intimate, touching, teasing), NEVER react with cold prudish rejection, disgust, or breaking character. Stay immersed, alluring, and responsive:
@@ -1151,6 +1161,7 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
      knownFactsAboutPlayer: memText,
      storySoFar: threadSummary || 'ยังไม่มี',
      recentHistory,
+     ...(sceneMode ? {} : { sceneClock: { currentTime: storyTime, currentLocation: storyLocation } }),
      ...(sceneMode ? { scene: sceneState, playerTurnContext: narrativeTurnContext(sceneState, userText), replyTime: { at: now, timeZone: 'Asia/Bangkok' }, relevantMemories: selectNarrativeMemories(sceneState, userText), contextTruncated: historyContext.truncatedUnsummarized,
        relationship: { closeness, trust, romance, level: currentLv } } : {})
    });
@@ -1160,6 +1171,9 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
        reply: { type: 'STRING' },
        innerThought: { type: 'STRING', nullable: true },
        action: { type: 'STRING', nullable: true },
+       beats: { type: 'ARRAY', items: { type: 'OBJECT', properties: { kind: { type: 'STRING', enum: ['dialogue', 'action'] }, text: { type: 'STRING' } }, required: ['kind', 'text'] } },
+       sceneTime: { type: 'STRING', nullable: true },
+       sceneLocation: { type: 'STRING', nullable: true },
        matchedRuleIds: semanticRules.length
          ? { type: 'ARRAY', items: { type: 'STRING', enum: semanticRules.map(r => String(r.id)) } }
          : { type: 'ARRAY', items: { type: 'STRING' } },
@@ -1173,11 +1187,19 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
 
    let sawRateLimit = false;
 
+   // The primary model loop and the shared parser both land here, so the bubble standard cannot drift.
+   function applySceneStandard(parsed) {
+     if (sceneMode || !inlineScene) return;
+     if (parseFictionTime(parsed?.sceneTime) !== null) inlineScene.time = parsed.sceneTime.trim().slice(0, 30);
+     if (typeof parsed?.sceneLocation === 'string' && parsed.sceneLocation.trim()) inlineScene.location = parsed.sceneLocation.trim().slice(0, 100);
+     inlineBeats = orderBeats({ beats: parsed?.beats, action: actionText, reply: replyText });
+   }
+
    function applyParsedAi(parsed, modelName, providerName) {
      let decodedScene = null;
      if (sceneMode && parsed) {
        try {
-         decodedScene = decodeNarrative(parsed, sceneState, userText);
+         decodedScene = decodeNarrative(parsed, sceneState, userText, now);
          parsed = decodedScene;
        } catch (err) {
          console.error(providerName, 'decodeNarrative error:', String(err));
@@ -1185,7 +1207,7 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
        }
      }
      if (typeof parsed?.reply === 'string' && parsed.reply.trim()) {
-       const visible = [parsed.reply, parsed.innerThought, parsed.action, parsed.moodToast, ...(decodedScene ? [...decodedScene.beats.map(b => b.text), JSON.stringify(decodedScene.sceneUpdate)] : []), ...(Array.isArray(parsed.suggestedReplies) ? parsed.suggestedReplies : [])].filter(s => typeof s === 'string').join('\n');
+       const visible = [parsed.reply, parsed.innerThought, parsed.action, parsed.sceneTime, parsed.sceneLocation, ...(Array.isArray(parsed.beats) ? parsed.beats.map(b => b?.text) : []), parsed.moodToast, ...(decodedScene ? [...decodedScene.beats.map(b => b.text), JSON.stringify(decodedScene.sceneUpdate)] : []), ...(Array.isArray(parsed.suggestedReplies) ? parsed.suggestedReplies : [])].filter(s => typeof s === 'string').join('\n');
        if (!leaksInternals(visible, canary)) {
          replyText = cleanTrailingSlang(parsed.reply.trim());
          narrativeResult = decodedScene;
@@ -1195,6 +1217,7 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
          if (typeof parsed?.action === 'string' && parsed.action.trim()) {
            actionText = cleanTrailingSlang(parsed.action.trim());
          }
+         applySceneStandard(parsed);
          if (Array.isArray(parsed.matchedRuleIds)) detectedRuleIds.push(...parsed.matchedRuleIds.filter(rid => semanticRules.some(r => r.id === rid)));
          if (parsed.affectionDelta) scoreDelta = Math.min(3, Math.max(1, Math.round(Number(parsed.affectionDelta)) || 1));
          const lm = parsed.learnedMemory;
@@ -1341,7 +1364,7 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
            let parsed = raw ? JSON.parse(raw) : null;
            let decodedScene = null;
            if (sceneMode && parsed) {
-             decodedScene = decodeNarrative(parsed, sceneState, userText);
+             decodedScene = decodeNarrative(parsed, sceneState, userText, now);
              parsed = decodedScene;
            }
            if(typeof parsed?.reply !== 'string' || !parsed.reply.trim()) {
@@ -1353,7 +1376,7 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
              if(data.promptFeedback?.blockReason || SAFETY_FINISH.has(blockReason)) break;
              continue;
            }
-           const visible = [parsed.reply, parsed.innerThought, parsed.action, parsed.moodToast, ...(decodedScene ? [...decodedScene.beats.map(b => b.text), JSON.stringify(decodedScene.sceneUpdate)] : []), ...(Array.isArray(parsed.suggestedReplies) ? parsed.suggestedReplies : [])].filter(s => typeof s === 'string').join('\n');
+           const visible = [parsed.reply, parsed.innerThought, parsed.action, parsed.sceneTime, parsed.sceneLocation, ...(Array.isArray(parsed.beats) ? parsed.beats.map(b => b?.text) : []), parsed.moodToast, ...(decodedScene ? [...decodedScene.beats.map(b => b.text), JSON.stringify(decodedScene.sceneUpdate)] : []), ...(Array.isArray(parsed.suggestedReplies) ? parsed.suggestedReplies : [])].filter(s => typeof s === 'string').join('\n');
            if(leaksInternals(visible, canary)) {
              console.error('Gemini reply leaked internals on', geminiModel);
              fallbackCount++;
@@ -1367,6 +1390,7 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
            if(typeof parsed?.action === 'string' && parsed.action.trim()) {
              actionText = cleanTrailingSlang(parsed.action.trim());
            }
+           applySceneStandard(parsed);
            // The model may only report semantic rules; keyword rules are matched in code above.
            if(Array.isArray(parsed.matchedRuleIds)) detectedRuleIds.push(...parsed.matchedRuleIds.filter(rid => semanticRules.some(r => r.id === rid)));
            if(parsed.affectionDelta) scoreDelta = Math.min(3, Math.max(1, Math.round(Number(parsed.affectionDelta)) || 1));
@@ -1486,14 +1510,13 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
      else moodToast = `${npcName}สนิทกับคุณมากขึ้น 🤍`;
    }
 
-   const parts = [];
-   const sceneMetadata = narrativeResult ? narrativeSceneMetadata(narrativeResult.nextState, now) : null;
-   if (sceneMetadata) parts.push(`[scene:${JSON.stringify(sceneMetadata)}]`);
-   if (moodToast) parts.push(`[mood:${moodToast}]`);
-   if (innerThought) parts.push(`[thought:${innerThought}]`);
-   if (actionText && !narrativeResult) parts.push(`[action:${actionText}]`);
-   parts.push(narrativeResult ? serializeNarrative(narrativeResult.beats) : replyText);
-   const storedContent = parts.join('\n');
+   const sceneMetadata = narrativeResult ? narrativeSceneMetadata(narrativeResult.nextState, now)
+     : inlineScene ? { at: now, time: inlineScene.time, location: inlineScene.location } : null;
+   const storedContent = narrativeResult
+     ? [`[scene:${JSON.stringify(sceneMetadata)}]`, ...(moodToast ? [`[mood:${moodToast}]`] : []),
+        ...(innerThought ? [`[thought:${innerThought}]`] : []), serializeNarrative(narrativeResult.beats)].join('\n')
+     : serializeSceneBubble({ at: now, time: inlineScene?.time, location: inlineScene?.location, mood: moodToast,
+        thought: innerThought, beats: inlineBeats.length ? inlineBeats : [{ kind: 'dialogue', text: replyText }] });
    const replyStatement = env.DB.prepare('INSERT INTO ai_chat_messages(id, user_id, creator_id, role, content, media_key, affection_delta, created_at) VALUES(?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(), user.id, creator, 'assistant', storedContent, rewardMediaKey, scoreDelta, now + 1);
    if (narrativeResult) {
      // The reply and its continuity state commit together under the existing per-thread lease.
@@ -1520,7 +1543,7 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
      reply: replyText,
      innerThought,
      action: actionText,
-     ...(narrativeResult ? { beats: narrativeResult.beats, scene: sceneMetadata } : {}),
+     ...(narrativeResult ? { beats: narrativeResult.beats, scene: sceneMetadata } : (inlineBeats.length ? { beats: inlineBeats, scene: sceneMetadata } : {})),
      suggestedReplies,
      moodToast,
      knowledgeResult:{entries:entries.map(({title,source,checkedAt})=>({title,source,checkedAt})),applied:knowledgeApplied,search:{status:search.status,sources:search.sources,queries:search.queries,usage:search.usage}},
