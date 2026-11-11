@@ -1,6 +1,7 @@
 // Narrative state is an opt-in content feature; the existing model/configuration policy is unchanged.
 // State proposals from the model are untrusted. Only this reducer commits scene transitions.
 import { interpretNarrativeTurn, readInteraction, nextInteraction } from './narrative-interaction.mjs';
+import { SCENE_STANDARD_INSTRUCTION, parseFictionTime, formatFictionClock, bangkokClockMinutes, STORY_TIME_STEP_MINUTES, DEFAULT_STORY_TIME } from './scene-standard.mjs';
 const safeText = (value, max = 200) => typeof value === 'string'
   ? value.replace(/[\[\]<>\u0000-\u001f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max) : '';
 export const narrativeEnabled = npc => npc?.narrative?.enabled === true;
@@ -13,6 +14,7 @@ export function initialNarrativeState(npc) {
   const location = place(npc.narrative.openingLocation);
   if (!location) throw new Error('invalid_narrative_opening_location');
   return { version: 1, courtshipStyle: npc.narrative.courtshipStyle || 'reserved', turn: 0, locationId: location.id, places: [location], pendingLocationId: null,
+    clockMinutes: parseFictionTime(npc.narrative.openingClock),
     activity: safeText(npc.narrative.openingActivity), goal: safeText(npc.narrative.openingGoal), motivation: safeText(npc.narrative.openingGoal),
     mood: 'มั่นใจและอยากรู้จัก', memories: [], interaction: readInteraction({ pendingOffer: npc.narrative.opening?.offer }) };
 }
@@ -24,6 +26,7 @@ export function readNarrativeState(npc, raw) {
     const places = (Array.isArray(value.places) ? value.places : []).map(place).filter(Boolean).slice(0, 12);
     if (!places.some(p => p.id === value.locationId)) return initial;
     return { version: 1, courtshipStyle: initial.courtshipStyle, turn: Math.max(0, Math.min(100000, Number(value.turn) || 0)), locationId: value.locationId,
+      clockMinutes: Number.isInteger(value.clockMinutes) && value.clockMinutes >= 0 && value.clockMinutes <= 1439 ? value.clockMinutes : initial.clockMinutes,
       places, pendingLocationId: places.some(p => p.id === value.pendingLocationId) ? value.pendingLocationId : null,
       activity: safeText(value.activity) || initial.activity, goal: safeText(value.goal) || initial.goal,
       motivation: safeText(value.motivation) || initial.motivation,
@@ -56,7 +59,7 @@ function acceptsTravel(text, target, turn) {
   return !!target && text.includes(target.name) && /(?:เดิน|ไป|ถึง|พา)/.test(text) && !/[?？]|ไหม|หรือเปล่า/.test(text);
 }
 
-export function reduceNarrativeState(previous, update, userText, npcReply = '') {
+export function reduceNarrativeState(previous, update, userText, npcReply = '', at = null) {
   const next = structuredClone(previous);
   next.turn++;
   if (!update || typeof update !== 'object') return next;
@@ -93,6 +96,11 @@ export function reduceNarrativeState(previous, update, userText, npcReply = '') 
   else if (turn.preserveGoal) next.goal = turn.activeGoal;
   else if (safeText(update.goal)) next.goal = safeText(update.goal);
   if (safeText(update.mood, 80)) next.mood = safeText(update.mood, 80);
+  // The story clock is the model's only time authority; the real clock seeds it once.
+  const proposedClock = parseFictionTime(update.clock);
+  if (proposedClock !== null) next.clockMinutes = proposedClock;
+  else if (next.clockMinutes === null) next.clockMinutes = bangkokClockMinutes(at) ?? parseFictionTime(DEFAULT_STORY_TIME);
+  else next.clockMinutes = (next.clockMinutes + STORY_TIME_STEP_MINUTES) % 1440;
   const memory = update.memory;
   const evidence = safeText(memory?.evidence, 160);
   const fact = safeText(memory?.text, 160);
@@ -125,7 +133,7 @@ export function narrativeSchema(semanticRules) {
     sceneUpdate: { type: 'OBJECT', properties: {
       move: { type: 'STRING', enum: ['stay', 'propose', 'confirm', 'cancel'] },
       place: { type: 'OBJECT', nullable: true, properties: { id: string, name: string, description: string }, required: ['id', 'name', 'description'] },
-      activity: string, goal: string, mood: string,
+      activity: string, goal: string, mood: string, clock: { type: 'STRING', nullable: true },
       memory: { type: 'OBJECT', nullable: true, properties: { text: string, evidence: string }, required: ['text', 'evidence'] },
       commitment: { type: 'OBJECT', nullable: true, properties: { text: string, evidence: string }, required: ['text', 'evidence'] },
       nextOffer: { type: 'OBJECT', nullable: true, properties: { kind: { type: 'STRING', enum: ['food', 'travel', 'romance', 'topic', 'challenge'] }, quote: string }, required: ['kind', 'quote'] }
@@ -135,7 +143,7 @@ export function narrativeSchema(semanticRules) {
   }, required: ['beats', 'sceneUpdate'] };
 }
 
-export function decodeNarrative(value, state, userText) {
+export function decodeNarrative(value, state, userText, at = null) {
   if (!Array.isArray(value?.beats) || value.beats.length < 1 || value.beats.length > 6) throw new Error('invalid_narrative_beats');
   const beats = value.beats.map(b => {
     if (!['dialogue', 'action'].includes(b?.kind) || typeof b.text !== 'string' || !b.text.trim() || b.text.length > 350) throw new Error('invalid_narrative_beat');
@@ -145,7 +153,7 @@ export function decodeNarrative(value, state, userText) {
   });
   const reply = beats.filter(b => b.kind === 'dialogue').map(b => b.text).join('\n');
   if (!reply || beats.reduce((n, b) => n + b.text.length, 0) > 1000 || !value.sceneUpdate) throw new Error('invalid_narrative_reply');
-  const next = reduceNarrativeState(state, value.sceneUpdate, userText, reply);
+  const next = reduceNarrativeState(state, value.sceneUpdate, userText, reply, at);
   if (value.sceneUpdate.move === 'confirm' && next.locationId === state.locationId &&
       (value.sceneUpdate.place?.id || state.pendingLocationId) !== state.locationId) throw new Error('unconfirmed_narrative_transition');
   return { ...value, reply, action: null, innerThought: safeText(value.innerThought, 180) || null, beats, nextState: next };
@@ -183,8 +191,9 @@ Turn contract:
 - Examples teach voice and conversational moves, NOT reusable response scripts. Do not copy their complete sentences, distinctive punchlines or action sequences. Use playerTurnContext.variationHint as a creative direction only when it fits this turn; invent fresh wording grounded in the actual player message and current scene. Read recent assistant replies: avoid repeating their opening, punchline, gesture and closing question. If the player repeats a short answer, acknowledge the repetition and advance a different detail rather than replaying the same response. Do not merely replace synonyms in the same template. Context and boundaries take priority over variety.
 - Return ${length} short ordered beats (dialogue/action), usually 1 sentence each. React → character-owned gesture → reply/next opening when useful. Vary the pattern; a brief reply is allowed. Combined visible text about 250-650 Thai characters, never pad. No graphic sexual narration.
 - innerThought is an optional short fictional character aside, never analysis or private model reasoning. Do not put the secret bet in an aside before it is available to reveal.
+- ${SCENE_STANDARD_INSTRUCTION}
 - The persisted location/activity is authoritative, not the opening backstory. Reuse place IDs and details on return visits. You may invent modest plausible fictional locations, not real addresses or canon facts about the player.
-- The server displays the reply's date/time in Asia/Bangkok and the committed scene location above your prose. Use replyTime if referring to the current time. Do not duplicate that header or prefix beat text with action:, dialogue:, or visual:.
+- The server displays the in-fiction scene clock (sceneUpdate.clock, "HH:MM น.", advanced about ${STORY_TIME_STEP_MINUTES} minutes per exchange or jumped with the story) and the committed scene location above your prose. Never use the real-world clock as the story clock, never duplicate that header, and never prefix beat text with action:, dialogue:, or visual:.
 - move=propose stores a destination as pending; do not narrate arrival. confirm only if the immediately pending destination is accepted by the player's latest message, or the player explicitly describes travelling to that named location. A question or refusal is not acceptance. Propose at most one destination. Otherwise stay/cancel. Keep activity at the current place until confirmation.
 - Preserve promises and callbacks. sceneUpdate.memory may hold one relevant PLAYER STATEMENT with a verbatim evidence quote from the latest playerMessage; it remains an unverified claim. Never store a suggestion as a completed event.
 - sceneUpdate.commitment is optional: one NPC promise actually made in this reply, with a verbatim dialogue quote as evidence. A promise remains pending, not a completed event. Use null when no new promise is made.
@@ -202,7 +211,8 @@ export function serializeNarrative(beats) {
 export function narrativeSceneMetadata(state, at) {
   const location = state.places.find(p => p.id === state.locationId);
   if (!location || !Number.isFinite(at)) throw new Error('invalid_narrative_scene_metadata');
-  return { at, location: safeText(location.name, 100) };
+  const time = formatFictionClock(state.clockMinutes ?? bangkokClockMinutes(at));
+  return { at, ...(time ? { time } : {}), location: safeText(location.name, 100) };
 }
 
 export function narrativeOpeningMessage(npc, at) {
