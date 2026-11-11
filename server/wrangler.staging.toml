@@ -31,9 +31,14 @@ STAGING_EMAILS = "jirapat.chumee@gmail.com,taychinsgo@gmail.com"
 # Secret for AI agents (AGENT_DEV_SECRET) is managed via Cloudflare Worker Secrets (wrangler secret put).
 # One-time free energy per new staging account (production uses the default, 30).
 FREE_ENERGY_GRANT = "100"
-BANK_NAME = "ธนาคารกสิกรไทย"
-BANK_ACCOUNT_NO = "177-1-50013-3"
-BANK_ACCOUNT_NAME = "บจก. แมช มูฟ อัลฟ่า"
+# Payment identity is Worker config, never repo config (ADR-0018): payTo() reads these at runtime and
+# shopReady() refuses to open the shop while any of them is empty. Set the real values with
+#   wrangler secret put BANK_NAME / BANK_ACCOUNT_NO / BANK_ACCOUNT_NAME
+# before this deploy goes out, otherwise staging has no payment card. Staging must not point at the
+# production collection account, or test transfers land in the real daily close.
+BANK_NAME = ""
+BANK_ACCOUNT_NO = ""
+BANK_ACCOUNT_NAME = ""
 # Fill these with Google's published USD per 1M tokens for the active model group to make
 # /api/admin/chat-metrics report estimatedCostUsd. Left unset on purpose: the numbers must come
 # from the pricing page, not from a guess. See docs/AI_CHAT_COST_PLAN.md (P0).
