@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { TRANSLATIONS, LANGS } from '../player/i18n.ts';
+import { createFollowSync } from '../player/api.ts';
 import { createOverlayStack } from '../player/overlay-history.ts';
 import { formatFastForwardAction, cleanFastForwardLocation, cleanFastForwardLabel } from '../player/message-format.ts';
 
@@ -177,3 +178,57 @@ test('Fast forward: cleans pronouns and formats natural roleplay action without 
     '⏩ ไปที่ ห้องของเธอ (20:00 น.)'
   );
 });
+
+test('Follow sync: rapid consecutive follow clicks do not flicker from stale loadFeed responses', () => {
+  const sync = createFollowSync();
+  const ids = ['pim', 'juna', 'milin', 'mook', 'cheer', 'noey'];
+  let creators = ids.map((id) => ({ id, following: false }));
+
+  // 1. User clicks Follow on pim; POST completes quickly and starts loadFeed #1
+  const c1 = sync.beginFollow('pim', false);
+  creators = creators.map((c) => (c.id === 'pim' ? { ...c, following: c1.nextFollowing } : c));
+  assert.equal(c1.nextFollowing, true);
+  const s1 = sync.endFollow('pim', c1.seq);
+  assert.equal(s1.allSettled, true);
+  const feedVer1 = sync.beginFeedLoad(); // loadFeed #1 starts when only pim is followed on server
+
+  // 2. While loadFeed #1 is in flight, user rapidly clicks Follow on juna, milin, mook, cheer, noey
+  const inFlight = [];
+  for (const id of ['juna', 'milin', 'mook', 'cheer', 'noey']) {
+    const step = sync.beginFollow(id, false);
+    creators = creators.map((c) => (c.id === id ? { ...c, following: step.nextFollowing } : c));
+    inFlight.push({ id, ...step });
+  }
+  assert.ok(creators.every((c) => c.following === true));
+
+  // 3. Stale loadFeed #1 resolves with server snapshot where only pim is followed: must be rejected!
+  assert.equal(sync.isCurrentFeedLoad(feedVer1), false);
+  // Even if applyPending is called on a background /api/creators fetch, pending follows stay true
+  const staleServerList = ids.map((id) => ({ id, following: id === 'pim' }));
+  const merged = sync.applyPending(staleServerList);
+  assert.ok(merged.every((c) => c.following === true));
+
+  // 4. First 4 of the 5 remaining POSTs complete: allSettled stays false so no premature loadFeed fires
+  for (let i = 0; i < 4; i++) {
+    const res = sync.endFollow(inFlight[i].id, inFlight[i].seq);
+    assert.equal(res.isLatestForCreator, true);
+    assert.equal(res.allSettled, false);
+  }
+
+  // 5. Final POST (noey) completes: allSettled becomes true, single fresh loadFeed runs and is accepted
+  const lastRes = sync.endFollow(inFlight[4].id, inFlight[4].seq);
+  assert.equal(lastRes.isLatestForCreator, true);
+  assert.equal(lastRes.allSettled, true);
+
+  const feedVer2 = sync.beginFeedLoad();
+  assert.equal(sync.isCurrentFeedLoad(feedVer2), true);
+
+  // 6. Double-tap on same creator ignores older in-flight POST
+  const tap1 = sync.beginFollow('pim', true);
+  assert.equal(tap1.nextFollowing, false);
+  const tap2 = sync.beginFollow('pim', true); // uses pending false -> flips back to true
+  assert.equal(tap2.nextFollowing, true);
+  assert.equal(sync.endFollow('pim', tap1.seq).isLatestForCreator, false);
+  assert.equal(sync.endFollow('pim', tap2.seq).isLatestForCreator, true);
+});
+
