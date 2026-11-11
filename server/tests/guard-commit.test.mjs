@@ -58,6 +58,12 @@ test('refuses what must never reach the public repo', () => {
     file('server/src/ai/protected/gemini-config.mjs', 'x', 'M'),
     file('server/src/ai/protected/fifty-shades.mjs', '', 'D'),
     file('server/wrangler.staging.toml', 'x', 'M', '-SUMMARY_MODEL = "a"\n+SUMMARY_MODEL = "b"\n'),
+    // Built at runtime like every other case here: the guard must not refuse its own test file, which is
+    // the only place these shapes have to appear literally (ADR-0013, ADR-0018).
+    file('server/wrangler.staging.toml', 'BANK_ACCOUNT_NO = "123' + '-4-56789-0"'),
+    file('notes/pay.md', 'โอนเข้า 123' + '-4-56789-0 ได้เลย'),
+    file('docs/ACCOUNTING_DAILY_CLOSE.md', 'เลขประจำตัวผู้เสียภาษี 0123456789' + '012'),
+    file('docs/tax.md', 'Taxpayer ID: 0123456789' + '012'),
     file('server/wrangler.toml', 'x', 'M', '@@ -28 +28 @@\n-GEMINI_MODEL = "gemini-2.5-flash"\n+GEMINI_MODEL = "gemini-3.5-flash-lite"\n'),
     file('package.json', '{"name":"p","scripts":{"test":"echo skipped"},"dependencies":{"a":"1"}}', 'M', '', '{"name":"p","scripts":{"test":"pnpm test:worker"},"dependencies":{"a":"1"}}'),
     file('server/package.json', '{"scripts":{"test":"node --check ."}}', 'M', '', '{"scripts":{"test":"node --test server/tests/*.test.mjs"}}'),
@@ -71,6 +77,9 @@ test('lets the look-alikes through', () => {
   const cases = [
     file('content/media/posts/p.png', png(false)),
     file('.env.example', 'GEMINI_API_KEY='),
+    file('server/wrangler.staging.toml', 'BANK_NAME = "ธนาคารทดสอบ (staging)"\nBANK_ACCOUNT_NO = "0000000000"\nBANK_ACCOUNT_NAME = "บริษัท ทดสอบ จำกัด (staging)"'),
+    file('server/tests/shop.test.mjs', "const shopEnv = { BANK_ACCOUNT_NO: '0123456789', BANK_NAME: 'ธนาคารทดสอบ' };"),
+    file('docs/ENERGY_TOPUP.md', 'เลขบัญชีอยู่ใน Worker secret BANK_ACCOUNT_NO (ฝ่ายบัญชีตรวจเป็น 10 หลักก่อนตั้ง)'),
     file('.env.sample', 'GEMINI_API_KEY='),
     file('config/serviceaccount-schema.json', '{"title":"how service accounts work"}'),
     file('server/src/keys.mjs', 'const KEY = "AIza" + "0".repeat(35); // placeholder built at runtime, no key here'),
