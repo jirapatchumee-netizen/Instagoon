@@ -38,6 +38,7 @@ export const NpcObjectSchema = z.object({
   knowledge:z.array(KnowledgeEntrySchema).max(100).optional(), knowledgeEnabled:z.boolean().optional(), webSearchEnabled:z.boolean().optional(),
   style: z.object({ language: text, pronouns: text, tone: text, length: z.enum(['short', 'medium', 'long']), emoji: z.enum(['none', 'some', 'often']), examples: text, fallback: text.min(1), levelStyles: z.array(text).length(5) }).strict(),
   relationship: z.object({ weights: ScoresSchema, thresholds: z.array(z.number().min(0).max(100)).length(5), romanceEnabled: z.boolean() }).strict(), rules: z.array(RuleSchema).max(100), rewards: z.array(RewardSchema).max(100),
+  cameos: z.array(z.string().max(300)).max(15).optional(),
 }).strict();
 export const NpcSchema = NpcObjectSchema.superRefine((npc, ctx) => {
   if (npc.chatExperiment?.opening && (npc.chatExperiment.presentation !== 'scene-v1' || !npc.chatExperiment.opening.beats.some(b => b.kind === 'dialogue')))

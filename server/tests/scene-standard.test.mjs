@@ -130,6 +130,11 @@ test('inline DM replies store the scene header and the ordered bubble, and the c
   assert.match(systems[0], /Scene Header \(the app prints these above your reply/);
   assert.doesNotMatch(systems[0], /NEVER output date, time, or location tags/);
   assert.match(systems[0], /เวลาในเรื่องราว: \d{2}:\d{2} น\./);
+  assert.doesNotMatch(systems[0], /STRICT ZERO 'คะ\/ค่ะ' RULE/);
+  assert.doesNotMatch(systems[0], /STRICTLY NO 'คะ\/ค่ะ'/);
+  assert.match(systems[0], /Player Narrative Sovereignty & Improv \(Director Roleplay Support\)/);
+  assert.match(systems[0], /ACCEPT AS CANON/);
+  assert.match(systems[0], /INTERNAL AGENCY/);
   assert.equal(turns[0].sceneClock.currentLocation, 'ร้านขนมหลังมหาวิทยาลัย');
 
   const second = await f.request('ยังกินไม่เสร็จ');
@@ -142,4 +147,48 @@ test('inline DM replies store the scene header and the ordered bubble, and the c
   const secondRow = f.sql.prepare("SELECT content FROM ai_chat_messages WHERE role='assistant' AND creator_id=? ORDER BY created_at DESC LIMIT 1").get(inline.id);
   assert.match(secondRow.content, /^\[scene:\{"at":\d+,"time":"18:44 น\."/);
   assert.deepEqual(secondRow.content.split('\n').slice(1), ['[thought:ห่วงอยู่]', '[action:เลื่อนจานเข้าหา]', 'กินอะไรยัง']);
+});
+
+test('inline DM prompt reflects character-defined voice, pronouns and cameos without global stylistic overrides', async () => {
+  const f = await narrativeFixture();
+  const custom = {
+    ...f.npc,
+    style: {
+      ...f.npc.style,
+      tone: 'สุภาพ อ่อนหวาน นุ่มนวล ลงท้ายคะ/ค่ะ อย่างเป็นธรรมชาติ',
+      pronouns: 'หนู / พี่',
+      emoji: 'some'
+    },
+    cameos: [
+      'มุก 🍸 (23 ปี, พี่สาวคนสนิท): สาวเท่ คูล บาร์เทนเดอร์ ปากไวแต่ใจดี',
+      'มิลิน 🌸 (22 ปี, เพื่อนสนิท): สดใส ติดแกรม ขี้อ้อน ชอบชวนไปปาร์ตี้'
+    ]
+  };
+  delete custom.narrative;
+  f.sql.prepare('UPDATE npc_definitions SET definition_json=? WHERE creator_id=?').run(JSON.stringify(custom), custom.id);
+
+  let capturedSystem = '';
+  f.env.PRIMARY_AI_PROVIDER = 'workers-ai';
+  f.env.AI = { async run(_model, input) {
+    capturedSystem = input.messages[0].content;
+    return { response: JSON.stringify({
+      reply: 'ยินดีค่ะพี่',
+      innerThought: 'ดีใจจัง',
+      action: 'ยิ้มรับอย่างสุภาพ',
+      beats: [{ kind: 'action', text: 'ยิ้มรับอย่างสุภาพ' }, { kind: 'dialogue', text: 'ยินดีค่ะพี่' }],
+      sceneTime: '12:15 น.',
+      sceneLocation: 'ห้องสมุด',
+      affectionDelta: 1
+    }) };
+  } };
+
+  const res = await f.request('สวัสดีครับน้อง');
+  assert.equal(res.status, 200);
+  assert.match(capturedSystem, /Voice & Speaking Register: "สุภาพ อ่อนหวาน นุ่มนวล ลงท้ายคะ\/ค่ะ อย่างเป็นธรรมชาติ"/);
+  assert.match(capturedSystem, /Pronouns & Form of Address: "หนู \/ พี่"/);
+  assert.match(capturedSystem, /Available Cameos & Shared Universe NPCs/);
+  assert.match(capturedSystem, /มุก 🍸/);
+  assert.match(capturedSystem, /มิลิน 🌸/);
+  assert.doesNotMatch(capturedSystem, /STRICT ZERO 'คะ\/ค่ะ'/);
+  assert.doesNotMatch(capturedSystem, /STRICTLY NO 'คะ\/ค่ะ'/);
 });
