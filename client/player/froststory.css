@@ -3307,7 +3307,7 @@ dialog.fs-overlay[open]::backdrop {
 }
 
 .fs-msg-edit-btn {
-  opacity: 0;
+  opacity: 0.65;
   transition: opacity 0.15s ease, background 0.15s ease;
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.18);
@@ -3325,12 +3325,6 @@ dialog.fs-overlay[open]::backdrop {
 .fs-answer-wrap:hover .fs-msg-edit-btn,
 .fs-msg-edit-btn:focus-visible {
   opacity: 1;
-}
-
-@media (hover: none) {
-  .fs-msg-edit-btn {
-    opacity: 0.65;
-  }
 }
 
 .fs-msg-edit-btn:hover {
