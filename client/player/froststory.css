@@ -2918,14 +2918,14 @@ dialog.fs-overlay[open]::backdrop {
 }
 
 .fs-thought-text {
-  line-height: 1.8;
+  line-height: 1.6;
   letter-spacing: 0.01em;
 }
 
 .fs-bubble-with-meta {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 9px;
   font-family: 'Mitr', sans-serif;
   font-weight: 400;
 }
@@ -2933,13 +2933,13 @@ dialog.fs-overlay[open]::backdrop {
 .fs-visual-box {
   display: inline-flex;
   align-items: flex-start;
-  padding: 8px 12px;
+  padding: 7px 11px;
   background: rgba(245, 158, 11, 0.12);
   border: 1px solid rgba(245, 158, 11, 0.38);
   border-radius: 12px;
   box-sizing: border-box;
   font-family: 'Mitr', sans-serif;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   font-weight: 300;
   color: #fef3c7;
   width: 100%;
@@ -2955,7 +2955,7 @@ dialog.fs-overlay[open]::backdrop {
 .fs-visual-text {
   font-weight: 300;
   white-space: pre-line;
-  line-height: 1.7;
+  line-height: 1.58;
   letter-spacing: 0.01em;
   font-style: italic;
 }
@@ -2963,15 +2963,16 @@ dialog.fs-overlay[open]::backdrop {
 .fs-bubble-text {
   font-family: 'Mitr', sans-serif;
   font-weight: 400;
+  line-height: 1.58;
 }
 
 .fs-scene-header {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
   font-size: inherit;
   font-weight: 400;
-  line-height: 1.8;
+  line-height: 1.55;
   color: inherit;
 }
 
@@ -4703,7 +4704,7 @@ dialog.fs-overlay[open]::backdrop {
 .fs-narrative-beats {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 10px;
   white-space: pre-wrap;
 }
 
