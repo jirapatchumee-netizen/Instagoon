@@ -1,0 +1,13 @@
+{
+  "creatorId": "noey",
+  "name": "เนย",
+  "version": "1.0",
+  "note": "Public stub. This repo is public: the prompt template, render recipe, reference images and shot prompts are private and live only in the local art pipeline (instagoon-workbench/art-pipeline/creators/noey/). Do not add them here; build-content rejects them.",
+  "identity": {
+    "age": "adult, 22 years old",
+    "hair": "soft honey-caramel brown hair styled in loose messy side ponytail draped over one bare shoulder with wispy see-through bangs",
+    "eyes": "expressive sparkling puppy doe-eyes, delicate thin-frame silver glasses",
+    "style": "Modern Korean webtoon, semi-realistic 2.5D, cute intern with sensual gap moe"
+  },
+  "wardrobe": ["overtime_cardigan", "intern_blouse", "secret_cosplay", "night_camisole", "casual_hoodie"]
+}
