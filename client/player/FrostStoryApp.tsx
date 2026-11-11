@@ -1827,8 +1827,10 @@ export function FrostStoryApp() {
                               </button>
                             )}
                           </div>
-                          {msg.affectionDelta ? (
+                          {typeof msg.affectionDelta === 'number' && msg.affectionDelta > 0 ? (
                             <span className="fs-dm-affection">+{msg.affectionDelta} 💖</span>
+                          ) : typeof msg.affectionDelta === 'number' && msg.affectionDelta < 0 ? (
+                            <span className="fs-dm-affection fs-dm-affection-negative">{msg.affectionDelta} 💔</span>
                           ) : null}
                         </div>
                       </div>

@@ -3486,6 +3486,10 @@ dialog.fs-overlay[open]::backdrop {
   padding-left: 4px;
 }
 
+.fs-dm-affection.fs-dm-affection-negative {
+  color: #f87171;
+}
+
 .fs-dm-empty {
   margin: 8px auto;
   font-size: 0.85rem;
