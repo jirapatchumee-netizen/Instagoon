@@ -28,7 +28,7 @@ orderShape      = { ..., payTo: status === 'pending' ? payTo(env) : null }
 | เลขบัญชีรับเงิน + ชื่อบัญชี + ชื่อธนาคาร | `server/wrangler.staging.toml`, `docs/ACCOUNTING_DAILY_CLOSE.md`, `docs/ENERGY_TOPUP.md`, `docs/SHOP_CHAT_AND_ACCOUNTING_PLAN.md`, `server/tests/shop.test.mjs` |
 | เลขประจำตัวผู้เสียภาษี 13 หลัก | `docs/ACCOUNTING_DAILY_CLOSE.md`, `docs/SHOP_CHAT_AND_ACCOUNTING_PLAN.md` |
 | fixture ในเทสต์ใช้เลขบัญชีจริงของกิจการ | `server/tests/shop.test.mjs` |
-| production `server/wrangler.toml` | **ไม่มี `BANK_*` ใน `[vars]`** → prod ต้องเอาค่าจากที่อื่น (dashboard var หรือ secret) ซึ่งยังไม่ยืนยัน |
+| production `server/wrangler.toml` | **ไม่มี `BANK_*` ใน `[vars]`** → ยืนยันแล้วว่าเป็น Secret บน Worker (2026-11-11) |
 
 รายแต่ละ item ไม่ใช่ความลับสุดยอด (ชื่อห้าง/เลขผู้เสียภาษีปรากฏบนใบกำกับภาษีและทะเบียนนิติบุคคลของ DBD อยู่แล้ว)
 **ปัญหาอยู่ที่ผลรวม**: ชื่อบริษัท + ที่อยู่ + เลขผู้เสียภาษี + ธนาคาร + เลขบัญชี + อีเมลทีม ในหน้าเว็บหน้าเดียว = ชุดข้อมูล
@@ -48,9 +48,9 @@ orderShape      = { ..., payTo: status === 'pending' ? payTo(env) : null }
 "If you change your vars in the dashboard, wrangler *will* override/delete them on its next deploy.
 If you want to keep your dashboard vars when wrangler deploys, set this field to true."
 * `server/wrangler.staging.toml` ตั้ง `keep_vars = true` → ค่าที่ตั้งไว้บน dashboard โดยไม่มีในไฟล์ **อยู่รอด** ข้าม deploy
-* `server/wrangler.toml` (production) ไม่ได้ตั้ง → plain-text var ที่พิมพ์บน dashboard จะถูกลบในการ deploy ถัดไป
+* `server/wrangler.toml` (production) เพิ่ม `keep_vars = true` (2026-11-11) เพื่อป้องกัน plain-text var บน dashboard ถูกลบโดยไม่ตั้งใจ
 * **secret** อยู่รอดทั้งสอง environment และไม่ถูกฝังลงใน build ที่เผยแพร่ ⇒ D1 จึงเลือก secret เป็นรูปแบบเดียว
-  ที่ใช้เหมือนกันได้ทั้งสองฝั่ง
+  ที่ใช้เหมือนกันได้ทั้งสองฝั่ง (โดยมี `keep_vars = true` เป็นเข็มขัดนิรภัยชั้นที่สองทั้ง staging และ production)
 
 ข้อสรุปนี้อ่านจาก schema ของเวอร์ชันที่ติดตั้งจริง + ไฟล์ config ใน repo ยังไม่ได้วัดพฤติกรรมกับการ deploy จริง
 (เครื่องที่ทำงานนี้ไม่มี credential ของ Cloudflare)
