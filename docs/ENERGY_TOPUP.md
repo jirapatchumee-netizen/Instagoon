@@ -11,7 +11,7 @@ and credit decision comes from the Worker (`server/src/shop/`). No AI, no paymen
    calendar day; refunded or revoked purchases still count.
 3. The bot quotes the price plus a random satang tail, e.g. **฿29.64**, and shows a PromptPay QR
    locked to that exact amount. **Decided 2026-11-08, not implemented yet:** the QR is replaced by the bank
-   name, account number and account name (KBank 177-1-50013-3, บจก. แมช มูฟ อัลฟ่า) with copy buttons; the
+   name, account number and account name (เลขบัญชีจาก Worker secret `BANK_ACCOUNT_NO`, บจก. แมช มูฟ อัลฟ่า) with copy buttons; the
    player types the amount, so wrong amounts land in "เงินเข้าที่ไม่ตรงรายการใด". The tail is unique among live orders and stays reserved for 24 h
    after expiry, so a bank deposit identifies its order. The QR is valid for 30 minutes.
 4. After paying, the player sends the slip image. The app reads the slip's mini QR (`jsqr`), the
@@ -44,7 +44,7 @@ Matching window: deposit time between order creation − 10 min and slip time + 
 | Var | Where | Value |
 |---|---|---|
 | `BANK_NAME` | `[vars]` or dashboard | `ธนาคารกสิกรไทย` |
-| `BANK_ACCOUNT_NO` | `[vars]` or dashboard | `177-1-50013-3` (dashes optional; must be 10 digits) |
+| `BANK_ACCOUNT_NO` | Worker secret only — never git (ADR-0018) | set with `wrangler secret put BANK_ACCOUNT_NO` (dashes optional; must be 10 digits) |
 | `BANK_ACCOUNT_NAME` | `[vars]` or dashboard | `บจก. แมช มูฟ อัลฟ่า` |
 
 | `REPORTS_API_TOKEN` | `wrangler secret` (never in a file) | Random key, 32+ characters, for the owner's agent |
