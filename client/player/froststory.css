@@ -2598,13 +2598,18 @@ dialog.fs-overlay::backdrop {
   border-radius: 24px;
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.9);
   animation: fs-sheet-in 0.32s var(--dm-ease);
+  /* Own stacking context, so the wallpaper layer's negative z-index stays inside the sheet
+     instead of dropping behind its background. */
+  isolation: isolate;
 }
 
-/* Chat Wallpaper Layer (Custom Wallpaper System) */
+/* Chat Wallpaper Layer (Custom Wallpaper System).
+   Background of the sheet: it must paint below every other child, including the plain in-flow
+   composer and footer, which have no z-index of their own. */
 .fs-dm-wallpaper-layer {
   position: absolute;
   inset: 0;
-  z-index: 0;
+  z-index: -1;
   pointer-events: none;
   overflow: hidden;
   border-radius: inherit;
