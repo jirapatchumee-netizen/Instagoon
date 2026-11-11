@@ -28,16 +28,21 @@ DEEPSEEK_MODEL = "deepseek-flash"
 CF_AI_MODEL = "@cf/qwen/qwen2.5-coder-32b-instruct"
 PUBLIC_ORIGIN = "https://staging.instagoon.app"
 STAGING_EMAILS = "jirapat.chumee@gmail.com,taychinsgo@gmail.com"
-# Secret for AI agents (AGENT_DEV_SECRET) is managed via Cloudflare Worker Secrets (wrangler secret put).
+# AGENT_DEV_SECRET is a plain-text Variable set on the staging dashboard, not a Worker secret (checked on
+# the dashboard 2026-11-11). It survives deploys only because keep_vars = true above.
 # One-time free energy per new staging account (production uses the default, 30).
 FREE_ENERGY_GRANT = "100"
-# Staging carries a synthetic account on purpose (ADR-0018): the shop needs a 10-digit number to stay
-# open for testing, but a test environment must never point at the real collection account, or transfers
-# made while testing land in the real daily close. The number is written without dashes so the commit
-# guard (which flags the dashed Thai account form) does not mistake a dummy for a leak.
-BANK_NAME = "ธนาคารทดสอบ (staging)"
-BANK_ACCOUNT_NO = "0000000000"
-BANK_ACCOUNT_NAME = "บริษัท ทดสอบ จำกัด (staging)"
+# Staging pays into the real collection account, by the owner's decision on 2026-11-11 (ADR-0018 D3).
+# The three values are not in this file because the repo is public (ADR-0018 D1). Set them once with
+#   cd server && npx wrangler secret put BANK_NAME   (then BANK_ACCOUNT_NO, BANK_ACCOUNT_NAME)
+# keep_vars = true is what lets a value that lives only on the Worker survive the next deploy; wrangler's
+# own config schema says a dashboard var missing from the file is otherwise deleted on deploy. Secrets are
+# still the right form here: production has no keep_vars, so copying that habit to a var there would lose it.
+# shopReady() closes the staging shop while any of the three is missing, which is the fail-safe: no card is
+# shown rather than a card pointing at nothing.
+# Known consequence the owner accepted: test transfers land in the real bank account and appear as
+# unmatchedDeposits in the production daily close, where docs/ACCOUNTING_DAILY_CLOSE.md requires a
+# manual credit or refund before the day can be invoiced.
 # Fill these with Google's published USD per 1M tokens for the active model group to make
 # /api/admin/chat-metrics report estimatedCostUsd. Left unset on purpose: the numbers must come
 # from the pricing page, not from a guess. See docs/AI_CHAT_COST_PLAN.md (P0).
