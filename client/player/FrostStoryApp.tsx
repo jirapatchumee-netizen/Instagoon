@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useState, useRef, type FormEvent } from 'react';
 import { formatFastForwardAction } from './message-format';
 import { useOverlayHistory } from './overlay-history';
-import { ArrowLeft, Loader2, Lock, MessageSquareX, Pencil, RotateCcw, Send, Settings, Sparkles, User as UserIcon, Volume2, VolumeX, X, Zap } from 'lucide-react';
+import { ArrowLeft, Loader2, Lock, MessageSquareX, Palette, Pencil, RotateCcw, Send, Settings, Sparkles, User as UserIcon, Volume2, VolumeX, X, Zap } from 'lucide-react';
 import { IgShare, IgHome, IgSearch, IgReels, IgVerified } from './InstagramIcons';
 import { EnergyShop } from './EnergyShop';
 import { type Lang, LANGS, TRANSLATIONS } from './i18n';
@@ -232,7 +232,54 @@ export function FrostStoryApp() {
     mediaKey: string;
     title?: string;
     caption?: string;
+    creatorId?: string;
+    creatorName?: string;
   } | null>(null);
+
+  // Custom Chat Wallpaper System (Per-creator wallpaper state)
+  const [chatWallpapers, setChatWallpapers] = useState<Record<string, string>>(() => {
+    try {
+      const raw = localStorage.getItem('fs_chat_wallpapers');
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  });
+  const [wallpaperModalCreator, setWallpaperModalCreator] = useState<Creator | null>(null);
+  const [wallpaperPickerData, setWallpaperPickerData] = useState<ProfileData | null>(null);
+  const [wallpaperPickerLoading, setWallpaperPickerLoading] = useState(false);
+
+  function handleSetWallpaper(creatorId: string, assetKey: string | null) {
+    setChatWallpapers((prev) => {
+      const next = { ...prev };
+      if (!assetKey) {
+        delete next[creatorId];
+      } else {
+        next[creatorId] = assetKey;
+      }
+      try {
+        localStorage.setItem('fs_chat_wallpapers', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  }
+
+  async function openWallpaperModal(creator: Creator) {
+    setWallpaperModalCreator(creator);
+    if (profileData && profileCreator?.id === creator.id) {
+      setWallpaperPickerData(profileData);
+      return;
+    }
+    setWallpaperPickerLoading(true);
+    try {
+      const res = await api<ProfileData>(`/api/creators/${encodeURIComponent(creator.id)}/profile`);
+      setWallpaperPickerData(res);
+    } catch {
+      setWallpaperPickerData(null);
+    } finally {
+      setWallpaperPickerLoading(false);
+    }
+  }
 
   // Creator Profile & Close Friends Vault State (ADR 0012)
   const [profileCreator, setProfileCreator] = useState<Creator | null>(null);
@@ -796,6 +843,7 @@ export function FrostStoryApp() {
   useOverlayHistory(!!selectedCreator, closeChat);
   useOverlayHistory(unlockedStoryModal.open, () => setUnlockedStoryModal({ open: false, creatorName: '' }));
   useOverlayHistory(!!expandedMedia, () => setExpandedMedia(null));
+  useOverlayHistory(Boolean(wallpaperModalCreator), () => setWallpaperModalCreator(null));
   useOverlayHistory(profileModalOpen, () => setProfileModalOpen(false));
   useOverlayHistory(shopOpen, () => setShopOpen(false));
   useOverlayHistory(activityOpen, () => setActivityOpen(false));
@@ -1411,6 +1459,8 @@ export function FrostStoryApp() {
                                   mediaKey: p.mediaKey,
                                   title: p.creatorName,
                                   caption: p.caption,
+                                  creatorId: p.creatorId || profileCreator?.id,
+                                  creatorName: p.creatorName || profileCreator?.name,
                                 });
                               }
                             }}
@@ -1420,6 +1470,8 @@ export function FrostStoryApp() {
                                   mediaKey: p.mediaKey,
                                   title: p.creatorName,
                                   caption: p.caption,
+                                  creatorId: p.creatorId || profileCreator?.id,
+                                  creatorName: p.creatorName || profileCreator?.name,
                                 });
                               }
                             }}
@@ -1454,6 +1506,8 @@ export function FrostStoryApp() {
                                     mediaKey: item.asset,
                                     title: item.name,
                                     caption: item.caption || item.message,
+                                    creatorId: profileCreator?.id,
+                                    creatorName: profileCreator?.name,
                                   })
                                 }
                                 onKeyDown={(e) => {
@@ -1462,6 +1516,8 @@ export function FrostStoryApp() {
                                       mediaKey: item.asset,
                                       title: item.name,
                                       caption: item.caption || item.message,
+                                      creatorId: profileCreator?.id,
+                                      creatorName: profileCreator?.name,
                                     });
                                   }
                                 }}
@@ -1538,6 +1594,17 @@ export function FrostStoryApp() {
       {selectedCreator && (
         <Modal labelledBy="fs-chat-title" onClose={closeChat}>
           <section className="fs-dm-modal" aria-busy={!chat}>
+            {/* Chat Wallpaper Layer (Custom Wallpaper System) */}
+            {selectedCreator && chatWallpapers[selectedCreator.id] && (
+              <div className="fs-dm-wallpaper-layer" aria-hidden="true">
+                <img
+                  src={media(chatWallpapers[selectedCreator.id])}
+                  alt=""
+                  className="fs-dm-wallpaper-img"
+                />
+                <div className="fs-dm-wallpaper-dim" />
+              </div>
+            )}
             <header className="fs-dm-header">
               <button className="fs-dm-back" aria-label="Back" onClick={closeChat}>
                 <ArrowLeft size={22} />
@@ -1602,6 +1669,33 @@ export function FrostStoryApp() {
                       <MessageSquareX size={15} />
                       {t.resetChat}
                     </button>
+                    {aiDmTab === 'ai' && (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="fs-dm-menu-item"
+                        onClick={() => {
+                          setDmMenuOpen(false);
+                          void openWallpaperModal(selectedCreator);
+                        }}
+                      >
+                        <Palette size={15} />
+                        {t.changeChatWallpaper}
+                      </button>
+                    )}
+                    {aiDmTab === 'ai' && chat && !chat.experiment && (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="fs-dm-menu-item"
+                        onClick={() => {
+                          setDmMenuOpen(false);
+                          if (!memoryPanel.open) void toggleMemoryPanel();
+                        }}
+                      >
+                        {t.memoryTitle(selectedCreator.name)}
+                      </button>
+                    )}
                     {!chat?.experiment && <button
                       type="button"
                       role="menuitem"
@@ -2004,7 +2098,7 @@ export function FrostStoryApp() {
               )}
             </div>
 
-            {aiDmTab === 'ai' && chat && !chat.experiment && (
+            {aiDmTab === 'ai' && chat && !chat.experiment && memoryPanel.open && (
               <div className="fs-dm-memory">
                 <button type="button" className="fs-dm-memory-toggle" aria-expanded={memoryPanel.open} onClick={toggleMemoryPanel}>
                   {t.memoryTitle(selectedCreator.name)}
@@ -2205,12 +2299,185 @@ export function FrostStoryApp() {
                 onClick={(e) => e.stopPropagation()}
               />
             </div>
-            {expandedMedia.caption && (
-              <footer className="fs-lightbox-footer">
-                <p>{expandedMedia.caption}</p>
-              </footer>
-            )}
+            <footer className="fs-lightbox-footer">
+              {expandedMedia.caption && <p>{expandedMedia.caption}</p>}
+              {expandedMedia.creatorId && (
+                <button
+                  type="button"
+                  className="fs-set-wallpaper-btn"
+                  style={{ marginTop: expandedMedia.caption ? 10 : 0 }}
+                  onClick={() => {
+                    handleSetWallpaper(expandedMedia.creatorId!, expandedMedia.mediaKey);
+                    alert(t.wallpaperSetSuccess(expandedMedia.creatorName || ''));
+                    setExpandedMedia(null);
+                  }}
+                >
+                  <Palette size={14} />
+                  <span>{t.setAsWallpaper}</span>
+                </button>
+              )}
+            </footer>
           </section>
+        </Modal>
+      )}
+
+      {/* Custom Chat Wallpaper Picker Modal */}
+      {wallpaperModalCreator && (
+        <Modal
+          labelledBy="fs-wallpaper-modal-title"
+          onClose={() => setWallpaperModalCreator(null)}
+        >
+          <div className="fs-wallpaper-modal">
+            <div className="fs-wallpaper-header">
+              <h3 id="fs-wallpaper-modal-title" className="fs-wallpaper-title">
+                <Palette size={16} />
+                {t.wallpaperPickerTitle(wallpaperModalCreator.name)}
+              </h3>
+              <button
+                type="button"
+                className="fs-wallpaper-close-btn"
+                onClick={() => setWallpaperModalCreator(null)}
+                aria-label={t.goBack}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="fs-wallpaper-body">
+              {/* Reset / Default Option & Presets */}
+              <div>
+                <div className="fs-wallpaper-section-title">{t.wallpaperTabDefault}</div>
+                <div className="fs-wallpaper-grid">
+                  <button
+                    type="button"
+                    className={`fs-wallpaper-card fs-wallpaper-reset-card ${!chatWallpapers[wallpaperModalCreator.id] ? 'is-active' : ''}`}
+                    onClick={() => {
+                      handleSetWallpaper(wallpaperModalCreator.id, null);
+                      setWallpaperModalCreator(null);
+                    }}
+                  >
+                    {!chatWallpapers[wallpaperModalCreator.id] && (
+                      <span className="fs-wallpaper-active-badge">✓ {t.activeWallpaperBadge}</span>
+                    )}
+                    <Sparkles size={22} style={{ opacity: 0.7 }} />
+                    <span>{t.resetWallpaper}</span>
+                  </button>
+
+                  {/* Creator Avatar Preset */}
+                  {wallpaperModalCreator.avatarKey && (
+                    <button
+                      type="button"
+                      className={`fs-wallpaper-card ${chatWallpapers[wallpaperModalCreator.id] === wallpaperModalCreator.avatarKey ? 'is-active' : ''}`}
+                      onClick={() => {
+                        handleSetWallpaper(wallpaperModalCreator.id, wallpaperModalCreator.avatarKey!);
+                        setWallpaperModalCreator(null);
+                      }}
+                    >
+                      {chatWallpapers[wallpaperModalCreator.id] === wallpaperModalCreator.avatarKey && (
+                        <span className="fs-wallpaper-active-badge">✓ {t.activeWallpaperBadge}</span>
+                      )}
+                      <img
+                        src={media(wallpaperModalCreator.avatarKey)}
+                        alt={wallpaperModalCreator.name}
+                        className="fs-wallpaper-thumb"
+                        loading="lazy"
+                      />
+                      <span className="fs-wallpaper-label">Avatar</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Profile Vault & Posts Gallery */}
+              {wallpaperPickerLoading ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0' }}>
+                  <Loader2 size={24} className="fs-spin" style={{ color: '#ff4f9a' }} />
+                </div>
+              ) : (
+                <>
+                  {/* Close Friends Vault (Unlocked only) */}
+                  {wallpaperPickerData?.vault && wallpaperPickerData.vault.some((v) => v.unlocked) && (
+                    <div>
+                      <div className="fs-wallpaper-section-title">⭐ {t.wallpaperTabVault}</div>
+                      <div className="fs-wallpaper-grid">
+                        {wallpaperPickerData.vault
+                          .filter((v) => v.unlocked)
+                          .map((item) => {
+                            const isActive = chatWallpapers[wallpaperModalCreator.id] === item.asset;
+                            return (
+                              <button
+                                key={item.id}
+                                type="button"
+                                className={`fs-wallpaper-card ${isActive ? 'is-active' : ''}`}
+                                onClick={() => {
+                                  handleSetWallpaper(wallpaperModalCreator.id, item.asset);
+                                  setWallpaperModalCreator(null);
+                                }}
+                              >
+                                {isActive && (
+                                  <span className="fs-wallpaper-active-badge">✓ {t.activeWallpaperBadge}</span>
+                                )}
+                                <img
+                                  src={media(item.asset)}
+                                  alt={item.name}
+                                  className="fs-wallpaper-thumb"
+                                  loading="lazy"
+                                />
+                                <span className="fs-wallpaper-label">{item.name}</span>
+                              </button>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Creator Posts */}
+                  {wallpaperPickerData?.posts && wallpaperPickerData.posts.some((p) => Boolean(p.mediaKey)) && (
+                    <div>
+                      <div className="fs-wallpaper-section-title">📸 {t.wallpaperTabPosts}</div>
+                      <div className="fs-wallpaper-grid">
+                        {wallpaperPickerData.posts
+                          .filter((p) => Boolean(p.mediaKey))
+                          .map((post) => {
+                            const isActive = chatWallpapers[wallpaperModalCreator.id] === post.mediaKey;
+                            return (
+                              <button
+                                key={post.id}
+                                type="button"
+                                className={`fs-wallpaper-card ${isActive ? 'is-active' : ''}`}
+                                onClick={() => {
+                                  handleSetWallpaper(wallpaperModalCreator.id, post.mediaKey!);
+                                  setWallpaperModalCreator(null);
+                                }}
+                              >
+                                {isActive && (
+                                  <span className="fs-wallpaper-active-badge">✓ {t.activeWallpaperBadge}</span>
+                                )}
+                                <img
+                                  src={media(post.mediaKey!)}
+                                  alt={post.caption || 'Post'}
+                                  className="fs-wallpaper-thumb"
+                                  loading="lazy"
+                                />
+                                <span className="fs-wallpaper-label">{post.caption || 'Post'}</span>
+                              </button>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Empty state if no vault or posts */}
+                  {(!wallpaperPickerData?.vault || !wallpaperPickerData.vault.some((v) => v.unlocked)) &&
+                    (!wallpaperPickerData?.posts || !wallpaperPickerData.posts.some((p) => Boolean(p.mediaKey))) && (
+                      <p className="fs-dm-empty" style={{ margin: '8px 0', fontSize: '0.8rem' }}>
+                        {t.noWallpaperAvailable}
+                      </p>
+                    )}
+                </>
+              )}
+            </div>
+          </div>
         </Modal>
       )}
 
