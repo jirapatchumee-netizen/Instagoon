@@ -264,6 +264,64 @@ test('special offer: offer_cliffhanger_49 is active but excluded from general ca
   assert.equal(body.order.diamonds, 20);
 });
 
+test('cascading offers: paying cliffhanger unlocks VIP offer (+1000%), and paying VIP unlocks Whale offer (+3000%)', async () => {
+  const sql = dbOf();
+
+  // 1. Order and pay Cliffhanger (49 THB)
+  const o1 = await order(sql, 'offer_cliffhanger_49');
+  assert.equal(o1.res.status, 201);
+  const slip1 = await call(sql, 'POST', `/api/shop/orders/${o1.body.order.id}/slip`, {
+    slipQr: buildSlipQr('004', '015311000000ABC0021'),
+  });
+  assert.equal(slip1.status, 200);
+  const slip1Body = await slip1.json();
+  assert.equal(slip1Body.order.status, 'paid');
+  assert.equal(slip1Body.energy.purchased, 180);
+  assert.equal(slip1Body.energy.diamonds, 20);
+  assert.ok(slip1Body.cascadeOffer, 'cliffhanger payment returns cascadeOffer');
+  assert.equal(slip1Body.cascadeOffer.sku, 'offer_cascade_99');
+  assert.equal(slip1Body.cascadeOffer.valueMultiplier, '+1,000%');
+  assert.equal(slip1Body.cascadeOffer.energy, 650);
+  assert.equal(slip1Body.cascadeOffer.diamonds, 80);
+
+  // 2. GET /api/shop reflects active cascadeOffer
+  const shopInfo = await (await call(sql, 'GET', '/api/shop')).json();
+  assert.ok(shopInfo.cascadeOffer);
+  assert.equal(shopInfo.cascadeOffer.sku, 'offer_cascade_99');
+
+  // 3. Order and pay Cascade VIP 99 THB (Step 2)
+  const o2 = await order(sql, 'offer_cascade_99');
+  assert.equal(o2.res.status, 201);
+  assert.equal(o2.body.order.priceSatang, 9900);
+  assert.notEqual(o2.body.order.amountSatang, o1.body.order.amountSatang, 'chained order has unique satang tail');
+  const slip2 = await call(sql, 'POST', `/api/shop/orders/${o2.body.order.id}/slip`, {
+    slipQr: buildSlipQr('004', '015311000000ABC0022'),
+  });
+  assert.equal(slip2.status, 200);
+  const slip2Body = await slip2.json();
+  assert.equal(slip2Body.order.status, 'paid');
+  assert.equal(slip2Body.energy.purchased, 180 + 650);
+  assert.equal(slip2Body.energy.diamonds, 20 + 80);
+  assert.ok(slip2Body.cascadeOffer, 'step 2 payment returns whale cascadeOffer');
+  assert.equal(slip2Body.cascadeOffer.sku, 'offer_cascade_299');
+  assert.equal(slip2Body.cascadeOffer.valueMultiplier, '+3,000%');
+  assert.equal(slip2Body.cascadeOffer.energy, 2400);
+  assert.equal(slip2Body.cascadeOffer.diamonds, 300);
+
+  // 4. Order and pay Whale 299 THB (Step 3)
+  const o3 = await order(sql, 'offer_cascade_299');
+  assert.equal(o3.res.status, 201);
+  const slip3 = await call(sql, 'POST', `/api/shop/orders/${o3.body.order.id}/slip`, {
+    slipQr: buildSlipQr('004', '015311000000ABC0023'),
+  });
+  assert.equal(slip3.status, 200);
+  const slip3Body = await slip3.json();
+  assert.equal(slip3Body.order.status, 'paid');
+  assert.equal(slip3Body.energy.purchased, 180 + 650 + 2400);
+  assert.equal(slip3Body.energy.diamonds, 20 + 80 + 300);
+  assert.equal(slip3Body.cascadeOffer, undefined, 'whale tier is the top of the chain');
+});
+
 async function callText(sql, path, text) {
   return worker.fetch(new Request(`https://frost.test${path}`, { method: 'POST', headers: { ...headers, 'content-type': 'text/csv' }, body: text }), { DB: d1(sql), ...shopEnv }, {});
 }
