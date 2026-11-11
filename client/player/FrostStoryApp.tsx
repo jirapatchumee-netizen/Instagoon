@@ -7,7 +7,7 @@ import { EnergyShop } from './EnergyShop';
 import { type Lang, LANGS, TRANSLATIONS } from './i18n';
 import { LangSelect } from './LangSelect';
 import { type Energy, type User, type Creator, type Post, type Story, type AiChatMessage, type Chat, type Screen, type ProfileData, type EpisodeInfo } from './types';
-import { ApiError, api } from './api';
+import { ApiError, api, createFollowSync } from './api';
 import { ChatComposer, media, AvatarImg, hasSpokenDialogue, renderBubbleContent, json, StoryContent, Modal, getAvatarSrc } from './ui';
 import { ProfileSetupModal } from './overlays/ProfileSetupModal';
 import { BugReportModal } from './overlays/BugReportModal';
@@ -452,6 +452,8 @@ export function FrostStoryApp() {
     }
   }
 
+  const followSyncRef = useRef(createFollowSync());
+
   const loadMe = useCallback(async () => {
     const result = await api<{ user: User; energy: Energy }>('/api/me');
     setUser(result.user);
@@ -460,16 +462,18 @@ export function FrostStoryApp() {
   }, []);
 
   const loadFeed = useCallback(async () => {
+    const version = followSyncRef.current.beginFeedLoad();
     const [feed, people, highlights] = await Promise.all([
       api<{ posts: Post[] }>('/api/feed'),
       api<{ creators: Creator[] }>('/api/creators'),
       api<{ stories: Story[] }>('/api/stories'),
     ]);
+    if (!followSyncRef.current.isCurrentFeedLoad(version)) return;
     setPosts(feed.posts);
     // Likes and saves come from the server so they survive a reload.
     setLikedPostIds(Object.fromEntries(feed.posts.filter((p) => p.liked).map((p) => [p.id, true])));
     setSavedPostIds(Object.fromEntries(feed.posts.filter((p) => p.saved).map((p) => [p.id, true])));
-    setCreators(people.creators);
+    setCreators(followSyncRef.current.applyPending(people.creators));
     setStories(highlights.stories);
   }, []);
 
@@ -497,7 +501,7 @@ export function FrostStoryApp() {
   useEffect(() => {
     if (lastThreadRef.current && !openThreadId) {
       api<{ creators: Creator[] }>('/api/creators')
-        .then((r) => setCreators(r.creators))
+        .then((r) => setCreators(followSyncRef.current.applyPending(r.creators)))
         .catch(() => {});
     }
     lastThreadRef.current = openThreadId;
@@ -670,7 +674,7 @@ export function FrostStoryApp() {
   }
 
   async function toggleFollow(c: Creator) {
-    const nextFollowing = !c.following;
+    const { seq, nextFollowing } = followSyncRef.current.beginFollow(c.id, c.following);
     setCreators((prev) =>
       prev.map((item) => (item.id === c.id ? { ...item, following: nextFollowing } : item))
     );
@@ -685,17 +689,22 @@ export function FrostStoryApp() {
         `/api/creators/${encodeURIComponent(c.id)}/follow`,
         json({ follow: nextFollowing })
       );
-      void loadFeed();
+      const { allSettled } = followSyncRef.current.endFollow(c.id, seq);
+      if (allSettled) void loadFeed();
     } catch {
-      setCreators((prev) =>
-        prev.map((item) => (item.id === c.id ? { ...item, following: !nextFollowing } : item))
-      );
-      if (profileCreator?.id === c.id) {
-        setProfileCreator((prev) => (prev ? { ...prev, following: !nextFollowing } : prev));
-        setProfileData((prev) =>
-          prev ? { ...prev, creator: { ...prev.creator, following: !nextFollowing } } : prev
+      const { isLatestForCreator, allSettled } = followSyncRef.current.endFollow(c.id, seq);
+      if (isLatestForCreator) {
+        setCreators((prev) =>
+          prev.map((item) => (item.id === c.id ? { ...item, following: !nextFollowing } : item))
         );
+        if (profileCreator?.id === c.id) {
+          setProfileCreator((prev) => (prev ? { ...prev, following: !nextFollowing } : prev));
+          setProfileData((prev) =>
+            prev ? { ...prev, creator: { ...prev.creator, following: !nextFollowing } } : prev
+          );
+        }
       }
+      if (allSettled) void loadFeed();
     }
   }
 
