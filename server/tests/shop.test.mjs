@@ -50,7 +50,7 @@ function dbOf() {
   sql.prepare('INSERT INTO sessions(id,user_id,expires_at) VALUES(?,?,?)').run(sid, 'u', now + 100000);
   return sql;
 }
-const shopEnv = { PUBLIC_ORIGIN: 'https://frost.test', ADMIN_EMAIL: 'u@example.com', BANK_NAME: 'ธนาคารกสิกรไทย', BANK_ACCOUNT_NO: '177-1-50013-3', BANK_ACCOUNT_NAME: 'บจก. แมช มูฟ อัลฟ่า' };
+const shopEnv = { PUBLIC_ORIGIN: 'https://frost.test', ADMIN_EMAIL: 'u@example.com', BANK_NAME: 'ธนาคารทดสอบ', BANK_ACCOUNT_NO: '0123456789', BANK_ACCOUNT_NAME: 'บริษัท ทดสอบ จำกัด' };
 const headers = { cookie: `frost_session=${raw}`, origin: 'https://frost.test' };
 const call = (sql, method, path, body, env = shopEnv) => worker.fetch(new Request(`https://frost.test${path}`, {
   method,
@@ -121,7 +121,7 @@ test('order: 20+ confirmation once, amount = price + a 1..99 satang tail, 30-min
   assert.equal(o.energy, 120);
   assert.equal(o.diamonds, 10);
   assert.ok(Math.abs(o.expiresAt - o.createdAt - 30 * 60000) < 5);
-  assert.deepEqual(o.payTo, { bank: 'ธนาคารกสิกรไทย', accountNo: '1771500133', accountName: 'บจก. แมช มูฟ อัลฟ่า' }, 'card carries the account, digits only');
+  assert.deepEqual(o.payTo, { bank: 'ธนาคารทดสอบ', accountNo: '0123456789', accountName: 'บริษัท ทดสอบ จำกัด' }, 'card carries the account, digits only');
   assert.equal((await (await call(sql, 'GET', '/api/shop')).json()).openOrder.id, o.id, 'reopening the chat shows the same card');
   assert.equal((await order(sql, 'energy_39', {})).body.order.id, o.id, 'same pack returns the open order; age asked only once');
   const other = (await order(sql, 'energy_99', {})).body.order;
