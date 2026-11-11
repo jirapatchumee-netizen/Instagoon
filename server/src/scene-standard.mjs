@@ -23,19 +23,27 @@ export function formatFictionClock(minutes) {
   return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')} น.`;
 }
 
-export function bangkokClockMinutes(at) {
-  if (!Number.isFinite(at)) return null;
-  const bangkok = new Date(at + 7 * 3600 * 1000);
-  return bangkok.getUTCHours() * 60 + bangkok.getUTCMinutes();
+// The header clock must agree with the scene it is printed next to, so a thread with no stored
+// clock starts from the authored opening time, then from the daypart written in the scene text.
+export const DAYPART_ANCHORS = Object.freeze([
+  { name: 'dusk', minutes: 18 * 60 + 30, pattern: /ยามเย็น|ตอนเย็น|หัวค่ำ|เย็นนี้/ },
+  { name: 'night', minutes: 22 * 60, pattern: /ยามดึก|กลางดึก|ตอนดึก|เที่ยงคืน|ราตรี|ค่ำคืน|แสงสลัว/ },
+  { name: 'morning', minutes: 8 * 60 + 30, pattern: /ยามเช้า|ตอนเช้า|รุ่งเช้า|เช้าๆ/ },
+  { name: 'day', minutes: 13 * 60, pattern: /กลางวัน|ตอนบ่าย|บ่ายโมง|เที่ยงวัน/ }
+]);
+
+export function daypartAnchorMinutes(text) {
+  const value = typeof text === 'string' ? text : '';
+  for (const part of DAYPART_ANCHORS) if (part.pattern.test(value)) return part.minutes;
+  return null;
 }
 
-// A thread with no stored scene clock is seeded once from the real clock, then
-// every later turn advances from the stored fiction clock only.
-export function resolveFictionClock(storedValue, at, step = STORY_TIME_STEP_MINUTES) {
-  const stored = parseFictionTime(storedValue);
-  if (stored !== null) return (stored + step) % 1440;
-  const seeded = bangkokClockMinutes(at);
-  return seeded === null ? parseFictionTime(DEFAULT_STORY_TIME) : seeded;
+export function resolveFictionClock({ stored, authored, scene } = {}) {
+  const storedMinutes = parseFictionTime(stored);
+  if (storedMinutes !== null) return (storedMinutes + STORY_TIME_STEP_MINUTES) % 1440;
+  const authoredMinutes = parseFictionTime(authored);
+  if (authoredMinutes !== null) return authoredMinutes;
+  return daypartAnchorMinutes(scene) ?? parseFictionTime(DEFAULT_STORY_TIME);
 }
 
 export function readStoredScene(rows = []) {

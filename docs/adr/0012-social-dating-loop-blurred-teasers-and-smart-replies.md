@@ -19,6 +19,8 @@
 ## 2. การตัดสินใจ (Decision)
 
 ### 2.1 Pre-Rendered `Blurred Teaser` + Dual Gate (ความสัมพันธ์ หรือ Energy Token)
+
+> **[ superseded 2026-11-11 โดย ADR 0016 ]** bullet ที่ให้ AI Creator ส่งการ์ด `Blurred Teaser` เข้า `DM Thread` ถูกยกเลิก: DM lane เป็น text-only และ media ของ reward แสดงเฉพาะใน Story lane กับ Close Friends Vault ส่วน Dual Gate (เลเวล หรือ Energy) ยังใช้ได้เหมือนเดิม ผ่าน `POST /api/chats/:id/rewards/unlock`
 - รูปภาพรางวัลทั้งหมดยังคงผลิตล่วงหน้าผ่าน Local Art Pipeline (544×960 Z-Image Turbo ตาม ADR 0010) และเก็บใน `content/media/`
 - เมื่อบทสนทนาตรงเงื่อนไข AI Creator จะส่งการ์ด **`Blurred Teaser`** เข้าใน `DM Thread` โดยฝั่ง Client แสดงผลแบบติดเบลอ (CSS/Canvas Blur Guard และยังไม่ส่งไฟล์ภาพชัดหากยังไม่ปลดล็อกสิทธิ์ที่ `/api/media/:key`)
 - **Dual Gate Unlock:** ผู้เล่นปลดล็อกภาพชัดได้ 2 ทาง:
