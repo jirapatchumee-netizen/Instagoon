@@ -1,7 +1,7 @@
 // Narrative state is an opt-in content feature; the existing model/configuration policy is unchanged.
 // State proposals from the model are untrusted. Only this reducer commits scene transitions.
 import { interpretNarrativeTurn, readInteraction, nextInteraction } from './narrative-interaction.mjs';
-import { SCENE_STANDARD_INSTRUCTION, parseFictionTime, formatFictionClock, bangkokClockMinutes, STORY_TIME_STEP_MINUTES, DEFAULT_STORY_TIME } from './scene-standard.mjs';
+import { SCENE_STANDARD_INSTRUCTION, parseFictionTime, formatFictionClock, daypartAnchorMinutes, STORY_TIME_STEP_MINUTES, DEFAULT_STORY_TIME } from './scene-standard.mjs';
 const safeText = (value, max = 200) => typeof value === 'string'
   ? value.replace(/[\[\]<>\u0000-\u001f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max) : '';
 export const narrativeEnabled = npc => npc?.narrative?.enabled === true;
@@ -10,11 +10,15 @@ const place = value => {
   const name = safeText(value?.name, 100);
   return id && name ? { id, name, description: safeText(value.description, 300) } : null;
 };
+const resolveOpeningClock = (npc, location) => parseFictionTime(npc.narrative.openingClock)
+  ?? daypartAnchorMinutes(`${location?.description || ''} ${npc.narrative.openingActivity || ''} ${npc.precedingIncident || ''}`)
+  ?? parseFictionTime(DEFAULT_STORY_TIME);
+
 export function initialNarrativeState(npc) {
   const location = place(npc.narrative.openingLocation);
   if (!location) throw new Error('invalid_narrative_opening_location');
   return { version: 1, courtshipStyle: npc.narrative.courtshipStyle || 'reserved', turn: 0, locationId: location.id, places: [location], pendingLocationId: null,
-    clockMinutes: parseFictionTime(npc.narrative.openingClock),
+    clockMinutes: resolveOpeningClock(npc, location),
     activity: safeText(npc.narrative.openingActivity), goal: safeText(npc.narrative.openingGoal), motivation: safeText(npc.narrative.openingGoal),
     mood: 'มั่นใจและอยากรู้จัก', memories: [], interaction: readInteraction({ pendingOffer: npc.narrative.opening?.offer }) };
 }
@@ -59,7 +63,7 @@ function acceptsTravel(text, target, turn) {
   return !!target && text.includes(target.name) && /(?:เดิน|ไป|ถึง|พา)/.test(text) && !/[?？]|ไหม|หรือเปล่า/.test(text);
 }
 
-export function reduceNarrativeState(previous, update, userText, npcReply = '', at = null) {
+export function reduceNarrativeState(previous, update, userText, npcReply = '') {
   const next = structuredClone(previous);
   next.turn++;
   if (!update || typeof update !== 'object') return next;
@@ -98,9 +102,8 @@ export function reduceNarrativeState(previous, update, userText, npcReply = '', 
   if (safeText(update.mood, 80)) next.mood = safeText(update.mood, 80);
   // The story clock is the model's only time authority; the real clock seeds it once.
   const proposedClock = parseFictionTime(update.clock);
-  if (proposedClock !== null) next.clockMinutes = proposedClock;
-  else if (next.clockMinutes === null) next.clockMinutes = bangkokClockMinutes(at) ?? parseFictionTime(DEFAULT_STORY_TIME);
-  else next.clockMinutes = (next.clockMinutes + STORY_TIME_STEP_MINUTES) % 1440;
+  const baseClock = Number.isInteger(next.clockMinutes) ? next.clockMinutes : parseFictionTime(DEFAULT_STORY_TIME);
+  next.clockMinutes = proposedClock !== null ? proposedClock : (baseClock + STORY_TIME_STEP_MINUTES) % 1440;
   const memory = update.memory;
   const evidence = safeText(memory?.evidence, 160);
   const fact = safeText(memory?.text, 160);
@@ -143,7 +146,7 @@ export function narrativeSchema(semanticRules) {
   }, required: ['beats', 'sceneUpdate'] };
 }
 
-export function decodeNarrative(value, state, userText, at = null) {
+export function decodeNarrative(value, state, userText) {
   if (!Array.isArray(value?.beats) || value.beats.length < 1 || value.beats.length > 6) throw new Error('invalid_narrative_beats');
   const beats = value.beats.map(b => {
     if (!['dialogue', 'action'].includes(b?.kind) || typeof b.text !== 'string' || !b.text.trim() || b.text.length > 350) throw new Error('invalid_narrative_beat');
@@ -153,7 +156,7 @@ export function decodeNarrative(value, state, userText, at = null) {
   });
   const reply = beats.filter(b => b.kind === 'dialogue').map(b => b.text).join('\n');
   if (!reply || beats.reduce((n, b) => n + b.text.length, 0) > 1000 || !value.sceneUpdate) throw new Error('invalid_narrative_reply');
-  const next = reduceNarrativeState(state, value.sceneUpdate, userText, reply, at);
+  const next = reduceNarrativeState(state, value.sceneUpdate, userText, reply);
   if (value.sceneUpdate.move === 'confirm' && next.locationId === state.locationId &&
       (value.sceneUpdate.place?.id || state.pendingLocationId) !== state.locationId) throw new Error('unconfirmed_narrative_transition');
   return { ...value, reply, action: null, innerThought: safeText(value.innerThought, 180) || null, beats, nextState: next };
@@ -211,7 +214,7 @@ export function serializeNarrative(beats) {
 export function narrativeSceneMetadata(state, at) {
   const location = state.places.find(p => p.id === state.locationId);
   if (!location || !Number.isFinite(at)) throw new Error('invalid_narrative_scene_metadata');
-  const time = formatFictionClock(state.clockMinutes ?? bangkokClockMinutes(at));
+  const time = formatFictionClock(Number.isInteger(state.clockMinutes) ? state.clockMinutes : parseFictionTime(DEFAULT_STORY_TIME));
   return { at, ...(time ? { time } : {}), location: safeText(location.name, 100) };
 }
 

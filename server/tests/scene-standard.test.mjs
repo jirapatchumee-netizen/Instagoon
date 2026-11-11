@@ -1,23 +1,29 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { SCENE_STANDARD_INSTRUCTION, SCENE_STANDARD_ORDER, orderBeats, serializeSceneBubble, readStoredScene, resolveFictionClock, parseFictionTime, formatFictionClock } from '../src/scene-standard.mjs';
+import { SCENE_STANDARD_INSTRUCTION, SCENE_STANDARD_ORDER, orderBeats, serializeSceneBubble, readStoredScene, resolveFictionClock, daypartAnchorMinutes, parseFictionTime, formatFictionClock } from '../src/scene-standard.mjs';
 import { initialNarrativeState, readNarrativeState, reduceNarrativeState, narrativeSceneMetadata, narrativeSchema, narrativePrompt } from '../src/narrative.mjs';
 import { SCENE_FORMAT_INSTRUCTION } from '../src/experiment-scene-format.mjs';
 import { narrativeNpc } from './helpers/narrative-npc.mjs';
 import { narrativeFixture } from './helpers/narrative-fixture.mjs';
 
-const bangkok = at => new Date(at + 7 * 3600 * 1000);
-const bangkokLabel = at => `${String(bangkok(at).getUTCHours()).padStart(2, '0')}:${String(bangkok(at).getUTCMinutes()).padStart(2, '0')} น.`;
+const NIGHT_SCENE = 'คอนโดมิเนียมหรูใจกลางเมือง เสียงแอร์ยามดึก และระเบียงวิวเมือง';
 
-test('the fiction clock continues from the stored scene header and never from a stale value', () => {
+test('the fiction clock continues from the stored header and is seeded from the scene, never the wall clock', () => {
   assert.equal(parseFictionTime('23:58 น.'), 1438);
   assert.equal(parseFictionTime('24:00'), null);
   assert.equal(formatFictionClock(5), '00:05 น.');
-  assert.equal(resolveFictionClock('12:20 น.', Date.now()), 12 * 60 + 22);
-  assert.equal(formatFictionClock(resolveFictionClock('23:59 น.', Date.now())), '00:01 น.');
-  const at = Date.now();
-  assert.equal(resolveFictionClock(null, at), bangkok(at).getUTCHours() * 60 + bangkok(at).getUTCMinutes());
-  assert.equal(bangkokLabel(at), formatFictionClock(resolveFictionClock(null, at)));
+  assert.equal(resolveFictionClock({ stored: '12:20 น.' }), 12 * 60 + 22);
+  assert.equal(formatFictionClock(resolveFictionClock({ stored: '23:59 น.' })), '00:01 น.');
+  assert.equal(daypartAnchorMinutes(NIGHT_SCENE), 22 * 60);
+  assert.equal(daypartAnchorMinutes('เจอกันหัวค่ำ'), 18 * 60 + 30);
+  assert.equal(daypartAnchorMinutes('ห้องเรียนตอนเช้า'), 8 * 60 + 30);
+  assert.equal(daypartAnchorMinutes('คาเฟ่กลางวัน'), 13 * 60);
+  assert.equal(daypartAnchorMinutes('ไม่มีเบาะแสเวลา'), null);
+  assert.equal(resolveFictionClock({ scene: NIGHT_SCENE }), 22 * 60);
+  assert.equal(resolveFictionClock({ authored: '19:05 น.', scene: NIGHT_SCENE }), 19 * 60 + 5);
+  assert.equal(formatFictionClock(resolveFictionClock({})), '12:15 น.');
+  // A stored header always wins over the scene seed, so the clock keeps running.
+  assert.equal(resolveFictionClock({ stored: '22:40 น.', scene: NIGHT_SCENE }), 22 * 60 + 42);
 });
 
 test('the scene header is read back from the newest stored bubble', () => {
@@ -71,18 +77,21 @@ test('the narrative lane carries an in-fiction clock instead of the reply timest
   const npc = narrativeNpc();
   const at = Date.now();
   const initial = initialNarrativeState(npc);
-  assert.equal(initial.clockMinutes, null);
-  assert.equal(narrativeSceneMetadata(initial, at).time, bangkokLabel(at));
+  assert.equal(formatFictionClock(initial.clockMinutes), '12:15 น.');
+  assert.equal(narrativeSceneMetadata(initial, at).time, '12:15 น.');
+  assert.equal(narrativeSceneMetadata(initial, at + 86400000).time, '12:15 น.');
 
-  const advanced = reduceNarrativeState(initial, { move: 'stay', activity: 'คุย', goal: 'รู้จัก', mood: 'สนใจ' }, 'สวัสดี', ' reply', at);
-  assert.equal(formatFictionClock(advanced.clockMinutes), bangkokLabel(at));
-  const nextTurn = reduceNarrativeState(advanced, { move: 'stay' }, 'ต่อ', '', at);
-  assert.equal(formatFictionClock(nextTurn.clockMinutes), formatFictionClock(advanced.clockMinutes + 2));
-  const jumped = reduceNarrativeState(nextTurn, { clock: '20:15 น.' }, 'ไปเจอกันตอนเย็น', '', at);
-  assert.equal(formatFictionClock(jumped.clockMinutes), '20:15 น.');
+  const nightNpc = { ...npc, precedingIncident: 'ลมหนาวยามดึกพัดเข้ามาจนตัวสั่น' };
+  assert.equal(formatFictionClock(initialNarrativeState(nightNpc).clockMinutes), '22:00 น.');
+
+  const advanced = reduceNarrativeState(initial, { move: 'stay', activity: 'คุย', goal: 'รู้จัก', mood: 'สนใจ' }, 'สวัสดี', 'reply');
+  assert.equal(formatFictionClock(advanced.clockMinutes), '12:17 น.');
+  const nextTurn = reduceNarrativeState(advanced, { move: 'stay' }, 'ต่อ');
+  assert.equal(formatFictionClock(nextTurn.clockMinutes), '12:19 น.');
+  const jumped = reduceNarrativeState(nextTurn, { clock: '20:15 น.' }, 'ไปเจอกันตอนเย็น');
   assert.equal(narrativeSceneMetadata(jumped, at).time, '20:15 น.');
   assert.equal(readNarrativeState(npc, jumped).clockMinutes, jumped.clockMinutes);
-  assert.equal(readNarrativeState(npc, { ...jumped, clockMinutes: 99999 }).clockMinutes, null);
+  assert.equal(readNarrativeState(npc, { ...jumped, clockMinutes: 99999 }).clockMinutes, initial.clockMinutes);
 });
 
 test('inline DM replies store the scene header and the ordered bubble, and the clock advances per turn', async () => {

@@ -209,7 +209,6 @@ export function FrostStoryApp() {
     errorCode?: string | null;
     contextInfo?: Record<string, unknown>;
   }>({ category: 'other' });
-  const [unlockedRewards, setUnlockedRewards] = useState<string[]>([]);
   const [memoryPanel, setMemoryPanel] = useState<{ open: boolean; items: { key: string; value: string }[] }>({ open: false, items: [] });
   const [unlockedStoryModal, setUnlockedStoryModal] = useState<{
     open: boolean;
@@ -300,7 +299,6 @@ export function FrostStoryApp() {
       setPending((prev) => prev.filter((item) => item.id !== id));
       if (res.messages) setChat((prev) => (prev ? { ...prev, aiMessages: res.messages } : prev));
       if (res.energy) setEnergy(res.energy);
-      if (res.unlockedRewards) setUnlockedRewards(res.unlockedRewards);
       if (typeof res.relationship === 'number') {
         const prevRel = selectedCreator.relationship || 0;
         if (prevRel < 100 && res.relationship >= 100) {
@@ -434,7 +432,6 @@ export function FrostStoryApp() {
         json({ mediaKey, method })
       );
       if (res.unlocked) {
-        setUnlockedRewards((prev) => (prev.includes(mediaKey) ? prev : [...prev, mediaKey]));
         if (res.energy) setEnergy(res.energy);
       }
     } catch (err) {
@@ -610,14 +607,12 @@ export function FrostStoryApp() {
       const result = await api<{ chat: Chat }>(chatPath(creator.id));
       setChat(result.chat);
       if (result.chat.experiment) setAiDmTab('ai');
-      setUnlockedRewards(result.chat.unlockedRewards || []);
     } catch (e) {
       if (e instanceof Error && e.message === 'content_suspended') {
         try {
           await api(`/api/chats/${encodeURIComponent(creator.id)}/reset`, { method: 'POST' });
           const retry = await api<{ chat: Chat }>(chatPath(creator.id));
           setChat(retry.chat);
-          setUnlockedRewards(retry.chat.unlockedRewards || []);
           return;
         } catch {}
       }
@@ -633,7 +628,6 @@ export function FrostStoryApp() {
       await api(`/api/chats/${encodeURIComponent(selectedCreator.id)}/reset-story`, { method: 'POST' });
       const result = await api<{ chat: Chat }>(chatPath(selectedCreator.id));
       setChat(result.chat);
-      setUnlockedRewards(result.chat.unlockedRewards || []);
     } catch (e) {
       setError(e instanceof Error ? e.message : t.genericError);
     }
@@ -1838,54 +1832,6 @@ export function FrostStoryApp() {
                               </button>
                             )}
                           </div>
-                          {msg.mediaKey && (
-                            <div className="fs-blurred-teaser-card">
-                              {unlockedRewards.includes(msg.mediaKey) ? (
-                                <div
-                                  className="fs-teaser-media-wrap is-unlocked is-clickable"
-                                  role="button"
-                                  tabIndex={0}
-                                  title={t.tapToViewFull}
-                                  onClick={() =>
-                                    setExpandedMedia({
-                                      mediaKey: msg.mediaKey!,
-                                      title: t.exclusivePhotoFrom(selectedCreator.name),
-                                      caption: t.exclusivePhotoCaption,
-                                    })
-                                  }
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter' || e.key === ' ') {
-                                      setExpandedMedia({
-                                        mediaKey: msg.mediaKey!,
-                                        title: t.exclusivePhotoFrom(selectedCreator.name),
-                                        caption: t.exclusivePhotoCaption,
-                                      });
-                                    }
-                                  }}
-                                >
-                                  <img src={media(msg.mediaKey)} alt="Exclusive photo" className="fs-teaser-img" />
-                                  <div className="fs-teaser-badge fs-badge-unlocked">{t.unlockedTapToEnlarge}</div>
-                                </div>
-                              ) : (
-                                <div className="fs-teaser-media-wrap is-locked">
-                                  <img src={media(msg.mediaKey)} alt="Locked photo teaser" className="fs-teaser-img is-blurred" />
-                                  <div className="fs-teaser-overlay">
-                                    <div className="fs-teaser-lock-icon">🔒</div>
-                                    <p className="fs-teaser-hint">{t.privatePhotoFrom(selectedCreator.name)}</p>
-                                    <div className="fs-teaser-actions">
-                                      <button
-                                        type="button"
-                                        className="fs-teaser-btn fs-teaser-btn-instant"
-                                        onClick={() => void unlockReward(msg.mediaKey!, 'energy')}
-                                      >
-                                        {t.unlockNow}
-                                      </button>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          )}
                           {msg.affectionDelta ? (
                             <span className="fs-dm-affection">+{msg.affectionDelta} 💖</span>
                           ) : null}

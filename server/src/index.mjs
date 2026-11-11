@@ -1,6 +1,6 @@
 import { selectKnowledge } from './knowledge.mjs';
 import { ensureContent, bundledMedia, removedCreators } from './content.mjs';
-import { relationshipConfig, overallScore, levelOf, matchKeywordRules, secretsFor, levelStyle, applyRules, pickReward } from './gameplay/index.mjs';
+import { relationshipConfig, overallScore, levelOf, matchKeywordRules, secretsFor, levelStyle, applyRules } from './gameplay/index.mjs';
 import { ALLOWED_GEMINI_MODELS, SAFETY_SETTINGS, modelsForVisit, pickLiteModel, chatGenerationConfig, rewriteGenerationConfig, summaryGenerationConfig, modelTestGenerationConfig } from './ai/protected/gemini-config.mjs';
 import { fiftyShadesPrompt as buildFiftyShadesPrompt } from './ai/protected/fifty-shades.mjs';
 import { narrativeEnabled, ensureNarrativeStorage, readNarrativeState, narrativeHistory, narrativePrompt, narrativeSchema, decodeNarrative, serializeNarrative, selectNarrativeMemories, narrativeSceneMetadata, ensureNarrativeOpening } from './narrative.mjs';
@@ -1089,7 +1089,7 @@ async function player(req,env,user,path,now,ctx) {
    // The story clock is in-fiction: it continues from the last stored scene header and only
    // borrows the real clock once, when a thread has no stored scene yet.
    const storedScene = readStoredScene(recentRes.results);
-   const storyClockMinutes = resolveFictionClock(storedScene.time, now);
+   const storyClockMinutes = resolveFictionClock({ stored: storedScene.time, scene: `${sceneLocation} ${npcDef?.precedingIncident || ''}` });
    const storyTime = formatFictionClock(storyClockMinutes);
    const storyLocation = (storedScene.location || sceneLocation).trim();
    // Every inline reply carries a header, including model fallbacks that return no scene fields.
@@ -1199,7 +1199,7 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
      let decodedScene = null;
      if (sceneMode && parsed) {
        try {
-         decodedScene = decodeNarrative(parsed, sceneState, userText, now);
+         decodedScene = decodeNarrative(parsed, sceneState, userText);
          parsed = decodedScene;
        } catch (err) {
          console.error(providerName, 'decodeNarrative error:', String(err));
@@ -1364,7 +1364,7 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
            let parsed = raw ? JSON.parse(raw) : null;
            let decodedScene = null;
            if (sceneMode && parsed) {
-             decodedScene = decodeNarrative(parsed, sceneState, userText, now);
+             decodedScene = decodeNarrative(parsed, sceneState, userText);
              parsed = decodedScene;
            }
            if(typeof parsed?.reply !== 'string' || !parsed.reply.trim()) {
@@ -1485,8 +1485,7 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
    }
 
    const unlockedSet = new Set((unlockRes.results || []).map(r => r.reward_key));
-   const rewardObj = pickReward(npcDef, { closeness, trust, romance, level: currentLv, events, turns: turnCount, score: rel, scoreDelta }, unlockedSet);
-   const rewardMediaKey = rewardObj?.asset || null;
+   // DM lane carries no media: reward art lives in the Story lane and the Close Friends Vault.
 
    // Apply deltas in SQL so a concurrent comment's score change is never overwritten.
    const delta = { closeness: closeness - before.closeness, trust: trust - before.trust, romance: romance - before.romance };
@@ -1517,7 +1516,7 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
         ...(innerThought ? [`[thought:${innerThought}]`] : []), serializeNarrative(narrativeResult.beats)].join('\n')
      : serializeSceneBubble({ at: now, time: inlineScene?.time, location: inlineScene?.location, mood: moodToast,
         thought: innerThought, beats: inlineBeats.length ? inlineBeats : [{ kind: 'dialogue', text: replyText }] });
-   const replyStatement = env.DB.prepare('INSERT INTO ai_chat_messages(id, user_id, creator_id, role, content, media_key, affection_delta, created_at) VALUES(?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(), user.id, creator, 'assistant', storedContent, rewardMediaKey, scoreDelta, now + 1);
+   const replyStatement = env.DB.prepare('INSERT INTO ai_chat_messages(id, user_id, creator_id, role, content, media_key, affection_delta, created_at) VALUES(?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(), user.id, creator, 'assistant', storedContent, null, scoreDelta, now + 1);
    if (narrativeResult) {
      // The reply and its continuity state commit together under the existing per-thread lease.
      await env.DB.batch([...relationshipStatements, replyStatement, env.DB.prepare('INSERT INTO npc_scene_states(user_id,creator_id,state_json,updated_at) VALUES(?,?,?,?) ON CONFLICT(user_id,creator_id) DO UPDATE SET state_json=excluded.state_json,updated_at=excluded.updated_at').bind(user.id, creator, JSON.stringify(narrativeResult.nextState), now)]);
@@ -1547,7 +1546,7 @@ Reply in Thai naturally as "${npcName}" (1-3 conversational sentences like Insta
      suggestedReplies,
      moodToast,
      knowledgeResult:{entries:entries.map(({title,source,checkedAt})=>({title,source,checkedAt})),applied:knowledgeApplied,search:{status:search.status,sources:search.sources,queries:search.queries,usage:search.usage}},
-     mediaKey: rewardMediaKey,
+     mediaKey: null,
      messages: allAiMessages,
      unlockedRewards: Array.from(unlockedSet),
      relationship: rel,
