@@ -110,17 +110,8 @@ const SAFETY_FINISH = new Set(['SAFETY', 'PROHIBITED_CONTENT', 'BLOCKLIST', 'SPI
 // Failed turns that are not quota limits are refunded at most this many times per window.
 const FAILED_TURN_WINDOW_MS = 10 * 60000;
 const REFUNDS_PER_WINDOW = 3;
-export const CLIFFHANGER_OFFER = {
-  sku: 'offer_cliffhanger_49',
-  name: 'แพ็กอยู่ต่อกับเธอ (Cliffhanger Special)',
-  priceSatang: 4900,
-  priceThb: 49,
-  originalPriceThb: 120,
-  discountPercent: 59,
-  energy: 180,
-  diamonds: 20,
-  expiresInSeconds: 600
-};
+import { CLIFFHANGER_OFFER, CASCADE_VIP_OFFER, CASCADE_WHALE_OFFER } from './shop/offers.mjs';
+export { CLIFFHANGER_OFFER, CASCADE_VIP_OFFER, CASCADE_WHALE_OFFER };
 export const EPISODE_UNLOCK_ENERGY = 25;
 const defer = (ctx, promise) => { const guarded = promise.catch(e => console.error('background task failed', e?.name)); if(ctx?.waitUntil) ctx.waitUntil(guarded); return guarded; };
 async function takeEnergy(env, uid, now, reason = 'ai_chat') {

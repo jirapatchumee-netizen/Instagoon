@@ -10,8 +10,10 @@ export interface CliffhangerOffer {
   priceThb: number;
   originalPriceThb: number;
   discountPercent: number;
+  valueMultiplier?: string;
   energy: number;
   diamonds: number;
+  bonusReward?: string;
   expiresInSeconds?: number;
 }
 
@@ -97,11 +99,17 @@ export function CliffhangerOfferModal({
           </div>
 
           {/* Headline & Pitch */}
+          {currentOffer.valueMultiplier && (
+            <div className="mb-2 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-400 via-rose-500 to-purple-600 px-3 py-1 text-xs font-black tracking-wider text-white shadow-lg shadow-rose-500/30 uppercase animate-pulse">
+              <Sparkles size={13} className="fill-current text-amber-200" />
+              <span>{currentOffer.valueMultiplier} Value</span>
+            </div>
+          )}
           <h2 id="cliffhanger-offer-title" className="text-xl font-bold tracking-tight text-white">
-            แชทต่อกับ {creatorName}
+            {currentOffer.name.includes('VIP') ? currentOffer.name : `แชทต่อกับ ${creatorName}`}
           </h2>
           <p className="mt-1 text-sm font-medium text-emerald-400 flex items-center justify-center gap-1">
-            <span>โปรพิเศษ เฉพาะเติมครั้งแรก</span>
+            <span>{currentOffer.name.includes('VIP') ? 'โปรลับพิเศษเฉพาะคุณ' : 'โปรพิเศษ เฉพาะเติมครั้งแรก'}</span>
             <Sparkles size={13} />
           </p>
 
@@ -135,6 +143,13 @@ export function CliffhangerOfferModal({
                 <div className="text-2xl font-black text-white tracking-tight">฿{currentOffer.priceThb}</div>
               </div>
             </div>
+
+            {currentOffer.bonusReward && (
+              <div className="mb-3 flex items-center justify-center gap-1.5 rounded-lg bg-purple-950/60 border border-purple-500/30 px-2.5 py-1 text-xs font-semibold text-purple-200">
+                <Sparkles size={12} className="text-amber-300" />
+                <span>{currentOffer.bonusReward}</span>
+              </div>
+            )}
 
             {/* Live Countdown Timer */}
             <div className="pt-3 border-t border-white/10 flex flex-col items-center">

@@ -9,9 +9,10 @@ import { ArrowLeft, BadgeCheck, Check, Copy, Paperclip, Zap } from 'lucide-react
 
 type Energy = { free: number; purchased: number; diamonds: number; nextRefillAt: number | null };
 type Product = { sku: string; name: string; priceSatang: number; energy: number; diamonds?: number; purchasedToday?: boolean };
+type CascadeOffer = { sku: string; name: string; priceThb: number; energy: number; diamonds: number; valueMultiplier?: string; bonusReward?: string; expiresInSeconds?: number };
 type Order = { id: string; sku: string; priceSatang: number; amountSatang: number; energy: number; diamonds?: number; status: 'pending' | 'paid' | 'expired' | 'refunded' | 'revoked'; expiresAt: number; payTo: PayTo | null };
 type PayTo = { bank: string; accountNo: string; accountName: string };
-type ShopInfo = { enabled: boolean; blocked?: boolean; ageConfirmed?: boolean; purchasedToday?: boolean; purchasedSkusToday?: string[]; diamonds?: number; nextAvailableAt?: number; products: Product[]; openOrder?: Order | null };
+type ShopInfo = { enabled: boolean; blocked?: boolean; ageConfirmed?: boolean; purchasedToday?: boolean; purchasedSkusToday?: string[]; diamonds?: number; nextAvailableAt?: number; products: Product[]; openOrder?: Order | null; cascadeOffer?: CascadeOffer | null };
 type Msg = { id: number; from: 'bot' | 'me'; text?: string; card?: boolean; image?: string };
 type Stage = 'loading' | 'closed' | 'age' | 'pick' | 'busy' | 'pay' | 'done';
 
@@ -48,6 +49,10 @@ const TEXT = {
     reading: 'กำลังอ่านสลิป…',
     noQr: 'อ่าน QR บนสลิปไม่เจอค่ะ ส่งรูปสลิปเต็มใบจากแอปธนาคาร (ไม่ครอบตัด ไม่ถ่ายจากหน้าจอ) อีกครั้งนะคะ',
     paid: (n: number, d?: number) => `ได้รับสลิปแล้ว ✅ เติม +${n} ⚡${d ? ` และได้รับแต้มสะสม +${d} 💎` : ''} เรียบร้อยค่ะ ขอบคุณนะคะ`,
+    cascadeUnlocked: (mult: string) => `🔥 ปลดล็อกดีลลับพิเศษ (${mult} Value)`,
+    cascadeDesc: (name: string, mult: string, energy: number, diamonds: number, reward?: string) =>
+      `"${name}" รับโบนัสทวีคูณ ${mult}! เพิ่ม +${energy} ⚡ และ +${diamonds} 💎${reward ? `\n🎁 พิเศษทันที: ${reward}` : ''}`,
+    cascadeBtn: (thb: number, mult: string) => `⚡ รับดีลลับ ฿${thb} (${mult})`,
     back: 'กลับไปเล่นต่อ',
     errors: {
       slip_unreadable: 'QR บนสลิปไม่ถูกต้องค่ะ ลองส่งรูปสลิปต้นฉบับอีกครั้ง',
@@ -94,6 +99,10 @@ const TEXT = {
     reading: 'Reading the slip…',
     noQr: 'No QR found on the slip. Send the full slip image from your banking app (not cropped, not a photo of a screen).',
     paid: (n: number, d?: number) => `Slip received ✅ +${n} ⚡${d ? ` and +${d} 💎 added` : ''}. Thank you!`,
+    cascadeUnlocked: (mult: string) => `🔥 Secret VIP Deal Unlocked (${mult} Value)`,
+    cascadeDesc: (name: string, mult: string, energy: number, diamonds: number, reward?: string) =>
+      `"${name}": Get ${mult} bonus value! +${energy} ⚡ and +${diamonds} 💎${reward ? `\n🎁 Instant bonus: ${reward}` : ''}`,
+    cascadeBtn: (thb: number, mult: string) => `⚡ Claim Deal ฿${thb} (${mult})`,
     back: 'Back to the game',
     errors: {
       slip_unreadable: 'The slip QR is not valid. Try the original slip image.',
@@ -167,6 +176,7 @@ export function EnergyShop({
   const [stage, setStage] = useState<Stage>('loading');
   const [diamonds, setDiamonds] = useState(0);
   const [order, setOrder] = useState<Order | null>(null);
+  const [cascadeOffer, setCascadeOffer] = useState<CascadeOffer | null>(null);
   const [now, setNow] = useState(Date.now());
   const [copied, setCopied] = useState('');
 
@@ -195,6 +205,7 @@ export function EnergyShop({
         setInfo(s);
         const userDiamonds = s.diamonds ?? 0;
         setDiamonds(userDiamonds);
+        if (s.cascadeOffer) setCascadeOffer(s.cascadeOffer);
         if (!s.enabled) return (say('bot', { text: t.closed }), setStage('closed'));
         if (s.blocked) return (say('bot', { text: t.blocked }), setStage('closed'));
         if (s.openOrder?.payTo) return showOrder(s.openOrder);
@@ -270,6 +281,24 @@ export function EnergyShop({
     }
   }
 
+  async function chooseSku(sku: string, name: string) {
+    say('me', { text: `ขอรับ ${name} ค่ะ` });
+    setStage('busy');
+    try {
+      const res = await call<{ order: Order }>('/api/shop/orders', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ sku, requestId: crypto.randomUUID(), confirmAge20: true }),
+      });
+      setCascadeOffer(null);
+      showOrder(res.order);
+    } catch (e) {
+      explain(e);
+      const code = e instanceof Error ? e.message : '';
+      setStage(code === 'shop_blocked' ? 'closed' : 'pick');
+    }
+  }
+
   async function exchangeDiamonds() {
     const exchangeable = Math.floor(diamonds / 10) * 10;
     if (exchangeable < 10) return;
@@ -304,7 +333,7 @@ export function EnergyShop({
       return;
     }
     try {
-      const res = await call<{ order: Order; energy: Energy }>(`/api/shop/orders/${order.id}/slip`, {
+      const res = await call<{ order: Order; energy: Energy; cascadeOffer?: CascadeOffer }>(`/api/shop/orders/${order.id}/slip`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ slipQr }),
@@ -320,6 +349,12 @@ export function EnergyShop({
       // The server drops the account once paid; keep it so the card stays and just shows "credited".
       setOrder((o) => ({ ...res.order, payTo: res.order.payTo ?? o?.payTo ?? null }));
       say('bot', { text: t.paid(res.order.energy, res.order.diamonds) });
+      if (res.cascadeOffer) {
+        setCascadeOffer(res.cascadeOffer);
+        say('bot', {
+          text: `${t.cascadeUnlocked(res.cascadeOffer.valueMultiplier || '+1,000%')}\n${t.cascadeDesc(res.cascadeOffer.name, res.cascadeOffer.valueMultiplier || '+1,000%', res.cascadeOffer.energy, res.cascadeOffer.diamonds, res.cascadeOffer.bonusReward)}`
+        });
+      }
       setStage('done');
     } catch (err) {
       explain(err);
@@ -449,7 +484,20 @@ export function EnergyShop({
               <button type="button" onClick={changePack}>{t.change}</button>
             </>
           )}
-          {(stage === 'done' || stage === 'closed') && <button type="button" className="is-primary" onClick={onClose}>{t.back}</button>}
+          {(stage === 'done' || stage === 'closed') && (
+            <>
+              {cascadeOffer && (
+                <button
+                  type="button"
+                  className="is-cascade-offer"
+                  onClick={() => void chooseSku(cascadeOffer.sku, cascadeOffer.name)}
+                >
+                  <Zap size={15} /> {t.cascadeBtn(cascadeOffer.priceThb, cascadeOffer.valueMultiplier || '+1,000%')}
+                </button>
+              )}
+              <button type="button" className="is-primary" onClick={onClose}>{t.back}</button>
+            </>
+          )}
         </footer>
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => void sendSlip(e)} />
       </section>

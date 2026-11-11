@@ -10,6 +10,7 @@
 import { parseSlipQr } from './slipqr.mjs';
 import { parseStatement, bangkokDayStart } from './statement.mjs';
 import { buildDailyClose, dayKeyOf, dayStartOf, formatDailyClose, isDayKey } from './dailyclose.mjs';
+import { getCascadeOfferForPaidSku } from './offers.mjs';
 
 const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
 const err = (error, status = 400, extra = {}) => json({ error, ...extra }, status);
@@ -188,7 +189,12 @@ async function submitSlip(req, env, user, orderId, now) {
   if (outcome === 'slip_already_used') return err(outcome, 409);
   const after = await env.DB.prepare('SELECT * FROM orders WHERE id=?').bind(order.id).first();
   if (after.status !== 'paid') return err('order_expired', 409);
-  return json({ order: orderShape(after, env), energy: await energyOf(env, user.id) });
+  const cascadeOffer = getCascadeOfferForPaidSku(order.sku);
+  return json({
+    order: orderShape(after, env),
+    energy: await energyOf(env, user.id),
+    ...(cascadeOffer ? { cascadeOffer } : {}),
+  });
 }
 
 export async function shopPlayer(req, env, user, path, now) {
@@ -202,6 +208,22 @@ export async function shopPlayer(req, env, user, path, now) {
     const daily = await dailyState(env, user.id, now);
     const allPurchased = results.length > 0 && results.every(p => daily.purchasedSkusToday.includes(p.sku));
     const userEnergy = await energyOf(env, user.id);
+
+    let activeCascadeOffer = null;
+    const recentPaid = await env.DB.prepare(
+      "SELECT sku, paid_at FROM orders WHERE user_id=? AND status='paid' AND paid_at>? ORDER BY paid_at DESC LIMIT 1"
+    ).bind(user.id, now - 15 * 60000).first();
+    if (recentPaid) {
+      const pot = getCascadeOfferForPaidSku(recentPaid.sku);
+      if (pot && !daily.purchasedSkusToday.includes(pot.sku)) {
+        const elapsedSec = Math.floor((now - recentPaid.paid_at) / 1000);
+        const remainingSec = Math.max(0, (pot.expiresInSeconds || 600) - elapsedSec);
+        if (remainingSec > 0) {
+          activeCascadeOffer = { ...pot, expiresInSeconds: remainingSec };
+        }
+      }
+    }
+
     return json({
       enabled: true,
       blocked: !!user.shop_blocked_at,
@@ -210,6 +232,7 @@ export async function shopPlayer(req, env, user, path, now) {
       purchasedSkusToday: daily.purchasedSkusToday,
       nextAvailableAt: daily.nextAvailableAt,
       diamonds: userEnergy.diamonds,
+      cascadeOffer: activeCascadeOffer,
       products: results.map(p => ({
         sku: p.sku,
         name: p.name,
