@@ -1,6 +1,6 @@
 # ADR-0018: ข้อมูลระบุตัวตนของการรับเงินอยู่ใน Worker, ไม่อยู่ใน git
 
-สถานะ: accepted (2026-11-11) — การดำเนินการขั้นตอนที่ 2 ยังค้างอยู่กับเจ้าของระบบ (ดู "ลำดับที่ปลอดภัย")
+สถานะ: accepted (2026-11-11) — ฝั่ง staging เสร็จใน PR นี้ (ค่า dummy ใน git + guard rule) เหลือฝั่ง production ที่เจ้าของต้องยืนยันว่าค่าจริงอยู่บน Worker (ดู "ลำดับที่ปลอดภัย")
  relates: ADR-0012 (Dual Gate / monetization), ADR-0013 (owner-locked zone, guard-commit), ADR-0016 (DM lane is text-only)
 
 ## Context
@@ -33,18 +33,22 @@ orderShape      = { ..., payTo: status === 'pending' ? payTo(env) : null }
 
 ## Decision
 
-**D1 — ค่ารับเงินเป็น runtime config บน Worker, ไม่อยู่ใน git**
-`server/wrangler*.toml` เก็บเฉพาะ *ชื่อ key* และค่าว่าง การตั้งค่าจริงทำด้วย `wrangler secret put` (staging และ production)
-โค้ดไม่ต้องแก้: `payTo()` อ่าน `env.*` เท่ากันทั้งสองแบบ
+**D1 — แยกสองชั้น: staging ใช้ค่าปลอม, production ห้ามมีค่าจริงใน git**
+* staging เก็บ **บัญชีปลอม**ใน `[vars]` ได้ (`0000000000` + ชื่อธนาคาร/ชื่อบัญชีทดสอบ) เพราะ shop ต้องการเลข 10 หลัก
+  ถึงจะเปิดให้ทดสอบได้ และการโอนจากการทดสอบไม่ควรเข้าบัญชีจริง
+* production ค่าจริงต้องอยู่บน Worker เท่านั้น ตั้งด้วย `wrangler secret put` (พิมพ์ค่าที่ prompt ไม่ใส่ค่าไว้ใน
+  command line, ในไฟล์ หรือในแชท) หรือผ่าน GitHub Actions secrets ในขั้นตอน deploy
+* โค้ดไม่ต้องแก้เลย: `payTo()` อ่าน `env.*` เหมือนกันทั้งสองกรณี
 
 **D2 — `[vars]` ใช้กับของที่ไม่ใช่ข้อมูลระบุตัวตนเท่านั้น**
 `wrangler deploy` ส่ง `[vars]` ตามไฟล์เป็นชุดสมบูรณ์ → dashboard var ที่ไม่อยู่ในไฟล์จะหายไปทุกรอบ deploy
 ข้อมูลที่ต้องอยู่รอดข้าม deploy จึงต้องเป็น **secret** ไม่ใช่ var (ข้อนี้คือเหตุผลที่ D1 เลือก secret)
-หมายเหตุ: พฤติกรรมนี้เป็นเอกสารของ wrangler yet ยังไม่ได้วัดจริงในระบบนี้ (ต้องทำตอนขั้นตอนที่ 2)
+หมายเหตุ: พฤติกรรมนี้เป็นเอกสารของ wrangler แต่ยังไม่ได้วัดจริงในระบบนี้ (ไม่มี credential) จึงต้องตรวจตอน deploy prod
 
 **D3 — staging ห้ามชี้บัญชีรับเงินจริง**
 staging เป็นที่ทดลองจ่ายเงิน ถ้าเลขบัญชีเป็นของจริง เงินจากการทดสอบจะเข้ากระแสรายวันและปนกับงานปิดบัญชีรายวัน
-(`docs/ACCOUNTING_DAILY_CLOSE.md`) staging จึงตั้ง secret เป็นบัญชีทดสอบ/ค่าว่าง และ shop จะปฏิเสธการเปิดจนกว่าจะตั้งค่า
+(`docs/ACCOUNTING_DAILY_CLOSE.md`) staging จึงใช้บัญชีปลอมที่ชื่อระบุชัดว่าเป็นของทดสอบ และเลขถูกเขียนแบบไม่มีขีด
+เพื่อไม่ให้ guard (ที่จับรูปแบบเลขบัญชีมีขีด) เข้าใจผิดว่า dummy คือข้อมูลรั่ว
 
 **D4 — guard ปิดช่องที่เกิดซ้ำ** (`scripts/guard-commit.mjs`)
 - `SECRET_CONTENT` เพิ่มรูปแบบเลขบัญชีไทยที่เขียนด้วยขีด `NNN-N-NNNNN-N` → ปฏิเสธในทุกไฟล์ (รวม `.md`)
@@ -59,23 +63,29 @@ fixture ใน `server/tests/shop.test.mjs` เปลี่ยนเป็น `�
 
 ## ลำดับที่ปลอดภัย (ทำไมห้ามสลับขั้น)
 
-`shopReady()` ปิด shop ทันที่ค่าไม่ครบ ดังนั้น:
+staging ไม่มีเงื่อนไขอะไรแล้ว เพราะมีค่า dummy ใน git → deploy แล้ว shop ยังเปิดและแสดงบัญชีทดสอบ
+**production เท่านั้นที่มีเงื่อนไข**: `shopReady()` ปิด shop ทันทีที่ค่าไม่ครบ
 
-1. ตั้ง secret บน Worker ทั้ง staging และ production **ก่อน**
-2. ยืนยันว่า order ใหม่ยังคืน `payTo` ครบ (การ์ดชำระเงินยังมีเลขบัญชีให้ผู้เล่น)
-3. แล้วจึง merge การแก้ที่ลบค่าจาก `[vars]`
-4. ตรวจว่า deploy ถัดไปไม่ลบ secret ทิ้ง (D2)
+1. เจ้าของยืนยันว่า production Worker มี `BANK_NAME` / `BANK_ACCOUNT_NO` / `BANK_ACCOUNT_NAME` ครบ
+   (ตอนนี้ `server/wrangler.toml` ใน git ไม่มี `BANK_*` เลย → ไม่รู้ว่า prod เอาค่าจากไหน หรือ shop ปิดอยู่)
+2. ถ้า prod ใช้ **dashboard vars** อยู่ ต้องย้ายไปเป็น **secret** ก่อน เพราะ `wrangler deploy` ส่ง `[vars]` ตามไฟล์
+   เป็นชุดสมบูรณ์ มันจะลบ dashboard var ที่ไม่อยู่ในไฟล์ทิ้งทุกรอบ deploy
+3. แล้วจึง deploy prod รอบถัดไป และตรวจว่า order ใหม่ยังคืน `payTo` ครบ
 
-การทำข้อ 3 ก่อนข้อ 1 = ทำให้ shop ของจริงปิดทั้งระบบ
+## ข้อจำกัดของ repo ที่บังคับให้ guard กับ config ลงพร้อมกัน
+
+เทสต์เดิม `server/tests/guard-commit.test.mjs` → `no tracked file trips a content rule` สแกนทุกไฟล์ที่ track ด้วย rules
+ปัจจุบัน ถ้าเพิ่ม rule เลขบัญชีโดยไม่แก้ `server/wrangler.staging.toml` พร้อมกัน CI แดงทันที (ตรวจแล้ว: rule ใหม่นี้
+ทำเทสต์ fail จริงก่อนแก้ config) นี่คือเหตุผลที่ PR นี้รวม guard + config + ADR ไว้ด้วยกัน
 
 ## สิ่งที่ ADR นี้ยังไม่ได้แก้
 
-- **ประวัติ git**: ค่าที่เผยแพร่แล้ว ยังอยู่ใน commit เก่าและใน cache/raw URL ของ GitHub
-  การลบต้อง `git filter-repo` + force-push ซึ่งทำให้ branch และ PR ที่เปิดอยู่พังทั้งหมด และต้องยื่นเรื่องถึง GitHub support
-  เพื่อล้าง cache — เป็นการตัดสินใจของเจ้าของระบบ (ยัง open)
-- `STAGING_EMAILS` ใน `server/wrangler.staging.toml` เป็นอีเมลจริงของ 2 คนในทีม การลบทำให้ staging เข้าไม่ได้
+- **เจ้าของระบบตัดสินใจเมื่อ 2026-11-11: ยังไม่ล้างประวัติ git** ค่าที่เผยแพร่ไปแล้วจึงยังอยู่ใน commit เก่า, ใน cache
+  และใน raw URL ของ GitHub (การล้างต้อง `git filter-repo` + force push ซึ่งทำ branch/PR ที่เปิดอยู่พังทั้งหมดยกล้าง
+  ของ cache ต้องยื่นเรื่อง GitHub support)
+- สถานะจริงของ production ว่าจะเอา `BANK_*` จากไหน (open — ต้องเปิด Cloudflare dashboard ตรวจ)
+- `STAGING_EMAILS` ใน `server/wrangler.staging.toml` เป็นอีเมลจริงของคนในทีม 2 คน การลบทำให้เข้า staging ไม่ได้ทันที
   จึงยังไม่แตะ (open)
-- สถานะจริงของ production ว่าจะเอา `BANK_*` จากไหน (open — ต้องดู Cloudflare dashboard)
 
 ## Consequences
 

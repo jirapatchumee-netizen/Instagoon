@@ -27,7 +27,8 @@ const SECRET_CONTENT = [
   [/-----BEGIN [A-Z ]*PRIVATE KEY-----(?:\r?\n|\\n)[A-Za-z0-9+/=]{40,}/, 'a private key'],
   [/\bglcbm-[0-9a-f]{4}:[A-Za-z0-9_\-]{20,}\.[A-Za-z0-9_\-]{20,}\b/, 'a Firebase admin token'],
   [/\b(ghp|github_pat)[A-Za-z0-9_\-]{20,}/, 'a GitHub token'],
-  [/\bAKIA[0-9A-Z]{16}\b/, 'an AWS access key id']
+  [/\bAKIA[0-9A-Z]{16}\b/, 'an AWS access key id'],
+  [/(\b\d{3}-\d-\d{5}-\d{1,2}\b)/, 'a Thai bank account number in its written form (ADR-0018)']
 ];
 const PRIVATE_PATHS = [
   [/(^|\/)private-docs\//i, 'private docs stay on the owner\'s machine'],
@@ -107,6 +108,10 @@ export function findProblems(files, mode = 'commit', opts = {}) {
     // stays clean. This guard's own test file is exempt by path — the one place that must quote them.
     if (!SELF_TEST.test(f.path)) {
       /"type"\s*:\s*"service_account"/.test(text) && push(f.path, 'is a Google service-account key file.');
+      // A 13-digit run on its own is a timestamp or a row id, so the taxpayer number is only refused next
+      // to the wording that makes it one. Measured on the repo: bare 13 digits appear in 11 legitimate test
+      // lines, the contextual form in 2 — both of them the company's own tax id (ADR-0018).
+      /(เลขผู้เสียภาษี|เลขประจำตัวผู้เสียภาษี|taxpayer)[^0-9]{0,40}[0-9]{13}/i.test(text) && push(f.path, 'contains the company taxpayer identification number; keep it in the owner\'s private records (ADR-0018).');
       /"(masterPromptTemplate|renderRecipe)"\s*:/.test(text) && push(f.path, 'contains the private render recipe; keep it in the local art pipeline.');
       /"class_type"\s*:/.test(text) && /"inputs"\s*:/.test(text) && push(f.path, 'contains a ComfyUI workflow; keep it in the local art pipeline.');
       // The public repo keeps a stub bible per creator (creatorId, name, identity, wardrobe, note, version).
