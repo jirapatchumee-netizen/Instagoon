@@ -6,6 +6,9 @@ export type SceneMetadata = {
 };
 export type NarrativeSegment = { kind: 'dialogue' | 'action'; text: string };
 
+// A stored reply with a missing field still shows a clock and a place; the header is never hidden.
+export const DEFAULT_SCENE_LOCATION = 'คอนโดส่วนตัวใจกลางเมือง';
+
 export function cleanFastForwardLocation(location: string): string {
   return location
     .replace(/^ห้อง(?:กู|ฉัน|เรา|เค้า)(?:\s*([0-9A-Za-z]+))?/i, (_, room) => room ? `ห้อง ${room}` : 'ห้องของเธอ')
@@ -42,8 +45,8 @@ export function readSceneHeader(text: string): { scene: SceneMetadata | null; bo
   const body = text.slice(match[0].length);
   try {
     const value = JSON.parse(match[1]);
-    if (typeof value.at !== 'number' || !Number.isFinite(value.at) || !Number.isFinite(new Date(value.at).getTime()) ||
-        typeof value.location !== 'string' || !value.location.trim() || value.location.length > 100) return { scene: null, body };
+    const at = typeof value.at === 'number' && Number.isFinite(value.at) && Number.isFinite(new Date(value.at).getTime()) ? value.at : Date.now();
+    const location = (typeof value.location === 'string' ? value.location.trim() : '').slice(0, 100) || DEFAULT_SCENE_LOCATION;
     const time = typeof value.time === 'string' && value.time.trim().length <= 30 ? value.time.trim() : undefined;
     const rawLoc = value.fastForward?.location ? String(value.fastForward.location).trim() : '';
     const rawTime = typeof value.fastForward?.time === 'string' && value.fastForward.time.trim() ? value.fastForward.time.trim() : undefined;
@@ -57,7 +60,7 @@ export function readSceneHeader(text: string): { scene: SceneMetadata | null; bo
             : (rawTime ? `⏩ ไปที่${cleanFastForwardLocation(rawLoc)} (${rawTime})` : `⏩ ไปที่${cleanFastForwardLocation(rawLoc)}`)
         }
       : undefined;
-    return { scene: { at: value.at, location: value.location, ...(time ? { time } : {}), ...(fastForward ? { fastForward } : {}) }, body };
+    return { scene: { at, location, ...(time ? { time } : {}), ...(fastForward ? { fastForward } : {}) }, body };
   } catch { return { scene: null, body }; }
 }
 
@@ -79,6 +82,13 @@ export function hasNarrativeActions(text: string) {
 
 export function quoteDialogue(text: string) {
   const value = text.trim();
+  const speakerMatch = value.match(/^\[?([ก-๙A-Za-z0-9_.\s&]{1,35}?\s*[\p{Extended_Pictographic}\u2600-\u27BF]+(?:[\s&]+[ก-๙A-Za-z0-9_.\s]{1,25}?\s*[\p{Extended_Pictographic}\u2600-\u27BF]+)*)\]?\s*:\s*([\s\S]+)$/u)
+    || value.match(/^\[([ก-๙A-Za-z0-9_.\s&]{1,35})\]\s*:\s*([\s\S]+)$/u);
+  if (speakerMatch) {
+    const speaker = speakerMatch[1].trim();
+    const spoken = speakerMatch[2].trim().replace(/^["“「«]([\s\S]*?)["”」»]$/, '$1').trim();
+    return `${speaker}: “${spoken}”`;
+  }
   return /^["“「«]/.test(value) ? value : `“${value}”`;
 }
 

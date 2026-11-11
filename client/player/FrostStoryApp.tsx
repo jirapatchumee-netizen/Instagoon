@@ -517,7 +517,14 @@ export function FrostStoryApp() {
 
   useEffect(() => {
     const el = msgsRef.current;
-    if (el && stickToBottomRef.current) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    if (!el || !stickToBottomRef.current) return;
+    const rows = el.querySelectorAll<HTMLElement>('.fs-dm-row-left, .fs-dm-row-right');
+    const lastRow = rows.length > 0 ? rows[rows.length - 1] : null;
+    if (lastRow && lastRow.classList.contains('fs-dm-row-left') && lastRow.offsetHeight > el.clientHeight - 16) {
+      el.scrollTo({ top: Math.max(0, lastRow.offsetTop - 8), behavior: 'smooth' });
+    } else {
+      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    }
   }, [chat?.aiMessages?.length, chat?.history.length, chat?.currentNodeId, pending, aiSending]);
 
   async function action(fn: () => Promise<void>) {

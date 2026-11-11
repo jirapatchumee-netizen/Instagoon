@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { SCENE_STANDARD_INSTRUCTION, SCENE_STANDARD_ORDER, orderBeats, serializeSceneBubble, readStoredScene, resolveFictionClock, advanceFictionClock, daypartAnchorMinutes, parseFictionTime, formatFictionClock } from '../src/scene-standard.mjs';
+import { SCENE_STANDARD_INSTRUCTION, SCENE_STANDARD_ORDER, orderBeats, serializeSceneBubble, readStoredScene, resolveFictionClock, advanceFictionClock, inferSceneLocation, compactProse, daypartAnchorMinutes, parseFictionTime, formatFictionClock, resolveSceneHeader, FALLBACK_SCENE_LOCATION, MAX_VIEWPORT_BEATS, MAX_VIEWPORT_BEAT_CHARS } from '../src/scene-standard.mjs';
 import { initialNarrativeState, readNarrativeState, reduceNarrativeState, narrativeSceneMetadata, narrativeSchema, narrativePrompt } from '../src/narrative.mjs';
 import { SCENE_FORMAT_INSTRUCTION } from '../src/experiment-scene-format.mjs';
 import { narrativeNpc } from './helpers/narrative-npc.mjs';
@@ -217,6 +217,85 @@ test('advanceFictionClock strictly prevents clock stagnation and backward drift'
 
   // Explicit scene jump (e.g. night transition) allows time jump
   assert.equal(advanceFictionClock({ stored: '12:17 น.', proposed: '20:30 น.', sceneJump: true }), '20:30 น.');
+
+  // Midnight rollover (e.g. 22:50 -> 00:30 or 23:35 -> 01:00) is accepted on sceneJump
+  assert.equal(advanceFictionClock({ stored: '23:35 น.', proposed: '01:00 น.', sceneJump: true }), '01:00 น.');
+  assert.equal(advanceFictionClock({ stored: '22:50 น.', proposed: '00:00 น.', sceneJump: true }), '00:00 น.');
+});
+
+test('inferSceneLocation and inline DM update location on player scene cuts and sub-zone moves even if model repeats old location', async () => {
+  const oldOffice = 'ออฟฟิศหรูใจกลางเมืองหลังเวลาเลิกงาน ท่ามกลางแสงไฟอบอุ่นยามค่ำคืน';
+  assert.equal(
+    inferSceneLocation({
+      storedLocation: oldOffice,
+      proposedLocation: oldOffice,
+      userText: 'ตัดภาพกลับมาที่ห้องนอนของเนย',
+      actionText: 'เนยนั่งตัวสั่นอยู่บนเตียงนุ่มในห้องนอนส่วนตัว'
+    }),
+    'ห้องนอนของเนย'
+  );
+  assert.equal(
+    inferSceneLocation({
+      storedLocation: oldOffice,
+      proposedLocation: null,
+      userText: 'งั้นเรานอนคุยกันต่อนะ',
+      actionText: 'เนยนั่งตัวสั่นอยู่บนเตียงนุ่มในห้องนอนส่วนตัว โคมไฟหัวเตียงส่องสว่าง'
+    }),
+    'ห้องนอนส่วนตัว (บนเตียงนุ่ม)'
+  );
+  assert.equal(
+    inferSceneLocation({
+      storedLocation: 'ร้านคาราโอเกะ (ห้อง VIP)',
+      proposedLocation: 'ร้านคาราโอเกะ (ห้อง VIP)',
+      userText: 'ลงไปแช่น้ำในอ่างจากุซซี่กันเถอะ',
+      actionText: 'ก้าวลงในอ่างจากุซซี่ที่มีฟองสบู่'
+    }),
+    'ร้านคาราโอเกะ (ห้อง VIP - ในอ่างจากุซซี่)'
+  );
+
+  // End-to-end inline DM check: player cuts scene to bedroom, model forgets to update sceneLocation
+  const f = await narrativeFixture();
+  const noey = { ...f.npc, world: oldOffice };
+  delete noey.narrative;
+  f.sql.prepare('UPDATE npc_definitions SET definition_json=? WHERE creator_id=?').run(JSON.stringify(noey), noey.id);
+
+  let turn = 0;
+  f.env.PRIMARY_AI_PROVIDER = 'workers-ai';
+  f.env.AI = { async run() {
+    turn++;
+    return { response: JSON.stringify(turn === 1
+      ? {
+          reply: 'สวัสดีค่ะพี่',
+          innerThought: 'พี่ทักมาแล้ว ดีใจจังเลย',
+          action: 'เงยหน้าจากจอคอมพิวเตอร์ในออฟฟิศ',
+          sceneTime: '22:02 น.',
+          sceneLocation: oldOffice,
+          affectionDelta: 1
+        }
+      : {
+          reply: 'ค่ะ... กลับถึงห้องแล้วค่ะพี่',
+          innerThought: 'ใจสั่นไปหมดแล้ว... แต่ถ้าพี่ต้องการหนูก็พร้อมค่ะ',
+          action: 'เนยนั่งตัวสั่นอยู่บนเตียงนุ่มในห้องนอนส่วนตัว แสงไฟสลัวจากโคมไฟหัวเตียง',
+          beats: [
+            { kind: 'action', text: 'เนยนั่งตัวสั่นอยู่บนเตียงนุ่มในห้องนอนส่วนตัว แสงไฟสลัวจากโคมไฟหัวเตียง' },
+            { kind: 'dialogue', text: 'ค่ะ... กลับถึงห้องแล้วค่ะพี่' },
+            { kind: 'action', text: 'กอดตุ๊กตากระต่ายแนบอกแน่น' },
+            { kind: 'dialogue', text: 'คืนนี้พี่จะให้หนูใส่ชุดไหนดีคะ ชุดเมดหรือชุดแมวเหมียวดีคะ?' },
+            { kind: 'action', text: 'ส่วนเกินที่ควรถูกตัดออกเพื่อให้พอดี 1 หน้าจอ' }
+          ],
+          sceneTime: '22:45 น.',
+          sceneLocation: oldOffice, // Model mistakenly repeated old office location
+          affectionDelta: 1
+        }) };
+  } };
+
+  await f.request('สวัสดีครับเนย');
+  const second = await f.request('ตัดภาพกลับมาที่ห้องนอนของเนย');
+  assert.equal(second.status, 200);
+  assert.equal(second.payload.scene.location, 'ห้องนอนของเนย');
+  assert.equal(second.payload.scene.time, '22:45 น.');
+  assert.equal(second.payload.beats.length, MAX_VIEWPORT_BEATS);
+  assert.ok(second.payload.beats.every(b => b.text.length <= MAX_VIEWPORT_BEAT_CHARS));
 });
 
 test('inline DM clamps affectionDelta to 0 when reaction expresses shock, anger or harassment', async () => {
@@ -244,4 +323,16 @@ test('inline DM clamps affectionDelta to 0 when reaction expresses shock, anger 
   // Score delta must be clamped to 0 by the sentiment guardrail
   const row = f.sql.prepare("SELECT affection_delta FROM ai_chat_messages WHERE role='assistant' AND creator_id=? ORDER BY created_at DESC LIMIT 1").get(inline.id);
   assert.equal(row.affection_delta, 0, 'affection delta must be 0 during shock/harassment');
+});
+
+test('the scene header is total: a story clock and a place are always stored', () => {
+  assert.deepEqual(resolveSceneHeader({ at: 5, time: null, location: null }),
+    { at: 5, time: '12:15 น.', location: FALLBACK_SCENE_LOCATION });
+  assert.equal(resolveSceneHeader({ at: 5, location: '   ' }).location, FALLBACK_SCENE_LOCATION);
+  assert.equal(resolveSceneHeader({ at: 5, location: 'คาเฟ่', fallbackLocation: 'ร้านขนม' }).location, 'คาเฟ่');
+  assert.equal(resolveSceneHeader({ at: 5, location: 'x'.repeat(140) }).location.length, 100);
+  assert.equal(resolveSceneHeader({ time: '20:15 น.', location: 'ห้องสมุด' }).time, '20:15 น.');
+  const headerless = serializeSceneBubble({ beats: [{ kind: 'dialogue', text: 'ว่าไง' }] });
+  assert.match(headerless, /^\[scene:\{"at":\d+,"time":"12:15 น\.","location":".+"\}\]\nว่าไง$/);
+  assert.ok(readStoredScene([{ role: 'assistant', content: headerless }]).location);
 });

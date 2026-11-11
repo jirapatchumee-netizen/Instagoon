@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readSceneHeader, sceneHeaderLabels, hasNarrativeActions, splitNarrativeBody, quoteDialogue } from '../player/message-format.ts';
+import { readSceneHeader, sceneHeaderLabels, hasNarrativeActions, splitNarrativeBody, quoteDialogue, DEFAULT_SCENE_LOCATION } from '../player/message-format.ts';
 import { serializeSceneBubble } from '../../server/src/scene-standard.mjs';
 
 // The server owns the stored string, the client owns the visible bubble. This pins the contract
@@ -39,4 +39,25 @@ test('the fiction clock wins over the message timestamp in the header', () => {
   const scene = readSceneHeader(serializeSceneBubble({ at: Date.UTC(2026, 10, 10, 5, 0), time: '20:15 น.', location: 'ห้องสมุด',
     beats: [{ kind: 'dialogue', text: 'อ่านอะไรอยู่' }] })).scene;
   assert.equal(sceneHeaderLabels(scene).time, '20:15');
+});
+
+test('a stored header missing time or place still renders both lines', () => {
+  const blankPlace = readSceneHeader('[scene:{"at":1700000000000,"location":""}]\nว่าไง');
+  assert.ok(blankPlace.scene);
+  assert.equal(blankPlace.scene.location, DEFAULT_SCENE_LOCATION);
+  assert.match(sceneHeaderLabels(blankPlace.scene).time, /\d{1,2}:\d{2}/);
+
+  const noTime = readSceneHeader('[scene:{"at":1700000000000,"location":"ร้านขนม"}]\nว่าไง');
+  assert.equal(noTime.scene.time, undefined);
+  assert.match(sceneHeaderLabels(noTime.scene).time, /\d{1,2}:\d{2}/);
+
+  const overLong = readSceneHeader(`[scene:{"at":1700000000000,"location":"${'x'.repeat(140)}"}]\nว่าไง`);
+  assert.equal(overLong.scene.location.length, 100);
+});
+
+test('quoteDialogue formats both single-speaker lines and multi-speaker emoji tags cleanly', () => {
+  assert.equal(quoteDialogue('ว่าไงน้า'), '“ว่าไงน้า”');
+  assert.equal(quoteDialogue('ไอริน 🔥: พี่ขาา วันนี้อยู่กับหนูก่อนนะคะ'), 'ไอริน 🔥: “พี่ขาา วันนี้อยู่กับหนูก่อนนะคะ”');
+  assert.equal(quoteDialogue('[มินนี่ 💋]: เซอร์ไพรส์จ้ายัยแฝด!'), 'มินนี่ 💋: “เซอร์ไพรส์จ้ายัยแฝด!”');
+  assert.equal(quoteDialogue('มินนี่ 💋 & ข้าวหอม 🌿: อื้อออ! พร้อมกันเลย!'), 'มินนี่ 💋 & ข้าวหอม 🌿: “อื้อออ! พร้อมกันเลย!”');
 });

@@ -1,7 +1,7 @@
 // Narrative state is an opt-in content feature; the existing model/configuration policy is unchanged.
 // State proposals from the model are untrusted. Only this reducer commits scene transitions.
 import { interpretNarrativeTurn, readInteraction, nextInteraction } from './narrative-interaction.mjs';
-import { SCENE_STANDARD_INSTRUCTION, parseFictionTime, formatFictionClock, daypartAnchorMinutes, STORY_TIME_STEP_MINUTES, DEFAULT_STORY_TIME } from './scene-standard.mjs';
+import { SCENE_STANDARD_INSTRUCTION, parseFictionTime, formatFictionClock, daypartAnchorMinutes, resolveSceneHeader, STORY_TIME_STEP_MINUTES, DEFAULT_STORY_TIME } from './scene-standard.mjs';
 const safeText = (value, max = 200) => typeof value === 'string'
   ? value.replace(/[\[\]<>\u0000-\u001f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max) : '';
 export const narrativeEnabled = npc => npc?.narrative?.enabled === true;
@@ -192,7 +192,7 @@ Turn contract:
 - Honor explicit stop requests in history and persisted pause flags; only the player can reopen those. Repeated rejection, discomfort or a request to change topic calls for a topic change, not stronger pressure. Tiredness calls for concern in the character's voice. Neither concern nor a pause requires a polite assistant voice.
 - Maintain momentum when the player has not ended the interaction: leave one natural new handle, such as a reframe, an invitation to respond, or a character-owned action. It need not be a question or another dare. Avoid ending only in self-defense ("กูแค่นำเสนอทางเลือก", "ไม่ได้บังคับ") unless the player actually raises pressure. If the fictional thought shows competitive interest, carry that into a visible tactic rather than an unrelated closing disclaimer.
 - Examples teach voice and conversational moves, NOT reusable response scripts. Do not copy their complete sentences, distinctive punchlines or action sequences. Use playerTurnContext.variationHint as a creative direction only when it fits this turn; invent fresh wording grounded in the actual player message and current scene. Read recent assistant replies: avoid repeating their opening, punchline, gesture and closing question. If the player repeats a short answer, acknowledge the repetition and advance a different detail rather than replaying the same response. Do not merely replace synonyms in the same template. Context and boundaries take priority over variety.
-- Return ${length} short ordered beats (dialogue/action), usually 1 sentence each. React → character-owned gesture → reply/next opening when useful. Vary the pattern; a brief reply is allowed. Combined visible text about 250-650 Thai characters, never pad. No graphic sexual narration.
+- Return ${length} short ordered beats (dialogue/action), usually 1 sentence each. React → character-owned gesture → reply/next opening when useful. Vary the pattern; a brief reply is allowed. Combined visible text about 220-380 Thai characters to fit one mobile viewport, never pad. No graphic sexual narration.
 - innerThought is an optional short fictional character aside, never analysis or private model reasoning. Do not put the secret bet in an aside before it is available to reveal.
 - ${SCENE_STANDARD_INSTRUCTION}
 - The persisted location/activity is authoritative, not the opening backstory. Reuse place IDs and details on return visits. You may invent modest plausible fictional locations, not real addresses or canon facts about the player.
@@ -213,9 +213,11 @@ export function serializeNarrative(beats) {
 
 export function narrativeSceneMetadata(state, at) {
   const location = state.places.find(p => p.id === state.locationId);
-  if (!location || !Number.isFinite(at)) throw new Error('invalid_narrative_scene_metadata');
-  const time = formatFictionClock(Number.isInteger(state.clockMinutes) ? state.clockMinutes : parseFictionTime(DEFAULT_STORY_TIME));
-  return { at, ...(time ? { time } : {}), location: safeText(location.name, 100) };
+  return resolveSceneHeader({
+    at,
+    time: formatFictionClock(Number.isInteger(state.clockMinutes) ? state.clockMinutes : parseFictionTime(DEFAULT_STORY_TIME)),
+    location: safeText(typeof location?.name === 'string' ? location.name : '', 100)
+  });
 }
 
 export function narrativeOpeningMessage(npc, at) {
