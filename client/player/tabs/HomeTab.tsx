@@ -1,4 +1,4 @@
-import { type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { type Post, type Creator, type Story, type User } from '../types';
 import { TRANSLATIONS, type Lang } from '../i18n';
 import { media, AvatarImg, Media, PRESET_AVATARS, getAvatarSrc } from '../ui';
@@ -83,8 +83,15 @@ export function HomeTab({
   // Creators without active stories shown as subtle rings
   const otherCreators = creators.filter((c) => !storyCreatorIds.has(c.id));
 
-  // Determine if onboarding banner should show (has 0 following initially, or user chose to explore)
-  const hasFollowing = creators.some((c) => c.following);
+  const followedCreators = creators.filter((c) => c.following);
+  const hasFollowing = followedCreators.length > 0;
+
+  // inFeedMode: true if user is browsing their feed; false if user is picking who to follow in onboarding.
+  // Returning players with existing followings jump straight into feed.
+  // New players start in Suggested/Onboarding until they tap "Enter Feed".
+  const [inFeedMode, setInFeedMode] = useState(() => creators.some((c) => c.following));
+
+  const showSuggested = !inFeedMode || !hasFollowing;
 
   return (
     <div className="fs-home-tab">
@@ -142,8 +149,8 @@ export function HomeTab({
         ))}
       </section>
 
-      {/* Empty Feed State / Suggested for You (Instagram Style) */}
-      {(posts.length === 0 || !hasFollowing) && (
+      {/* Onboarding / Suggested for You (Instagram Style) */}
+      {showSuggested && (
         <section className="fs-suggested-section" aria-label={t.suggestedForYou}>
           <div className="fs-suggested-header">
             <h2 className="fs-suggested-title">{t.suggestedForYou}</h2>
@@ -193,6 +200,15 @@ export function HomeTab({
             ))}
           </div>
           <div className="fs-suggested-footer">
+            {hasFollowing && (
+              <button
+                type="button"
+                className="fs-suggested-feed-btn"
+                onClick={() => setInFeedMode(true)}
+              >
+                {t.viewFeedWithCount(followedCreators.length)} →
+              </button>
+            )}
             <button
               type="button"
               className="fs-suggested-explore-btn"
@@ -205,52 +221,22 @@ export function HomeTab({
       )}
 
       {/* Instagram Authentic Post Feed */}
-      <div className="fs-posts">
-        {hasFollowing && creators.some((c) => !c.following) && (
-          <section className="fs-suggested-section fs-suggested-mini" aria-label={t.suggestedForYou} style={{ marginBottom: 16 }}>
-            <div className="fs-suggested-header">
-              <h3 className="fs-suggested-title" style={{ fontSize: '13px', color: '#94a3b8' }}>{t.suggestedForYou}</h3>
+      {!showSuggested && (
+        <div className="fs-posts">
+          {posts.length === 0 ? (
+            <div className="fs-empty-feed" style={{ padding: '48px 24px', textAlign: 'center' }}>
+              <h3 style={{ fontSize: '1.1rem', marginBottom: 8, color: '#f8fafc' }}>{t.emptyFeedTitle}</h3>
+              <p style={{ fontSize: '0.88rem', color: '#94a3b8', marginBottom: 20 }}>{t.emptyFeedDesc}</p>
+              <button
+                type="button"
+                className="fs-suggested-explore-btn"
+                onClick={() => setInFeedMode(false)}
+              >
+                {t.suggestedForYou}
+              </button>
             </div>
-            <div className="fs-suggested-list">
-              {creators.filter((c) => !c.following).slice(0, 3).map((creator) => (
-                <article key={creator.id} className="fs-suggested-item">
-                  <div
-                    className="fs-suggested-user-click"
-                    onClick={() => onOpenProfile(creator)}
-                    role="button"
-                    tabIndex={0}
-                  >
-                    <div className="fs-suggested-avatar">
-                      {creator.avatarKey ? (
-                        <AvatarImg src={media(creator.avatarKey)} name={creator.name} />
-                      ) : (
-                        creator.name.slice(0, 1)
-                      )}
-                    </div>
-                    <div className="fs-suggested-meta">
-                      <div className="fs-suggested-name-row">
-                        <span className="fs-suggested-handle">{creator.id.replace('-', '.')}</span>
-                        <IgVerified size={13} className="fs-verified" />
-                      </div>
-                      <span className="fs-suggested-fullname">{creator.name}</span>
-                    </div>
-                  </div>
-                  <div className="fs-suggested-action">
-                    <button
-                      type="button"
-                      className="fs-follow-btn is-follow"
-                      disabled={busy}
-                      onClick={() => void onToggleFollow(creator)}
-                    >
-                      {t.follow}
-                    </button>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </section>
-        )}
-        {posts.map((post) => {
+          ) : (
+            posts.map((post) => {
           const creator = getCreator(post.creatorId);
           const isLiked = !!likedPostIds[post.id];
           const isSaved = !!savedPostIds[post.id];
@@ -501,8 +487,21 @@ export function HomeTab({
               </div>
             </article>
           );
-        })}
+        }))}
+        {posts.length > 0 && (
+          <div className="fs-feed-end" style={{ padding: '32px 16px', textAlign: 'center', color: '#71717a', fontSize: '0.85rem' }}>
+            <p style={{ margin: '0 0 12px', color: '#a1a1aa' }}>✓ {t.allCaughtUp}</p>
+            <button
+              type="button"
+              className="fs-suggested-explore-btn"
+              onClick={onGoToExplore}
+            >
+              {t.exploreCreators}
+            </button>
+          </div>
+        )}
       </div>
-    </div>
-  );
+    )}
+  </div>
+);
 }

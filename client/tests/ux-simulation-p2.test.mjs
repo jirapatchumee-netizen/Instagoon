@@ -111,6 +111,9 @@ test('Suggested for you: translations and creator fallback logic exist for new u
     assert.ok(table.suggestedSubtitle, `suggestedSubtitle must exist in ${lang}`);
     assert.ok(table.follow, `follow must exist in ${lang}`);
     assert.ok(table.following, `following must exist in ${lang}`);
+    assert.ok(table.viewFeedWithCount, `viewFeedWithCount must exist in ${lang}`);
+    assert.ok(table.allCaughtUp, `allCaughtUp must exist in ${lang}`);
+    assert.ok(typeof table.viewFeedWithCount(2) === 'string');
   }
 
   const dummyCreators = [
@@ -128,6 +131,27 @@ test('Suggested for you: translations and creator fallback logic exist for new u
   assert.equal(barCreators.length, 2);
   assert.equal(barCreators[0].id, 'mira-v2');
   assert.equal(barCreators[1].id, 'mook');
+
+  // Verify Onboarding vs Feed separation logic
+  // 1. New user (0 followed): inFeedMode starts false, showSuggested must be true
+  let inFeedMode = dummyCreators.some((c) => c.following);
+  let showSuggested = !inFeedMode || !dummyCreators.some((c) => c.following);
+  assert.equal(showSuggested, true);
+
+  // 2. User follows 1 creator: inFeedMode remains false, showSuggested stays true (does not collapse / stack)
+  dummyCreators[0].following = true;
+  showSuggested = !inFeedMode || !dummyCreators.some((c) => c.following);
+  assert.equal(showSuggested, true);
+
+  // 3. User taps Enter Feed: inFeedMode becomes true, showSuggested becomes false (shows feed only)
+  inFeedMode = true;
+  showSuggested = !inFeedMode || !dummyCreators.some((c) => c.following);
+  assert.equal(showSuggested, false);
+
+  // 4. Returning user with existing following: inFeedMode initializes to true, showSuggested is false immediately
+  const returningInFeedMode = dummyCreators.some((c) => c.following);
+  const returningShowSuggested = !returningInFeedMode || !dummyCreators.some((c) => c.following);
+  assert.equal(returningShowSuggested, false);
 });
 
 test('Fast forward: cleans pronouns and formats natural roleplay action without duplicate bars', () => {
