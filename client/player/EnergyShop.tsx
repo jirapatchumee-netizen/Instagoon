@@ -230,7 +230,10 @@ export function EnergyShop({
         say('bot', { text: t.pickAsk });
         setStage('pick');
       })
-      .catch(() => (say('bot', { text: t.closed }), setStage('closed')));
+      .catch((err) => {
+        explain(err);
+        setStage('closed');
+      });
     return () => {
       if (element?.open) element.close();
     };

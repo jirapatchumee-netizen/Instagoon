@@ -591,11 +591,6 @@ export function FrostStoryApp() {
   }
 
   async function openChat(creator: Creator) {
-    if (user && !user.nickname) {
-      setPendingChatCreator(creator);
-      setProfileModalOpen(true);
-      return;
-    }
     setError('');
     setChat(null);
     setPending([]);
@@ -727,11 +722,11 @@ export function FrostStoryApp() {
     if (!val) return;
     const creator = getCreator(story.creatorId);
     if (!creator) return;
-    setSelectedStory(null);
     setStoryReplyText('');
     setAiDmTab('ai');
     setQueuedStoryReply({ creatorId: creator.id, text: `[ตอบกลับสตอรี่]: ${val}` });
     await openChat(creator);
+    setSelectedStory(null);
   }
 
   // sendAiMessage needs the chat state committed by openChat, so the reply is sent once that render lands.
