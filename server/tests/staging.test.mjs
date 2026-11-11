@@ -25,6 +25,20 @@ assert.equal(await (await request('/assets/game.js', 'session')).text(), 'privat
 assert.equal((await request('/studio.html', 'session')).status, 404);
 assert.equal((await request('/_content/media/rewards/secret.webp', 'session')).status, 404);
 assert.equal((await request('/api/admin/overview', 'session')).status, 404);
+// Money-moving admin routes are closed at the staging edge: importing the production bank statement here
+// would credit real customers' deposits to test orders (ADR-0018 D3). The app must never be reached, which
+// is what separates this 404 from the app's own auth rejecting a request.
+{
+ const original=app.fetch;let reached;
+ try {
+  app.fetch=async()=>{reached=true;return new Response('the app answered');};
+  for (const path of ['/api/admin/orders/reconcile', '/api/admin/orders/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee/credit', '/api/admin/orders/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee/refund']) {
+   const response = await worker.fetch(new Request(`https://staging.example${path}`, { method: 'POST', body: 'transaction,date\n1,1', headers: { cookie: 'frost_session=session' } }), env, {});
+   assert.equal(response.status, 404, path);
+  }
+  assert.equal(reached, undefined, 'a blocked admin route never reaches the app');
+ } finally { app.fetch=original; }
+}
 env.STAGING_EMAILS = '';
 assert.equal((await request('/assets/game.js', 'session')).status, 401);
 console.log('staging access checks passed');
