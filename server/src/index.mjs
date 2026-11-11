@@ -1107,7 +1107,7 @@ async function player(req,env,user,path,now,ctx) {
    // unset or a slot could not be filled, so the creator keeps the inline prompt below. A creator in
    // narrative scene mode is owned by narrativePrompt and is never overridden here.
    const v1Prompt = promptV1({ env, npc: npcDef, creator, state: {
-     NOW_DATE: `วัน${dayName}ที่ ${dateNum} ${monthName} ${yearBe}`, NOW_TIME: timeStr, NOW_PLACE: sceneLocation,
+     NOW_DATE: `วัน${dayName}ที่ ${dateNum} ${monthName} ${yearBe}`, NOW_TIME: storyTime, NOW_PLACE: storyLocation,
      CLOSENESS: closeness, TRUST: trust, ROMANCE: romance, REL: rel, LEVEL: currentLv,
      CLOCK_STATE: `Level ${currentLv}/5 so far${npcDef?.plotClock ? ` — ${npcDef.plotClock}` : ''}`,
      OPEN_LOOPS: threadSummary || 'no open loops recorded yet', CANARY: canary, fiftyShadesPrompt
