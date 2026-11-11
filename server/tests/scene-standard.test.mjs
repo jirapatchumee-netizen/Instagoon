@@ -336,3 +336,8 @@ test('the scene header is total: a story clock and a place are always stored', (
   assert.match(headerless, /^\[scene:\{"at":\d+,"time":"12:15 น\.","location":".+"\}\]\nว่าไง$/);
   assert.ok(readStoredScene([{ role: 'assistant', content: headerless }]).location);
 });
+
+test('inferSceneLocation drops an invented car sub-zone', () => {
+  const out = inferSceneLocation({ storedLocation: 'ห้องเรียน', proposedLocation: 'ลานจอดรถหลังโรงเรียน (ในรถ)', userText: 'งั้นไปที่ลานจอดรถหลังโรงเรียน' });
+  assert.equal(out, 'ลานจอดรถหลังโรงเรียน');
+});

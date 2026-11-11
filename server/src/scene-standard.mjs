@@ -99,9 +99,18 @@ const trimLocationParticles = value => value
   .replace(/\s+/g, ' ')
   .trim();
 
+const SUB_ZONE_EVIDENCE = [/ในรถ|บนรถ|ขึ้นรถ|รถเก๋ง|เบาะ/, /เตียง/, /อ่าง/, /โซฟา/, /ระเบียง/, /พรม/, /VIP/i];
+
+function groundSubZone(proposed, evidence, stored) {
+  const match = proposed.match(/^(.*?)\s*\(([^)]*)\)\s*$/);
+  if (!match) return proposed;
+  const unsupported = SUB_ZONE_EVIDENCE.some(re => re.test(match[2]) && !re.test(evidence) && !re.test(stored));
+  return unsupported ? match[1].trim() : proposed;
+}
+
 export function inferSceneLocation({ storedLocation, proposedLocation, userText = '', actionText = '', fallbackLocation = FALLBACK_SCENE_LOCATION } = {}) {
   const stored = clean(storedLocation, MAX_VIEWPORT_LOCATION_CHARS);
-  const proposed = clean(proposedLocation, MAX_VIEWPORT_LOCATION_CHARS);
+  const proposed = groundSubZone(clean(proposedLocation, MAX_VIEWPORT_LOCATION_CHARS), `${userText} ${actionText}`, stored);
   const fallback = clean(fallbackLocation, MAX_VIEWPORT_LOCATION_CHARS) || FALLBACK_SCENE_LOCATION;
 
   if (proposed && proposed !== stored && proposed !== clean(fallbackLocation, 100)) {
@@ -216,7 +225,7 @@ export const SCENE_STANDARD_INSTRUCTION = `Bubble standard (SCENE_HEADER + ${SCE
 - The app prints a scene header with in-fiction time and place above every reply from the scene fields you return. Never write a time or location header into reply or beat text, and never use the real-world clock as the story clock.
 - ONE-VIEWPORT BUBBLE BUDGET (Strict): Every reply bubble MUST fit completely inside one mobile screen (~320-380 Thai characters total across all fields). Keep innerThought <= 90 chars (1-2 lines), each action beat <= 115 chars (2 lines), each dialogue beat <= 95 chars (1-2 lines), and at most 4 beats total (Action 1 -> Dialogue 1 -> Action 2 -> Dialogue 2).
 - sceneTime: continue the story clock given for this turn, advancing it about ${STORY_TIME_STEP_MINUTES} minutes per normal exchange, or advancing 5-30+ minutes (or jumping to the target hour) when the scene jumps or an extended physical sequence happens. Format "HH:MM น.".
-- sceneLocation (3-Tier Dynamic Camera & Sub-Zone): NEVER leave sceneLocation static when characters move! Format as "[สถานที่หลัก] ([พิกัดย่อย/จุดที่อยู่ตอนนี้])" under 60 characters (e.g. "ห้องนอนของเนย (บนเตียงใต้แสงไฟสลัว)", "บนรถเก๋ง (เบาะหลังมุมอับลานจอดรถ)", "ร้านคาราโอเกะ (ห้อง VIP - ในอ่างจากุซซี่)"). Update it immediately on: (1) player scene cuts ("ตัดภาพ...", "ไปที่..."), (2) accepted invitations to move ("ปะ", "ไปดิ"), or (3) micro-position shifts inside the same room (โต๊ะทำงาน -> โซฟา -> เตียง -> ระเบียง).
+- sceneLocation (3-Tier Dynamic Camera & Sub-Zone): NEVER leave sceneLocation static when characters move! Format as "[สถานที่หลัก] ([พิกัดย่อย/จุดที่อยู่ตอนนี้])" under 60 characters (e.g. "ห้องนอนของเนย (บนเตียงใต้แสงไฟสลัว)", "บนรถเก๋ง (เบาะหลังมุมอับลานจอดรถ)", "ร้านคาราโอเกะ (ห้อง VIP - ในอ่างจากุซซี่)"). Add a sub-zone in parentheses ONLY when the player or the scene text explicitly puts the characters there (never invent car, bed, tub or sofa). Update it immediately on: (1) player scene cuts ("ตัดภาพ...", "ไปที่..."), (2) accepted invitations to move ("ปะ", "ไปดิ"), or (3) micro-position shifts inside the same room (โต๊ะทำงาน -> โซฟา -> เตียง -> ระเบียง).
 - Order the visible components exactly as: private inner thought, then a character-owned action beat, then spoken dialogue, then another action beat, then a closing spoken beat that invites, persuades or playfully challenges the player.
 - 2-Step Inner Thought Formula ("Pride/Hesitation + แต่... + Craving/Justification"): When the player makes a bold move or wild request, structure innerThought as [initial shock/shyness/pride] + "แต่..." + [secret desire, stake, or excuse to comply].
 - Binary Choice Closing Hook (Either/Or Momentum): The closing beat follows the existing conversational-hook rate for this level; prefer closing with an actionable A-or-B choice or playful dare (e.g. "จะไปต่อที่ห้อง หรือจะลองตรงนี้เลยล่ะ?", "จะให้หนูถอดแว่นก่อน หรือให้ช่วยนวดไหล่ดีคะ?"). Omit it when the player declined, paused or asked for quiet, and never repeat an offer already declined this turn.
