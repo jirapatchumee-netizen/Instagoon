@@ -2582,6 +2582,7 @@ dialog.fs-overlay::backdrop {
    ========================================================================== */
 
 .fs-dm-modal {
+  position: relative;
   --dm-candy: #ff4f9a;
   --dm-lilac: #a97cff;
   --dm-surface: #1d1626;
@@ -2597,6 +2598,200 @@ dialog.fs-overlay::backdrop {
   border-radius: 24px;
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.9);
   animation: fs-sheet-in 0.32s var(--dm-ease);
+}
+
+/* Chat Wallpaper Layer (Custom Wallpaper System) */
+.fs-dm-wallpaper-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+.fs-dm-wallpaper-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  animation: fs-fade-in 0.35s ease-out;
+}
+
+.fs-dm-wallpaper-dim {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 6, 16, 0.65);
+  backdrop-filter: blur(1.5px);
+  -webkit-backdrop-filter: blur(1.5px);
+}
+
+/* Wallpaper Picker Modal & Direct Actions */
+.fs-wallpaper-modal {
+  width: 100%;
+  max-width: 440px;
+  background: #181124;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 85vh;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.85);
+  animation: fs-sheet-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.fs-wallpaper-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(10, 6, 14, 0.6);
+}
+
+.fs-wallpaper-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.fs-wallpaper-close-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.fs-wallpaper-close-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.fs-wallpaper-body {
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.fs-wallpaper-section-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 10px 0;
+}
+
+.fs-wallpaper-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.fs-wallpaper-card {
+  position: relative;
+  aspect-ratio: 9 / 16;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  padding: 0;
+  text-align: left;
+}
+
+.fs-wallpaper-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.fs-wallpaper-card.is-active {
+  border-color: #ff4f9a;
+  box-shadow: 0 0 14px rgba(255, 79, 154, 0.45);
+}
+
+.fs-wallpaper-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.fs-wallpaper-reset-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.72rem;
+  font-weight: 500;
+  text-align: center;
+  padding: 8px;
+  background: #0d0a14;
+}
+
+.fs-wallpaper-active-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: #ff4f9a;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  z-index: 2;
+}
+
+.fs-wallpaper-label {
+  position: absolute;
+  bottom: 0;
+  inset-inline: 0;
+  padding: 16px 6px 6px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.88) 0%, transparent 100%);
+  font-size: 0.68rem;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.fs-set-wallpaper-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.fs-set-wallpaper-btn:hover {
+  background: #ff4f9a;
+  border-color: #ff4f9a;
+  box-shadow: 0 0 12px rgba(255, 79, 154, 0.4);
 }
 
 dialog.fs-overlay[open]::backdrop {
@@ -2709,6 +2904,8 @@ dialog.fs-overlay[open]::backdrop {
 }
 
 .fs-dm-messages {
+  position: relative;
+  z-index: 2;
   flex: 1;
   display: flex;
   flex-direction: column;
