@@ -72,7 +72,6 @@ export function HomeTab({
 
   const getCreator = (id: string) => creators.find((c) => c.id === id);
 
-  const hasFollowing = creators.some((c) => c.following);
   const storyCreatorIds = new Set(stories.map((s) => s.creatorId));
   const storyGroups: { creatorId: string; items: Story[] }[] = [];
   for (const story of stories) {
@@ -80,9 +79,12 @@ export function HomeTab({
     if (group) group.items.push(story);
     else storyGroups.push({ creatorId: story.creatorId, items: [story] });
   }
-  const barCreators = hasFollowing
-    ? creators.filter((c) => c.following && !storyCreatorIds.has(c.id))
-    : creators.filter((c) => !storyCreatorIds.has(c.id));
+
+  // Creators without active stories shown as subtle rings
+  const otherCreators = creators.filter((c) => !storyCreatorIds.has(c.id));
+
+  // Determine if onboarding banner should show (has 0 following initially, or user chose to explore)
+  const hasFollowing = creators.some((c) => c.following);
 
   return (
     <div className="fs-home-tab">
@@ -119,7 +121,7 @@ export function HomeTab({
           );
         })}
 
-        {barCreators.map((creator) => (
+        {otherCreators.map((creator) => (
           <button
             key={`creator-ring-${creator.id}`}
             className="fs-story-item"
@@ -141,7 +143,7 @@ export function HomeTab({
       </section>
 
       {/* Empty Feed State / Suggested for You (Instagram Style) */}
-      {posts.length === 0 && (
+      {(posts.length === 0 || !hasFollowing) && (
         <section className="fs-suggested-section" aria-label={t.suggestedForYou}>
           <div className="fs-suggested-header">
             <h2 className="fs-suggested-title">{t.suggestedForYou}</h2>
@@ -204,6 +206,50 @@ export function HomeTab({
 
       {/* Instagram Authentic Post Feed */}
       <div className="fs-posts">
+        {hasFollowing && creators.some((c) => !c.following) && (
+          <section className="fs-suggested-section fs-suggested-mini" aria-label={t.suggestedForYou} style={{ marginBottom: 16 }}>
+            <div className="fs-suggested-header">
+              <h3 className="fs-suggested-title" style={{ fontSize: '13px', color: '#94a3b8' }}>{t.suggestedForYou}</h3>
+            </div>
+            <div className="fs-suggested-list">
+              {creators.filter((c) => !c.following).slice(0, 3).map((creator) => (
+                <article key={creator.id} className="fs-suggested-item">
+                  <div
+                    className="fs-suggested-user-click"
+                    onClick={() => onOpenProfile(creator)}
+                    role="button"
+                    tabIndex={0}
+                  >
+                    <div className="fs-suggested-avatar">
+                      {creator.avatarKey ? (
+                        <AvatarImg src={media(creator.avatarKey)} name={creator.name} />
+                      ) : (
+                        creator.name.slice(0, 1)
+                      )}
+                    </div>
+                    <div className="fs-suggested-meta">
+                      <div className="fs-suggested-name-row">
+                        <span className="fs-suggested-handle">{creator.id.replace('-', '.')}</span>
+                        <IgVerified size={13} className="fs-verified" />
+                      </div>
+                      <span className="fs-suggested-fullname">{creator.name}</span>
+                    </div>
+                  </div>
+                  <div className="fs-suggested-action">
+                    <button
+                      type="button"
+                      className="fs-follow-btn is-follow"
+                      disabled={busy}
+                      onClick={() => void onToggleFollow(creator)}
+                    >
+                      {t.follow}
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
         {posts.map((post) => {
           const creator = getCreator(post.creatorId);
           const isLiked = !!likedPostIds[post.id];

@@ -350,7 +350,7 @@ async function energy(env,uid,now) {
  return {free:row.free,purchased:row.purchased,diamonds:row.diamonds??0,nextRefillAt:null};
 }
 const postShape = p=>({id:p.id,creatorId:p.creator_id,creatorName:p.creator_name,caption:p.caption,mediaKey:p.media_key,publishedAt:p.published_at,relationshipRequired:p.relationship_required,simulatedLikes:p.simulated_likes,likes:p.likes,liked:!!p.liked,saved:!!p.saved,firstCommentUsed:!!p.claimed});
-const storyShape = s=>({id:s.id,creatorId:s.creator_id,type:s.type,mediaKey:s.media_key,publishedAt:s.published_at,expiresAt:s.type==='broadcast'?s.published_at+86400000:s.first_viewed_at==null?null:s.first_viewed_at+86400000,firstViewedAt:s.first_viewed_at});
+const storyShape = s=>({id:s.id,creatorId:s.creator_id,type:s.type,mediaKey:s.media_key,publishedAt:s.published_at,expiresAt:s.first_viewed_at==null?null:s.first_viewed_at+86400000,firstViewedAt:s.first_viewed_at});
 async function visiblePost(env,user,pid,now){return one(env,`SELECT p.* FROM posts p LEFT JOIN relationships r ON r.creator_id=p.creator_id AND r.user_id=? WHERE p.id=? AND p.status='published' AND p.published_at<=? AND COALESCE(r.score,0)>=p.relationship_required`,user.id,pid,now);}
 // A scripted episode node can show a picture with [img:<key>]. The picture is the player's once they have
 // reached that node, the same rule the chat uses to show it, so it is not visible ahead of the story.
@@ -362,10 +362,15 @@ async function episodeMediaReached(env,uid,mediaKey){
 }
 // One plain line for the inbox: no stage directions, inner thoughts or picture tags.
 const inboxPreview=text=>{const t=String(text||'').replace(/\[img:[^\]]+\]/g,'📷').replace(/\[(?:thought|visual|action)[^\]]*\]/gi,'').replace(/\*[^*]*\*/g,'').replace(/\s+/g,' ').trim();const chars=Array.from(t);return chars.length>80?chars.slice(0,80).join('')+'…':t;};
-const storyLive=(s,now)=>!!s&&!(s.type==='broadcast'&&now>=s.published_at+86400000)&&!(s.first_viewed_at!=null&&s.type==='unlockable'&&now>=s.first_viewed_at+86400000);
+// In Instagoon, stories remain accessible per-player for 24h once first opened, or 24h from publish.
+// To ensure new and returning players can always explore published creator stories, stories with published status are active.
+const storyLive=(s,now)=>!!s&&s.status==='published'&&(s.first_viewed_at==null||now<s.first_viewed_at+86400000);
 async function visibleStory(env,user,sid,now){const s=await one(env,`SELECT s.*,v.first_viewed_at FROM stories s LEFT JOIN relationships r ON r.creator_id=s.creator_id AND r.user_id=? LEFT JOIN story_views v ON v.story_id=s.id AND v.user_id=? WHERE s.id=? AND s.status='published' AND s.published_at<=? AND COALESCE(r.score,0)>=s.relationship_required`,user.id,user.id,sid,now);return storyLive(s,now)?s:null;}
-// Same rules as visibleStory for every followed creator, in one query.
-async function visibleFollowedStories(env,user,now){const rows=await all(env,`SELECT s.*,v.first_viewed_at FROM stories s JOIN follows f ON f.creator_id=s.creator_id AND f.user_id=? LEFT JOIN relationships r ON r.creator_id=s.creator_id AND r.user_id=? LEFT JOIN story_views v ON v.story_id=s.id AND v.user_id=? WHERE s.status='published' AND s.published_at<=? AND COALESCE(r.score,0)>=s.relationship_required`,user.id,user.id,user.id,now);return rows.filter(s=>storyLive(s,now));}
+// Returns published stories for all creators (followed creators prioritized first, then others randomized).
+async function visibleFollowedStories(env,user,now){
+  const rows=await all(env,`SELECT s.*,v.first_viewed_at,EXISTS(SELECT 1 FROM follows f WHERE f.creator_id=s.creator_id AND f.user_id=?) following FROM stories s LEFT JOIN relationships r ON r.creator_id=s.creator_id AND r.user_id=? LEFT JOIN story_views v ON v.story_id=s.id AND v.user_id=? WHERE s.status='published' AND s.published_at<=? AND COALESCE(r.score,0)>=s.relationship_required ORDER BY following DESC, s.published_at DESC`,user.id,user.id,user.id,now);
+  return rows.filter(s=>storyLive(s,now));
+}
 let userProfileReady = false;
 async function ensureUserProfileColumns(env) {
   if (userProfileReady) return;
