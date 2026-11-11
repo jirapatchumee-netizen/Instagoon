@@ -46,6 +46,40 @@ export function resolveFictionClock({ stored, authored, scene } = {}) {
   return daypartAnchorMinutes(scene) ?? parseFictionTime(DEFAULT_STORY_TIME);
 }
 
+export function advanceFictionClock({ stored, proposed, sceneJump = false, fallback = DEFAULT_STORY_TIME } = {}) {
+  const storedMinutes = parseFictionTime(stored);
+  const proposedMinutes = parseFictionTime(proposed);
+  const nextSteppedMinutes = storedMinutes !== null
+    ? (storedMinutes + STORY_TIME_STEP_MINUTES) % 1440
+    : (parseFictionTime(fallback) ?? parseFictionTime(DEFAULT_STORY_TIME));
+
+  // If no stored clock yet, proposed clock seeds it, or fallback to nextSteppedMinutes
+  if (storedMinutes === null) {
+    return proposedMinutes !== null ? formatFictionClock(proposedMinutes) : formatFictionClock(nextSteppedMinutes);
+  }
+
+  // If proposed clock is invalid or missing, advance by standard step (+2 min)
+  if (proposedMinutes === null) {
+    return formatFictionClock(nextSteppedMinutes);
+  }
+
+  // Check for backward jump or stagnation:
+  // If proposed time is <= stored time (and not wrapping around midnight like 23:59 -> 00:01)
+  const isStagnantOrBackward = proposedMinutes <= storedMinutes && !(storedMinutes >= 1400 && proposedMinutes <= 60);
+  if (isStagnantOrBackward) {
+    return formatFictionClock(nextSteppedMinutes);
+  }
+
+  // If there is an explicit scene jump or location change, accept proposed time
+  if (sceneJump) {
+    return formatFictionClock(proposedMinutes);
+  }
+
+  // For regular turns without a scene jump, keep the canonical stepped clock (+2 min)
+  // to prevent hallucinated time skips (e.g. +4 or +10 mins without transition).
+  return formatFictionClock(nextSteppedMinutes);
+}
+
 export function readStoredScene(rows = []) {
   for (let i = rows.length - 1; i >= 0; i--) {
     const content = rows[i]?.role === 'assistant' ? String(rows[i]?.content || '') : '';

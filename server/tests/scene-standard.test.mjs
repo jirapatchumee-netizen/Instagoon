@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { SCENE_STANDARD_INSTRUCTION, SCENE_STANDARD_ORDER, orderBeats, serializeSceneBubble, readStoredScene, resolveFictionClock, daypartAnchorMinutes, parseFictionTime, formatFictionClock } from '../src/scene-standard.mjs';
+import { SCENE_STANDARD_INSTRUCTION, SCENE_STANDARD_ORDER, orderBeats, serializeSceneBubble, readStoredScene, resolveFictionClock, advanceFictionClock, daypartAnchorMinutes, parseFictionTime, formatFictionClock } from '../src/scene-standard.mjs';
 import { initialNarrativeState, readNarrativeState, reduceNarrativeState, narrativeSceneMetadata, narrativeSchema, narrativePrompt } from '../src/narrative.mjs';
 import { SCENE_FORMAT_INSTRUCTION } from '../src/experiment-scene-format.mjs';
 import { narrativeNpc } from './helpers/narrative-npc.mjs';
@@ -191,4 +191,57 @@ test('inline DM prompt reflects character-defined voice, pronouns and cameos wit
   assert.match(capturedSystem, /มิลิน 🌸/);
   assert.doesNotMatch(capturedSystem, /STRICT ZERO 'คะ\/ค่ะ'/);
   assert.doesNotMatch(capturedSystem, /STRICTLY NO 'คะ\/ค่ะ'/);
+  assert.match(capturedSystem, /ENTITY ATTRIBUTION & TARGETING DISCIPLINE/);
+  assert.match(capturedSystem, /Separate Player \(\{\{user\}\} \/ "คุณ"\) from Third-Party Entities/);
+  assert.match(capturedSystem, /Affection & Relationship Scoring \("affectionDelta"\)/);
+  assert.match(capturedSystem, /STRICT SENTIMENT INVARIANT/);
+});
+
+test('advanceFictionClock strictly prevents clock stagnation and backward drift', () => {
+  // First turn without stored clock: proposed clock seeds it
+  assert.equal(advanceFictionClock({ stored: null, proposed: '12:17 น.' }), '12:17 น.');
+  assert.equal(advanceFictionClock({ stored: null, proposed: null }), '12:15 น.');
+
+  // Normal advance: +2 min step
+  assert.equal(advanceFictionClock({ stored: '12:17 น.', proposed: null }), '12:19 น.');
+
+  // Clock stagnation bug (as seen in chatbot test: 12:21 proposed when stored was 12:21):
+  // Must reject stagnation and advance +2 min to 12:23
+  assert.equal(advanceFictionClock({ stored: '12:21 น.', proposed: '12:21 น.' }), '12:23 น.');
+
+  // Backward clock drift (12:15 proposed when stored was 12:21):
+  assert.equal(advanceFictionClock({ stored: '12:21 น.', proposed: '12:15 น.' }), '12:23 น.');
+
+  // Unprompted jump without sceneJump flag is clamped to canonical +2 min step
+  assert.equal(advanceFictionClock({ stored: '12:17 น.', proposed: '12:25 น.', sceneJump: false }), '12:19 น.');
+
+  // Explicit scene jump (e.g. night transition) allows time jump
+  assert.equal(advanceFictionClock({ stored: '12:17 น.', proposed: '20:30 น.', sceneJump: true }), '20:30 น.');
+});
+
+test('inline DM clamps affectionDelta to 0 when reaction expresses shock, anger or harassment', async () => {
+  const f = await narrativeFixture();
+  const inline = { ...f.npc, world: 'ห้องพักครูโรงเรียน' };
+  delete inline.narrative;
+  f.sql.prepare('UPDATE npc_definitions SET definition_json=? WHERE creator_id=?').run(JSON.stringify(inline), inline.id);
+
+  f.env.PRIMARY_AI_PROVIDER = 'workers-ai';
+  f.env.AI = { async run(_model, _input) {
+    return { response: JSON.stringify({
+      reply: 'อุ๊ย! ทำอะไรเนี่ย...',
+      innerThought: 'ตกใจหมดเลย! เด็กอะไรกล้ามาเล่นพิเรนทร์',
+      action: 'สะดุ้งสุดตัวด้วยความตกใจ รีบเอามือตะครุบกระโปรงไว้',
+      beats: [{ kind: 'action', text: 'สะดุ้งสุดตัวด้วยความตกใจ' }, { kind: 'dialogue', text: 'อุ๊ย! ทำอะไรเนี่ย...' }],
+      sceneTime: '12:21 น.',
+      sceneLocation: 'ห้องพักครู',
+      affectionDelta: 1 // Malicious / hallucinated positive affection during harassment
+    }) };
+  } };
+
+  const res = await f.request('เด็กวิ่งเข้ามาเปิดกระโปรง');
+  assert.equal(res.status, 200);
+
+  // Score delta must be clamped to 0 by the sentiment guardrail
+  const row = f.sql.prepare("SELECT affection_delta FROM ai_chat_messages WHERE role='assistant' AND creator_id=? ORDER BY created_at DESC LIMIT 1").get(inline.id);
+  assert.equal(row.affection_delta, 0, 'affection delta must be 0 during shock/harassment');
 });
