@@ -983,6 +983,7 @@ export function FrostStoryApp() {
             onOpenChat={(creator) => void openChat(creator)}
             onOpenProfile={(creator) => void openProfile(creator)}
             onGoToReels={() => handleSelectTab('reels')}
+            onOpenShop={() => setShopOpen(true)}
           />
         )}
 
