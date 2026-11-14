@@ -26,13 +26,9 @@
 }
 .fs-h-card { border-radius: var(--radius); background: hsl(var(--card)); border: 1px solid hsl(var(--border)); }
 .fs-h-art { aspect-ratio: 4 / 5; background: radial-gradient(120% 90% at 22% 6%, var(--art-color, #ec4899) 0%, #0b0b0d 62%), linear-gradient(160deg, transparent, rgba(0,0,0,.55)); }
-.fs-h-grad-text { background: var(--brand-gradient); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.fs-h-grad-bg { background-image: var(--brand-gradient); }
+.fs-h-grad-text { background-image: var(--brand-gradient); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .fs-h-rail { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
 .fs-h-rail::-webkit-scrollbar { display: none; }
 .fs-h-rail > * { scroll-snap-align: start; }
 @media (prefers-reduced-motion: reduce) { .fs-h-rail { scroll-behavior: auto; } }
-
-.fs-h-grad-bg { background-image: var(--brand-gradient); }
-.fs-h-grad-text { background-image: var(--brand-gradient); -webkit-background-clip: text; background-clip: text; color: transparent; }
-.player-home-scope .fs-h-art { background: radial-gradient(120% 90% at 22% 6%, var(--art-color, #ec4899) 0%, #0b0b0d 62%), linear-gradient(160deg, transparent, rgba(0,0,0,.55)); }
-.player-home-scope .fs-h-card { border-radius: var(--radius); background: hsl(var(--card)); border: 1px solid hsl(var(--border)); }

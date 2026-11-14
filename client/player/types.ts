@@ -20,6 +20,7 @@ export type Creator = {
   tags?: string[];
   chatCount?: number;
   artState?: 'real' | 'pending';
+  publishedAt?: number;
   relationship: number;
   following?: boolean;
   lastMessage?: { text: string; at: number; fromCreator: boolean } | null;
@@ -116,4 +117,28 @@ export type ProfileData = {
   posts: Post[];
   vault: ProfileVaultItem[];
   episodes: EpisodeInfo[];
+};
+
+export type HomePeriod = '1d' | '7d' | '30d';
+
+export type HomeSection = {
+  id: 'hero' | 'continue' | 'trending' | 'new' | 'recommended' | string;
+  items: Creator[];
+};
+
+export type MissionSummary = {
+  id: string;
+  title: string;
+  progress: number;
+  target: number;
+  completed?: boolean;
+  rewardEnergy?: number;
+};
+
+export type HomePayload = {
+  period: HomePeriod;
+  sections: HomeSection[] | Record<string, Creator[]>;
+  ranking: Creator[];
+  genres: string[];
+  missions: MissionSummary[];
 };

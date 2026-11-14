@@ -37,6 +37,48 @@ const GEMINI_TIMEOUT_MS = 20000;
 const VISIT_GAP_MS = 30 * 60000;
 const SUMMARY_EVERY = 20;
 const CHAT_RETENTION_MS = 180 * 86400000;
+const CATALOG_CACHE_TTL_MS = 300_000;
+const isolateCache = new Map();
+export function resetHomeCache() { isolateCache.clear(); }
+
+async function getCreatorsCatalog(env, now) {
+  const cached = isolateCache.get('creators_catalog');
+  if (cached && cached.expiresAt > now) return cached.data;
+  const [defRows, countRows, pubRows] = await Promise.all([
+    all(env, 'SELECT creator_id,definition_json FROM npc_definitions'),
+    all(env, 'SELECT creator_id,COUNT(DISTINCT user_id) AS chat_count FROM (SELECT creator_id,user_id FROM ai_chat_messages UNION ALL SELECT creator_id,user_id FROM experiment_chat_messages) GROUP BY creator_id'),
+    all(env, "SELECT creator_id,MAX(published_at) AS published_at FROM (SELECT creator_id,published_at FROM posts WHERE status='published' AND published_at<=? UNION ALL SELECT creator_id,published_at FROM stories WHERE status='published' AND published_at<=?) GROUP BY creator_id", now, now)
+  ]);
+  const def = new Map(defRows.map(r => { let d; try { d = JSON.parse(r.definition_json || 'null'); } catch {} return [r.creator_id, d || {}]; }));
+  const chatCount = new Map(countRows.map(r => [r.creator_id, r.chat_count]));
+  const publishedAt = new Map(pubRows.map(r => [r.creator_id, r.published_at]));
+  const genreSet = new Set();
+  for (const d of def.values()) {
+    if (Array.isArray(d.tags)) {
+      for (const t of d.tags) if (typeof t === 'string' && t.trim()) genreSet.add(t.trim());
+    }
+  }
+  const data = { def, chatCount, publishedAt, genres: [...genreSet] };
+  isolateCache.set('creators_catalog', { expiresAt: now + CATALOG_CACHE_TTL_MS, data });
+  return data;
+}
+
+const HOME_PERIOD_MS = { '1d': 86_400_000, '7d': 7 * 86_400_000, '30d': 30 * 86_400_000 };
+async function getHomeRanking(env, period, now) {
+  const cacheKey = `home_ranking_${period}`;
+  const cached = isolateCache.get(cacheKey);
+  if (cached && cached.expiresAt > now) return cached.data;
+  const since = now - HOME_PERIOD_MS[period];
+  const rows = await all(
+    env,
+    'SELECT creator_id,COUNT(DISTINCT user_id) AS chat_count FROM (SELECT creator_id,user_id FROM ai_chat_messages WHERE created_at>=? UNION ALL SELECT creator_id,user_id FROM experiment_chat_messages WHERE created_at>=?) GROUP BY creator_id ORDER BY chat_count DESC,creator_id ASC',
+    since,
+    since
+  );
+  const data = rows.map(r => ({ creatorId: r.creator_id, chatCount: r.chat_count }));
+  isolateCache.set(cacheKey, { expiresAt: now + CATALOG_CACHE_TTL_MS, data });
+  return data;
+}
 const cleanTrailingSlang = text => typeof text === 'string' ? text.replace(/([อายงวะเแโใไ])\1+(?=[\s,.!?~…\p{Extended_Pictographic}]|$)/gu, '$1') : text;
 const extractSpokenDialogue = text => {
   if (!text || typeof text !== 'string') return '';
@@ -544,23 +586,59 @@ async function player(req,env,user,path,now,ctx) {
  }
  if(path==='/api/creators'&&method==='GET'){
   const removed=new Set(await removedCreators(env));
-  const rows=await all(env,'SELECT c.*,COALESCE(r.score,0) AS relationship,EXISTS(SELECT 1 FROM follows f WHERE f.creator_id=c.id AND f.user_id=?) AS following FROM creators c LEFT JOIN relationships r ON r.creator_id=c.id AND r.user_id=? ORDER BY c.name',user.id,user.id);
-  // Inbox preview: the newest DM per creator (story-mode and experiment chats both count) and whether it
-  // arrived after the player last opened that thread.
-  const [lastRows,readRows,defRows,countRows]=await Promise.all([
+  const [rows,lastRows,readRows,catalog]=await Promise.all([
+   all(env,'SELECT c.*,COALESCE(r.score,0) AS relationship,EXISTS(SELECT 1 FROM follows f WHERE f.creator_id=c.id AND f.user_id=?) AS following FROM creators c LEFT JOIN relationships r ON r.creator_id=c.id AND r.user_id=? ORDER BY c.name',user.id,user.id),
    all(env,`SELECT creator_id,role,content,created_at FROM (SELECT creator_id,role,content,created_at,ROW_NUMBER() OVER (PARTITION BY creator_id ORDER BY created_at DESC) n FROM (SELECT creator_id,role,content,created_at FROM ai_chat_messages WHERE user_id=? UNION ALL SELECT creator_id,role,content,created_at FROM experiment_chat_messages WHERE user_id=?)) WHERE n=1`,user.id,user.id),
    all(env,'SELECT creator_id,read_at FROM inbox_reads WHERE user_id=?',user.id),
-   // Home Hub discovery fields live in the content bundle (npc_definitions), not the creators
-   // table, so they are read here instead of adding columns in a migration.
-   // chatCount = number of distinct players who ever messaged this creator.
-   all(env,'SELECT creator_id,definition_json FROM npc_definitions'),
-   all(env,'SELECT creator_id,COUNT(DISTINCT user_id) AS chat_count FROM (SELECT creator_id,user_id FROM ai_chat_messages UNION ALL SELECT creator_id,user_id FROM experiment_chat_messages) GROUP BY creator_id')
+   getCreatorsCatalog(env,now)
   ]);
   const last=new Map(lastRows.map(r=>[r.creator_id,r])),readAt=new Map(readRows.map(r=>[r.creator_id,r.read_at]));
-  const def=new Map(defRows.map(r=>{let d;try{d=JSON.parse(r.definition_json||'null')}catch{}return [r.creator_id,d||{}];}));
-  const chatCount=new Map(countRows.map(r=>[r.creator_id,r.chat_count]));
   const preview=r=>r?{text:inboxPreview(r.content),at:r.created_at,fromCreator:r.role==='assistant'}:null;
-  return json({creators:rows.filter(c=>!removed.has(c.id)).map(c=>{const l=last.get(c.id),d=def.get(c.id)||{};return {id:c.id,name:c.name,bio:c.bio,avatarKey:c.avatar_key,relationship:c.relationship,following:!!c.following,lastMessage:preview(l),unread:!!l&&l.role==='assistant'&&l.created_at>(readAt.get(c.id)||0),handle:d.handle||c.id,tagline:d.tagline||'',color:d.color||'#ec4899',tags:Array.isArray(d.tags)?d.tags:[],chatCount:chatCount.get(c.id)||0,artState:c.avatar_key?'real':'pending'};})});
+  return json({creators:rows.filter(c=>!removed.has(c.id)).map(c=>{const l=last.get(c.id),d=catalog.def.get(c.id)||{};return {id:c.id,name:c.name,bio:c.bio,avatarKey:c.avatar_key,relationship:c.relationship,following:!!c.following,lastMessage:preview(l),unread:!!l&&l.role==='assistant'&&l.created_at>(readAt.get(c.id)||0),handle:d.handle||c.id,tagline:d.tagline||'',color:d.color||'#ec4899',tags:Array.isArray(d.tags)?d.tags:[],chatCount:catalog.chatCount.get(c.id)||0,publishedAt:catalog.publishedAt.get(c.id)??null,artState:c.avatar_key?'real':'pending'};})});
+ }
+ if(path==='/api/home'&&method==='GET'){
+  const rawPeriod=new URL(req.url).searchParams.get('period');
+  const period=rawPeriod&&Object.hasOwn(HOME_PERIOD_MS,rawPeriod)?rawPeriod:'7d';
+  const removed=new Set(await removedCreators(env));
+  const [catalog,rawRanking,creatorRows,followRows,relRows,dmRows,storyViewRow]=await Promise.all([
+   getCreatorsCatalog(env,now),
+   getHomeRanking(env,period,now),
+   all(env,'SELECT id FROM creators ORDER BY name'),
+   all(env,'SELECT creator_id FROM follows WHERE user_id=?',user.id),
+   all(env,'SELECT creator_id,score FROM relationships WHERE user_id=?',user.id),
+   all(env,'SELECT DISTINCT creator_id FROM (SELECT creator_id FROM ai_chat_messages WHERE user_id=? UNION ALL SELECT creator_id FROM experiment_chat_messages WHERE user_id=?)',user.id,user.id),
+   one(env,'SELECT EXISTS(SELECT 1 FROM story_views WHERE user_id=?) AS has_view',user.id)
+  ]);
+  const activeIds=creatorRows.map(r=>r.id).filter(cid=>!removed.has(cid));
+  const activeSet=new Set(activeIds);
+  const ranking=rawRanking.filter(r=>activeSet.has(r.creatorId));
+  const followSet=new Set(followRows.map(r=>r.creator_id));
+  const relMap=new Map(relRows.map(r=>[r.creator_id,r.score]));
+  const dmSet=new Set(dmRows.map(r=>r.creator_id));
+  const continueIds=activeIds.filter(cid=>dmSet.has(cid)||(relMap.get(cid)||0)>0);
+  const trendingIds=ranking.map(r=>r.creatorId);
+  const recommendedIds=activeIds.filter(cid=>!followSet.has(cid));
+  const newIds=[...activeIds].sort((a,b)=>(catalog.publishedAt.get(b)??0)-(catalog.publishedAt.get(a)??0));
+  const hasLevel=relRows.some(r=>r.score>=1);
+  const hasStoryView=!!storyViewRow?.has_view;
+  const missions=[
+   {id:'follow_creator',kind:'follow',titleKey:'missions.follow_creator',current:followSet.size>=1?1:0,target:1,done:followSet.size>=1},
+   {id:'first_chat',kind:'chat',titleKey:'missions.first_chat',current:dmSet.size>=1?1:0,target:1,done:dmSet.size>=1},
+   {id:'view_story',kind:'story',titleKey:'missions.view_story',current:hasStoryView?1:0,target:1,done:hasStoryView},
+   {id:'reach_level',kind:'relationship',titleKey:'missions.reach_level',current:hasLevel?1:0,target:1,done:hasLevel}
+  ];
+  return json({
+   period,
+   sections:[
+    {id:'continue',creatorIds:continueIds},
+    {id:'trending',creatorIds:trendingIds},
+    {id:'recommended',creatorIds:recommendedIds},
+    {id:'new',creatorIds:newIds}
+   ],
+   ranking,
+   genres:catalog.genres,
+   missions
+  });
  }
  let m=path.match(/^\/api\/creators\/([\w-]+)\/follow$/);
  if(m&&method==='POST'){
@@ -632,7 +710,14 @@ async function player(req,env,user,path,now,ctx) {
   });
  }
  if(path==='/api/feed'&&method==='GET'){
-  const posts=await all(env,`SELECT p.*,c.name creator_name,(SELECT COUNT(*) FROM likes l WHERE l.post_id=p.id) likes,EXISTS(SELECT 1 FROM likes l WHERE l.post_id=p.id AND l.user_id=?) liked,EXISTS(SELECT 1 FROM saves sv WHERE sv.post_id=p.id AND sv.user_id=?) saved,EXISTS(SELECT 1 FROM comment_claims x WHERE x.user_id=? AND x.post_id=p.id) claimed FROM posts p JOIN creators c ON c.id=p.creator_id JOIN follows f ON f.creator_id=p.creator_id AND f.user_id=? LEFT JOIN relationships r ON r.creator_id=p.creator_id AND r.user_id=? WHERE p.status='published' AND p.published_at<=? AND COALESCE(r.score,0)>=p.relationship_required ORDER BY p.published_at DESC LIMIT 100`,user.id,user.id,user.id,user.id,user.id,now);
+  const sp=new URL(req.url).searchParams;
+  const rawLimit=Number(sp.get('limit'));
+  const limit=Number.isFinite(rawLimit)&&rawLimit>0?Math.min(100,Math.max(1,Math.floor(rawLimit))):100;
+  const rawCursor=sp.get('cursor');
+  const cursor=rawCursor!==null&&rawCursor!==''&&Number.isFinite(Number(rawCursor))?Number(rawCursor):null;
+  const cursorSql=cursor!==null?' AND p.published_at<?':'';
+  const feedArgs=cursor!==null?[user.id,user.id,user.id,user.id,user.id,now,cursor,limit]:[user.id,user.id,user.id,user.id,user.id,now,limit];
+  const posts=await all(env,`SELECT p.*,c.name creator_name,(SELECT COUNT(*) FROM likes l WHERE l.post_id=p.id) likes,EXISTS(SELECT 1 FROM likes l WHERE l.post_id=p.id AND l.user_id=?) liked,EXISTS(SELECT 1 FROM saves sv WHERE sv.post_id=p.id AND sv.user_id=?) saved,EXISTS(SELECT 1 FROM comment_claims x WHERE x.user_id=? AND x.post_id=p.id) claimed FROM posts p JOIN creators c ON c.id=p.creator_id JOIN follows f ON f.creator_id=p.creator_id AND f.user_id=? LEFT JOIN relationships r ON r.creator_id=p.creator_id AND r.user_id=? WHERE p.status='published' AND p.published_at<=?${cursorSql} AND COALESCE(r.score,0)>=p.relationship_required ORDER BY p.published_at DESC LIMIT ?`,...feedArgs);
   // One query for every post's comments (first 100 each) instead of one round trip per post.
   const commentRows=posts.length?await all(env,'SELECT post_id,id,user_id,content,created_at FROM (SELECT c.*,ROW_NUMBER() OVER (PARTITION BY c.post_id ORDER BY c.created_at) n FROM comments c WHERE c.post_id IN (SELECT value FROM json_each(?)) AND c.hidden=0) WHERE n<=100 ORDER BY created_at',JSON.stringify(posts.map(p=>p.id))):[];
   const byPost=new Map(posts.map(p=>[p.id,[]]));
@@ -640,7 +725,7 @@ async function player(req,env,user,path,now,ctx) {
   for(const p of posts)p.comments=byPost.get(p.id);
   const logged=run(env,'INSERT INTO activity(user_id,kind,created_at) VALUES(?,?,?)',user.id,'feed',now);
   if(ctx?.waitUntil)ctx.waitUntil(logged);else await logged;
-  return json({posts:posts.map(p=>({...postShape(p),comments:p.comments}))});
+  return json({posts:posts.map(p=>({...postShape(p),comments:p.comments})),nextCursor:posts.length===limit?posts[posts.length-1].published_at:null});
  }
  m=path.match(/^\/api\/posts\/([\w-]+)\/comments$/);
  if(m&&method==='POST'){
