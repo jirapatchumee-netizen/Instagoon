@@ -13,6 +13,13 @@ export type Creator = {
   name: string;
   bio: string;
   avatarKey: string | null;
+  // Home Hub discovery fields (server PR-09). Optional so older fixtures keep compiling.
+  handle?: string;
+  tagline?: string;
+  color?: string;
+  tags?: string[];
+  chatCount?: number;
+  artState?: 'real' | 'pending';
   relationship: number;
   following?: boolean;
   lastMessage?: { text: string; at: number; fromCreator: boolean } | null;
