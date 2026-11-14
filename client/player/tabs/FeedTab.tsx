@@ -4,7 +4,7 @@ import { TRANSLATIONS, type Lang } from '../i18n';
 import { media, AvatarImg, Media, PRESET_AVATARS, getAvatarSrc } from '../ui';
 import { IgHeart, IgComment, IgShare, IgBookmark, IgMore, IgVerified, IgAudio } from '../InstagramIcons';
 
-interface HomeTabProps {
+interface FeedTabProps {
   posts: Post[];
   stories: Story[];
   creators: Creator[];
@@ -46,7 +46,7 @@ function getFanCrowdUsername(seed: string): string {
   return FAN_CROWD_USERNAMES[h % FAN_CROWD_USERNAMES.length];
 }
 
-export function HomeTab({
+export function FeedTab({
   posts,
   stories,
   creators,
@@ -67,7 +67,7 @@ export function HomeTab({
   onCommentSubmit,
   onOpenPostMenu,
   onGoToExplore,
-}: HomeTabProps) {
+}: FeedTabProps) {
   const t = TRANSLATIONS[lang];
 
   const getCreator = (id: string) => creators.find((c) => c.id === id);

@@ -431,7 +431,7 @@ async function player(req,env,user,path,now,ctx) {
   await ensureUserProfileColumns(env);
   const uRow = await one(env, 'SELECT nickname, avatar_id FROM users WHERE id=?', user.id);
   const isAdmin = isAdminUser(env,user);
-  return json({user:{id:user.id,email:user.email,role:user.role||(isAdmin?'admin':'player'),isAdmin,ageVerifiedAt:user.age_verified_at,consentVersion:user.consent_version,nickname:uRow?.nickname||null,avatarId:uRow?.avatar_id||null},energy:await energy(env,user.id,now)});
+  return json({user:{id:user.id,email:user.email,role:user.role||(isAdmin?'admin':'player'),isAdmin,ageVerifiedAt:user.age_verified_at,consentVersion:user.consent_version,nickname:uRow?.nickname||null,avatarId:uRow?.avatar_id||null},energy:await energy(env,user.id,now),uiFlags:{homeHubV1:String(env.HOME_HUB_V1)==='true'}});
  }
  if(path==='/api/me/profile' && method==='POST'){
   await ensureUserProfileColumns(env);
@@ -547,13 +547,20 @@ async function player(req,env,user,path,now,ctx) {
   const rows=await all(env,'SELECT c.*,COALESCE(r.score,0) AS relationship,EXISTS(SELECT 1 FROM follows f WHERE f.creator_id=c.id AND f.user_id=?) AS following FROM creators c LEFT JOIN relationships r ON r.creator_id=c.id AND r.user_id=? ORDER BY c.name',user.id,user.id);
   // Inbox preview: the newest DM per creator (story-mode and experiment chats both count) and whether it
   // arrived after the player last opened that thread.
-  const [lastRows,readRows]=await Promise.all([
+  const [lastRows,readRows,defRows,countRows]=await Promise.all([
    all(env,`SELECT creator_id,role,content,created_at FROM (SELECT creator_id,role,content,created_at,ROW_NUMBER() OVER (PARTITION BY creator_id ORDER BY created_at DESC) n FROM (SELECT creator_id,role,content,created_at FROM ai_chat_messages WHERE user_id=? UNION ALL SELECT creator_id,role,content,created_at FROM experiment_chat_messages WHERE user_id=?)) WHERE n=1`,user.id,user.id),
-   all(env,'SELECT creator_id,read_at FROM inbox_reads WHERE user_id=?',user.id)
+   all(env,'SELECT creator_id,read_at FROM inbox_reads WHERE user_id=?',user.id),
+   // Home Hub discovery fields live in the content bundle (npc_definitions), not the creators
+   // table, so they are read here instead of adding columns in a migration.
+   // chatCount = number of distinct players who ever messaged this creator.
+   all(env,'SELECT creator_id,definition_json FROM npc_definitions'),
+   all(env,'SELECT creator_id,COUNT(DISTINCT user_id) AS chat_count FROM (SELECT creator_id,user_id FROM ai_chat_messages UNION ALL SELECT creator_id,user_id FROM experiment_chat_messages) GROUP BY creator_id')
   ]);
   const last=new Map(lastRows.map(r=>[r.creator_id,r])),readAt=new Map(readRows.map(r=>[r.creator_id,r.read_at]));
+  const def=new Map(defRows.map(r=>{let d;try{d=JSON.parse(r.definition_json||'null')}catch{}return [r.creator_id,d||{}];}));
+  const chatCount=new Map(countRows.map(r=>[r.creator_id,r.chat_count]));
   const preview=r=>r?{text:inboxPreview(r.content),at:r.created_at,fromCreator:r.role==='assistant'}:null;
-  return json({creators:rows.filter(c=>!removed.has(c.id)).map(c=>{const l=last.get(c.id);return {id:c.id,name:c.name,bio:c.bio,avatarKey:c.avatar_key,relationship:c.relationship,following:!!c.following,lastMessage:preview(l),unread:!!l&&l.role==='assistant'&&l.created_at>(readAt.get(c.id)||0)};})});
+  return json({creators:rows.filter(c=>!removed.has(c.id)).map(c=>{const l=last.get(c.id),d=def.get(c.id)||{};return {id:c.id,name:c.name,bio:c.bio,avatarKey:c.avatar_key,relationship:c.relationship,following:!!c.following,lastMessage:preview(l),unread:!!l&&l.role==='assistant'&&l.created_at>(readAt.get(c.id)||0),handle:d.handle||c.id,tagline:d.tagline||'',color:d.color||'#ec4899',tags:Array.isArray(d.tags)?d.tags:[],chatCount:chatCount.get(c.id)||0,artState:c.avatar_key?'real':'pending'};})});
  }
  let m=path.match(/^\/api\/creators\/([\w-]+)\/follow$/);
  if(m&&method==='POST'){

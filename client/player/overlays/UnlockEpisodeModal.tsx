@@ -1,8 +1,10 @@
 import { Lock, Zap, Sparkles, X } from 'lucide-react';
 import { Modal, AvatarImg } from '../ui';
+import { TRANSLATIONS, type Lang } from '../i18n';
 
 export interface UnlockEpisodeModalProps {
   open: boolean;
+  lang: Lang;
   episodeTitle: string;
   energyCost?: number;
   currentEnergy: number;
@@ -15,6 +17,7 @@ export interface UnlockEpisodeModalProps {
 
 export function UnlockEpisodeModal({
   open,
+  lang,
   episodeTitle,
   energyCost = 25,
   currentEnergy,
@@ -24,6 +27,7 @@ export function UnlockEpisodeModal({
   onUnlock,
   onEnergyShop,
 }: UnlockEpisodeModalProps) {
+  const t = TRANSLATIONS[lang];
   if (!open) return null;
 
   const hasEnoughEnergy = currentEnergy >= energyCost;
@@ -60,7 +64,7 @@ export function UnlockEpisodeModal({
           </div>
 
           <h2 id="unlock-episode-title" className="text-lg font-bold text-white">
-            ปลดล็อกเนื้อเรื่องตอนต่อไป
+            {t.unlockEpisodeTitle}
           </h2>
           <p className="mt-1 text-sm font-semibold text-rose-300">
             {episodeTitle}
@@ -73,13 +77,13 @@ export function UnlockEpisodeModal({
                 <Zap size={18} className="fill-amber-400" />
               </div>
               <div className="text-left">
-                <div className="text-xs text-slate-400">ค่าปลดล็อกถาวร</div>
+                <div className="text-xs text-slate-400">{t.unlockEpisodeCostLabel}</div>
                 <div className="text-sm font-bold text-white">{energyCost} Energy</div>
               </div>
             </div>
 
             <div className="text-right">
-              <div className="text-xs text-slate-400">Energy ของคุณ</div>
+              <div className="text-xs text-slate-400">{t.unlockEpisodeYourEnergy}</div>
               <div className={`text-sm font-bold ${hasEnoughEnergy ? 'text-emerald-400' : 'text-rose-400'}`}>
                 {currentEnergy} ⚡
               </div>
@@ -88,7 +92,7 @@ export function UnlockEpisodeModal({
 
           <p className="mt-2.5 text-xs text-slate-400 flex items-center justify-center gap-1">
             <Sparkles size={12} className="text-amber-400" />
-            <span>ปลดล็อกครั้งเดียว อ่านซ้ำและเก็บฉากจบอื่นได้ฟรีตลอดชีพ</span>
+            <span>{t.unlockEpisodeOnceNote}</span>
           </p>
 
           {/* Action Button */}
@@ -100,7 +104,7 @@ export function UnlockEpisodeModal({
                 onClick={onUnlock}
                 className="w-full rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 py-3 text-center text-sm font-bold text-slate-950 shadow-lg shadow-amber-500/20 hover:brightness-110 active:scale-[0.98] transition-all"
               >
-                ปลดล็อกเลย ({energyCost} ⚡)
+                {t.unlockEpisodeConfirm(energyCost)}
               </button>
             ) : (
               <button
@@ -109,7 +113,7 @@ export function UnlockEpisodeModal({
                 onClick={onEnergyShop}
                 className="w-full rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 py-3 text-center text-sm font-bold text-slate-950 shadow-lg shadow-emerald-500/20 hover:brightness-110 active:scale-[0.98] transition-all"
               >
-                Energy ไม่พอ · รับข้อเสนอพิเศษ ⚡
+                {t.unlockEpisodeLowEnergy}
               </button>
             )}
 
@@ -118,7 +122,7 @@ export function UnlockEpisodeModal({
               onClick={onClose}
               className="w-full py-2 text-xs text-slate-400 hover:text-white transition-colors"
             >
-              ไว้ก่อน
+              {t.unlockEpisodeLater}
             </button>
           </div>
         </div>

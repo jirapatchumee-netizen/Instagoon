@@ -6,6 +6,9 @@ const backendPort = process.env.VITE_BACKEND_PORT || '8799';
 
 export default defineConfig(({ mode }) => ({
   plugins: [react()],
+  resolve: {
+    alias: { '@': resolve(__dirname, 'player') },
+  },
   server: {
     proxy: {
       '/api': `http://127.0.0.1:${backendPort}`,

@@ -6663,3 +6663,20 @@ dialog.fs-overlay[open]::backdrop {
   color: #a1a1aa;
   text-align: center;
 }
+
+/* Home Hub (rev 3): unread counter on the Reels tab, which now carries the feed. */
+.fs-nav-badge {
+  position: absolute;
+  top: 2px;
+  right: 6px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-size: 9px;
+  font-weight: 700;
+  color: #180a12;
+  background: linear-gradient(90deg, #ec4899, #a855f7, #eab308);
+}

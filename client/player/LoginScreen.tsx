@@ -17,41 +17,6 @@ interface CreatorPreviewMeta {
   secretLock: string;
 }
 
-const CREATOR_PREVIEWS: Record<string, CreatorPreviewMeta> = {
-  milin: {
-    id: 'milin',
-    name: 'มิลิน',
-    nameEn: 'Milin',
-    tagline: 'สาวหวานขี้อาย ซ่อนความแซ่บ กำลังรอคุยกับคุณ...',
-    emoji: '🌸',
-    incoming: 'ดึกขนาดนี้... ยังไม่นอนเหรอคะ? แอบคิดถึงเราอยู่รึเปล่า...',
-    outgoing: 'คิดถึงสิ... วันนี้มิลินแต่งตัวน่ารักจัง',
-    secret: 'รูปชุดนอนตัวโปรดที่ยังไม่เคยโพสต์ลงที่ไหนเลย...',
-    secretLock: 'ปลดล็อกเมื่อระดับความสนิทถึงเลเวล 2'
-  },
-  mook: {
-    id: 'mook',
-    name: 'มุก',
-    nameEn: 'Mook',
-    tagline: 'สาวมั่น Girl Crush สเน่ห์เกินต้าน กำลังรอคุณที่ระเบียงบาร์...',
-    emoji: '🍸',
-    incoming: 'มาสายนะ... สั่งค็อกเทลรอจนจะหมดแก้วแล้วเนี่ย มานั่งข้างๆ นี่สิ',
-    outgoing: 'รถติดนิดหน่อยครับ วันนี้มุกดูเซ็กซี่มากเลยนะ',
-    secret: 'คลิปลับหลังงานปาร์ตี้เลิกที่กระซิบข้างหูคุณ...',
-    secretLock: 'ปลดล็อกเมื่อระดับความสนิทถึงเลเวล 2'
-  },
-  noey: {
-    id: 'noey',
-    name: 'เนย',
-    nameEn: 'Noey',
-    tagline: 'เด็กฝึกงานน่ารัก Gap Moe ชวนหลง ทำโอทีรอคุณอยู่...',
-    emoji: '☕',
-    incoming: 'พี่คะ... เอกสารเสร็จแล้ว แต่เนยยังไม่อยากกลับบ้านเลย อยู่เป็นเพื่อนเนยก่อนได้ไหมคะ?',
-    outgoing: 'ได้สิ เดี๋ยวพี่สั่งขนมมาทานด้วยกันนะ',
-    secret: 'รูปถอดแว่นมุมส่วนตัวที่คุณเท่านั้นจะได้เห็น...',
-    secretLock: 'ปลดล็อกเมื่อระดับความสนิทถึงเลเวล 2'
-  }
-};
 
 export function LoginScreen({
   t,
@@ -64,13 +29,15 @@ export function LoginScreen({
   onSetLang: (lang: Lang) => void;
   error: string;
 }) {
+  const creatorPreviews: Record<string, CreatorPreviewMeta> = t.creatorPreviews;
+
   const [authError] = useState(() =>
     new URLSearchParams(window.location.search).get('auth_error')
   );
 
   const initialPathCreator = window.location.pathname.replace(/^\//, '').toLowerCase();
   const [selectedCreatorId, setSelectedCreatorId] = useState<string | null>(() => {
-    return CREATOR_PREVIEWS[initialPathCreator] ? initialPathCreator : null;
+    return creatorPreviews[initialPathCreator] ? initialPathCreator : null;
   });
 
   useEffect(() => {
@@ -106,7 +73,7 @@ export function LoginScreen({
     }
   };
 
-  const activePreview = selectedCreatorId ? CREATOR_PREVIEWS[selectedCreatorId] : null;
+  const activePreview = selectedCreatorId ? creatorPreviews[selectedCreatorId] : null;
 
   const message = authError
     ? (Object.entries(t.loginErrors).find(([code]) => code === authError)?.[1] ?? t.genericError)
@@ -134,7 +101,7 @@ export function LoginScreen({
         </h1>
 
         <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginBottom: '14px' }}>
-          {Object.values(CREATOR_PREVIEWS).map(c => {
+          {Object.values(creatorPreviews).map(c => {
             const isSelected = selectedCreatorId === c.id;
             return (
               <button
