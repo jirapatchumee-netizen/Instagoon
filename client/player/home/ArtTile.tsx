@@ -16,7 +16,7 @@ export function ArtTile({ name, color, artKey, artState = 'real', className = ''
   if (artKey && artState !== 'pending') {
     return (
       <div className={'fs-h-art overflow-hidden ' + className}>
-        <img src={media(artKey)} alt="" loading="lazy" className="h-full w-full object-cover" />
+        <img src={media(artKey)} alt="" loading="lazy" className="h-full w-full object-cover object-[50%_18%]" />
       </div>
     );
   }
