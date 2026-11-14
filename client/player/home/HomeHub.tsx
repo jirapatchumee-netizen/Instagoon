@@ -1,72 +1,133 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Search } from 'lucide-react';
-import type { Creator } from '../types';
+import { api } from '../api';
+import type { Creator, HomePayload, HomePeriod, Story } from '../types';
 import { TRANSLATIONS, type HomeCopy, type Lang } from '../i18n';
 import { CharacterCard } from './CharacterCard';
 import { ContinueRail } from './ContinueRail';
 import { GenrePills } from './GenrePills';
 import { HeroCard } from './HeroCard';
 import { heroIndex } from './format';
+import { composeFallbackHome, extractHomeSection, filterHomeCreators } from './home-data';
 import './home.css';
 
 type Props = {
   lang: Lang;
   creators: Creator[];
+  stories?: Story[];
   seedKey: string;
-  recentPosts: number;
-  unreadChats: number;
   onOpenChat: (creator: Creator) => void;
   onOpenProfile: (creator: Creator) => void;
+  onOpenStory?: (story: Story) => void;
   onGoToReels: () => void;
 };
 
-function Section({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
+const PERIODS: HomePeriod[] = ['1d', '7d', '30d'];
+
+function Section({ title, hint, right, children }: { title: string; hint?: string; right?: ReactNode; children: ReactNode }) {
   return (
     <section className="mt-5">
-      <h2 className="mb-2 flex items-baseline gap-2 px-0.5 text-[15px] font-semibold text-foreground">
-        {title}
-        {hint ? <small className="text-[11px] font-normal text-muted-foreground">{hint}</small> : null}
-      </h2>
+      <div className="mb-2 flex items-center justify-between gap-2 px-0.5">
+        <h2 className="flex items-baseline gap-2 text-[15px] font-semibold text-foreground">
+          {title}
+          {hint ? <small className="text-[11px] font-normal text-muted-foreground">{hint}</small> : null}
+        </h2>
+        {right}
+      </div>
       {children}
     </section>
   );
 }
 
 export function HomeHub({
-  lang, creators, seedKey, recentPosts, unreadChats, onOpenChat, onOpenProfile, onGoToReels,
+  lang,
+  creators,
+  stories = [],
+  seedKey,
+  onOpenChat,
+  onOpenProfile,
+  onOpenStory,
+  onGoToReels,
 }: Props) {
   const t: HomeCopy = TRANSLATIONS[lang].home;
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState(t.filterAll);
+  const [period, setPeriod] = useState<HomePeriod>('7d');
+  const [remoteHome, setRemoteHome] = useState<HomePayload | null>(null);
+
+  useEffect(() => {
+    setFilter(t.filterAll);
+  }, [t.filterAll]);
+
+  useEffect(() => {
+    let cancelled = false;
+    api<HomePayload>(`/api/home?period=${period}`)
+      .then((data) => {
+        if (!cancelled) setRemoteHome(data);
+      })
+      .catch(() => {
+        if (!cancelled) setRemoteHome(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [period]);
+
+  const fallbackHome = useMemo(() => composeFallbackHome(creators, period), [creators, period]);
+  const activeHome = remoteHome ?? fallbackHome;
+
+  const serverTrending = useMemo(() => {
+    const items = extractHomeSection(remoteHome, 'trending');
+    return items.length ? items : (remoteHome?.ranking ?? []);
+  }, [remoteHome]);
+
+  const serverNew = useMemo(() => extractHomeSection(remoteHome, 'new'), [remoteHome]);
 
   const tags = useMemo(() => {
-    const seen: string[] = [];
-    for (const creator of creators) for (const tag of creator.tags || []) if (!seen.includes(tag)) seen.push(tag);
-    return seen;
-  }, [creators]);
+    const base = activeHome.genres.length ? activeHome.genres : fallbackHome.genres;
+    return base.slice(0, 10);
+  }, [activeHome.genres, fallbackHome.genres]);
 
-  const filters = useMemo(() => [t.filterAll, t.filterTrending, t.filterNew, ...tags.slice(0, 10)], [t, tags]);
+  const filters = useMemo(() => [t.filterAll, t.filterTrending, t.filterNew, ...tags], [t, tags]);
 
-  const matches = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return creators.filter((creator) => {
-      if (q) {
-        const hay = [creator.name, creator.handle, creator.tagline, ...(creator.tags || [])].join(' ').toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
-      if (filter === t.filterAll) return true;
-      if (filter === t.filterTrending) return (creator.chatCount || 0) >= 2500;
-      if (filter === t.filterNew) return creators.indexOf(creator) >= creators.length - 3;
-      return (creator.tags || []).includes(filter);
-    });
-  }, [creators, query, filter, t]);
-
-  const hero = creators.length ? creators[heroIndex(seedKey, creators.length)] : null;
-  const continuing = useMemo(() => creators.filter((c) => c.lastMessage || c.relationship > 0).slice(0, 6), [creators]);
-  const trending = useMemo(
-    () => [...creators].sort((a, b) => (b.chatCount || 0) - (a.chatCount || 0)).slice(0, 5),
-    [creators],
+  const matches = useMemo(
+    () =>
+      filterHomeCreators(creators, {
+        query,
+        filter,
+        filterAll: t.filterAll,
+        filterTrending: t.filterTrending,
+        filterNew: t.filterNew,
+        serverTrending,
+        serverNew,
+      }),
+    [creators, query, filter, t, serverTrending, serverNew],
   );
+
+  const hero = useMemo(() => {
+    const serverHero = extractHomeSection(remoteHome, 'hero')[0];
+    if (serverHero) return serverHero;
+    return creators.length ? creators[heroIndex(seedKey, creators.length)] : null;
+  }, [remoteHome, creators, seedKey]);
+
+  const continuing = useMemo(() => {
+    const items = extractHomeSection(activeHome, 'continue');
+    return items.length ? items : creators.filter((c) => c.lastMessage || c.relationship > 0).slice(0, 6);
+  }, [activeHome, creators]);
+
+  const trending = useMemo(() => {
+    const items = extractHomeSection(activeHome, 'trending');
+    return items.length ? items : [...creators].sort((a, b) => (b.chatCount || 0) - (a.chatCount || 0)).slice(0, 5);
+  }, [activeHome, creators]);
+
+  const recommended = useMemo(() => extractHomeSection(activeHome, 'recommended'), [activeHome]);
+  const ranking = useMemo(
+    () => (activeHome.ranking.length ? activeHome.ranking : trending.slice(0, 5)),
+    [activeHome.ranking, trending],
+  );
+  const missions = activeHome.missions;
+
+  const periodLabel = (p: HomePeriod) => (p === '1d' ? t.period1d : p === '7d' ? t.period7d : t.period30d);
 
   return (
     <div className="player-home-scope flex flex-col gap-3 px-3 pb-6 pt-2">
@@ -85,23 +146,40 @@ export function HomeHub({
 
       {hero ? <HeroCard creator={hero} t={t} onChat={onOpenChat} onFeed={onGoToReels} /> : null}
 
-      <Section title={t.sectionContinue}>
-        <ContinueRail creators={continuing} t={t} onOpen={onOpenChat} />
-      </Section>
+      {missions.length > 0 ? (
+        <section aria-label={t.missionsTitle} className="fs-h-card flex flex-col gap-2 p-3">
+          <div className="flex items-center justify-between text-[13px] font-semibold text-foreground">
+            <span>{t.missionsTitle}</span>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            {missions.slice(0, 3).map((mission) => {
+              const pct = mission.target > 0 ? Math.min(100, Math.round((mission.progress / mission.target) * 100)) : 0;
+              return (
+                <div key={mission.id} className="flex items-center gap-2.5 text-[12px]">
+                  <span className="min-w-0 flex-1 truncate text-slate-200">{mission.title}</span>
+                  <span className="h-1.5 w-20 overflow-hidden rounded-full bg-white/10">
+                    <span className="fs-h-grad-bg block h-full rounded-full" style={{ width: `${pct}%` }} />
+                  </span>
+                  <span className="shrink-0 text-[11px] text-muted-foreground">
+                    {mission.completed ? t.missionDone : t.missionProgress(mission.progress, mission.target)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
 
-      <button
-        type="button"
-        onClick={onGoToReels}
-        className="fs-h-card flex items-center justify-between gap-3 p-3 text-left transition-colors duration-200 hover:bg-white/5"
-      >
-        <span className="min-w-0">
-          <span className="block text-[13.5px] font-semibold text-foreground">{t.feedEntryTitle}</span>
-          <span className="block text-[11.5px] text-muted-foreground">
-            {t.feedEntryHint(String(recentPosts), String(unreadChats))}
-          </span>
-        </span>
-        <span className="fs-h-grad-text shrink-0 text-[12.5px] font-semibold">{t.feedEntryCta}</span>
-      </button>
+      <Section title={t.sectionContinue}>
+        <ContinueRail
+          creators={continuing}
+          allCreators={creators}
+          stories={stories}
+          t={t}
+          onOpen={onOpenChat}
+          onOpenStory={onOpenStory}
+        />
+      </Section>
 
       <Section title={t.sectionTrending}>
         <div className="fs-h-rail">
@@ -113,9 +191,57 @@ export function HomeHub({
         </div>
       </Section>
 
+      {ranking.length > 0 ? (
+        <Section
+          title={t.sectionRanking}
+          right={
+            <div role="tablist" aria-label={t.sectionRanking} className="flex gap-1">
+              {PERIODS.map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  role="tab"
+                  aria-selected={period === p}
+                  onClick={() => setPeriod(p)}
+                  className={
+                    'rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors ' +
+                    (period === p ? 'fs-h-grad-bg text-black' : 'bg-white/5 text-muted-foreground hover:text-foreground')
+                  }
+                >
+                  {periodLabel(p)}
+                </button>
+              ))}
+            </div>
+          }
+        >
+          <div className="fs-h-rail">
+            {ranking.map((creator, idx) => (
+              <div key={creator.id} className="relative w-[158px] shrink-0">
+                <span className="pointer-events-none absolute left-2 top-2 z-10 rounded-full bg-black/75 px-2 py-0.5 text-[11px] font-bold text-amber-300">
+                  {t.rankBadge(idx + 1)}
+                </span>
+                <CharacterCard creator={creator} t={t} onOpen={onOpenProfile} />
+              </div>
+            ))}
+          </div>
+        </Section>
+      ) : null}
+
+      {recommended.length > 0 ? (
+        <Section title={t.sectionRecommended}>
+          <div className="fs-h-rail">
+            {recommended.map((creator) => (
+              <div key={creator.id} className="w-[158px] shrink-0">
+                <CharacterCard creator={creator} t={t} onOpen={onOpenProfile} />
+              </div>
+            ))}
+          </div>
+        </Section>
+      ) : null}
+
       <Section title={t.sectionAll} hint={t.countLabel(String(matches.length))}>
         {matches.length ? (
-          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-3">
             {matches.map((creator) => (
               <CharacterCard key={creator.id} creator={creator} t={t} onOpen={onOpenProfile} />
             ))}
@@ -126,8 +252,12 @@ export function HomeHub({
       </Section>
 
       <footer className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border pt-3 text-[11px] text-muted-foreground">
-        <a href="/terms.html" className="hover:text-foreground">{t.terms}</a>
-        <a href="/privacy.html" className="hover:text-foreground">{t.privacy}</a>
+        <a href="/terms.html" className="hover:text-foreground">
+          {t.terms}
+        </a>
+        <a href="/privacy.html" className="hover:text-foreground">
+          {t.privacy}
+        </a>
       </footer>
     </div>
   );

@@ -18,6 +18,7 @@ import { FeedTab } from './tabs/FeedTab';
 import { HomeHub } from './home/HomeHub';
 import { createRouter } from './routes';
 import { ExploreTab } from './tabs/ExploreTab';
+import { CollectionTab } from './tabs/CollectionTab';
 import { ReelsTab } from './tabs/ReelsTab';
 import { InboxTab } from './tabs/InboxTab';
 import { PlayerProfileTab } from './tabs/PlayerProfileTab';
@@ -835,6 +836,11 @@ export function FrostStoryApp() {
     }
   }
 
+  const handleOpenStory = (story: Story) => {
+    if (story.type === 'unlockable' && !story.firstViewedAt) setSelectedStory(story);
+    else void openStory(story);
+  };
+
   const [activityOpen, setActivityOpen] = useState(false);
   const [postMenuPost, setPostMenuPost] = useState<Post | null>(null);
   const [postMenuCreator, setPostMenuCreator] = useState<Creator | null>(null);
@@ -977,11 +983,11 @@ export function FrostStoryApp() {
           <HomeHub
             lang={lang}
             creators={creators}
+            stories={stories}
             seedKey={user?.id ?? 'anon'}
-            recentPosts={posts.length}
-            unreadChats={creators.filter((creator) => creator.unread).length}
             onOpenChat={(creator) => void openChat(creator)}
             onOpenProfile={(creator) => void openProfile(creator)}
+            onOpenStory={handleOpenStory}
             onGoToReels={() => handleSelectTab('reels')}
           />
         )}
@@ -998,10 +1004,7 @@ export function FrostStoryApp() {
             comments={comments}
             busy={busy}
             lang={lang}
-            onOpenStory={(story) => {
-              if (story.type === "unlockable" && !story.firstViewedAt) setSelectedStory(story);
-              else void openStory(story);
-            }}
+            onOpenStory={handleOpenStory}
             onOpenProfile={(creator) => void openProfile(creator)}
             onOpenChat={(creator) => void openChat(creator)}
             onToggleFollow={(creator) => void toggleFollow(creator)}
@@ -1020,14 +1023,24 @@ export function FrostStoryApp() {
         ) : null}
 
         {screen === "creators" && (
-          <ExploreTab
-            creators={creators}
-            lang={lang}
-            busy={busy}
-            onOpenProfile={(creator) => void openProfile(creator)}
-            onOpenChat={(creator) => void openChat(creator)}
-            onToggleFollow={(creator) => void toggleFollow(creator)}
-          />
+          hubOn ? (
+            <CollectionTab
+              creators={creators}
+              lang={lang}
+              busy={busy}
+              onOpenProfile={(creator) => void openProfile(creator)}
+              onOpenChat={(creator) => void openChat(creator)}
+            />
+          ) : (
+            <ExploreTab
+              creators={creators}
+              lang={lang}
+              busy={busy}
+              onOpenProfile={(creator) => void openProfile(creator)}
+              onOpenChat={(creator) => void openChat(creator)}
+              onToggleFollow={(creator) => void toggleFollow(creator)}
+            />
+          )
         )}
 
         {screen === "reels" && !hubOn && (
@@ -1035,13 +1048,7 @@ export function FrostStoryApp() {
             stories={stories}
             creators={creators}
             lang={lang}
-            onOpenStory={(story) => {
-              if (story.type === 'unlockable' && !story.firstViewedAt) {
-                void openStory(story);
-              } else {
-                setSelectedStory(story);
-              }
-            }}
+            onOpenStory={handleOpenStory}
             onOpenChat={(creator) => void openChat(creator)}
             onViewProfile={(creator) => void openProfile(creator)}
             busy={busy || !!openingStoryId}
@@ -1110,7 +1117,7 @@ export function FrostStoryApp() {
             type="button"
             className={`fs-nav-tab ${screen === 'creators' ? 'is-active' : ''}`}
             onClick={() => handleSelectTab('creators')}
-            title={t.creators}
+            title={hubOn ? t.collection : t.creators}
           >
             <IgSearch size={25} active={screen === 'creators'} />
           </button>
@@ -1122,10 +1129,6 @@ export function FrostStoryApp() {
             title={t.reels}
           >
             <IgReels size={25} active={screen === 'reels'} />
-            {hubOn ? (() => {
-              const unread = creators.filter((creator) => creator.unread).length;
-              return unread ? <span className="fs-nav-badge">{unread > 99 ? '99+' : unread}</span> : null;
-            })() : null}
           </button>
 
           <button
@@ -1135,6 +1138,10 @@ export function FrostStoryApp() {
             title={t.inbox}
           >
             <IgShare size={24} active={screen === 'inbox'} />
+            {hubOn ? (() => {
+              const unread = creators.filter((creator) => creator.unread).length;
+              return unread ? <span className="fs-nav-badge">{unread > 99 ? '99+' : unread}</span> : null;
+            })() : null}
           </button>
 
           <button
