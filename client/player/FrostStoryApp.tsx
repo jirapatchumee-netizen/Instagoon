@@ -14,7 +14,7 @@ import { BugReportModal } from './overlays/BugReportModal';
 import { CliffhangerOfferModal, type CliffhangerOffer } from './overlays/CliffhangerOfferModal';
 import { UnlockEpisodeModal } from './overlays/UnlockEpisodeModal';
 import { LoginScreen } from './LoginScreen';
-import { HomeTab } from './tabs/HomeTab';
+import { FeedTab } from './tabs/FeedTab';
 import { ExploreTab } from './tabs/ExploreTab';
 import { ReelsTab } from './tabs/ReelsTab';
 import { InboxTab } from './tabs/InboxTab';
@@ -953,7 +953,7 @@ export function FrostStoryApp() {
       {/* Centered Instagram iOS Column */}
       <main className="fs-main">
         {screen === "feed" && (
-          <HomeTab
+          <FeedTab
             posts={posts}
             stories={stories}
             creators={creators}
