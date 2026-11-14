@@ -1,0 +1,33 @@
+/* Design tokens สำหรับ Home Hub ใหม่เท่านั้น — import เฉพาะใน HomeHub.tsx
+   ค่าทั้งหมด map จาก palette เดิมของ froststory.css (bg #000000, panel #09090b/#18181b,
+   accent #ec4899 → #a855f7 → #eab308) เพื่อไม่ให้ visual regression ทั้งแอป */
+.player-home-scope {
+  --background: 0 0% 0%;
+  --foreground: 210 40% 98%;
+  --card: 240 6% 4%;
+  --card-foreground: 210 40% 98%;
+  --popover: 240 6% 6%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 330 81% 60%;
+  --primary-foreground: 340 80% 8%;
+  --secondary: 240 5% 12%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 240 5% 12%;
+  --muted-foreground: 215 20% 65%;
+  --accent: 271 81% 63%;
+  --accent-foreground: 280 90% 8%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 240 6% 18%;
+  --input: 240 6% 18%;
+  --ring: 330 81% 60%;
+  --radius: 16px;
+  --brand-gradient: linear-gradient(90deg, #ec4899, #a855f7, #eab308);
+}
+.fs-h-card { border-radius: var(--radius); background: hsl(var(--card)); border: 1px solid hsl(var(--border)); }
+.fs-h-art { aspect-ratio: 4 / 5; background: radial-gradient(120% 90% at 22% 6%, var(--art-color, #ec4899) 0%, #0b0b0d 62%), linear-gradient(160deg, transparent, rgba(0,0,0,.55)); }
+.fs-h-grad-text { background: var(--brand-gradient); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.fs-h-rail { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.fs-h-rail::-webkit-scrollbar { display: none; }
+.fs-h-rail > * { scroll-snap-align: start; }
+@media (prefers-reduced-motion: reduce) { .fs-h-rail { scroll-behavior: auto; } }
