@@ -15,6 +15,8 @@ import { CliffhangerOfferModal, type CliffhangerOffer } from './overlays/Cliffha
 import { UnlockEpisodeModal } from './overlays/UnlockEpisodeModal';
 import { LoginScreen } from './LoginScreen';
 import { FeedTab } from './tabs/FeedTab';
+import { HomeHub } from './home/HomeHub';
+import { createRouter } from './routes';
 import { ExploreTab } from './tabs/ExploreTab';
 import { ReelsTab } from './tabs/ReelsTab';
 import { InboxTab } from './tabs/InboxTab';
@@ -67,6 +69,17 @@ export function FrostStoryApp() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [screen, setScreen] = useState<Screen>('feed');
+  // HOME_HUB_V1 comes from /api/me so the whole hub can be switched off per environment.
+  const [hubOn, setHubOn] = useState(false);
+  const routerRef = useRef<ReturnType<typeof createRouter> | null>(null);
+  if (!routerRef.current && typeof window !== 'undefined') {
+    routerRef.current = createRouter({
+      history: window.history,
+      storage: window.sessionStorage,
+      location: window.location,
+      onChange: (route) => setScreen(route.screen as Screen),
+    });
+  }
   const [creators, setCreators] = useState<Creator[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
   const [stories, setStories] = useState<Story[]>([]);
@@ -502,9 +515,13 @@ export function FrostStoryApp() {
   const followSyncRef = useRef(createFollowSync());
 
   const loadMe = useCallback(async () => {
-    const result = await api<{ user: User; energy: Energy }>('/api/me');
+    const result = await api<{ user: User; energy: Energy; uiFlags?: { homeHubV1?: boolean } }>('/api/me');
     setUser(result.user);
     setEnergy(result.energy);
+    const hub = result.uiFlags?.homeHubV1 === true;
+    setHubOn(hub);
+    // Only move a player who has not navigated anywhere yet; a deep link must win.
+    if (hub) setScreen((prev) => (prev === 'feed' ? 'home' : prev));
     return result.user;
   }, []);
 
@@ -824,16 +841,20 @@ export function FrostStoryApp() {
 
   const handleSelectTab = (tab: Screen) => {
     setScreen(tab);
-    if (typeof window !== 'undefined') {
-      window.history.replaceState({ ...window.history.state, mainTab: tab }, '', '');
+    if (typeof window === 'undefined') return;
+    if (hubOn && routerRef.current && tab !== 'notifications' && tab !== 'feed') {
+      routerRef.current.go({ screen: tab });
+      return;
     }
+    window.history.replaceState({ ...window.history.state, mainTab: tab }, '', '');
   };
 
   const handleLogoClick = () => {
-    if (screen === 'feed') {
+    const primary = hubOn ? 'home' : 'feed';
+    if (screen === primary) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
-      handleSelectTab('feed');
+      handleSelectTab(primary);
     }
   };
 
@@ -952,7 +973,20 @@ export function FrostStoryApp() {
 
       {/* Centered Instagram iOS Column */}
       <main className="fs-main">
-        {screen === "feed" && (
+        {hubOn && screen === 'home' && (
+          <HomeHub
+            lang={lang}
+            creators={creators}
+            seedKey={user?.id ?? 'anon'}
+            recentPosts={posts.length}
+            unreadChats={creators.filter((creator) => creator.unread).length}
+            onOpenChat={(creator) => void openChat(creator)}
+            onOpenProfile={(creator) => void openProfile(creator)}
+            onGoToReels={() => handleSelectTab('reels')}
+          />
+        )}
+
+        {(screen === "feed" && !hubOn) || (screen === "reels" && hubOn) ? (
           <FeedTab
             posts={posts}
             stories={stories}
@@ -983,7 +1017,7 @@ export function FrostStoryApp() {
             }}
             onGoToExplore={() => handleSelectTab("creators")}
           />
-        )}
+        ) : null}
 
         {screen === "creators" && (
           <ExploreTab
@@ -996,7 +1030,7 @@ export function FrostStoryApp() {
           />
         )}
 
-        {screen === "reels" && (
+        {screen === "reels" && !hubOn && (
           <ReelsTab
             stories={stories}
             creators={creators}
@@ -1065,11 +1099,11 @@ export function FrostStoryApp() {
         <nav className="fs-insta-bottom-bar" aria-label="Bottom Navigation">
           <button
             type="button"
-            className={`fs-nav-tab ${screen === 'feed' ? 'is-active' : ''}`}
-            onClick={() => handleSelectTab('feed')}
-            title={t.feed}
+            className={`fs-nav-tab ${screen === (hubOn ? 'home' : 'feed') ? 'is-active' : ''}`}
+            onClick={() => handleSelectTab(hubOn ? 'home' : 'feed')}
+            title={hubOn ? t.navHome : t.feed}
           >
-            <IgHome size={25} active={screen === 'feed'} />
+            <IgHome size={25} active={screen === (hubOn ? 'home' : 'feed')} />
           </button>
 
           <button
@@ -1088,6 +1122,10 @@ export function FrostStoryApp() {
             title={t.reels}
           >
             <IgReels size={25} active={screen === 'reels'} />
+            {hubOn ? (() => {
+              const unread = creators.filter((creator) => creator.unread).length;
+              return unread ? <span className="fs-nav-badge">{unread > 99 ? '99+' : unread}</span> : null;
+            })() : null}
           </button>
 
           <button
