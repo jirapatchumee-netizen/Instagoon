@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, Zap, Clock, Sparkles } from 'lucide-react';
 import { Modal } from '../ui';
 import { AvatarImg } from '../ui';
+import { TRANSLATIONS, type Lang } from '../i18n';
 
 export interface CliffhangerOffer {
   sku: string;
@@ -19,6 +20,7 @@ export interface CliffhangerOffer {
 
 export interface CliffhangerOfferModalProps {
   open: boolean;
+  lang: Lang;
   creatorName: string;
   avatarUrl?: string;
   offer?: CliffhangerOffer | null;
@@ -29,6 +31,7 @@ export interface CliffhangerOfferModalProps {
 
 export function CliffhangerOfferModal({
   open,
+  lang,
   creatorName,
   avatarUrl,
   offer,
@@ -36,9 +39,10 @@ export function CliffhangerOfferModal({
   onAccept,
   onOpenNormalShop,
 }: CliffhangerOfferModalProps) {
+  const t = TRANSLATIONS[lang];
   const currentOffer: CliffhangerOffer = offer || {
     sku: 'offer_cliffhanger_49',
-    name: 'แพ็กอยู่ต่อกับเธอ (Cliffhanger Special)',
+    name: t.cliffDefaultName,
     priceSatang: 4900,
     priceThb: 49,
     originalPriceThb: 120,
@@ -106,10 +110,10 @@ export function CliffhangerOfferModal({
             </div>
           )}
           <h2 id="cliffhanger-offer-title" className="text-xl font-bold tracking-tight text-white">
-            {currentOffer.name.includes('VIP') ? currentOffer.name : `แชทต่อกับ ${creatorName}`}
+            {currentOffer.name.includes('VIP') ? currentOffer.name : t.cliffChatContinue(creatorName)}
           </h2>
           <p className="mt-1 text-sm font-medium text-emerald-400 flex items-center justify-center gap-1">
-            <span>{currentOffer.name.includes('VIP') ? 'โปรลับพิเศษเฉพาะคุณ' : 'โปรพิเศษ เฉพาะเติมครั้งแรก'}</span>
+            <span>{currentOffer.name.includes('VIP') ? t.cliffVipTag : t.cliffFirstTopupTag}</span>
             <Sparkles size={13} />
           </p>
 
@@ -133,14 +137,14 @@ export function CliffhangerOfferModal({
                       +{currentOffer.diamonds} 💎
                     </span>
                   </div>
-                  <div className="text-xs text-slate-400">ปลดล็อกเนื้อเรื่องได้ยาวๆ 7 ตอนรวด</div>
+                  <div className="text-xs text-slate-400">{t.cliffSevenEpisodes}</div>
                 </div>
               </div>
 
               {/* Price Tag */}
               <div className="text-right">
-                <div className="text-xs text-slate-500 line-through">฿{currentOffer.originalPriceThb}</div>
-                <div className="text-2xl font-black text-white tracking-tight">฿{currentOffer.priceThb}</div>
+                <div className="text-xs text-slate-500 line-through">{t.cliffPrice(currentOffer.originalPriceThb)}</div>
+                <div className="text-2xl font-black text-white tracking-tight">{t.cliffPrice(currentOffer.priceThb)}</div>
               </div>
             </div>
 
@@ -155,21 +159,21 @@ export function CliffhangerOfferModal({
             <div className="pt-3 border-t border-white/10 flex flex-col items-center">
               <div className="flex items-center gap-1 text-xs text-slate-400 mb-2">
                 <Clock size={13} className="text-amber-400" />
-                <span>ข้อเสนอหมดอายุใน</span>
+                <span>{t.cliffExpiresIn}</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="flex flex-col items-center">
                   <div className="flex h-10 w-12 items-center justify-center rounded-lg bg-slate-900 border border-slate-700/60 text-lg font-mono font-bold text-white shadow-inner">
                     {mm}
                   </div>
-                  <span className="text-[10px] text-slate-400 mt-0.5">นาที</span>
+                  <span className="text-[10px] text-slate-400 mt-0.5">{t.cliffMinutes}</span>
                 </div>
                 <span className="text-xl font-bold text-slate-500 -mt-3">:</span>
                 <div className="flex flex-col items-center">
                   <div className="flex h-10 w-12 items-center justify-center rounded-lg bg-slate-900 border border-slate-700/60 text-lg font-mono font-bold text-white shadow-inner">
                     {ss}
                   </div>
-                  <span className="text-[10px] text-slate-400 mt-0.5">วินาที</span>
+                  <span className="text-[10px] text-slate-400 mt-0.5">{t.cliffSeconds}</span>
                 </div>
               </div>
             </div>
@@ -186,7 +190,7 @@ export function CliffhangerOfferModal({
               <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
               <div className="flex items-center justify-center gap-2">
                 <Zap size={18} className="fill-current text-slate-950" />
-                <span>เติมเลย ฿{currentOffer.priceThb}</span>
+                <span>{t.cliffBuyNow(currentOffer.priceThb)}</span>
               </div>
             </button>
 
@@ -195,7 +199,7 @@ export function CliffhangerOfferModal({
               onClick={onOpenNormalShop}
               className="w-full py-2 text-xs text-slate-400 hover:text-white transition-colors"
             >
-              ดูแพ็กเกจปกติในร้านค้า
+              {t.cliffSeeNormalPackages}
             </button>
           </div>
         </div>

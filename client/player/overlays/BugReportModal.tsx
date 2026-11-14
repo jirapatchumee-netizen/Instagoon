@@ -56,7 +56,7 @@ export function BugReportModal({
       }, 1500);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      setError(msg.includes('rate_limited') ? 'ส่งรายงานบ่อยเกินไป กรุณารอสักครู่' : t.reportFailed);
+      setError(msg.includes('rate_limited') ? t.reportRateLimited : t.reportFailed);
     } finally {
       setSubmitting(false);
     }

@@ -2242,8 +2242,8 @@ export function FrostStoryApp() {
                     <Sparkles size={16} />
                     <span>
                       {nextEpisode.unlocked
-                        ? `อ่านตอนต่อไป: ${nextEpisode.title}`
-                        : `🔓 ปลดล็อกตอนต่อไป: ${nextEpisode.title} (25 ⚡)`}
+                        ? t.episodeReadNext(nextEpisode.title)
+                        : t.episodeUnlockNext(nextEpisode.title, 25)}
                     </span>
                   </button>
                 );
@@ -2531,6 +2531,7 @@ export function FrostStoryApp() {
       {/* Cliffhanger 10-minute Flash Sale Modal */}
       {cliffhangerModal.open && (
         <CliffhangerOfferModal
+        lang={lang}
           open={cliffhangerModal.open}
           creatorName={cliffhangerModal.creatorName}
           avatarUrl={cliffhangerModal.avatarUrl}
@@ -2552,6 +2553,7 @@ export function FrostStoryApp() {
       {/* Story Mode Episode Unlock Modal */}
       {unlockEpisodeModal.open && unlockEpisodeModal.episode && (
         <UnlockEpisodeModal
+        lang={lang}
           open={unlockEpisodeModal.open}
           episodeTitle={unlockEpisodeModal.episode.title}
           energyCost={unlockEpisodeModal.episode.energyCost || 25}
