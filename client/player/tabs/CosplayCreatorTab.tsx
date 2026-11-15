@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { TRANSLATIONS, type Lang } from '../i18n';
-import { Sparkles, User, MessageCircle, ShieldCheck, Play, Check, Send, Heart, RotateCcw, Camera, X, Loader2 } from 'lucide-react';
+import { Sparkles, User, MessageCircle, ShieldCheck, Play, Check, Send, Heart, RotateCcw, Camera, X, Loader2, Image as ImageIcon, Trash2, Plus, Gem } from 'lucide-react';
 import { getAvatarSrc } from '../ui';
 import { resizeImageToStandard } from '../lib/image-resizer';
 import { api } from '../api';
@@ -8,6 +8,21 @@ import { api } from '../api';
 interface CosplayCreatorTabProps {
   lang: Lang;
   onOpenRecentChats?: () => void;
+}
+
+export interface RewardDraft {
+  id: string;
+  name: string;
+  asset: string;
+  caption: string;
+  message: string;
+  rarity: 'R' | 'SR' | 'SSR' | 'UR';
+  unlockType: 'mission' | 'diamond_gacha';
+  hint: string;
+  turns: number;
+  trust: number;
+  romance: number;
+  energyFallback: number;
 }
 
 const PRESET_AVATARS = [
@@ -20,7 +35,7 @@ const PRESET_AVATARS = [
 
 export function CosplayCreatorTab({ lang }: CosplayCreatorTabProps) {
   const t = TRANSLATIONS[lang];
-  const [activeTab, setActiveTab] = useState<'identity' | 'voice' | 'safety' | 'sandbox'>('identity');
+  const [activeTab, setActiveTab] = useState<'identity' | 'voice' | 'safety' | 'sandbox' | 'gallery'>('identity');
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [uploadSuccessNotice, setUploadSuccessNotice] = useState(false);
 
@@ -29,6 +44,7 @@ export function CosplayCreatorTab({ lang }: CosplayCreatorTabProps) {
   const [stagingFile, setStagingFile] = useState<File | null>(null);
   const [stagingPreview, setStagingPreview] = useState<string>('');
   const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [cropTarget, setCropTarget] = useState<'avatar' | 'reward'>('avatar');
   const [uploading, setUploading] = useState(false);
   const [zoom, setZoom] = useState(1.0);
   const [panX, setPanX] = useState(0);
@@ -69,6 +85,71 @@ export function CosplayCreatorTab({ lang }: CosplayCreatorTabProps) {
   const [testMessages, setTestMessages] = useState<Array<{ sender: 'user' | 'creator'; text: string }>>([]);
   const [inputMessage, setInputMessage] = useState('');
 
+  // Pillar 5: Vault & Missions
+  const [rewards, setRewards] = useState<RewardDraft[]>([
+    {
+      id: 'reward-1',
+      name: 'เรื่องที่เป็นไปไม่ได้',
+      asset: 'avatars/mira.webp',
+      caption: 'ภาพชุดพิเศษริมหาด',
+      message: 'ปลดล็อกรูปภาพลับแล้วนะคะ! แอบถ่ายไว้ให้ดูคนเดียวเลยนะ 💕',
+      rarity: 'SSR',
+      unlockType: 'mission',
+      hint: 'ปรับความเข้าใจคืนดีกันไว้ใจกัน',
+      turns: 40,
+      trust: 100,
+      romance: 50,
+      energyFallback: 5,
+    },
+    {
+      id: 'reward-2',
+      name: 'ชุดราตรีลับเฉพาะคืนนี้',
+      asset: 'avatars/noey.webp',
+      caption: 'ภาพชุดราตรีซีทรูสุดพิเศษ',
+      message: 'ชุดนี้เค้าใส่ให้ตัวเองดูคนเดียวนะ ห้ามแอบเซฟไปให้เพื่อนดูล่ะ ✨',
+      rarity: 'UR',
+      unlockType: 'diamond_gacha',
+      hint: 'ตู้สุ่มเพชรเท่านั้น',
+      turns: 0,
+      trust: 0,
+      romance: 0,
+      energyFallback: 8,
+    }
+  ]);
+  const [newRewardTitle, setNewRewardTitle] = useState('');
+  const [newRewardAsset, setNewRewardAsset] = useState('avatars/mira.webp');
+  const [newRewardRarity, setNewRewardRarity] = useState<'R' | 'SR' | 'SSR' | 'UR'>('SSR');
+  const [newRewardUnlockType, setNewRewardUnlockType] = useState<'mission' | 'diamond_gacha'>('mission');
+  const [newRewardHint, setNewRewardHint] = useState('ปรับความเข้าใจคืนดีกันไว้ใจกัน');
+  const [newRewardTurns, setNewRewardTurns] = useState(40);
+  const [newRewardTrust, setNewRewardTrust] = useState(100);
+  const [newRewardRomance, setNewRewardRomance] = useState(50);
+  const [newRewardFallback, setNewRewardFallback] = useState(5);
+
+  const handleAddReward = () => {
+    if (!newRewardTitle.trim()) return;
+    const item: RewardDraft = {
+      id: 'reward-' + Date.now(),
+      name: newRewardTitle.trim(),
+      asset: newRewardAsset,
+      caption: newRewardTitle.trim(),
+      message: `ปลดล็อกรูปภาพ ${newRewardTitle.trim()} แล้วนะ!`,
+      rarity: newRewardRarity,
+      unlockType: newRewardUnlockType,
+      hint: newRewardHint.trim(),
+      turns: Number(newRewardTurns) || 0,
+      trust: Number(newRewardTrust) || 0,
+      romance: Number(newRewardRomance) || 0,
+      energyFallback: Number(newRewardFallback) || 5,
+    };
+    setRewards([...rewards, item]);
+    setNewRewardTitle('');
+  };
+
+  const handleDeleteReward = (id: string) => {
+    setRewards(rewards.filter(r => r.id !== id));
+  };
+
   // Load draft from storage on mount
   useEffect(() => {
     try {
@@ -90,6 +171,7 @@ export function CosplayCreatorTab({ lang }: CosplayCreatorTabProps) {
         if (data.immutableFacts) setImmutableFacts(data.immutableFacts);
         if (data.openingLocation) setOpeningLocation(data.openingLocation);
         if (data.openingGreeting) setOpeningGreeting(data.openingGreeting);
+        if (Array.isArray(data.rewards)) setRewards(data.rewards);
       }
     } catch {
       // ignore JSON parse error
@@ -143,13 +225,19 @@ export function CosplayCreatorTab({ lang }: CosplayCreatorTabProps) {
           headers: { 'Content-Type': 'image/webp' },
           body: resized.blob,
         });
-        if (res.mediaKey) {
-          setAvatar(res.mediaKey);
+        const finalKey = res.mediaKey || resized.dataUrl;
+        if (cropTarget === 'avatar') {
+          setAvatar(finalKey);
         } else {
-          setAvatar(resized.dataUrl);
+          setNewRewardAsset(finalKey);
         }
       } catch {
-        setAvatar(resized.dataUrl);
+        const finalKey = resized.dataUrl;
+        if (cropTarget === 'avatar') {
+          setAvatar(finalKey);
+        } else {
+          setNewRewardAsset(finalKey);
+        }
       }
 
       setUploadSuccessNotice(true);
@@ -182,6 +270,7 @@ export function CosplayCreatorTab({ lang }: CosplayCreatorTabProps) {
       immutableFacts,
       openingLocation,
       openingGreeting,
+      rewards,
       updatedAt: Date.now(),
     };
     try {
@@ -301,6 +390,14 @@ export function CosplayCreatorTab({ lang }: CosplayCreatorTabProps) {
         >
           <Play size={15} />
           <span>{t.studioTabSandbox}</span>
+        </button>
+        <button
+          type="button"
+          className={`fs-studio-tab-btn ${activeTab === 'gallery' ? 'is-active' : ''}`}
+          onClick={() => setActiveTab('gallery')}
+        >
+          <ImageIcon size={15} />
+          <span>{t.studioTabGallery}</span>
         </button>
       </div>
 
@@ -651,6 +748,189 @@ export function CosplayCreatorTab({ lang }: CosplayCreatorTabProps) {
                 <Send size={15} />
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Pillar 5: Vault & Missions */}
+      {activeTab === 'gallery' && (
+        <div className="fs-studio-pane">
+          <div className="fs-studio-card">
+            <h2 className="fs-studio-card-title">{t.studioAddReward}</h2>
+
+            {/* Photo preview & upload */}
+            <div className="fs-studio-field">
+              <label className="fs-studio-label">{t.studioAvatarLabel}</label>
+              <div className="fs-studio-avatar-row">
+                <div className="fs-studio-current-avatar" style={{ aspectRatio: '4/5', width: 90, height: 112, borderRadius: 12 }}>
+                  <img src={getAvatarSrc(newRewardAsset) || newRewardAsset} alt="Reward preview" className="fs-studio-avatar-img" />
+                </div>
+                <button
+                  type="button"
+                  className="fs-studio-btn-upload"
+                  onClick={() => {
+                    setCropTarget('reward');
+                    fileInputRef.current?.click();
+                  }}
+                >
+                  <Camera size={15} />
+                  <span>{t.studioUploadBtn}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Title */}
+            <div className="fs-studio-field">
+              <label className="fs-studio-label">{t.studioPhotoTitle}</label>
+              <input
+                type="text"
+                className="fs-studio-input"
+                value={newRewardTitle}
+                onChange={(e) => setNewRewardTitle(e.target.value)}
+                placeholder="เช่น เรื่องที่เป็นไปไม่ได้, ชุดราตรีลับเฉพาะ"
+              />
+            </div>
+
+            {/* Rarity */}
+            <div className="fs-studio-field">
+              <label className="fs-studio-label">{t.studioRewardRarity}</label>
+              <div className="fs-studio-chips">
+                {(['R', 'SR', 'SSR', 'UR'] as const).map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    className={`fs-studio-chip ${newRewardRarity === r ? 'is-active' : ''}`}
+                    onClick={() => setNewRewardRarity(r)}
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Unlock Type */}
+            <div className="fs-studio-field">
+              <label className="fs-studio-label">{t.studioUnlockType}</label>
+              <div className="fs-studio-chips">
+                <button
+                  type="button"
+                  className={`fs-studio-chip ${newRewardUnlockType === 'mission' ? 'is-active' : ''}`}
+                  onClick={() => setNewRewardUnlockType('mission')}
+                >
+                  <MessageCircle size={13} />
+                  <span>{t.studioMissionMode}</span>
+                </button>
+                <button
+                  type="button"
+                  className={`fs-studio-chip ${newRewardUnlockType === 'diamond_gacha' ? 'is-active' : ''}`}
+                  onClick={() => setNewRewardUnlockType('diamond_gacha')}
+                >
+                  <Gem size={13} />
+                  <span>{t.studioGachaMode}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* If Mission: Target turns, trust, romance, hint */}
+            {newRewardUnlockType === 'mission' ? (
+              <>
+                <div className="fs-studio-grid-2">
+                  <div className="fs-studio-field">
+                    <label className="fs-studio-label">{t.studioTargetTurns}</label>
+                    <input
+                      type="number"
+                      className="fs-studio-input"
+                      value={newRewardTurns}
+                      onChange={(e) => setNewRewardTurns(Number(e.target.value))}
+                    />
+                  </div>
+                  <div className="fs-studio-field">
+                    <label className="fs-studio-label">{t.studioTargetTrust}</label>
+                    <input
+                      type="number"
+                      className="fs-studio-input"
+                      value={newRewardTrust}
+                      onChange={(e) => setNewRewardTrust(Number(e.target.value))}
+                    />
+                  </div>
+                </div>
+
+                <div className="fs-studio-field">
+                  <label className="fs-studio-label">{t.studioTargetRomance}</label>
+                  <input
+                    type="number"
+                    className="fs-studio-input"
+                    value={newRewardRomance}
+                    onChange={(e) => setNewRewardRomance(Number(e.target.value))}
+                  />
+                </div>
+
+                <div className="fs-studio-field">
+                  <label className="fs-studio-label">{t.studioMissionHint}</label>
+                  <input
+                    type="text"
+                    className="fs-studio-input"
+                    value={newRewardHint}
+                    onChange={(e) => setNewRewardHint(e.target.value)}
+                    placeholder="เช่น ปรับความเข้าใจคืนดีกันไว้ใจกัน"
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="fs-studio-field">
+                <label className="fs-studio-label">{t.studioFallbackEnergy}</label>
+                <input
+                  type="number"
+                  className="fs-studio-input"
+                  value={newRewardFallback}
+                  onChange={(e) => setNewRewardFallback(Number(e.target.value))}
+                />
+              </div>
+            )}
+
+            <button
+              type="button"
+              className="fs-studio-ai-btn"
+              onClick={handleAddReward}
+              disabled={!newRewardTitle.trim()}
+              style={{ marginTop: 10, width: '100%', justifyContent: 'center' }}
+            >
+              <Plus size={16} />
+              <span>{t.studioAddReward}</span>
+            </button>
+          </div>
+
+          {/* List of existing rewards */}
+          <div className="fs-studio-card">
+            <h2 className="fs-studio-card-title">{t.studioSavedRewards} ({rewards.length})</h2>
+            <div className="fs-studio-vault-grid">
+              {rewards.map((r) => (
+                <div key={r.id} className="fs-studio-vault-card">
+                  <div className="fs-studio-vault-thumb">
+                    <img src={getAvatarSrc(r.asset) || r.asset} alt="" />
+                    <div style={{ position: 'absolute', top: 6, left: 6 }}>
+                      <span className={`fs-rarity-badge rarity-${r.rarity.toLowerCase()}`}>
+                        {r.rarity}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="fs-studio-vault-details">
+                    <strong className="fs-studio-vault-name">{r.name}</strong>
+                    <span style={{ fontSize: '0.72rem', color: '#a1a1aa' }}>
+                      {r.unlockType === 'mission' ? `💬 ภารกิจ (${r.turns} ข้อความ)` : `💎 ตู้สุ่ม (+${r.energyFallback} ⚡)`}
+                    </span>
+                    <button
+                      type="button"
+                      className="fs-studio-vault-del-btn"
+                      onClick={() => handleDeleteReward(r.id)}
+                    >
+                      <Trash2 size={12} style={{ display: 'inline', marginRight: 4 }} />
+                      <span>{t.studioDelete}</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}

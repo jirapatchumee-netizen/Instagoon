@@ -616,6 +616,11 @@ async function player(req,env,user,path,now,ctx) {
    caption:r.caption||'',
    message:r.message||'',
    minLevel:r.conditions?.find(c=>c.field==='level')?.value||2,
+   rarity:r.rarity||'SR',
+   unlockType:r.unlockType||'mission',
+   hint:r.hint||'',
+   conditions:r.conditions||[],
+   energyFallback:r.energyFallback||5,
    unlocked:unlockedSet.has(r.asset)
   }));
   const episodeList=[];
@@ -646,6 +651,171 @@ async function player(req,env,user,path,now,ctx) {
    vault,
    episodes:episodeList
   });
+ }
+ m=path.match(/^\/api\/creators\/([\w-]+)\/missions$/);
+ if(m&&method==='GET'){
+  const creatorId=id(m[1]);
+  const [creator, relRes, defRes, unlocksRes, turnsRow, energyRow]=await Promise.all([
+   one(env,'SELECT * FROM creators WHERE id=?',creatorId),
+   one(env,'SELECT score,closeness,trust,romance FROM relationships WHERE user_id=? AND creator_id=?',user.id,creatorId),
+   one(env,'SELECT definition_json FROM npc_definitions WHERE creator_id=?',creatorId),
+   all(env,'SELECT reward_key,unlocked_at FROM reward_unlocks WHERE user_id=? AND creator_id=?',user.id,creatorId),
+   one(env,"SELECT COUNT(*) AS total_turns FROM ai_chat_messages WHERE user_id=? AND creator_id=? AND role='user'",user.id,creatorId),
+   one(env,'SELECT free,purchased,COALESCE(diamonds,0) AS diamonds FROM energy WHERE user_id=?',user.id)
+  ]);
+  if(!creator) return json({error:'not_found'},404);
+  let npcDef=null; if(defRes?.definition_json){try{npcDef=JSON.parse(defRes.definition_json);}catch(e){}}
+  const unlockedMap=new Map((unlocksRes||[]).map(r=>[r.reward_key, r.unlocked_at]));
+  const closeness=relRes?.closeness||0;
+  const trust=relRes?.trust||0;
+  const romance=relRes?.romance||0;
+  const turns=turnsRow?.total_turns||0;
+  const score=relRes?.score||0;
+  const cfg=relationshipConfig(npcDef);
+  const currentLv=levelOf(cfg,score);
+
+  const rewards=(npcDef?.rewards||[]).map(r=>{
+    const isUnlocked=unlockedMap.has(r.asset);
+    const conditions=(r.conditions||[]).map(c=>{
+      let currentVal=0;
+      if(c.field==='turns') currentVal=turns;
+      else if(c.field==='trust') currentVal=trust;
+      else if(c.field==='romance') currentVal=romance;
+      else if(c.field==='closeness') currentVal=closeness;
+      else if(c.field==='level') currentVal=currentLv;
+      else if(c.field==='event') currentVal=0;
+      return {
+        field: c.field,
+        target: c.value,
+        current: currentVal,
+        satisfied: currentVal >= c.value,
+        eventId: c.eventId||''
+      };
+    });
+    return {
+      id: r.id,
+      name: r.name,
+      asset: r.asset,
+      caption: r.caption||'',
+      message: r.message||'',
+      rarity: r.rarity||'SR',
+      unlockType: r.unlockType||'mission',
+      hint: r.hint||'',
+      conditions,
+      energyFallback: r.energyFallback||5,
+      unlocked: isUnlocked,
+      unlockedAt: unlockedMap.get(r.asset)||null
+    };
+  });
+
+  return json({
+    creator: { id: creator.id, name: creator.name, avatarKey: creator.avatar_key },
+    stats: { closeness, trust, romance, turns, level: currentLv, score },
+    missions: rewards.filter(r=>r.unlockType==='mission'),
+    gachaPool: rewards.filter(r=>r.unlockType==='diamond_gacha'),
+    diamonds: energyRow?.diamonds||0,
+    energy: (energyRow?.free||0) + (energyRow?.purchased||0)
+  });
+ }
+ m=path.match(/^\/api\/creators\/([\w-]+)\/gacha\/pull$/);
+ if(m&&method==='POST'){
+  const creatorId=id(m[1]);
+  const GACHA_COST = 10;
+  const curEnergy=await one(env,'SELECT free,purchased,COALESCE(diamonds,0) AS diamonds FROM energy WHERE user_id=?',user.id);
+  const diamonds=curEnergy?.diamonds||0;
+  if(diamonds < GACHA_COST){
+    return json({error:'insufficient_diamonds',required:GACHA_COST,current:diamonds},400);
+  }
+
+  const defRow=await one(env,'SELECT definition_json FROM npc_definitions WHERE creator_id=?',creatorId);
+  let npcDef=null; if(defRow?.definition_json){try{npcDef=JSON.parse(defRow.definition_json);}catch(e){}}
+  let pool=(npcDef?.rewards||[]).filter(r=>r.unlockType==='diamond_gacha');
+  if(!pool.length) pool=(npcDef?.rewards||[]).filter(r=>r.rarity==='SSR'||r.rarity==='UR');
+  if(!pool.length) pool=(npcDef?.rewards||[]);
+
+  const unlockedRows=await all(env,'SELECT reward_key FROM reward_unlocks WHERE user_id=? AND creator_id=?',user.id,creatorId);
+  const unlockedSet=new Set(unlockedRows.map(r=>r.reward_key));
+
+  const roll = Math.random();
+  let wonCard = null;
+  let isDuplicate = false;
+  let energyAwarded = 0;
+
+  if(pool.length > 0 && roll < 0.65){
+    const pickIndex = Math.floor(Math.random() * pool.length);
+    const candidate = pool[pickIndex];
+    if(unlockedSet.has(candidate.asset)){
+      isDuplicate = true;
+      energyAwarded = candidate.energyFallback || 5;
+      wonCard = candidate;
+    } else {
+      wonCard = candidate;
+      energyAwarded = 0;
+    }
+  } else {
+    energyAwarded = 5;
+  }
+
+  const pullId = crypto.randomUUID();
+  const ledgerId = crypto.randomUUID();
+
+  if(wonCard && !isDuplicate){
+    await env.DB.batch([
+      env.DB.prepare('UPDATE energy SET diamonds=MAX(0, diamonds-?) WHERE user_id=?').bind(GACHA_COST, user.id),
+      env.DB.prepare('INSERT INTO reward_unlocks(user_id,creator_id,reward_key,unlocked_at) VALUES(?,?,?,?)').bind(user.id, creatorId, wonCard.asset, now),
+      env.DB.prepare("INSERT INTO token_ledger(id,user_id,delta_free,delta_purchased,delta_diamonds,reason,created_at) VALUES(?,?,0,0,?,'gacha_pull',?)").bind(ledgerId, user.id, -GACHA_COST, now),
+      env.DB.prepare('INSERT INTO gacha_pulls(id,user_id,creator_id,diamonds_spent,reward_key,energy_awarded,is_duplicate,created_at) VALUES(?,?,?,?,?,0,0,?)').bind(pullId, user.id, creatorId, GACHA_COST, wonCard.asset, now)
+    ]);
+  } else {
+    await env.DB.batch([
+      env.DB.prepare('UPDATE energy SET diamonds=MAX(0, diamonds-?), purchased=purchased+? WHERE user_id=?').bind(GACHA_COST, energyAwarded, user.id),
+      env.DB.prepare("INSERT INTO token_ledger(id,user_id,delta_free,delta_purchased,delta_diamonds,reason,created_at) VALUES(?,?,0,?,?,'gacha_energy_reward',?)").bind(ledgerId, user.id, energyAwarded, -GACHA_COST, now),
+      env.DB.prepare('INSERT INTO gacha_pulls(id,user_id,creator_id,diamonds_spent,reward_key,energy_awarded,is_duplicate,created_at) VALUES(?,?,?,?,?,?,?,?)').bind(pullId, user.id, creatorId, GACHA_COST, wonCard?.asset || null, energyAwarded, isDuplicate ? 1 : 0, now)
+    ]);
+  }
+
+  const updatedEnergy = await energy(env, user.id, now);
+  return json({
+    ok: true,
+    wonCard: !isDuplicate && !!wonCard,
+    isDuplicate,
+    card: wonCard ? {
+      id: wonCard.id,
+      name: wonCard.name,
+      asset: wonCard.asset,
+      rarity: wonCard.rarity || 'SR',
+      caption: wonCard.caption || '',
+      message: wonCard.message || ''
+    } : null,
+    energyAwarded,
+    energy: updatedEnergy
+  });
+ }
+ if(path==='/api/user/collection'&&method==='GET'){
+  const unlocks=await all(env,'SELECT creator_id, reward_key, unlocked_at FROM reward_unlocks WHERE user_id=? ORDER BY unlocked_at DESC',user.id);
+  const defRows=await all(env,'SELECT creator_id, definition_json FROM npc_definitions');
+  const creators=await all(env,'SELECT id, name, avatar_key FROM creators');
+  const creatorMap=new Map(creators.map(c=>[c.id, c]));
+  const defMap=new Map(defRows.map(r=>{let d=null;try{d=JSON.parse(r.definition_json||'null');}catch{}return [r.creator_id, d];}));
+
+  const cards=unlocks.map(u=>{
+    const def=defMap.get(u.creator_id);
+    const cInfo=creatorMap.get(u.creator_id);
+    const rew=(def?.rewards||[]).find(r=>r.asset===u.reward_key);
+    return {
+      id: rew?.id || u.reward_key,
+      name: rew?.name || 'รางวัลพิเศษ',
+      asset: u.reward_key,
+      caption: rew?.caption || '',
+      rarity: rew?.rarity || 'SR',
+      unlockType: rew?.unlockType || 'mission',
+      creatorId: u.creator_id,
+      creatorName: cInfo?.name || u.creator_id,
+      creatorAvatar: cInfo?.avatar_key || '',
+      unlockedAt: u.unlocked_at
+    };
+  });
+  return json({ cards });
  }
  if(path==='/api/feed'&&method==='GET'){
   const posts=await all(env,`SELECT p.*,c.name creator_name,(SELECT COUNT(*) FROM likes l WHERE l.post_id=p.id) likes,EXISTS(SELECT 1 FROM likes l WHERE l.post_id=p.id AND l.user_id=?) liked,EXISTS(SELECT 1 FROM saves sv WHERE sv.post_id=p.id AND sv.user_id=?) saved,EXISTS(SELECT 1 FROM comment_claims x WHERE x.user_id=? AND x.post_id=p.id) claimed FROM posts p JOIN creators c ON c.id=p.creator_id JOIN follows f ON f.creator_id=p.creator_id AND f.user_id=? LEFT JOIN relationships r ON r.creator_id=p.creator_id AND r.user_id=? WHERE p.status='published' AND p.published_at<=? AND COALESCE(r.score,0)>=p.relationship_required ORDER BY p.published_at DESC LIMIT 100`,user.id,user.id,user.id,user.id,user.id,now);
