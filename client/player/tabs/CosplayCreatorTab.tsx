@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { TRANSLATIONS, type Lang } from '../i18n';
 import { Sparkles, User, MessageCircle, ShieldCheck, Play, Check, Send, Heart, RotateCcw, Camera, X, Loader2, Image as ImageIcon, Trash2, Plus, Gem } from 'lucide-react';
-import { getAvatarSrc } from '../ui';
+import { media } from '../ui';
 import { resizeImageToStandard } from '../lib/image-resizer';
 import { api } from '../api';
 
@@ -25,19 +25,15 @@ export interface RewardDraft {
   energyFallback: number;
 }
 
-const PRESET_AVATARS = [
-  'avatars/mira.webp',
-  'avatars/noey.webp',
-  'avatars/fahsai.webp',
-  'avatars/charlotte.webp',
-  'avatars/lin.webp',
-];
+// Uploaded drafts come back as media keys (studio-drafts/<uid>/...). Older local drafts may hold data URLs.
+const studioSrc = (key: string) => (!key ? '' : key.startsWith('data:') ? key : media(key));
 
 export function CosplayCreatorTab({ lang }: CosplayCreatorTabProps) {
   const t = TRANSLATIONS[lang];
   const [activeTab, setActiveTab] = useState<'identity' | 'voice' | 'safety' | 'sandbox' | 'gallery'>('identity');
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [uploadSuccessNotice, setUploadSuccessNotice] = useState(false);
+  const [uploadError, setUploadError] = useState(false);
 
   // File upload & crop state
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -53,8 +49,8 @@ export function CosplayCreatorTab({ lang }: CosplayCreatorTabProps) {
   // Pillar 1: Identity & Visual
   const [name, setName] = useState('Yuki');
   const [handle, setHandle] = useState('yuki.cosplay');
-  const [concept, setConcept] = useState('Yor Forger - Assassin in everyday life');
-  const [avatar, setAvatar] = useState('avatars/mira.webp');
+  const [concept, setConcept] = useState('');
+  const [avatar, setAvatar] = useState('');
   const [tags, setTags] = useState('cosplay, anime, assassin, cute');
   const [likes, setLikes] = useState('Macaron, photography, cute anime');
   const [dislikes, setDislikes] = useState('Rude messages, bugs');
@@ -86,38 +82,9 @@ export function CosplayCreatorTab({ lang }: CosplayCreatorTabProps) {
   const [inputMessage, setInputMessage] = useState('');
 
   // Pillar 5: Vault & Missions
-  const [rewards, setRewards] = useState<RewardDraft[]>([
-    {
-      id: 'reward-1',
-      name: 'เรื่องที่เป็นไปไม่ได้',
-      asset: 'avatars/mira.webp',
-      caption: 'ภาพชุดพิเศษริมหาด',
-      message: 'ปลดล็อกรูปภาพลับแล้วนะคะ! แอบถ่ายไว้ให้ดูคนเดียวเลยนะ 💕',
-      rarity: 'SSR',
-      unlockType: 'mission',
-      hint: 'ปรับความเข้าใจคืนดีกันไว้ใจกัน',
-      turns: 40,
-      trust: 100,
-      romance: 50,
-      energyFallback: 5,
-    },
-    {
-      id: 'reward-2',
-      name: 'ชุดราตรีลับเฉพาะคืนนี้',
-      asset: 'avatars/noey.webp',
-      caption: 'ภาพชุดราตรีซีทรูสุดพิเศษ',
-      message: 'ชุดนี้เค้าใส่ให้ตัวเองดูคนเดียวนะ ห้ามแอบเซฟไปให้เพื่อนดูล่ะ ✨',
-      rarity: 'UR',
-      unlockType: 'diamond_gacha',
-      hint: 'ตู้สุ่มเพชรเท่านั้น',
-      turns: 0,
-      trust: 0,
-      romance: 0,
-      energyFallback: 8,
-    }
-  ]);
+  const [rewards, setRewards] = useState<RewardDraft[]>([]);
   const [newRewardTitle, setNewRewardTitle] = useState('');
-  const [newRewardAsset, setNewRewardAsset] = useState('avatars/mira.webp');
+  const [newRewardAsset, setNewRewardAsset] = useState('');
   const [newRewardRarity, setNewRewardRarity] = useState<'R' | 'SR' | 'SSR' | 'UR'>('SSR');
   const [newRewardUnlockType, setNewRewardUnlockType] = useState<'mission' | 'diamond_gacha'>('mission');
   const [newRewardHint, setNewRewardHint] = useState('ปรับความเข้าใจคืนดีกันไว้ใจกัน');
@@ -167,6 +134,9 @@ export function CosplayCreatorTab({ lang }: CosplayCreatorTabProps) {
         if (data.voiceTone) setVoiceTone(data.voiceTone);
         if (data.sampleQuotes) setSampleQuotes(data.sampleQuotes);
         if (Array.isArray(data.levelStyles) && data.levelStyles.length === 5) setLevelStyles(data.levelStyles);
+        if (typeof data.ruleNoAddress === 'boolean') setRuleNoAddress(data.ruleNoAddress);
+        if (typeof data.ruleNoMeet === 'boolean') setRuleNoMeet(data.ruleNoMeet);
+        if (typeof data.rulePoliteReject === 'boolean') setRulePoliteReject(data.rulePoliteReject);
         if (data.secret) setSecret(data.secret);
         if (data.immutableFacts) setImmutableFacts(data.immutableFacts);
         if (data.openingLocation) setOpeningLocation(data.openingLocation);
@@ -219,25 +189,15 @@ export function CosplayCreatorTab({ lang }: CosplayCreatorTabProps) {
         panY,
       });
 
-      try {
-        const res = await api<{ ok: boolean; mediaKey: string }>('/api/media/upload', {
-          method: 'POST',
-          headers: { 'Content-Type': 'image/webp' },
-          body: resized.blob,
-        });
-        const finalKey = res.mediaKey || resized.dataUrl;
-        if (cropTarget === 'avatar') {
-          setAvatar(finalKey);
-        } else {
-          setNewRewardAsset(finalKey);
-        }
-      } catch {
-        const finalKey = resized.dataUrl;
-        if (cropTarget === 'avatar') {
-          setAvatar(finalKey);
-        } else {
-          setNewRewardAsset(finalKey);
-        }
+      const res = await api<{ ok: boolean; mediaKey: string }>('/api/media/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'image/webp' },
+        body: resized.blob,
+      });
+      if (cropTarget === 'avatar') {
+        setAvatar(res.mediaKey);
+      } else {
+        setNewRewardAsset(res.mediaKey);
       }
 
       setUploadSuccessNotice(true);
@@ -245,6 +205,8 @@ export function CosplayCreatorTab({ lang }: CosplayCreatorTabProps) {
       setCropModalOpen(false);
     } catch (err) {
       console.error('Failed to resize and upload', err);
+      setUploadError(true);
+      setTimeout(() => setUploadError(false), 4000);
     } finally {
       setUploading(false);
     }
@@ -408,6 +370,13 @@ export function CosplayCreatorTab({ lang }: CosplayCreatorTabProps) {
         </div>
       )}
 
+      {uploadError && (
+        <div className="fs-studio-alert-error" role="alert">
+          <X size={16} />
+          <span>{t.studioUploadError}</span>
+        </div>
+      )}
+
       {uploadSuccessNotice && (
         <div className="fs-studio-alert-success">
           <Check size={16} />
@@ -422,7 +391,11 @@ export function CosplayCreatorTab({ lang }: CosplayCreatorTabProps) {
             <label className="fs-studio-label">{t.studioAvatarLabel}</label>
             <div className="fs-studio-avatar-row">
               <div className="fs-studio-current-avatar">
-                <img src={getAvatarSrc(avatar) || avatar} alt="Avatar" className="fs-studio-avatar-img" />
+                {avatar ? (
+                  <img src={studioSrc(avatar)} alt={name} className="fs-studio-avatar-img" />
+                ) : (
+                  <span className="fs-studio-avatar-placeholder">{(name.trim()[0] || '?').toUpperCase()}</span>
+                )}
               </div>
 
               {/* Upload & Auto-Resize Controls */}
@@ -437,7 +410,10 @@ export function CosplayCreatorTab({ lang }: CosplayCreatorTabProps) {
                 <button
                   type="button"
                   className="fs-studio-upload-btn"
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => {
+                    setCropTarget('avatar');
+                    fileInputRef.current?.click();
+                  }}
                   disabled={uploading}
                 >
                   <Camera size={14} />
@@ -445,18 +421,6 @@ export function CosplayCreatorTab({ lang }: CosplayCreatorTabProps) {
                 </button>
               </div>
 
-              <div className="fs-studio-preset-avatars">
-                {PRESET_AVATARS.map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    className={`fs-studio-preset-btn ${avatar === p ? 'is-selected' : ''}`}
-                    onClick={() => setAvatar(p)}
-                  >
-                    <img src={getAvatarSrc(p) || p} alt="" />
-                  </button>
-                ))}
-              </div>
             </div>
           </div>
 
@@ -489,7 +453,7 @@ export function CosplayCreatorTab({ lang }: CosplayCreatorTabProps) {
               rows={2}
               value={concept}
               onChange={(e) => setConcept(e.target.value)}
-              placeholder="e.g. Yor Forger - ลุคสาวออฟฟิศขี้อายแต่แอบแกร่ง"
+              placeholder="e.g. นักสืบสาวในชุดกิโมโนสีน้ำเงิน ขี้อายแต่แอบแกร่ง"
             />
           </div>
 
@@ -721,6 +685,7 @@ export function CosplayCreatorTab({ lang }: CosplayCreatorTabProps) {
             </div>
 
             {/* Message Stream */}
+            <p className="fs-studio-mock-notice">{t.studioMockNotice}</p>
             <div className="fs-studio-chat-stream">
               {testMessages.map((msg, i) => (
                 <div
@@ -728,7 +693,7 @@ export function CosplayCreatorTab({ lang }: CosplayCreatorTabProps) {
                   className={`fs-studio-msg ${msg.sender === 'user' ? 'is-user' : 'is-creator'}`}
                 >
                   {msg.sender === 'creator' && (
-                    <img src={getAvatarSrc(avatar) || avatar} alt="" className="fs-studio-msg-avatar" />
+                    avatar ? <img src={studioSrc(avatar)} alt="" className="fs-studio-msg-avatar" /> : null
                   )}
                   <div className="fs-studio-msg-bubble">{msg.text}</div>
                 </div>
@@ -763,7 +728,7 @@ export function CosplayCreatorTab({ lang }: CosplayCreatorTabProps) {
               <label className="fs-studio-label">{t.studioAvatarLabel}</label>
               <div className="fs-studio-avatar-row">
                 <div className="fs-studio-current-avatar" style={{ aspectRatio: '4/5', width: 90, height: 112, borderRadius: 12 }}>
-                  <img src={getAvatarSrc(newRewardAsset) || newRewardAsset} alt="Reward preview" className="fs-studio-avatar-img" />
+                  {newRewardAsset ? <img src={studioSrc(newRewardAsset)} alt="" className="fs-studio-avatar-img" /> : <span className="fs-studio-avatar-placeholder"><ImageIcon size={22} /></span>}
                 </div>
                 <button
                   type="button"
@@ -907,7 +872,7 @@ export function CosplayCreatorTab({ lang }: CosplayCreatorTabProps) {
               {rewards.map((r) => (
                 <div key={r.id} className="fs-studio-vault-card">
                   <div className="fs-studio-vault-thumb">
-                    <img src={getAvatarSrc(r.asset) || r.asset} alt="" />
+                    {r.asset ? <img src={studioSrc(r.asset)} alt="" /> : null}
                     <div style={{ position: 'absolute', top: 6, left: 6 }}>
                       <span className={`fs-rarity-badge rarity-${r.rarity.toLowerCase()}`}>
                         {r.rarity}
@@ -943,14 +908,6 @@ export function CosplayCreatorTab({ lang }: CosplayCreatorTabProps) {
           onClick={handleSaveDraft}
         >
           {t.studioSaveDraft}
-        </button>
-        <button
-          type="button"
-          className="fs-studio-btn-publish"
-          onClick={handleSaveDraft}
-        >
-          <Sparkles size={16} />
-          <span>{t.studioPublish}</span>
         </button>
       </div>
 
@@ -1023,7 +980,7 @@ export function CosplayCreatorTab({ lang }: CosplayCreatorTabProps) {
                 className="fs-studio-btn-cancel"
                 onClick={() => setCropModalOpen(false)}
               >
-                Cancel
+                {t.studioCancel}
               </button>
               <button
                 type="button"
