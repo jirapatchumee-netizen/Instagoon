@@ -34,6 +34,7 @@ test('draft is stored per account and launch refuses an incomplete or under-age 
   const saved = await call('/api/studio/draft', { method: 'PUT', json: { ...draft, age: 17 } });
   assert.equal(saved.status, 200);
   assert.deepEqual(saved.body.problems, ['age']);
+  assert.equal(saved.body.status, 'draft');
   assert.equal((await call('/api/studio/draft')).body.draft.age, 17);
   assert.equal((await call('/api/studio/draft', { uid: 'two' })).status, 403, 'outside STAGING_EMAILS');
   const r = await call('/api/studio/launch', { method: 'POST', json: { ...draft, age: 17 } });

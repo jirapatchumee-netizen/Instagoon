@@ -1965,7 +1965,7 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
   if(path==='/api/studio/draft'&&method==='PUT'){
    const draft=cleanDraft(await body(req));
    await run(env,'INSERT INTO studio_creators(user_id,draft_json,updated_at) VALUES(?,?,?) ON CONFLICT(user_id) DO UPDATE SET draft_json=excluded.draft_json,updated_at=excluded.updated_at',user.id,JSON.stringify(draft),now);
-   return json({...view({...row,draft_json:JSON.stringify(draft),updated_at:now}),problems:launchProblems(draft)});
+   return json({...view({...row,status:row?.status||'draft',draft_json:JSON.stringify(draft),updated_at:now}),problems:launchProblems(draft)});
   }
   if(path==='/api/studio/unpublish'&&method==='POST'){
    if(row?.status!=='live')return json({error:'not_live'},409);
