@@ -42,10 +42,22 @@
       "Edit(/server/package.json)",
       "Write(/server/package.json)"
     ],
+    "allow": [
+      "Bash(*wrangler deploy*--config*wrangler.staging.toml*)",
+      "Bash(*wrangler d1 migrations apply instagoon-staging*--remote*--config*wrangler.staging.toml*)",
+      "Bash(*wrangler d1 migrations list instagoon-staging*--remote*--config*wrangler.staging.toml*)",
+      "Bash(gh pr create*)",
+      "Bash(gh pr merge*)",
+      "Bash(gh run watch*)",
+      "Bash(gh run list*)",
+      "Bash(gh run view*)"
+    ],
     "ask": [
       "Bash(*wrangler deploy*--env production*)",
       "Bash(*wrangler deploy*-e production*)",
-      "Bash(*wrangler d1 migrations apply*--remote*)",
+      "Bash(*wrangler d1 migrations apply froststory*--remote*)",
+      "Bash(*wrangler d1 migrations apply*--env production*)",
+      "Bash(*wrangler d1 migrations apply*-e production*)",
       "Bash(*wrangler d1 execute*--remote*)",
       "Bash(gh pr merge * --admin*)",
       "Bash(gh workflow run *)"
