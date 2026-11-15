@@ -1122,6 +1122,8 @@ export function FrostStoryApp() {
               });
               setBugReportOpen(true);
             }}
+            onOpenShop={() => setShopOpen(true)}
+            onOpenChat={(creator) => void openChat(creator)}
             onLogout={() =>
               void action(async () => {
                 await api("/api/logout", json({}));
