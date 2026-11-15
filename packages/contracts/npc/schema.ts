@@ -6,8 +6,24 @@ const id = z.string().regex(/^[a-zA-Z0-9_-]{1,100}$/);
 const asset = z.string().regex(/^(|(assets|avatars|rewards|posts)\/[a-zA-Z0-9_.-]+\.(png|jpg|jpeg|webp|gif))$/);
 export const ScoresSchema = z.object({ closeness: z.number().min(0).max(100), trust: z.number().min(0).max(100), romance: z.number().min(0).max(100) }).strict();
 export const RuleSchema = z.object({ id, name: text.min(1), description: text, kind: z.enum(['semantic', 'keyword']), keywords: z.array(z.string().min(1).max(200)).max(50), positiveExamples: text, negativeExamples: text, changes: z.object({ closeness: z.number().min(-100).max(100), trust: z.number().min(-100).max(100), romance: z.number().min(-100).max(100) }).strict(), cooldown: z.number().int().min(0).max(10000), maxUses: z.number().int().min(0).max(10000), locked: z.boolean().optional() }).strict();
-export const ConditionSchema = z.object({ field: z.enum(['level', 'closeness', 'trust', 'romance', 'event', 'turns']), value: z.number().min(0).max(100000), eventId: z.string().max(100) }).strict();
-export const RewardSchema = z.object({ id, name: text.min(1), asset, caption: text, message: text, conditions: z.array(ConditionSchema).min(1).max(30) }).strict();
+export const RarityEnum = z.enum(['R', 'SR', 'SSR', 'UR']);
+export type Rarity = z.infer<typeof RarityEnum>;
+export const UnlockTypeEnum = z.enum(['mission', 'diamond_gacha']);
+export type UnlockType = z.infer<typeof UnlockTypeEnum>;
+export const ConditionSchema = z.object({ field: z.enum(['level', 'closeness', 'trust', 'romance', 'event', 'turns']), value: z.number().min(-100).max(100000), eventId: z.string().max(100) }).strict();
+export const RewardSchema = z.object({
+  id,
+  name: text.min(1),
+  asset,
+  caption: text,
+  message: text,
+  conditions: z.array(ConditionSchema).max(30),
+  rarity: RarityEnum.default('SR'),
+  unlockType: UnlockTypeEnum.default('mission'),
+  hint: text.max(200).optional(),
+  energyFallback: z.number().int().min(1).max(50).default(5),
+  gachaWeight: z.number().int().min(1).max(1000).default(100),
+}).strict();
 export const KnowledgeEntrySchema = z.object({ id, title:z.string().min(1).max(200), aliases:z.array(z.string().min(1).max(200)).max(30), content:z.string().min(1).max(4000), source:z.string().max(1000).refine(v=>!v||/^https?:\/\//i.test(v),'ที่มาต้องเป็น URL http หรือ https'), checkedAt:z.string().max(30) }).strict();
 export const SensoryPropsSchema = z.object({ scent: text.optional(), clothing: text.optional(), props: text.optional() }).strict();
 export const NpcObjectSchema = z.object({
