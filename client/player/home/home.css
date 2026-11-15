@@ -1,3 +1,13 @@
+/* Tailwind: ไม่มีไฟล์ CSS ไหนเรียก @tailwind มาก่อน utility class ของ Home Hub จึงไม่ถูกสร้างเลย (หน้าพังทั้งหน้า).
+   preflight ปิดใน tailwind.config.js เพื่อไม่ให้ reset กระทบทั้งแอป — base ที่เหลือคือตัวแปร --tw-* ที่ shadow/gradient/transform ใช้.
+   reset ด้านล่างใช้ :where() ให้ specificity เป็น 0 utility จึงทับได้เสมอ และจำกัดไว้ใน .player-home-scope */
+@tailwind base;
+:where(.player-home-scope) :where(*, ::before, ::after) { border-width: 0; border-style: solid; border-color: hsl(var(--border)); }
+:where(.player-home-scope) :where(button, input) { background: transparent; color: inherit; font: inherit; padding: 0; }
+:where(.player-home-scope) :where(img, svg) { display: block; max-width: 100%; }
+@tailwind components;
+@tailwind utilities;
+
 /* Design tokens สำหรับ Home Hub ใหม่เท่านั้น — import เฉพาะใน HomeHub.tsx
    ค่าทั้งหมด map จาก palette เดิมของ froststory.css (bg #000000, panel #09090b/#18181b,
    accent #ec4899 → #a855f7 → #eab308) เพื่อไม่ให้ visual regression ทั้งแอป */

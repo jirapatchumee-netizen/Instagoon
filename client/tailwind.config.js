@@ -30,5 +30,7 @@ export default {
       animation: { 'accordion-down': 'accordion-down 0.2s ease-out', 'accordion-up': 'accordion-up 0.2s ease-out' }
     }
   },
+  // ปิด preflight: reset ทั้งหน้าจะทับสไตล์เดิมใน froststory.css · Home Hub ใช้ reset แบบ scoped ใน home/home.css แทน
+  corePlugins: { preflight: false },
   plugins: [animate],
 };
