@@ -31,17 +31,17 @@
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   pointer-events: none;
-  opacity: 0.48;
+  opacity: 0.24;
   transition: opacity 0.3s ease;
 }
 
 .player-creators-scope .holo-card:hover::before,
 .player-creators-scope .holo-card.is-spotlight::before {
-  opacity: 0.95;
+  opacity: 0.48;
 }
 
 .player-creators-scope .holo-card.is-spotlight {
-  box-shadow: 0 14px 34px -10px rgba(192, 132, 252, 0.28), 0 0 22px -6px rgba(56, 189, 248, 0.22);
+  box-shadow: 0 14px 34px -10px rgba(192, 132, 252, 0.14), 0 0 22px -6px rgba(56, 189, 248, 0.11);
 }
 
 /* Interactive Pointer Foil Sheen */
@@ -50,9 +50,9 @@
   --py: 50%;
   background: radial-gradient(
     circle at var(--px) var(--py),
-    rgba(255, 255, 255, 0.16) 0%,
-    rgba(56, 189, 248, 0.12) 25%,
-    rgba(232, 121, 249, 0.12) 48%,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(56, 189, 248, 0.06) 25%,
+    rgba(232, 121, 249, 0.06) 48%,
     transparent 75%
   );
   mix-blend-mode: screen;
@@ -69,8 +69,8 @@
 /* Subtle Micro-Sparkle Grain */
 .player-creators-scope .holo-sparkle-grain {
   background-image:
-    radial-gradient(rgba(255, 255, 255, 0.26) 1px, transparent 1px),
-    radial-gradient(rgba(192, 132, 252, 0.22) 1px, transparent 1px);
+    radial-gradient(rgba(255, 255, 255, 0.13) 1px, transparent 1px),
+    radial-gradient(rgba(192, 132, 252, 0.11) 1px, transparent 1px);
   background-size: 20px 20px, 29px 29px;
   background-position: 0 0, 9px 13px;
   mix-blend-mode: screen;
