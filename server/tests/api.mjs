@@ -351,7 +351,7 @@ try{const turn=await request('/api/chats/c/message',{method:'POST',data:{message
    assert.equal(fallbackRes.payload.action,'ยิ้มเบาๆ ให้');
    const latestTurn = sql.prepare("SELECT model, outcome FROM ai_turn_metrics WHERE user_id='u' ORDER BY created_at DESC LIMIT 1").get();
    assert.equal(latestTurn.outcome, 'ok');
-   assert.equal(latestTurn.model, '@cf/qwen/qwen2.5-coder-32b-instruct');
+   assert.equal(latestTurn.model, '@cf/meta/llama-4-scout-17b-16e-instruct');
   } finally {
    delete env.AI;
   }
