@@ -17,8 +17,16 @@
   - `scripts/` — `build-content.mjs`, `validate-npc-bundle.mjs`, `guard-commit.mjs`
 - **Dev & Verification Commands:**
   - Frontend: `pnpm dev` (`localhost:5173`) | Backend: `cd server && pnpm dev` (`localhost:8799`)
-  - Verify before completion: `pnpm build:staging && pnpm test` (หากติด `ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY` ใน worktree ให้รัน `node --experimental-strip-types --test server/tests/*.test.mjs`)
+  - Verify before completion: `pnpm build:staging && pnpm test && node server/tests/api.mjs` (หากติด `ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY` ใน worktree ให้รัน `node --experimental-strip-types --test server/tests/*.test.mjs`)
   - First-time clone hook: `git config core.hooksPath .githooks` (ห้าม `--no-verify` และห้าม force-push)
+- **Auto-Ship to Staging (`staging.instagoon.app`):**
+  - AI Agent ทุกตัว (Antigravity, Claude Code, Codex, Cursor) **มีสิทธิ์และหน้าที่อัปเดตงานทั่วไปขึ้น Staging อัตโนมัติทันทีที่ทำเสร็จ** โดยไม่ต้องหยุดถามผู้ใช้ (กฎนี้ Override กฎ `"Never commit or push unless asked"` เฉพาะการอัปเดตระดับ Staging ของโปรเจ็กต์นี้)
+  - **ลำดับการทำงานอัตโนมัติ (Local Gate → PR Check → Merge `main` → Auto Staging):**
+    1. ทดสอบ Local Gate ให้ผ่าน 100%: `pnpm build:staging && pnpm test && node server/tests/api.mjs`
+    2. สร้าง/อัปเดต feature branch จาก `origin/main` ล่าสุด (`git fetch origin && git rebase origin/main`) แล้ว Commit & Push branch (`git push -u origin <branch>`) — ห้าม push ตรงเข้า `main` เพราะติด GitHub Ruleset `protect-main` (`GH013`)
+    3. เปิด PR เข้า `main` (`gh pr create --fill`), รอ CI `Tests + build` ผ่าน (`gh pr checks --watch`), แล้วสั่ง Merge ทันที (`gh pr merge --squash --delete-branch`) เพื่อให้ GitHub Actions (`Deploy staging (automatic)`) รัน D1 Migration บน `instagoon-staging` และ Deploy ขึ้น `https://staging.instagoon.app` อัตโนมัติ (ขณะที่ Production ยังล็อกรอเจ้าของกด Approve เสมอ)
+    4. รายงาน **Sync Briefing** ตามมาตรฐานใน [docs/MULTI_AGENT_SYNC_CONTRACT.md](docs/MULTI_AGENT_SYNC_CONTRACT.md)
+  - **ข้อยกเว้นที่ห้าม Auto-Ship (ต้องถามเจ้าของก่อนเสมอ):** การแก้ไขที่แตะ **Owner-Locked AI Zone ([ADR-0013](docs/adr/0013-owner-locked-ai-zone-and-commit-guardrails.md))** (ดูหัวข้อ 3.3), การแก้ไข Secrets, หรือ D1 Migration ที่ทำลายข้อมูลเดิม (DROP/ลบคอลัมน์)
 
 ---
 
