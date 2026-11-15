@@ -182,10 +182,10 @@ export function HeroCard({ creators, t, onChat, onOpenProfile }: Props) {
       foil.style.setProperty('--pointer-x', `${px}%`);
       foil.style.setProperty('--pointer-y', `${py}%`);
       foil.style.setProperty('--holo-angle', `${100 + px * 0.7}deg`);
-      foil.style.opacity = '0.82';
+      foil.style.opacity = '0.65';
     }
-    const tiltY = ((px - 50) / 50) * 6;
-    const tiltX = ((50 - py) / 50) * 5;
+    const tiltY = ((px - 50) / 50) * 5;
+    const tiltX = ((50 - py) / 50) * 4;
     card.style.transition = 'transform 0.08s ease-out';
     card.style.transform = `translate3d(0px, 0px, 0px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) scale(1.015)`;
   };
@@ -198,7 +198,7 @@ export function HeroCard({ creators, t, onChat, onOpenProfile }: Props) {
       foil.style.setProperty('--pointer-x', '50%');
       foil.style.setProperty('--pointer-y', '50%');
       foil.style.setProperty('--holo-angle', '125deg');
-      foil.style.opacity = '0.48';
+      foil.style.opacity = '0';
     }
     card.style.transition = 'transform 0.45s cubic-bezier(0.22, 1, 0.36, 1)';
     card.style.transform = 'translate3d(0px, 0px, 0px) rotateY(0deg) rotateZ(0deg) scale(1)';
@@ -298,17 +298,17 @@ export function HeroCard({ creators, t, onChat, onOpenProfile }: Props) {
                   className="absolute inset-0 h-full w-full object-cover"
                 />
 
-                {/* Dynamic Holographic Rainbow Foil & Sparkle Grain */}
+                {/* Dynamic Holographic Rainbow Foil & Sparkle Grain (Visible only on hover like bottom cards) */}
                 <div
                   className="holo-foil-layer absolute inset-0 pointer-events-none"
                   style={{
-                    opacity: isActive ? (isDragging ? 0.72 : 0.48) : 0.22,
+                    opacity: 0,
                     ['--holo-angle' as any]: `${angleShift}deg`,
                     ['--pointer-x' as any]: `${Math.max(10, Math.min(90, posX))}%`,
                     ['--pointer-y' as any]: '50%',
                   }}
                 />
-                <div className="holo-sparkle-grain absolute inset-0 pointer-events-none" />
+                <div className="holo-sparkle-grain absolute inset-0 opacity-0 pointer-events-none" />
 
                 {/* Dynamic Drag Glare Layer */}
                 <div
@@ -329,9 +329,15 @@ export function HeroCard({ creators, t, onChat, onOpenProfile }: Props) {
 
                 {/* Top Floating Badges */}
                 <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2 z-10 pointer-events-none">
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-amber-200 via-pink-300 to-cyan-200 text-zinc-950 shadow-md flex items-center gap-1 truncate max-w-[140px]">
-                    <span className="w-1.5 h-1.5 rounded-full bg-zinc-900 animate-pulse shrink-0" />
-                    <span className="truncate">✦ {isCosplay ? `UR · ${t.filterCosplay}` : 'UR · แนะนำ'}</span>
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold text-white shadow-sm backdrop-blur-md border flex items-center gap-1 truncate max-w-[140px] ${
+                      isCosplay
+                        ? 'bg-violet-600/85 border-violet-400/40'
+                        : 'bg-pink-600/85 border-pink-400/40'
+                    }`}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shrink-0" />
+                    <span className="truncate">{isCosplay ? `🎭 ${t.filterCosplay}` : t.heroHeading(creator.name)}</span>
                   </span>
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-black/60 backdrop-blur-md border border-white/20 text-zinc-100 shrink-0">
                     {isCosplay ? 'Cosplay AI' : t.aiImageBadge}
