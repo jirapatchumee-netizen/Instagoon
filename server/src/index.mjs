@@ -2047,7 +2047,7 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
   if(!allowed)return json({error:'not_found'},404);const file=await bundledMedia(env,mediaKey,req.headers.get('accept')||'')||await mediaStore(env).get(mediaKey);if(!file)return json({error:'not_found'},404);
   return new Response(file.body,{headers:{'content-type':file.httpMetadata?.contentType||'application/octet-stream','cache-control':'private, max-age=86400','vary':'Accept','x-content-type-options':'nosniff','content-security-policy':"default-src 'none'; img-src 'self' data:; media-src 'self'; style-src 'unsafe-inline'; sandbox"}});
  }
- if(path==='/api/account'&&method==='DELETE'){await env.DB.batch([env.DB.prepare('DELETE FROM npc_definitions WHERE creator_id IN (SELECT creator_id FROM studio_creators WHERE user_id=?)').bind(user.id),env.DB.prepare('DELETE FROM users WHERE id=?').bind(user.id)]);return json({ok:true},200,{'set-cookie':secureCookie('frost_session','',0)});}
+ if(path==='/api/account'&&method==='DELETE'){await run(env,'DELETE FROM users WHERE id=?',user.id);return json({ok:true},200,{'set-cookie':secureCookie('frost_session','',0)});}
  return json({error:'not_found'},404);
 }
 async function admin(req,env,path,now){
@@ -2104,7 +2104,7 @@ async fetch(req,env,ctx){
   if(path.startsWith('/api/reports/'))return await shopReportsApi(req,env,path);
   const user=await session(req,env);
   if(path==='/api/logout'&&req.method==='POST'){if(user)await run(env,'DELETE FROM sessions WHERE id=?',await hash(cookie(req,'frost_session')));return json({ok:true},200,{'set-cookie':secureCookie('frost_session','',0)});}
-  if(path==='/api/account'&&req.method==='DELETE'){if(!user)return json({error:'unauthorized'},401);await env.DB.batch([env.DB.prepare('DELETE FROM invites WHERE email=?').bind(user.email),env.DB.prepare('DELETE FROM users WHERE id=?').bind(user.id)]);return json({ok:true},200,{'set-cookie':secureCookie('frost_session','',0)});}
+  if(path==='/api/account'&&req.method==='DELETE'){if(!user)return json({error:'unauthorized'},401);await env.DB.batch([env.DB.prepare('DELETE FROM invites WHERE email=?').bind(user.email),env.DB.prepare('DELETE FROM npc_definitions WHERE creator_id IN (SELECT creator_id FROM studio_creators WHERE user_id=?)').bind(user.id),env.DB.prepare('DELETE FROM users WHERE id=?').bind(user.id)]);return json({ok:true},200,{'set-cookie':secureCookie('frost_session','',0)});}
   if(path.startsWith('/api/admin/')){
    if(!user)return json({error:'unauthorized'},401);
    if(!isAdminUser(env,user) && !await access(req,env,user))return json({error:'forbidden'},403);
