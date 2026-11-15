@@ -66,6 +66,9 @@ test('launch makes the character visible and chattable for another player, and u
   assert.ok(!(await call('/api/creators', { uid: 'two' })).body.creators.some(c => c.id === 'cos_yuki_cosplay'));
   assert.equal((await call('/api/chats/cos_yuki_cosplay/message', { uid: 'two', method: 'POST', json: { message: 'อยู่ไหม' } })).status, 404);
   assert.equal((await call('/api/studio/launch', { method: 'POST', json: draft })).body.status, 'live', 'relaunch');
+  assert.equal((await call('/api/account', { method: 'DELETE' })).status, 200);
+  assert.ok(!(await call('/api/creators', { uid: 'two' })).body.creators.some(c => c.id === 'cos_yuki_cosplay'), 'owner deleting the account takes the character down');
+  assert.equal((await call('/api/chats/cos_yuki_cosplay/message', { uid: 'two', method: 'POST', json: { message: 'อยู่ไหม' } })).status, 404);
 });
 
 test('launch cannot take an existing creator id or publish another account\'s media', async () => {

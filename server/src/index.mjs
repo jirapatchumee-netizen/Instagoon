@@ -542,8 +542,8 @@ async function player(req,env,user,path,now,ctx) {
  // A retired character must not remain reachable through a saved profile/chat URL.
  const creatorRoute = path.match(/^\/api\/(?:creators|chats)\/([\w-]+)(?:\/|$)/);
  if (creatorRoute && (await removedCreators(env)).includes(creatorRoute[1])) return json({error:'not_found'},404);
- // A Studio character that is not live (never launched or taken down) is hidden the same way.
- if (creatorRoute && await one(env, "SELECT 1 x FROM studio_creators WHERE creator_id=? AND status<>'live'", creatorRoute[1])) return json({error:'not_found'},404);
+ // A Studio character (cos_ id) is live only while it has a definition: taken down, or its owner deleted the account.
+ if (creatorRoute && creatorRoute[1].startsWith('cos_') && !await one(env, 'SELECT 1 x FROM npc_definitions WHERE creator_id=?', creatorRoute[1])) return json({error:'not_found'},404);
  const experimentRoute = path.match(/^\/api\/chats\/([\w-]+)(?:\/(message|edit-message|reset-chat|memories))?$/);
  if (experimentRoute) {
   const row = await one(env, 'SELECT definition_json FROM npc_definitions WHERE creator_id=?', experimentRoute[1]);
@@ -570,8 +570,8 @@ async function player(req,env,user,path,now,ctx) {
   const chatCount=new Map(countRows.map(r=>[r.creator_id,r.chat_count]));
   const firstEp=new Map(firstEpRows.map(r=>[r.creator_id,r.title]));
   const preview=r=>r?{text:inboxPreview(r.content),at:r.created_at,fromCreator:r.role==='assistant'}:null;
-  const hiddenStudio=new Set((await all(env,"SELECT creator_id FROM studio_creators WHERE status<>'live' AND creator_id IS NOT NULL")).map(r=>r.creator_id));
-  return json({creators:rows.filter(c=>!removed.has(c.id)&&!hiddenStudio.has(c.id)).map(c=>{
+  const live=new Set(defRows.map(r=>r.creator_id));
+  return json({creators:rows.filter(c=>!removed.has(c.id)&&(!c.id.startsWith('cos_')||live.has(c.id))).map(c=>{
    const l=last.get(c.id),d=def.get(c.id)||{};
    const isCosplay=d.creatorType==='cosplay'||(Array.isArray(d.tags)&&d.tags.some(t=>/cosplay|คอสเพลย์/i.test(t)));
    return {
@@ -2047,7 +2047,7 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
   if(!allowed)return json({error:'not_found'},404);const file=await bundledMedia(env,mediaKey,req.headers.get('accept')||'')||await mediaStore(env).get(mediaKey);if(!file)return json({error:'not_found'},404);
   return new Response(file.body,{headers:{'content-type':file.httpMetadata?.contentType||'application/octet-stream','cache-control':'private, max-age=86400','vary':'Accept','x-content-type-options':'nosniff','content-security-policy':"default-src 'none'; img-src 'self' data:; media-src 'self'; style-src 'unsafe-inline'; sandbox"}});
  }
- if(path==='/api/account'&&method==='DELETE'){await run(env,'DELETE FROM users WHERE id=?',user.id);return json({ok:true},200,{'set-cookie':secureCookie('frost_session','',0)});}
+ if(path==='/api/account'&&method==='DELETE'){await env.DB.batch([env.DB.prepare('DELETE FROM npc_definitions WHERE creator_id IN (SELECT creator_id FROM studio_creators WHERE user_id=?)').bind(user.id),env.DB.prepare('DELETE FROM users WHERE id=?').bind(user.id)]);return json({ok:true},200,{'set-cookie':secureCookie('frost_session','',0)});}
  return json({error:'not_found'},404);
 }
 async function admin(req,env,path,now){
