@@ -5,23 +5,27 @@
 
 ---
 
-## ⚡ 1. The Git Synchronization Protocol (Non-Negotiable)
+## ⚡ 1. The Git Synchronization & Auto-Staging Protocol (Non-Negotiable)
 
-Because multiple autonomous agents and developers commit to `main` simultaneously:
+Because multiple autonomous agents (Antigravity, Claude Code, Codex, Cursor) and developers work in parallel and ship continuously to Staging (`https://staging.instagoon.app`):
 
-1. **Pull Before Work & Before Push**:
+1. **Standing Authorization to Auto-Update Staging (`main` → Staging)**:
+   - AI Agents are **authorized and expected to commit and push/merge verified non-protected work to `main` automatically** without pausing to ask the human for commit/push confirmation (this project rule overrides generic `"Never commit or push unless asked"` rules for Staging updates).
+   - Every push or merge into `main` triggers GitHub Actions (`Deploy staging (automatic)`), which automatically applies unapplied D1 migrations on `instagoon-staging` and deploys the Worker + Frontend assets to `https://staging.instagoon.app`.
+   - **Production (`https://instagoon.app`) remains strictly gated** by GitHub Environment (`production`) required reviewers (`jirapatchumee-netizen`, `taychinsgo`).
+   - **Protected Zone Exception (ADR-0013 — Must Ask Owner First)**: Agents MUST pause and ask the owner before modifying or shipping any file in the Owner-Locked AI Zone (`server/src/ai/protected/`, `GEMINI_MODEL`/`SUMMARY_MODEL`, `scripts/guard-commit.mjs`, `.githooks/`, `.github/`, `.claude/settings.json`, or the `"scripts"` block in `package.json`), changing Cloudflare secrets, or authoring destructive (non-additive) D1 migrations.
+2. **Pull Before Work & Before Push**:
    Always ensure your working directory is based on the latest remote `origin/main` using rebase:
    ```bash
    # Before making changes, or when ready to push:
-   git stash
+   git fetch origin
    git pull --rebase origin main
-   git stash pop
    ```
-2. **Never Force-Push**:
-   `git push --force` or `--force-with-lease` is strictly prohibited on `main`.
-3. **Atomic Commits with Clear Scope**:
-   - `feat(npc-studio): ...`
+3. **Never Force-Push or Bypass Hooks**:
+   `git push --force`, `--force-with-lease`, and `git commit --no-verify` are strictly prohibited.
+4. **Atomic Commits with Clear Scope**:
    - `feat(player): ...`
+   - `feat(content): ...`
    - `fix(worker): ...`
    - `docs: ...`
 
@@ -70,25 +74,34 @@ When updating Zod schemas in `apps/Instagoon/lib/npc/schema.ts`:
 
 ---
 
-## 🧪 5. Pre-Push Verification Gate
+## 🧪 5. Pre-Push Verification & Auto-Staging Gate
 
-Before running `git push origin main`, always verify:
+Before pushing to `origin/main` or merging a PR into `main`, every AI Agent MUST run and pass the full local verification suite:
 
 ```bash
-# 1. Typecheck and build frontend
-pnpm --dir apps/Instagoon build
+# 1. Build frontend in staging mode + validate content bundle
+pnpm build:staging
 
-# 2. Check Visual Novel engine (if touching VN core)
-pnpm vn:check
+# 2. Run Worker unit tests, guardrail tests, and API contract tests
+pnpm test
+node server/tests/api.mjs
 ```
 
-Pushing commits that fail `pnpm --dir apps/Instagoon build` will break the automated GitHub Actions CI/CD pipeline on Cloudflare Workers.
+Once all checks pass with 0 errors, ship via PR into `main` (direct push to `main` is rejected by GitHub Ruleset `protect-main` `GH013`):
+```bash
+git fetch origin && git rebase origin/main
+git push -u origin HEAD
+gh pr create --fill
+gh pr checks --watch
+gh pr merge --squash --delete-branch
+```
+- GitHub Actions (`Deploy staging (automatic)`) will automatically run tests, apply any pending `server/migrations/*.sql` to `instagoon-staging`, and deploy to `https://staging.instagoon.app`.
 
 ---
 
 ## 📢 6. Mandatory Sync Briefing Protocol (สรุปการเปลี่ยนแปลงทุกครั้งที่ซิงก์)
 
-Whenever an AI Agent or developer synchronizes changes (after running `git pull --rebase origin main` or before/after pushing updates):
+Whenever an AI Agent or developer synchronizes changes (after running `git pull --rebase origin main` or after pushing/merging updates to `main` for Staging):
 You MUST provide a clear, concise **Sync Briefing** in the chat using this standardized 4-part format:
 
 ```text
@@ -96,7 +109,7 @@ You MUST provide a clear, concise **Sync Briefing** in the chat using this stand
 - 📦 **Commits**: <commit hash, author, title>
 - 🛠️ **Functional Changes**: <what was added, modified, or fixed>
 - 🔍 **Impact & Blast Radius**: <affected files, schemas, APIs, or UI routes>
-- 🚀 **Build Status**: <verified via `pnpm --dir apps/Instagoon build` (0 errors)>
+- 🚀 **Staging & Build Status**: <verified via `pnpm build:staging && pnpm test` (0 errors) → auto-deployed to `staging.instagoon.app`>
 ```
 
 ### ทำไมกติกานี้ถึงจำเป็นอย่างยิ่ง:
@@ -133,17 +146,17 @@ You MUST provide a clear, concise **Sync Briefing** in the chat using this stand
 - **ห้ามตอบรับแบบ Flat NPC / Thank-you Machine**: เมื่อผู้เล่นพิมพ์หยอด เต๊าะ หรือส่งสัญญาณเชิงโรแมนซ์ สคริปต์ Episode และ System Prompt ต้อง "ดักคอมุก & แซวกลับอย่างมีเสน่ห์ (Banter)" ก่อนเสมอ
 - **สูตรคำนวณคะแนน Episode**: ต้องรักษาน้ำหนักให้ Best Path ได้แต้มรวมระหว่าง **20 - 24 แต้ม** และความยาวข้อความ $\le 180$ ตัวอักษร, ชอยส์ $\le 40$ ตัวอักษร
 
-### 7.4 Local-First Testing Rule (ทดสอบ Local ก่อนเสมอ)
-ห้าม Deploy หรือ Push งานที่ยังไม่ได้ทดสอบบน Local เด็ดขาด ให้รันคำสั่งตรวจสอบ:
+### 7.4 Local-First Testing & Auto-Staging Rule (ทดสอบ Local แล้วส่งขึ้น Staging อัตโนมัติ)
+ห้าม Push งานที่ยังไม่ได้ทดสอบบน Local เด็ดขาด ให้รันคำสั่งตรวจสอบ:
 ```bash
-# ตรวจสอบความถูกต้องของโครงสร้างคอนเทนต์
-pnpm --dir apps/Instagoon run build:staging
+# ตรวจสอบความถูกต้องของโครงสร้างคอนเทนต์และ Build Staging
+pnpm build:staging
 
 # รันเทสของ Worker และ Content Sync
-node --experimental-strip-types --test apps/Instagoon/worker/tests/*.test.mjs
-node apps/Instagoon/worker/tests/api.mjs
+node --experimental-strip-types --test server/tests/*.test.mjs
+node server/tests/api.mjs
 ```
-เมื่อผ่านการทดสอบบนเครื่อง Local ทั้งหมดแล้ว จึงทำการ commit และแจ้ง Sync Briefing ให้กับทีมอื่นทราบ
+เมื่อผ่านการทดสอบบนเครื่อง Local ทั้งหมดแล้ว ให้ AI Agent ทำการ Commit, Rebase กับ `origin/main`, และ Push/Merge เข้า `main` เพื่ออัปเดต `staging.instagoon.app` อัตโนมัติทันทีโดยไม่ต้องรอถามผู้ใช้ (ยกเว้นไฟล์ใน Protected Zone ตาม ADR-0013) พร้อมแจ้ง Sync Briefing ให้ทีมอื่นทราบ
 
 ---
 
