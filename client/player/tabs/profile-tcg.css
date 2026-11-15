@@ -1,0 +1,182 @@
+/* Instagoon Profile & Holographic Collection (TCG Foil UI) */
+.fs-profile-scope {
+  position: relative;
+  width: 100%;
+}
+
+:where(.fs-profile-scope) :where(*, ::before, ::after) {
+  border-width: 0;
+  border-style: solid;
+  border-color: rgba(255, 255, 255, 0.1);
+  box-sizing: border-box;
+}
+
+:where(.fs-profile-scope) :where(button, input, select) {
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 0;
+}
+
+:where(.fs-profile-scope) :where(img, svg) {
+  display: block;
+}
+
+/* Hide scrollbars cleanly */
+.fs-profile-scope .no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.fs-profile-scope .no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Holographic Text Shimmer */
+@keyframes prismPulse {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.fs-profile-scope .holo-text-shimmer {
+  background: linear-gradient(90deg, #f472b6, #c084fc, #38bdf8, #fbbf24, #f472b6);
+  background-size: 240% auto;
+  animation: prismPulse 5s linear infinite;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Collectible TCG Holographic Card Surface */
+.fs-profile-scope .holo-tcg-card {
+  position: relative;
+  background: linear-gradient(150deg, #151524 0%, #0b0b12 100%);
+  border-radius: 20px;
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease;
+  transform-style: preserve-3d;
+}
+
+.fs-profile-scope .holo-tcg-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  padding: 1.5px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.36) 0%,
+    rgba(56, 189, 248, 0.65) 28%,
+    rgba(236, 72, 153, 0.72) 58%,
+    rgba(251, 191, 36, 0.68) 85%,
+    rgba(255, 255, 255, 0.3) 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Diamond Gacha Foil Pack Box */
+.fs-profile-scope .gacha-foil-box {
+  position: relative;
+  background: linear-gradient(145deg, rgba(49, 22, 74, 0.72) 0%, rgba(16, 20, 38, 0.92) 55%, rgba(28, 14, 42, 0.88) 100%);
+  border-radius: 22px;
+  box-shadow: 0 12px 32px -8px rgba(168, 85, 247, 0.28), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+}
+
+.fs-profile-scope .gacha-foil-box::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 22px;
+  padding: 1.5px;
+  background: linear-gradient(125deg, #f472b6, #a855f7, #38bdf8, #fbbf24, #f472b6);
+  background-size: 220% 220%;
+  animation: prismPulse 6s linear infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Interactive Pointer Foil Sheen */
+.fs-profile-scope .holo-foil-sheen {
+  --px: 50%;
+  --py: 50%;
+  background: radial-gradient(
+    circle at var(--px) var(--py),
+    rgba(255, 255, 255, 0.28) 0%,
+    rgba(56, 189, 248, 0.18) 26%,
+    rgba(236, 72, 153, 0.18) 52%,
+    transparent 78%
+  );
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+/* Micro-Sparkle Foil Grain */
+.fs-profile-scope .holo-sparkle-grain {
+  background-image:
+    radial-gradient(rgba(255, 255, 255, 0.28) 1px, transparent 1px),
+    radial-gradient(rgba(192, 132, 252, 0.24) 1px, transparent 1px);
+  background-size: 18px 18px, 27px 27px;
+  background-position: 0 0, 9px 12px;
+  mix-blend-mode: screen;
+  opacity: 0.25;
+  pointer-events: none;
+}
+
+/* Holographic Buttons */
+.fs-profile-scope .btn-holo-gacha {
+  background: linear-gradient(100deg, #9333ea 0%, #c026d3 48%, #4f46e5 100%);
+  background-size: 180% 100%;
+  box-shadow: 0 6px 20px -4px rgba(192, 38, 211, 0.55), inset 0 1px 1px rgba(255, 255, 255, 0.35);
+  transition: background-position 0.3s ease, transform 0.15s ease, box-shadow 0.2s ease;
+}
+.fs-profile-scope .btn-holo-gacha:hover {
+  background-position: 100% 0;
+  box-shadow: 0 8px 26px -3px rgba(192, 38, 211, 0.7);
+}
+.fs-profile-scope .btn-holo-gacha:active {
+  transform: scale(0.97);
+}
+
+.fs-profile-scope .btn-holo-pink {
+  background: linear-gradient(100deg, #ec4899 0%, #d946ef 50%, #8b5cf6 100%);
+  box-shadow: 0 6px 18px -4px rgba(236, 72, 153, 0.5);
+  transition: transform 0.15s ease, opacity 0.2s ease;
+}
+.fs-profile-scope .btn-holo-pink:active {
+  transform: scale(0.96);
+}
+
+/* Avatar Prismatic Frame */
+.fs-profile-scope .avatar-foil-ring {
+  background: linear-gradient(135deg, #f472b6, #a855f7, #38bdf8, #fbbf24);
+  padding: 2.5px;
+}
+
+/* Settings Card Surface */
+.fs-profile-scope .settings-panel {
+  background: linear-gradient(160deg, #111118 0%, #0b0b10 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+}
+
+/* Card Reveal Pop Animation */
+@keyframes cardRevealPop {
+  0% { transform: scale(0.72) rotateY(-35deg); opacity: 0; }
+  65% { transform: scale(1.04) rotateY(8deg); opacity: 1; }
+  100% { transform: scale(1) rotateY(0deg); opacity: 1; }
+}
+
+.fs-profile-scope .animate-card-reveal {
+  animation: cardRevealPop 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0.4; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.fs-profile-scope .animate-slide-up {
+  animation: slideUp 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
