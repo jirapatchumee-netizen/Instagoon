@@ -112,18 +112,18 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <section className="mt-6">
-      <div className="mb-2.5 flex items-baseline justify-between px-0.5">
-        <div>
-          <h2 className="flex items-center gap-1.5 text-[17px] font-extrabold tracking-tight text-white">
-            <span>{title}</span>
-            <span className="text-[14px] text-zinc-500 font-normal">›</span>
+    <section className="space-y-3">
+      <div className="flex items-baseline justify-between gap-2 px-0.5">
+        <div className="min-w-0">
+          <h2 className="flex items-center gap-1.5 text-[15.5px] font-bold tracking-tight text-white">
+            <span className="truncate">{title}</span>
+            <span className="text-[14px] font-normal text-zinc-500">›</span>
           </h2>
           {subtitle ? (
-            <p className="mt-0.5 text-[11.5px] leading-snug text-zinc-400">{subtitle}</p>
+            <p className="mt-0.5 text-[11px] leading-snug text-zinc-400">{subtitle}</p>
           ) : null}
         </div>
-        {hint ? <small className="text-[11px] font-normal text-muted-foreground">{hint}</small> : null}
+        {hint ? <small className="shrink-0 text-[11px] font-normal text-zinc-400">{hint}</small> : null}
       </div>
       {children}
     </section>
@@ -211,21 +211,22 @@ export function HomeHub({
   }, [creators]);
 
   return (
-    <div className="player-home-scope flex flex-col gap-3 px-3 pb-8 pt-2">
-      {/* Search Input */}
-      <div className="flex items-center gap-2 rounded-full border border-border/80 bg-zinc-900/90 px-3.5 py-2.5 shadow-sm">
-        <Search size={16} className="text-muted-foreground" />
-        <input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder={t.searchPlaceholder}
-          aria-label={t.searchPlaceholder}
-          className="flex-1 bg-transparent text-[14px] text-foreground outline-none placeholder:text-zinc-500"
-        />
-      </div>
+    <div className="player-home-scope flex flex-col gap-6 px-3.5 pb-10 pt-2">
+      {/* Search + Genre Pills */}
+      <div className="space-y-2.5">
+        <div className="flex items-center gap-2 rounded-full border border-white/10 bg-[#12121a] px-3.5 py-2.5 shadow-sm focus-within:border-pink-500/50 transition-colors">
+          <Search size={15} className="shrink-0 text-zinc-500" />
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={t.searchPlaceholder}
+            aria-label={t.searchPlaceholder}
+            className="flex-1 bg-transparent text-[13px] text-foreground outline-none placeholder:text-zinc-500"
+          />
+        </div>
 
-      {/* Genre Pills */}
-      <GenrePills label={t.filtersLabel} filters={filters} active={filter} onSelect={setFilter} />
+        <GenrePills label={t.filtersLabel} filters={filters} active={filter} onSelect={setFilter} />
+      </div>
 
       {/* Hero: Large Vertical 4:5 Card (Dream Chat style as preferred by user) */}
       {featured.length ? (
@@ -251,7 +252,7 @@ export function HomeHub({
       >
         <ScrollRail>
           {chosen.map((creator) => (
-            <div key={creator.id} className="w-[185px] shrink-0">
+            <div key={creator.id} className="w-[164px] shrink-0">
               <CharacterCard creator={creator} t={t} onOpen={onOpenProfile} />
             </div>
           ))}
@@ -284,7 +285,7 @@ export function HomeHub({
       >
         <ScrollRail>
           {specialEpisodes.map((creator) => (
-            <div key={creator.id} className="w-[185px] shrink-0">
+            <div key={creator.id} className="w-[164px] shrink-0">
               <CharacterCard
                 creator={creator}
                 t={t}
@@ -311,7 +312,7 @@ export function HomeHub({
       >
         <ScrollRail>
           {exclusive.map((creator) => (
-            <div key={creator.id} className="w-[185px] shrink-0">
+            <div key={creator.id} className="w-[164px] shrink-0">
               <CharacterCard
                 creator={creator}
                 t={t}

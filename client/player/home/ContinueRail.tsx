@@ -14,7 +14,7 @@ export function ContinueRail({ creators, t, onOpen }: Props) {
           key={creator.id}
           type="button"
           onClick={() => onOpen(creator)}
-          className="group fs-h-card flex w-[268px] shrink-0 items-center gap-2.5 p-3 text-left transition-all duration-200 hover:border-pink-500/40 hover:bg-white/[0.04] active:scale-[0.99]"
+          className="group box-border flex w-[276px] shrink-0 items-center gap-3 rounded-2xl border border-white/10 bg-[#12121a] p-3 text-left transition-all duration-200 hover:border-pink-500/40 hover:bg-[#171722] active:scale-[0.99]"
         >
           <div className="relative shrink-0">
             <ArtTile
@@ -24,23 +24,25 @@ export function ContinueRail({ creators, t, onOpen }: Props) {
               artState={creator.artState}
               className="h-12 w-12 shrink-0 rounded-xl object-cover"
             />
-            <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-400 border-2 border-[#121218] rounded-full" />
+            <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-[#12121a] bg-emerald-400" />
           </div>
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-[12.5px] font-semibold text-foreground">{creator.name}</span>
-            <span className="block truncate text-[11px] text-muted-foreground mt-0.5">
+            <span className="block truncate text-[13px] font-semibold leading-tight text-white">
+              {creator.name}
+            </span>
+            <span className="mt-0.5 block truncate text-[11px] leading-snug text-zinc-400">
               {creator.lastMessage?.text || t.continuePreview}
             </span>
-            <span className="mt-1.5 block h-1 overflow-hidden rounded-full bg-white/10">
+            <span className="mt-2 block h-1 overflow-hidden rounded-full bg-white/10">
               <span
                 className="fs-h-grad-bg block h-full rounded-full"
                 style={{ width: Math.min(100, Math.max(6, (creator.relationship || 0) * 10)) + '%' }}
               />
             </span>
           </span>
-          <div className="w-7 h-7 rounded-full bg-pink-500/10 group-hover:bg-gradient-to-r group-hover:from-pink-500 group-hover:to-cyan-400 text-pink-400 group-hover:text-white flex items-center justify-center transition shrink-0">
-            <MessageCircle className="w-3.5 h-3.5" />
-          </div>
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-pink-500/15 text-pink-400 transition group-hover:bg-gradient-to-r group-hover:from-pink-500 group-hover:to-cyan-400 group-hover:text-white">
+            <MessageCircle className="h-4 w-4" />
+          </span>
         </button>
       ))}
     </div>

@@ -37,9 +37,11 @@
 .fs-h-card { border-radius: var(--radius); background: hsl(var(--card)); border: 1px solid hsl(var(--border)); }
 .fs-h-art { aspect-ratio: 4 / 5; background: radial-gradient(120% 90% at 22% 6%, var(--art-color, #ec4899) 0%, #0b0b0d 62%), linear-gradient(160deg, transparent, rgba(0,0,0,.55)); }
 .fs-h-grad-text { background: var(--brand-gradient); -webkit-background-clip: text; background-clip: text; color: transparent; }
-.fs-h-rail { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.fs-h-rail { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
 .fs-h-rail::-webkit-scrollbar { display: none; }
 .fs-h-rail > * { scroll-snap-align: start; }
+.player-home-scope .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.player-home-scope .no-scrollbar::-webkit-scrollbar { display: none; }
 @media (prefers-reduced-motion: reduce) { .fs-h-rail { scroll-behavior: auto; } }
 
 .fs-h-grad-bg { background-image: var(--brand-gradient); }
@@ -112,26 +114,26 @@
   --holo-angle: 125deg;
   background-image:
     radial-gradient(
-      circle at var(--pointer-x) var(--pointer-y),
-      rgba(255, 255, 255, 0.35) 0%,
-      rgba(125, 211, 252, 0.22) 22%,
-      rgba(244, 114, 182, 0.2) 45%,
-      transparent 72%
+      circle 140px at var(--pointer-x) var(--pointer-y),
+      rgba(255, 255, 255, 0.48) 0%,
+      rgba(125, 211, 252, 0.34) 28%,
+      rgba(244, 114, 182, 0.28) 54%,
+      transparent 78%
     ),
     linear-gradient(
       var(--holo-angle),
-      transparent 15%,
-      rgba(56, 189, 248, 0.26) 32%,
-      rgba(232, 121, 249, 0.3) 48%,
-      rgba(253, 224, 71, 0.24) 64%,
-      rgba(52, 211, 153, 0.22) 78%,
-      transparent 92%
+      transparent 12%,
+      rgba(56, 189, 248, 0.3) 30%,
+      rgba(232, 121, 249, 0.34) 48%,
+      rgba(253, 224, 71, 0.28) 66%,
+      rgba(52, 211, 153, 0.24) 80%,
+      transparent 94%
     );
-  background-size: 160% 160%, 220% 220%;
-  background-position: var(--pointer-x) var(--pointer-y), var(--pointer-x) var(--pointer-y);
+  background-size: 100% 100%, 220% 220%;
+  background-position: 0 0, var(--pointer-x) var(--pointer-y);
   mix-blend-mode: color-dodge;
   pointer-events: none;
-  transition: opacity 0.25s ease;
+  transition: opacity 0.22s ease;
 }
 
 /* Subtle Micro-Sparkle Foil Grain */
