@@ -70,19 +70,19 @@ export function PodiumRanking({ creators, t, onOpen }: Props) {
               onClick={() => onOpen(second)}
               className="group flex flex-col items-center text-center focus-visible:outline-none"
             >
-              <div className="relative mb-1 flex items-center justify-center">
-                <div className="h-16 w-16 overflow-hidden rounded-full border-2 border-slate-300 shadow-md ring-2 ring-slate-400/30 transition-transform group-hover:scale-105">
+              <div className="relative mb-1.5 flex items-center justify-center">
+                <div className="h-16 w-16 overflow-hidden rounded-full border-2 border-slate-300 shadow-lg ring-2 ring-slate-400/30 transition-transform group-hover:scale-105">
                   {second.avatarKey ? (
                     <img src={media(second.avatarKey)} alt="" className="h-full w-full object-cover" />
                   ) : (
                     <div className="h-full w-full bg-slate-700" />
                   )}
                 </div>
-                <span className="absolute -bottom-2 rounded-full border border-white/20 bg-black/75 px-1.5 py-0.2 text-[9px] text-slate-200 backdrop-blur-sm">
-                  {t.aiImageBadge}
+                <span className="absolute -bottom-1.5 rounded-full border border-slate-400/40 bg-gradient-to-r from-slate-200 to-slate-400 px-2 py-0.2 text-[9px] font-black text-black shadow">
+                  #2
                 </span>
               </div>
-              <span className="mt-2.5 truncate max-w-[95px] text-[12px] font-bold text-white leading-tight">
+              <span className="mt-2 truncate max-w-[95px] text-[12px] font-bold text-white leading-tight">
                 {second.name}
               </span>
               <span className="truncate max-w-[95px] text-[10px] text-slate-400">
@@ -92,7 +92,7 @@ export function PodiumRanking({ creators, t, onOpen }: Props) {
                 {t.chatCount(compactCount(second.chatCount || 0))}
               </span>
             </button>
-            <div className="mt-2 flex h-20 w-full items-center justify-center rounded-t-xl border-t border-x border-slate-400/40 bg-gradient-to-t from-slate-900/90 via-slate-800/60 to-slate-700/40 shadow-inner">
+            <div className="mt-2 flex h-20 w-full items-center justify-center rounded-t-xl border-t border-x border-slate-300/35 bg-gradient-to-b from-slate-300/20 via-slate-500/10 to-transparent shadow-inner">
               <span className="text-2xl font-black text-slate-300 drop-shadow">2</span>
             </div>
           </div>
@@ -104,20 +104,20 @@ export function PodiumRanking({ creators, t, onOpen }: Props) {
               onClick={() => onOpen(first)}
               className="group flex flex-col items-center text-center focus-visible:outline-none"
             >
-              <Crown className="mb-0.5 h-6 w-6 text-amber-400 drop-shadow-[0_2px_8px_rgba(251,191,36,0.5)] animate-bounce" />
-              <div className="relative mb-1 flex items-center justify-center">
-                <div className="h-20 w-20 overflow-hidden rounded-full border-2 border-amber-400 shadow-xl ring-4 ring-amber-400/30 transition-transform group-hover:scale-105">
+              <Crown className="mb-0.5 h-6 w-6 text-amber-300 drop-shadow-[0_2px_10px_rgba(251,191,36,0.6)]" />
+              <div className="relative mb-1.5 flex items-center justify-center">
+                <div className="h-20 w-20 overflow-hidden rounded-full border-2 border-amber-300 shadow-xl ring-4 ring-amber-400/30 transition-transform group-hover:scale-105">
                   {first.avatarKey ? (
                     <img src={media(first.avatarKey)} alt="" className="h-full w-full object-cover" />
                   ) : (
                     <div className="h-full w-full bg-amber-900" />
                   )}
                 </div>
-                <span className="absolute -bottom-2 rounded-full border border-amber-300/40 bg-amber-950/90 px-1.5 py-0.2 text-[9px] font-medium text-amber-200 backdrop-blur-sm">
-                  {t.aiImageBadge}
+                <span className="absolute -bottom-1.5 rounded-full border border-amber-300/40 bg-gradient-to-r from-amber-200 via-yellow-400 to-amber-500 px-2 py-0.2 text-[9.5px] font-black text-black shadow">
+                  #1
                 </span>
               </div>
-              <span className="mt-2.5 truncate max-w-[105px] text-[13.5px] font-bold text-amber-200 leading-tight">
+              <span className="mt-2 truncate max-w-[105px] text-[13.5px] font-bold text-amber-200 leading-tight">
                 {first.name}
               </span>
               <span className="truncate max-w-[105px] text-[10.5px] text-slate-300">
@@ -127,7 +127,7 @@ export function PodiumRanking({ creators, t, onOpen }: Props) {
                 {t.chatCount(compactCount(first.chatCount || 0))}
               </span>
             </button>
-            <div className="mt-2 flex h-28 w-full items-center justify-center rounded-t-xl border-t border-x border-amber-400/60 bg-gradient-to-t from-amber-950/90 via-amber-900/50 to-amber-600/30 shadow-inner">
+            <div className="mt-2 flex h-28 w-full items-center justify-center rounded-t-xl border-t border-x border-amber-300/50 bg-gradient-to-b from-amber-400/30 via-fuchsia-500/10 to-transparent shadow-inner">
               <span className="text-3xl font-black text-amber-300 drop-shadow">1</span>
             </div>
           </div>
@@ -139,19 +139,19 @@ export function PodiumRanking({ creators, t, onOpen }: Props) {
               onClick={() => onOpen(third)}
               className="group flex flex-col items-center text-center focus-visible:outline-none"
             >
-              <div className="relative mb-1 flex items-center justify-center">
-                <div className="h-16 w-16 overflow-hidden rounded-full border-2 border-amber-700 shadow-md ring-2 ring-amber-700/30 transition-transform group-hover:scale-105">
+              <div className="relative mb-1.5 flex items-center justify-center">
+                <div className="h-16 w-16 overflow-hidden rounded-full border-2 border-amber-700 shadow-lg ring-2 ring-amber-700/30 transition-transform group-hover:scale-105">
                   {third.avatarKey ? (
                     <img src={media(third.avatarKey)} alt="" className="h-full w-full object-cover" />
                   ) : (
                     <div className="h-full w-full bg-stone-800" />
                   )}
                 </div>
-                <span className="absolute -bottom-2 rounded-full border border-white/20 bg-black/75 px-1.5 py-0.2 text-[9px] text-slate-200 backdrop-blur-sm">
-                  {t.aiImageBadge}
+                <span className="absolute -bottom-1.5 rounded-full border border-amber-600/40 bg-gradient-to-r from-orange-400 to-amber-800 px-2 py-0.2 text-[9px] font-black text-white shadow">
+                  #3
                 </span>
               </div>
-              <span className="mt-2.5 truncate max-w-[95px] text-[12px] font-bold text-white leading-tight">
+              <span className="mt-2 truncate max-w-[95px] text-[12px] font-bold text-white leading-tight">
                 {third.name}
               </span>
               <span className="truncate max-w-[95px] text-[10px] text-slate-400">
@@ -161,8 +161,8 @@ export function PodiumRanking({ creators, t, onOpen }: Props) {
                 {t.chatCount(compactCount(third.chatCount || 0))}
               </span>
             </button>
-            <div className="mt-2 flex h-16 w-full items-center justify-center rounded-t-xl border-t border-x border-amber-700/40 bg-gradient-to-t from-stone-950/90 via-amber-950/60 to-amber-800/30 shadow-inner">
-              <span className="text-2xl font-black text-amber-600 drop-shadow">3</span>
+            <div className="mt-2 flex h-16 w-full items-center justify-center rounded-t-xl border-t border-x border-orange-400/35 bg-gradient-to-b from-orange-500/20 via-amber-900/10 to-transparent shadow-inner">
+              <span className="text-2xl font-black text-orange-400 drop-shadow">3</span>
             </div>
           </div>
         </div>

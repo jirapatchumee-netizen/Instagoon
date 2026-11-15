@@ -46,3 +46,203 @@
 .fs-h-grad-text { background-image: var(--brand-gradient); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .player-home-scope .fs-h-art { background: radial-gradient(120% 90% at 22% 6%, var(--art-color, #ec4899) 0%, #0b0b0d 62%), linear-gradient(160deg, transparent, rgba(0,0,0,.55)); }
 .player-home-scope .fs-h-card { border-radius: var(--radius); background: hsl(var(--card)); border: 1px solid hsl(var(--border)); }
+
+/* 3D Carousel Stage & Collectible Holographic Hero Cards */
+.player-home-scope .carousel-stage {
+  perspective: 1150px;
+  transform-style: preserve-3d;
+  touch-action: pan-y;
+}
+
+.player-home-scope .hero-card {
+  position: absolute;
+  width: 254px;
+  height: 364px;
+  left: 50%;
+  top: 50%;
+  margin-left: -127px;
+  margin-top: -182px;
+  border-radius: 26px;
+  transform-style: preserve-3d;
+  will-change: transform, opacity;
+  user-select: none;
+  -webkit-user-select: none;
+  box-shadow: 0 22px 48px -12px rgba(0, 0, 0, 0.95);
+  background: #0e0e14;
+}
+
+/* Prismatic Metallic TCG Card Border */
+.player-home-scope .hero-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 26px;
+  padding: 1.5px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.5) 0%,
+    rgba(56, 189, 248, 0.6) 28%,
+    rgba(232, 121, 249, 0.7) 55%,
+    rgba(251, 191, 36, 0.6) 82%,
+    rgba(255, 255, 255, 0.45) 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 25;
+  opacity: 0.55;
+  transition: opacity 0.35s ease;
+}
+
+.player-home-scope .hero-card.is-active {
+  box-shadow:
+    0 26px 55px -10px rgba(168, 85, 247, 0.35),
+    0 0 28px -4px rgba(56, 189, 248, 0.25);
+}
+
+.player-home-scope .hero-card.is-active::before {
+  opacity: 1;
+}
+
+/* Interactive Rainbow Holographic Foil Overlay */
+.player-home-scope .holo-foil-layer {
+  --pointer-x: 50%;
+  --pointer-y: 50%;
+  --holo-angle: 125deg;
+  background-image:
+    radial-gradient(
+      circle at var(--pointer-x) var(--pointer-y),
+      rgba(255, 255, 255, 0.35) 0%,
+      rgba(125, 211, 252, 0.22) 22%,
+      rgba(244, 114, 182, 0.2) 45%,
+      transparent 72%
+    ),
+    linear-gradient(
+      var(--holo-angle),
+      transparent 15%,
+      rgba(56, 189, 248, 0.26) 32%,
+      rgba(232, 121, 249, 0.3) 48%,
+      rgba(253, 224, 71, 0.24) 64%,
+      rgba(52, 211, 153, 0.22) 78%,
+      transparent 92%
+    );
+  background-size: 160% 160%, 220% 220%;
+  background-position: var(--pointer-x) var(--pointer-y), var(--pointer-x) var(--pointer-y);
+  mix-blend-mode: color-dodge;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+/* Subtle Micro-Sparkle Foil Grain */
+.player-home-scope .holo-sparkle-grain {
+  background-image:
+    radial-gradient(rgba(255, 255, 255, 0.32) 1px, transparent 1px),
+    radial-gradient(rgba(192, 132, 252, 0.28) 1px, transparent 1px);
+  background-size: 22px 22px, 31px 31px;
+  background-position: 0 0, 11px 15px;
+  mix-blend-mode: screen;
+  opacity: 0.26;
+  pointer-events: none;
+}
+
+.player-home-scope .hero-seamless-fade {
+  background: linear-gradient(
+    to top,
+    rgba(8, 8, 13, 0.98) 0%,
+    rgba(8, 8, 13, 0.88) 30%,
+    rgba(10, 10, 16, 0.44) 54%,
+    rgba(10, 10, 16, 0.05) 75%,
+    rgba(0, 0, 0, 0.24) 100%
+  );
+}
+
+.player-home-scope .card-glare {
+  background: linear-gradient(
+    115deg,
+    rgba(255, 255, 255, 0) 20%,
+    rgba(255, 255, 255, 0.16) 48%,
+    rgba(255, 255, 255, 0) 75%
+  );
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+/* Prismatic Foil CTA Button */
+.player-home-scope .btn-holo-cta {
+  background: linear-gradient(100deg, #ec4899 0%, #8b5cf6 48%, #06b6d4 100%);
+  background-size: 180% 100%;
+  transition: background-position 0.35s ease, transform 0.15s ease, box-shadow 0.25s ease;
+}
+.player-home-scope .btn-holo-cta:hover {
+  background-position: 100% 0;
+  box-shadow: 0 8px 22px -4px rgba(139, 92, 246, 0.55);
+}
+.player-home-scope .btn-holo-cta:active {
+  transform: scale(0.96);
+}
+
+.player-home-scope .btn-neon-gradient {
+  background: linear-gradient(90deg, #ec4899 0%, #c026d3 55%, #f59e0b 100%);
+  background-size: 160% 100%;
+  transition: background-position 0.3s ease, transform 0.15s ease;
+}
+.player-home-scope .btn-neon-gradient:hover {
+  background-position: 100% 0;
+}
+.player-home-scope .btn-neon-gradient:active {
+  transform: scale(0.96);
+}
+
+/* Collectible Mini Card Foil Shimmer */
+.player-home-scope .tcg-mini-card {
+  position: relative;
+  background: linear-gradient(160deg, #151520 0%, #0e0e15 100%);
+}
+.player-home-scope .tcg-mini-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    115deg,
+    transparent 25%,
+    rgba(125, 211, 252, 0.12) 45%,
+    rgba(244, 114, 182, 0.14) 55%,
+    transparent 75%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+.player-home-scope .tcg-mini-card:hover::after {
+  opacity: 1;
+}
+
+@keyframes fsPrismPulse {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+.player-home-scope .holo-text-shimmer {
+  background: linear-gradient(90deg, #f472b6, #c084fc, #38bdf8, #f472b6);
+  background-size: 220% auto;
+  animation: fsPrismPulse 5s linear infinite;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+@keyframes fsSwipeHint {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(-5px); }
+}
+.player-home-scope .animate-swipe-hint {
+  animation: fsSwipeHint 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .player-home-scope .animate-swipe-hint {
+    animation: none;
+  }
+  .player-home-scope .hero-card {
+    transition: none !important;
+  }
+}
