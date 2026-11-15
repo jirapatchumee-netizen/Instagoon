@@ -11,22 +11,6 @@
 /* Design tokens สำหรับ Home Hub ใหม่เท่านั้น — import เฉพาะใน HomeHub.tsx
    ค่าทั้งหมด map จาก palette เดิมของ froststory.css (bg #000000, panel #09090b/#18181b,
    accent #ec4899 → #a855f7 → #eab308) เพื่อไม่ให้ visual regression ทั้งแอป */
-/* No Tailwind preflight here, so a button without its own background keeps the native
-   light-gray chrome (podium platforms, period tabs). :where() keeps specificity at zero so
-   this only beats the user-agent default, never a component's own class. */
-:where(.player-home-scope button) {
-  appearance: none;
-  -webkit-appearance: none;
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  margin: 0;
-  padding: 0;
-  font: inherit;
-  color: inherit;
-  text-align: inherit;
-}
-
 .player-home-scope {
   --background: 0 0% 0%;
   --foreground: 210 40% 98%;

@@ -24,7 +24,6 @@ import { PlayerProfileTab } from './tabs/PlayerProfileTab';
 import { ActivityOverlay } from './overlays/ActivityOverlay';
 import { PostMenuSheet } from './overlays/PostMenuSheet';
 import './froststory.css';
-import './tailwind.css';
 
 // Character voice (TTS) is not officially launched yet: the buttons stay hidden until it is. The server
 // endpoint still exists and still charges/refunds Energy as before when called.

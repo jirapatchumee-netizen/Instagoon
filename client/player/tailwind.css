@@ -1,4 +1,0 @@
-/* Utilities only. froststory.css owns every element default in this app, so @tailwind base
-   (preflight) is deliberately not imported — enabling it would restyle the whole player. */
-@tailwind components;
-@tailwind utilities;
