@@ -10,6 +10,7 @@ import { narrativeTurnContext, restoreLegacyInteraction } from './narrative-inte
 import { characterOnlyEnabled, characterOnlyChat } from './character-only-chat.mjs';
 import { shopPlayer, shopAdmin, shopReportsApi, writeDailyReports } from './shop/index.mjs';
 import { handleAgentDevRoute } from './agent-dev-api.mjs';
+import { cleanDraft, launchProblems, studioCreatorId, buildDefinition } from './studio.mjs';
 
 const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), {status, headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store',...headers}});
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), {status}); };
@@ -541,6 +542,8 @@ async function player(req,env,user,path,now,ctx) {
  // A retired character must not remain reachable through a saved profile/chat URL.
  const creatorRoute = path.match(/^\/api\/(?:creators|chats)\/([\w-]+)(?:\/|$)/);
  if (creatorRoute && (await removedCreators(env)).includes(creatorRoute[1])) return json({error:'not_found'},404);
+ // A Studio character that is not live (never launched or taken down) is hidden the same way.
+ if (creatorRoute && await one(env, "SELECT 1 x FROM studio_creators WHERE creator_id=? AND status<>'live'", creatorRoute[1])) return json({error:'not_found'},404);
  const experimentRoute = path.match(/^\/api\/chats\/([\w-]+)(?:\/(message|edit-message|reset-chat|memories))?$/);
  if (experimentRoute) {
   const row = await one(env, 'SELECT definition_json FROM npc_definitions WHERE creator_id=?', experimentRoute[1]);
@@ -567,7 +570,8 @@ async function player(req,env,user,path,now,ctx) {
   const chatCount=new Map(countRows.map(r=>[r.creator_id,r.chat_count]));
   const firstEp=new Map(firstEpRows.map(r=>[r.creator_id,r.title]));
   const preview=r=>r?{text:inboxPreview(r.content),at:r.created_at,fromCreator:r.role==='assistant'}:null;
-  return json({creators:rows.filter(c=>!removed.has(c.id)).map(c=>{
+  const hiddenStudio=new Set((await all(env,"SELECT creator_id FROM studio_creators WHERE status<>'live' AND creator_id IS NOT NULL")).map(r=>r.creator_id));
+  return json({creators:rows.filter(c=>!removed.has(c.id)&&!hiddenStudio.has(c.id)).map(c=>{
    const l=last.get(c.id),d=def.get(c.id)||{};
    const isCosplay=d.creatorType==='cosplay'||(Array.isArray(d.tags)&&d.tags.some(t=>/cosplay|คอสเพลย์/i.test(t)));
    return {
@@ -1951,6 +1955,59 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
   const revisions=await all(env,`SELECT v.id,v.created_at,c.name FROM revisions v JOIN creators c ON c.id=v.creator_id LEFT JOIN relationships r ON r.creator_id=v.creator_id AND r.user_id=? JOIN episodes e ON e.id=v.episode_id WHERE v.status='published' AND COALESCE(r.score,0)>=e.relationship_required ORDER BY v.created_at DESC LIMIT 50`,user.id);
   const notifications=[...posts.map(p=>({id:'post-'+p.id,text:p.name+' มีโพสต์ใหม่',createdAt:p.created_at,readAt:null})),...revisions.map(r=>({id:'dm-'+r.id,text:r.name+' มีบทสนทนาใหม่',createdAt:r.created_at,readAt:null}))].sort((a,b)=>b.createdAt-a.createdAt).slice(0,100);
   return json({notifications});
+ }
+ // ---- Cosplay Creator Studio: one character per account, saved in D1, launched straight to staging players ----
+ if(path==='/api/studio/draft'||path==='/api/studio/launch'||path==='/api/studio/unpublish'){
+  if(!studioAllowed(env,user))return json({error:'forbidden'},403);
+  const row=await one(env,'SELECT creator_id,draft_json,status,launched_at,updated_at FROM studio_creators WHERE user_id=?',user.id);
+  const view=r=>({draft:r?JSON.parse(r.draft_json||'{}'):null,creatorId:r?.creator_id||null,status:r?.status||'none',launchedAt:r?.launched_at||null,updatedAt:r?.updated_at||null});
+  if(path==='/api/studio/draft'&&method==='GET')return json(view(row));
+  if(path==='/api/studio/draft'&&method==='PUT'){
+   const draft=cleanDraft(await body(req));
+   await run(env,'INSERT INTO studio_creators(user_id,draft_json,updated_at) VALUES(?,?,?) ON CONFLICT(user_id) DO UPDATE SET draft_json=excluded.draft_json,updated_at=excluded.updated_at',user.id,JSON.stringify(draft),now);
+   return json({...view({...row,draft_json:JSON.stringify(draft),updated_at:now}),problems:launchProblems(draft)});
+  }
+  if(path==='/api/studio/unpublish'&&method==='POST'){
+   if(row?.status!=='live')return json({error:'not_live'},409);
+   await env.DB.batch([
+    env.DB.prepare("UPDATE studio_creators SET status='draft',updated_at=? WHERE user_id=?").bind(now,user.id),
+    env.DB.prepare('DELETE FROM npc_definitions WHERE creator_id=?').bind(row.creator_id)
+   ]);
+   return json(view({...row,status:'draft',updated_at:now}));
+  }
+  if(path==='/api/studio/launch'&&method==='POST'){
+   const draft=cleanDraft(await body(req));
+   const problems=launchProblems(draft);
+   if(problems.length)return json({error:'draft_incomplete',problems},400);
+   // The id is fixed at first launch, so a later handle change cannot move the character or take another id.
+   const creatorId=row?.creator_id||studioCreatorId(draft.handle);
+   if(!row?.creator_id){
+    const taken=await one(env,'SELECT 1 x FROM creators WHERE id=?',creatorId)||await one(env,'SELECT 1 x FROM studio_creators WHERE creator_id=?',creatorId);
+    if(taken)return json({error:'handle_taken'},409);
+   }
+   // Media goes from the owner's private drafts to a public studio-live/<creatorId>/ key; anything else is refused.
+   const livePrefix=`studio-live/${creatorId}/`, store=mediaStore(env), assetMap={};
+   const publish=async src=>{
+    if(assetMap[src])return assetMap[src];
+    if(src.startsWith(livePrefix))return assetMap[src]=key(src);
+    if(!src.startsWith(studioDraftPrefix(user)))fail('invalid_media_key');
+    const file=await store.get(key(src));if(!file)fail('media_missing');
+    const bytes=new Uint8Array(await new Response(file.body).arrayBuffer()), dest=livePrefix+src.slice(studioDraftPrefix(user).length);
+    if(env.MEDIA?.put)await env.MEDIA.put(dest,bytes,{httpMetadata:{contentType:'image/webp'}});
+    else await run(env,'INSERT INTO media_blobs(key,content_type,bytes,size,uploaded_at) VALUES(?,?,?,?,?) ON CONFLICT(key) DO NOTHING',dest,'image/webp',bytes,bytes.byteLength,now);
+    return assetMap[src]=dest;
+   };
+   const avatarKey=await publish(draft.avatar);
+   for(const r of draft.rewards)await publish(r.asset);
+   const definition=buildDefinition(draft,creatorId,assetMap);
+   await env.DB.batch([
+    env.DB.prepare('INSERT INTO creators(id,name,bio,avatar_key) VALUES(?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,bio=excluded.bio,avatar_key=excluded.avatar_key').bind(creatorId,draft.name,definition.tagline,avatarKey),
+    env.DB.prepare('INSERT INTO npc_definitions(creator_id,definition_json,updated_at) VALUES(?,?,?) ON CONFLICT(creator_id) DO UPDATE SET definition_json=excluded.definition_json,updated_at=excluded.updated_at').bind(creatorId,JSON.stringify(definition),now),
+    env.DB.prepare("INSERT INTO studio_creators(user_id,creator_id,draft_json,status,launched_at,updated_at) VALUES(?,?,?,'live',?,?) ON CONFLICT(user_id) DO UPDATE SET creator_id=excluded.creator_id,draft_json=excluded.draft_json,status='live',launched_at=COALESCE(studio_creators.launched_at,excluded.launched_at),updated_at=excluded.updated_at").bind(user.id,creatorId,JSON.stringify(draft),now,now)
+   ]);
+   return json(view({creator_id:creatorId,draft_json:JSON.stringify(draft),status:'live',launched_at:row?.launched_at||now,updated_at:now}));
+  }
+  return json({error:'not_found'},404);
  }
  if(path==='/api/media/upload'&&method==='POST'){
   if(!studioAllowed(env,user))return json({error:'forbidden'},403);
