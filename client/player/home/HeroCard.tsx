@@ -171,17 +171,50 @@ export function HeroCard({ creators, t, onChat, onOpenProfile }: Props) {
     }, 60);
   };
 
+  const handleCardPointerMove = (e: React.PointerEvent<HTMLDivElement>, isActiveCard: boolean) => {
+    if (!isActiveCard || isDragging || e.pointerType === 'touch') return;
+    const card = e.currentTarget;
+    const rect = card.getBoundingClientRect();
+    const px = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+    const py = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
+    const foil = card.querySelector('.holo-foil-layer') as HTMLElement | null;
+    if (foil) {
+      foil.style.setProperty('--pointer-x', `${px}%`);
+      foil.style.setProperty('--pointer-y', `${py}%`);
+      foil.style.setProperty('--holo-angle', `${100 + px * 0.7}deg`);
+      foil.style.opacity = '0.82';
+    }
+    const tiltY = ((px - 50) / 50) * 6;
+    const tiltX = ((50 - py) / 50) * 5;
+    card.style.transition = 'transform 0.08s ease-out';
+    card.style.transform = `translate3d(0px, 0px, 0px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) scale(1.015)`;
+  };
+
+  const handleCardPointerLeave = (e: React.PointerEvent<HTMLDivElement>, isActiveCard: boolean) => {
+    if (!isActiveCard || isDragging) return;
+    const card = e.currentTarget;
+    const foil = card.querySelector('.holo-foil-layer') as HTMLElement | null;
+    if (foil) {
+      foil.style.setProperty('--pointer-x', '50%');
+      foil.style.setProperty('--pointer-y', '50%');
+      foil.style.setProperty('--holo-angle', '125deg');
+      foil.style.opacity = '0.48';
+    }
+    card.style.transition = 'transform 0.45s cubic-bezier(0.22, 1, 0.36, 1)';
+    card.style.transform = 'translate3d(0px, 0px, 0px) rotateY(0deg) rotateZ(0deg) scale(1)';
+  };
+
   return (
-    <section className="relative pt-1 pb-1">
+    <section className="relative pt-0.5 pb-1">
       {/* Top Section Header with Swipe Hint */}
-      <div className="px-1 flex items-center justify-between text-[11px] text-zinc-400 mb-1.5">
+      <div className="px-1 flex items-center justify-between text-[11px] text-zinc-400 mb-2">
         <span className="flex items-center gap-1.5 font-medium text-pink-400">
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>{t.heroHeading(creators[currentIndex % total]?.name || '')}</span>
+          <Sparkles className="w-3.5 h-3.5 shrink-0" />
+          <span className="truncate">{t.heroHeading(creators[currentIndex % total]?.name || '')}</span>
         </span>
-        <span className="flex items-center gap-1 text-zinc-500 animate-swipe-hint">
+        <span className="flex items-center gap-1 text-zinc-500 animate-swipe-hint shrink-0">
           <Hand className="w-3 h-3" />
-          <span>แตะลากเพื่อหมุนการ์ด</span>
+          <span>ลากหมุนการ์ด</span>
         </span>
       </div>
 
@@ -236,6 +269,8 @@ export function HeroCard({ creators, t, onChat, onOpenProfile }: Props) {
             return (
               <div
                 key={creator.id}
+                onPointerMove={(e) => handleCardPointerMove(e, isActive)}
+                onPointerLeave={(e) => handleCardPointerLeave(e, isActive)}
                 onClick={() => {
                   if (!hasMoved.current && !isActive) {
                     goToCard(idx);
@@ -293,20 +328,20 @@ export function HeroCard({ creators, t, onChat, onOpenProfile }: Props) {
                 <div className="hero-seamless-fade absolute inset-0 pointer-events-none" />
 
                 {/* Top Floating Badges */}
-                <div className="absolute top-3.5 left-3.5 right-3.5 flex items-center justify-between gap-1.5 z-10 pointer-events-none">
-                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-gradient-to-r from-amber-200 via-pink-300 to-cyan-200 text-zinc-950 shadow-md flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-zinc-900 animate-pulse" />
-                    <span>✦ {isCosplay ? `UR · ${t.filterCosplay}` : t.heroHeading(creator.name)}</span>
+                <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2 z-10 pointer-events-none">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-amber-200 via-pink-300 to-cyan-200 text-zinc-950 shadow-md flex items-center gap-1 truncate max-w-[140px]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-zinc-900 animate-pulse shrink-0" />
+                    <span className="truncate">✦ {isCosplay ? `UR · ${t.filterCosplay}` : 'UR · แนะนำ'}</span>
                   </span>
-                  <span className="px-2.5 py-1 rounded-full text-[10px] font-medium bg-black/60 backdrop-blur-md border border-white/20 text-zinc-100">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-black/60 backdrop-blur-md border border-white/20 text-zinc-100 shrink-0">
                     {isCosplay ? 'Cosplay AI' : t.aiImageBadge}
                   </span>
                 </div>
 
                 {/* Seamless Typography & Actions Floating Over Vignette */}
-                <div className="absolute bottom-0 inset-x-0 p-4 flex flex-col justify-end z-10">
+                <div className="absolute bottom-0 inset-x-0 p-4 pt-12 flex flex-col justify-end z-10">
                   <div className="flex items-center gap-1.5 mb-1">
-                    <h3 className="text-xl font-bold text-white tracking-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)]">
+                    <h3 className="text-[19px] font-bold text-white tracking-tight truncate drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)]">
                       {creator.name}
                     </h3>
                     {isVerified ? (
@@ -316,14 +351,14 @@ export function HeroCard({ creators, t, onChat, onOpenProfile }: Props) {
                       </svg>
                     ) : null}
                     {isOnline ? (
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-emerald-400/30 shadow ml-0.5" />
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-emerald-400/30 shadow shrink-0" />
                     ) : null}
-                    <span className="ml-auto text-[11px] font-medium text-pink-300 drop-shadow flex items-center gap-1">
+                    <span className="ml-auto text-[11px] font-medium text-pink-300 drop-shadow shrink-0">
                       {t.chatCount(compactCount(creator.chatCount || 0))}
                     </span>
                   </div>
 
-                  <p className="text-[11.5px] text-zinc-200/95 leading-snug line-clamp-2 mb-3.5 drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)] font-light">
+                  <p className="text-[11.5px] text-zinc-200/95 leading-relaxed line-clamp-2 mb-3 drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)] font-light">
                     {creator.tagline ? `“${creator.tagline}”` : creator.bio}
                   </p>
 
