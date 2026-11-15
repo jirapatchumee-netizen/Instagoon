@@ -98,7 +98,7 @@
 }
 
 .player-home-scope .hero-card.is-active:hover::before {
-  opacity: 0.85;
+  opacity: 0.42;
 }
 
 .player-home-scope .hero-card.is-active {
@@ -107,11 +107,11 @@
 
 .player-home-scope .hero-card.is-active:hover {
   box-shadow:
-    0 24px 50px -10px rgba(236, 72, 153, 0.28),
-    0 0 22px -4px rgba(56, 189, 248, 0.22);
+    0 20px 42px -10px rgba(236, 72, 153, 0.15),
+    0 0 16px -4px rgba(56, 189, 248, 0.12);
 }
 
-/* Interactive Rainbow Holographic Foil Overlay */
+/* Interactive Rainbow Holographic Foil Overlay (Refined 50% softness) */
 .player-home-scope .holo-foil-layer {
   --pointer-x: 50%;
   --pointer-y: 50%;
@@ -119,18 +119,18 @@
   background-image:
     radial-gradient(
       circle 140px at var(--pointer-x) var(--pointer-y),
-      rgba(255, 255, 255, 0.48) 0%,
-      rgba(125, 211, 252, 0.34) 28%,
-      rgba(244, 114, 182, 0.28) 54%,
+      rgba(255, 255, 255, 0.24) 0%,
+      rgba(125, 211, 252, 0.17) 28%,
+      rgba(244, 114, 182, 0.14) 54%,
       transparent 78%
     ),
     linear-gradient(
       var(--holo-angle),
       transparent 12%,
-      rgba(56, 189, 248, 0.3) 30%,
-      rgba(232, 121, 249, 0.34) 48%,
-      rgba(253, 224, 71, 0.28) 66%,
-      rgba(52, 211, 153, 0.24) 80%,
+      rgba(56, 189, 248, 0.15) 30%,
+      rgba(232, 121, 249, 0.17) 48%,
+      rgba(253, 224, 71, 0.14) 66%,
+      rgba(52, 211, 153, 0.12) 80%,
       transparent 94%
     );
   background-size: 100% 100%, 220% 220%;
@@ -143,12 +143,12 @@
 /* Subtle Micro-Sparkle Foil Grain */
 .player-home-scope .holo-sparkle-grain {
   background-image:
-    radial-gradient(rgba(255, 255, 255, 0.32) 1px, transparent 1px),
-    radial-gradient(rgba(192, 132, 252, 0.28) 1px, transparent 1px);
+    radial-gradient(rgba(255, 255, 255, 0.16) 1px, transparent 1px),
+    radial-gradient(rgba(192, 132, 252, 0.14) 1px, transparent 1px);
   background-size: 22px 22px, 31px 31px;
   background-position: 0 0, 11px 15px;
   mix-blend-mode: screen;
-  opacity: 0.26;
+  opacity: 0.12;
   pointer-events: none;
 }
 
@@ -200,28 +200,16 @@
   transform: scale(0.96);
 }
 
-/* Collectible Mini Card Foil Shimmer */
+/* Collectible Mini Card */
 .player-home-scope .tcg-mini-card {
   position: relative;
-  background: linear-gradient(160deg, #151520 0%, #0e0e15 100%);
+  background: #111118;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  transform: translateZ(0);
 }
 .player-home-scope .tcg-mini-card::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    115deg,
-    transparent 25%,
-    rgba(125, 211, 252, 0.12) 45%,
-    rgba(244, 114, 182, 0.14) 55%,
-    transparent 75%
-  );
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  pointer-events: none;
-}
-.player-home-scope .tcg-mini-card:hover::after {
-  opacity: 1;
+  display: none;
 }
 
 @keyframes fsPrismPulse {

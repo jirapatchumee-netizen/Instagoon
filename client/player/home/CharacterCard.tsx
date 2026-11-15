@@ -33,7 +33,7 @@ export function CharacterCard({ creator, t, onOpen, badge = 'default' }: Props) 
       foil.style.setProperty('--pointer-x', `${px}%`);
       foil.style.setProperty('--pointer-y', `${py}%`);
       foil.style.setProperty('--holo-angle', `${105 + px * 0.65}deg`);
-      foil.style.opacity = '0.58';
+      foil.style.opacity = '0.29';
     }
   };
 
@@ -59,10 +59,10 @@ export function CharacterCard({ creator, t, onOpen, badge = 'default' }: Props) 
       onClick={() => onOpen(creator)}
       onPointerMove={handlePointerMove}
       onPointerLeave={handlePointerLeave}
-      className={`group tcg-mini-card relative flex w-full flex-col overflow-hidden rounded-2xl border ${borderClass} bg-[#111118] text-left shadow-lg transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500`}
+      className={`group tcg-mini-card relative flex w-full flex-col overflow-hidden rounded-2xl border ${borderClass} bg-[#111118] text-left shadow-lg transition-all duration-200 hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500`}
     >
       {/* Top 4:5 Portrait Artwork */}
-      <div className="relative w-full aspect-[4/5] overflow-hidden bg-[#0b0b10]">
+      <div className="relative w-full aspect-[4/5] overflow-hidden bg-[#111118] -mb-px z-[1]">
         <ArtTile
           name={creator.name}
           color={creator.color || '#ec4899'}
@@ -142,7 +142,7 @@ export function CharacterCard({ creator, t, onOpen, badge = 'default' }: Props) 
       </div>
 
       {/* Bottom Clean Info Body (Organized spacing, clear typography) */}
-      <div className="flex flex-1 flex-col justify-between gap-2 p-2.5 bg-[#111118]">
+      <div className="relative z-[2] flex flex-1 flex-col justify-between gap-2 p-2.5 bg-[#111118]">
         <div className="space-y-1.5">
           {/* Episode Pill (if special episode) or Cosplay Role Pill */}
           {showEpisode && creator.firstEpisodeTitle ? (

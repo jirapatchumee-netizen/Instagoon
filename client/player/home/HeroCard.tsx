@@ -57,7 +57,11 @@ export function HeroCard({ creators, t, onChat, onOpenProfile }: Props) {
       current.isOnline ?? ((current.chatCount || 0) > 500 || current.relationship > 0);
 
     return (
-      <section className="relative overflow-hidden rounded-2xl border border-white/10 shadow-xl bg-[#121218] min-h-[350px]">
+      <section
+        onPointerMove={(e) => handleCardPointerMove(e as any, true)}
+        onPointerLeave={(e) => handleCardPointerLeave(e as any, true)}
+        className="relative overflow-hidden rounded-2xl border border-white/10 shadow-xl bg-[#121218] min-h-[350px]"
+      >
         <ArtTile
           name={current.name}
           color={current.color || '#ec4899'}
@@ -67,6 +71,11 @@ export function HeroCard({ creators, t, onChat, onOpenProfile }: Props) {
           className="absolute inset-0 h-full w-full object-cover"
         />
         <div className="hero-seamless-fade absolute inset-0 pointer-events-none" />
+        <div
+          className="holo-foil-layer absolute inset-0 z-[5] pointer-events-none"
+          style={{ opacity: 0 }}
+        />
+        <div className="holo-sparkle-grain absolute inset-0 z-[5] opacity-0 pointer-events-none" />
         <div className="absolute inset-x-3 top-3 z-10 flex items-center justify-between pointer-events-none">
           <span className="rounded-full border border-pink-400/30 bg-pink-600/80 px-2.5 py-0.5 text-[10.5px] font-bold text-white shadow-sm backdrop-blur-md flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
@@ -181,13 +190,9 @@ export function HeroCard({ creators, t, onChat, onOpenProfile }: Props) {
     if (foil) {
       foil.style.setProperty('--pointer-x', `${px}%`);
       foil.style.setProperty('--pointer-y', `${py}%`);
-      foil.style.setProperty('--holo-angle', `${100 + px * 0.7}deg`);
-      foil.style.opacity = '0.65';
+      foil.style.setProperty('--holo-angle', `${105 + px * 0.65}deg`);
+      foil.style.opacity = '0.30';
     }
-    const tiltY = ((px - 50) / 50) * 5;
-    const tiltX = ((50 - py) / 50) * 4;
-    card.style.transition = 'transform 0.08s ease-out';
-    card.style.transform = `translate3d(0px, 0px, 0px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) scale(1.015)`;
   };
 
   const handleCardPointerLeave = (e: React.PointerEvent<HTMLDivElement>, isActiveCard: boolean) => {
@@ -200,8 +205,6 @@ export function HeroCard({ creators, t, onChat, onOpenProfile }: Props) {
       foil.style.setProperty('--holo-angle', '125deg');
       foil.style.opacity = '0';
     }
-    card.style.transition = 'transform 0.45s cubic-bezier(0.22, 1, 0.36, 1)';
-    card.style.transform = 'translate3d(0px, 0px, 0px) rotateY(0deg) rotateZ(0deg) scale(1)';
   };
 
   return (
@@ -298,26 +301,6 @@ export function HeroCard({ creators, t, onChat, onOpenProfile }: Props) {
                   className="absolute inset-0 h-full w-full object-cover"
                 />
 
-                {/* Dynamic Holographic Rainbow Foil & Sparkle Grain (Visible only on hover like bottom cards) */}
-                <div
-                  className="holo-foil-layer absolute inset-0 pointer-events-none"
-                  style={{
-                    opacity: 0,
-                    ['--holo-angle' as any]: `${angleShift}deg`,
-                    ['--pointer-x' as any]: `${Math.max(10, Math.min(90, posX))}%`,
-                    ['--pointer-y' as any]: '50%',
-                  }}
-                />
-                <div className="holo-sparkle-grain absolute inset-0 opacity-0 pointer-events-none" />
-
-                {/* Dynamic Drag Glare Layer */}
-                <div
-                  className="card-glare absolute inset-0"
-                  style={{
-                    opacity: isDragging && absDiff < 0.6 ? Math.min(0.7, Math.abs(dragOffset) * 1.4) : 0,
-                  }}
-                />
-
                 {/* Darkening Overlay for Depth Cards */}
                 <div
                   className="absolute inset-0 bg-black pointer-events-none transition-opacity"
@@ -326,6 +309,26 @@ export function HeroCard({ creators, t, onChat, onOpenProfile }: Props) {
 
                 {/* Seamless Bottom Vignette Fade */}
                 <div className="hero-seamless-fade absolute inset-0 pointer-events-none" />
+
+                {/* Dynamic Holographic Rainbow Foil & Sparkle Grain (Visible only on hover like bottom cards) */}
+                <div
+                  className="holo-foil-layer absolute inset-0 z-[5] pointer-events-none"
+                  style={{
+                    opacity: 0,
+                    ['--holo-angle' as any]: `${angleShift}deg`,
+                    ['--pointer-x' as any]: `${Math.max(10, Math.min(90, posX))}%`,
+                    ['--pointer-y' as any]: '50%',
+                  }}
+                />
+                <div className="holo-sparkle-grain absolute inset-0 z-[5] opacity-0 pointer-events-none" />
+
+                {/* Dynamic Drag Glare Layer */}
+                <div
+                  className="card-glare absolute inset-0 z-[5]"
+                  style={{
+                    opacity: isDragging && absDiff < 0.6 ? Math.min(0.7, Math.abs(dragOffset) * 1.4) : 0,
+                  }}
+                />
 
                 {/* Top Floating Badges */}
                 <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2 z-10 pointer-events-none">
