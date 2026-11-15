@@ -23,7 +23,7 @@ export function CharacterCard({ creator, t, onOpen, badge = 'default' }: Props) 
     <button
       type="button"
       onClick={() => onOpen(creator)}
-      className="group relative flex w-full aspect-[9/16] flex-col overflow-hidden rounded-xl bg-[#151515] text-left shadow-lg transition-transform duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+      className="group tcg-mini-card relative flex w-full aspect-[9/16] flex-col overflow-hidden rounded-xl border border-white/10 hover:border-pink-500/40 text-left shadow-lg transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
     >
       <ArtTile
         name={creator.name}
@@ -34,15 +34,18 @@ export function CharacterCard({ creator, t, onOpen, badge = 'default' }: Props) 
         className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
       />
 
+      {/* Holographic Micro-Sparkle Grain */}
+      <div className="holo-sparkle-grain absolute inset-0 opacity-15 pointer-events-none" />
+
       {/* Top corner badges */}
       <div className="absolute inset-x-2 top-2 z-10 flex items-start justify-between gap-2 pointer-events-none">
         {isExclusive ? (
           <span className="rounded-full border border-pink-400/40 bg-pink-600/85 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm backdrop-blur-md">
-            {t.exclusiveBadge}
+            ✦ {t.exclusiveBadge}
           </span>
         ) : showEpisode ? (
           <span className="rounded-full border border-amber-300/40 bg-amber-500/90 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm backdrop-blur-md">
-            {t.freePlayBadge}
+            ✦ {t.freePlayBadge}
           </span>
         ) : isCosplay ? (
           <span className="rounded-full border border-violet-400/40 bg-violet-600/85 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm backdrop-blur-md">
@@ -51,7 +54,7 @@ export function CharacterCard({ creator, t, onOpen, badge = 'default' }: Props) 
         ) : (
           <span />
         )}
-        <span className="rounded-md bg-black/70 px-2 py-0.5 text-[10px] font-medium text-neutral-200 backdrop-blur-sm">
+        <span className="rounded-md bg-black/70 px-2 py-0.5 text-[10px] font-medium text-neutral-200 backdrop-blur-sm border border-white/10">
           {isCosplay ? 'Cosplay AI' : t.aiImageBadge}
         </span>
       </div>

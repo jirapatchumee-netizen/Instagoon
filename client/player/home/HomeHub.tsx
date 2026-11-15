@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState, useRef, useEffect, type ReactNode } from 'react';
 import { Search } from 'lucide-react';
 import type { Creator } from '../types';
 import { TRANSLATIONS, type HomeCopy, type Lang } from '../i18n';
@@ -21,6 +21,84 @@ type Props = {
   onGoToReels: () => void;
   onOpenShop?: () => void;
 };
+
+function ScrollRail({ children, className = '' }: { children: ReactNode; className?: string }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    let isDown = false;
+    let startX = 0;
+    let scrollLeft = 0;
+    let velX = 0;
+    let momentumId = 0;
+    let moved = 0;
+
+    const onMouseDown = (e: MouseEvent) => {
+      if (e.button !== 0) return;
+      isDown = true;
+      moved = 0;
+      startX = e.pageX - el.offsetLeft;
+      scrollLeft = el.scrollLeft;
+      velX = 0;
+      cancelAnimationFrame(momentumId);
+      el.classList.add('is-dragging');
+    };
+
+    const onMouseMove = (e: MouseEvent) => {
+      if (!isDown) return;
+      e.preventDefault();
+      const x = e.pageX - el.offsetLeft;
+      const walk = (x - startX) * 1.25;
+      moved = Math.abs(x - startX);
+      const prevScroll = el.scrollLeft;
+      el.scrollLeft = scrollLeft - walk;
+      velX = el.scrollLeft - prevScroll;
+    };
+
+    const stopDrag = () => {
+      if (!isDown) return;
+      isDown = false;
+      el.classList.remove('is-dragging');
+      const step = () => {
+        el.scrollLeft += velX;
+        velX *= 0.92;
+        if (Math.abs(velX) > 0.5) {
+          momentumId = requestAnimationFrame(step);
+        }
+      };
+      momentumId = requestAnimationFrame(step);
+    };
+
+    const onClickCapture = (e: MouseEvent) => {
+      if (moved > 8) {
+        e.stopPropagation();
+        e.preventDefault();
+      }
+    };
+
+    el.addEventListener('mousedown', onMouseDown);
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', stopDrag);
+    el.addEventListener('click', onClickCapture, true);
+
+    return () => {
+      el.removeEventListener('mousedown', onMouseDown);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', stopDrag);
+      el.removeEventListener('click', onClickCapture, true);
+      cancelAnimationFrame(momentumId);
+    };
+  }, []);
+
+  return (
+    <div ref={ref} className={`fs-h-rail select-none ${className}`}>
+      {children}
+    </div>
+  );
+}
 
 function Section({
   title,
@@ -110,7 +188,7 @@ export function HomeHub({
     });
   }, [creators, query, filter, t]);
 
-  const featured = useMemo(() => creators.slice(0, 3), [creators]);
+  const featured = useMemo(() => creators.slice(0, Math.min(5, creators.length)), [creators]);
 
   const continuing = useMemo(
     () => creators.filter((c) => c.lastMessage || c.relationship > 0).slice(0, 6),
@@ -171,13 +249,13 @@ export function HomeHub({
         title={t.sectionChosen}
         subtitle={t.sectionChosenSubtitle}
       >
-        <div className="fs-h-rail">
+        <ScrollRail>
           {chosen.map((creator) => (
             <div key={creator.id} className="w-[185px] shrink-0">
               <CharacterCard creator={creator} t={t} onOpen={onOpenProfile} />
             </div>
           ))}
-        </div>
+        </ScrollRail>
       </Section>
 
       {/* Content Feed Entry Banner */}
@@ -204,7 +282,7 @@ export function HomeHub({
         title={t.sectionSpecialEpisodes}
         subtitle={t.sectionSpecialEpisodesSubtitle}
       >
-        <div className="fs-h-rail">
+        <ScrollRail>
           {specialEpisodes.map((creator) => (
             <div key={creator.id} className="w-[185px] shrink-0">
               <CharacterCard
@@ -215,7 +293,7 @@ export function HomeHub({
               />
             </div>
           ))}
-        </div>
+        </ScrollRail>
       </Section>
 
       {/* Section 3: ตัวละครสุดฮอต (3D Podium Ranking) */}
@@ -231,7 +309,7 @@ export function HomeHub({
         title={t.sectionExclusive}
         subtitle={t.sectionExclusiveSubtitle}
       >
-        <div className="fs-h-rail">
+        <ScrollRail>
           {exclusive.map((creator) => (
             <div key={creator.id} className="w-[185px] shrink-0">
               <CharacterCard
@@ -242,7 +320,7 @@ export function HomeHub({
               />
             </div>
           ))}
-        </div>
+        </ScrollRail>
       </Section>
 
       {/* Section 5: ตัวละครทั้งหมด (Candy AI 2-Column Grid with PromoCard integrated) */}

@@ -1,3 +1,4 @@
+import { MessageCircle } from 'lucide-react';
 import type { Creator } from '../types';
 import type { HomeCopy } from '../i18n';
 import { ArtTile } from './ArtTile';
@@ -13,18 +14,21 @@ export function ContinueRail({ creators, t, onOpen }: Props) {
           key={creator.id}
           type="button"
           onClick={() => onOpen(creator)}
-          className="fs-h-card flex w-[258px] shrink-0 items-center gap-2.5 p-2.5 text-left transition-colors duration-200 hover:bg-white/5"
+          className="group fs-h-card flex w-[268px] shrink-0 items-center gap-2.5 p-3 text-left transition-all duration-200 hover:border-pink-500/40 hover:bg-white/[0.04] active:scale-[0.99]"
         >
-          <ArtTile
-            name={creator.name}
-            color={creator.color || '#ec4899'}
-            artKey={creator.avatarKey}
-            artState={creator.artState}
-            className="h-11 w-11 shrink-0 rounded-xl"
-          />
+          <div className="relative shrink-0">
+            <ArtTile
+              name={creator.name}
+              color={creator.color || '#ec4899'}
+              artKey={creator.avatarKey}
+              artState={creator.artState}
+              className="h-12 w-12 shrink-0 rounded-xl object-cover"
+            />
+            <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-400 border-2 border-[#121218] rounded-full" />
+          </div>
           <span className="min-w-0 flex-1">
             <span className="block truncate text-[12.5px] font-semibold text-foreground">{creator.name}</span>
-            <span className="block truncate text-[11.5px] text-muted-foreground">
+            <span className="block truncate text-[11px] text-muted-foreground mt-0.5">
               {creator.lastMessage?.text || t.continuePreview}
             </span>
             <span className="mt-1.5 block h-1 overflow-hidden rounded-full bg-white/10">
@@ -34,6 +38,9 @@ export function ContinueRail({ creators, t, onOpen }: Props) {
               />
             </span>
           </span>
+          <div className="w-7 h-7 rounded-full bg-pink-500/10 group-hover:bg-gradient-to-r group-hover:from-pink-500 group-hover:to-cyan-400 text-pink-400 group-hover:text-white flex items-center justify-center transition shrink-0">
+            <MessageCircle className="w-3.5 h-3.5" />
+          </div>
         </button>
       ))}
     </div>
