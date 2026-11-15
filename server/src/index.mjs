@@ -562,7 +562,21 @@ async function player(req,env,user,path,now,ctx) {
   const chatCount=new Map(countRows.map(r=>[r.creator_id,r.chat_count]));
   const firstEp=new Map(firstEpRows.map(r=>[r.creator_id,r.title]));
   const preview=r=>r?{text:inboxPreview(r.content),at:r.created_at,fromCreator:r.role==='assistant'}:null;
-  return json({creators:rows.filter(c=>!removed.has(c.id)).map(c=>{const l=last.get(c.id),d=def.get(c.id)||{};return {id:c.id,name:c.name,bio:c.bio,avatarKey:c.avatar_key,relationship:c.relationship,following:!!c.following,lastMessage:preview(l),unread:!!l&&l.role==='assistant'&&l.created_at>(readAt.get(c.id)||0),handle:d.handle||c.id,tagline:d.tagline||'',color:d.color||'#ec4899',tags:Array.isArray(d.tags)?d.tags:[],chatCount:chatCount.get(c.id)||0,artState:c.avatar_key?'real':'pending',firstEpisodeTitle:firstEp.get(c.id)||null,vaultCount:Array.isArray(d.rewards)?d.rewards.length:0};})});
+  return json({creators:rows.filter(c=>!removed.has(c.id)).map(c=>{
+   const l=last.get(c.id),d=def.get(c.id)||{};
+   const isCosplay=d.creatorType==='cosplay'||(Array.isArray(d.tags)&&d.tags.some(t=>/cosplay|คอสเพลย์/i.test(t)));
+   return {
+     id:c.id,name:c.name,bio:c.bio,avatarKey:c.avatar_key,relationship:c.relationship,following:!!c.following,
+     lastMessage:preview(l),unread:!!l&&l.role==='assistant'&&l.created_at>(readAt.get(c.id)||0),
+     handle:d.handle||c.id,tagline:d.tagline||'',color:d.color||'#ec4899',tags:Array.isArray(d.tags)?d.tags:[],
+     chatCount:chatCount.get(c.id)||0,artState:c.avatar_key?'real':'pending',firstEpisodeTitle:firstEp.get(c.id)||null,
+     vaultCount:Array.isArray(d.rewards)?d.rewards.length:0,
+     creatorType:isCosplay?'cosplay':'ai',
+     isVerified:typeof d.isVerified==='boolean'?d.isVerified:isCosplay,
+     characterRole:d.characterRole||null,
+     isOnline:!!(c.relationship>0||(chatCount.get(c.id)||0)>100)
+   };
+  })});
  }
  let m=path.match(/^\/api\/creators\/([\w-]+)\/follow$/);
  if(m&&method==='POST'){

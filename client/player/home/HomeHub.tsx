@@ -78,7 +78,7 @@ export function HomeHub({
   }, [creators]);
 
   const filters = useMemo(
-    () => [t.filterAll, t.filterTrending, t.filterNew, ...tags.slice(0, 10)],
+    () => [t.filterAll, t.filterTrending, t.filterNew, t.filterCosplay, t.filterAi, ...tags.slice(0, 8)],
     [t, tags],
   );
 
@@ -94,6 +94,18 @@ export function HomeHub({
       if (filter === t.filterAll) return true;
       if (filter === t.filterTrending) return (creator.chatCount || 0) >= 2000;
       if (filter === t.filterNew) return creators.indexOf(creator) >= creators.length - 3;
+      if (filter === t.filterCosplay) {
+        return (
+          creator.creatorType === 'cosplay' ||
+          (creator.tags || []).some((tag) => /cosplay|คอสเพลย์/i.test(tag))
+        );
+      }
+      if (filter === t.filterAi) {
+        return (
+          creator.creatorType !== 'cosplay' &&
+          !(creator.tags || []).some((tag) => /cosplay|คอสเพลย์/i.test(tag))
+        );
+      }
       return (creator.tags || []).includes(filter);
     });
   }, [creators, query, filter, t]);
@@ -262,6 +274,26 @@ export function HomeHub({
           <p className="py-4 text-center text-[12px] text-muted-foreground">{t.emptyFilter}</p>
         )}
       </Section>
+
+      {/* Creator & Cosplayer Platform Callout */}
+      <section className="mt-6 overflow-hidden rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-950/40 via-zinc-900/80 to-pink-950/30 p-4 shadow-lg backdrop-blur-md">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-violet-400/30 bg-violet-500/20 px-2.5 py-0.5 text-[11px] font-bold text-violet-300">
+              <span>🎭</span>
+              <span>{t.creatorRecruitmentTitle}</span>
+            </div>
+            <p className="mt-2 text-[12px] leading-relaxed text-zinc-300">
+              {t.creatorRecruitmentDesc}
+            </p>
+          </div>
+        </div>
+        <div className="mt-3.5 flex items-center gap-2">
+          <span className="inline-flex items-center gap-1 rounded-xl bg-gradient-to-r from-violet-500 to-pink-500 px-3.5 py-1.5 text-[12px] font-bold text-white shadow">
+            {t.creatorRecruitmentCta}
+          </span>
+        </div>
+      </section>
 
       {/* Footer */}
       <footer className="mt-8 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 border-t border-border/60 pt-4 text-[11px] text-muted-foreground">

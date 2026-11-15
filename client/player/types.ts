@@ -22,6 +22,10 @@ export type Creator = {
   artState?: 'real' | 'pending';
   firstEpisodeTitle?: string | null;
   vaultCount?: number;
+  creatorType?: 'ai' | 'cosplay';
+  isVerified?: boolean;
+  isOnline?: boolean;
+  characterRole?: string | null;
   relationship: number;
   following?: boolean;
   lastMessage?: { text: string; at: number; fromCreator: boolean } | null;
