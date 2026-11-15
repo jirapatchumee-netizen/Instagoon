@@ -7182,6 +7182,56 @@ dialog.fs-overlay[open]::backdrop {
   margin-top: 14px;
 }
 
+.fs-studio-btn-save:disabled,
+.fs-studio-btn-launch:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.fs-studio-btn-launch {
+  flex: 1.4;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #ff4f9a, #ec4899);
+  border: 0;
+  border-radius: 10px;
+  padding: 10px;
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(236, 72, 153, 0.35);
+}
+
+.fs-studio-live-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.fs-studio-live-row .fs-studio-btn-save {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.fs-studio-live-badge {
+  flex-basis: 100%;
+  color: #4ade80;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.fs-studio-hint {
+  color: #a1a1aa;
+  font-weight: 400;
+}
+
 .fs-studio-btn-save {
   flex: 1;
   background: #27272a;

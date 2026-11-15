@@ -1077,6 +1077,15 @@ export function FrostStoryApp() {
           <CosplayCreatorTab
             lang={lang}
             onOpenRecentChats={() => handleSelectTab('inbox')}
+            onOpenLiveChat={(creatorId) => {
+              api<{ creators: Creator[] }>('/api/creators')
+                .then((r) => {
+                  setCreators(followSyncRef.current.applyPending(r.creators));
+                  const launched = r.creators.find((c) => c.id === creatorId);
+                  if (launched) void openChat(launched);
+                })
+                .catch(() => {});
+            }}
           />
         )}
 

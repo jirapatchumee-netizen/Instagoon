@@ -65,6 +65,7 @@ export function buildContent(contentDir, distDir) {
     if (!parsed.success) { err(`${where}/character.json`, parsed.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join('; ')); continue; }
     const npc = parsed.data;
     if (npc.id !== folder) err(`${where}/character.json`, `id "${npc.id}" must match folder name`);
+    if (npc.id.startsWith('cos_')) err(`${where}/character.json`, 'ids starting with cos_ are reserved for Studio-launched characters');
     needMedia(`${where}/character.json avatar`, npc.avatar);
     for (const r of npc.rewards) needMedia(`${where}/character.json reward ${r.id}`, r.asset);
     const posts = readJson(join(base, 'posts.json'), []).map((p, i) => {

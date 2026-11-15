@@ -8,7 +8,10 @@ import { api } from '../api';
 interface CosplayCreatorTabProps {
   lang: Lang;
   onOpenRecentChats?: () => void;
+  onOpenLiveChat?: (creatorId: string) => void;
 }
+
+type StudioState = { draft: Record<string, unknown> | null; creatorId: string | null; status: 'none' | 'draft' | 'live' };
 
 export interface RewardDraft {
   id: string;
@@ -28,7 +31,7 @@ export interface RewardDraft {
 // Uploaded drafts come back as media keys (studio-drafts/<uid>/...). Older local drafts may hold data URLs.
 const studioSrc = (key: string) => (!key ? '' : key.startsWith('data:') ? key : media(key));
 
-export function CosplayCreatorTab({ lang }: CosplayCreatorTabProps) {
+export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabProps) {
   const t = TRANSLATIONS[lang];
   const [activeTab, setActiveTab] = useState<'identity' | 'voice' | 'safety' | 'sandbox' | 'gallery'>('identity');
   const [savedSuccess, setSavedSuccess] = useState(false);
@@ -50,6 +53,10 @@ export function CosplayCreatorTab({ lang }: CosplayCreatorTabProps) {
   const [name, setName] = useState('Yuki');
   const [handle, setHandle] = useState('yuki.cosplay');
   const [concept, setConcept] = useState('');
+  const [age, setAge] = useState('');
+  const [studio, setStudio] = useState<StudioState>({ draft: null, creatorId: null, status: 'none' });
+  const [busyAction, setBusyAction] = useState<'' | 'save' | 'launch' | 'unpublish'>('');
+  const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
   const [avatar, setAvatar] = useState('');
   const [tags, setTags] = useState('cosplay, anime, assassin, cute');
   const [likes, setLikes] = useState('Macaron, photography, cute anime');
@@ -117,35 +124,43 @@ export function CosplayCreatorTab({ lang }: CosplayCreatorTabProps) {
     setRewards(rewards.filter(r => r.id !== id));
   };
 
-  // Load draft from storage on mount
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const applyDraft = (data: any) => {
+    if (!data || typeof data !== 'object') return;
+    if (data.name) setName(data.name);
+    if (data.handle) setHandle(data.handle);
+    if (data.concept) setConcept(data.concept);
+    if (data.age) setAge(String(data.age));
+    if (data.avatar) setAvatar(data.avatar);
+    if (data.tags) setTags(data.tags);
+    if (data.likes) setLikes(data.likes);
+    if (data.dislikes) setDislikes(data.dislikes);
+    if (data.pronouns) setPronouns(data.pronouns);
+    if (data.voiceTone) setVoiceTone(data.voiceTone);
+    if (data.sampleQuotes) setSampleQuotes(data.sampleQuotes);
+    if (Array.isArray(data.levelStyles) && data.levelStyles.length === 5) setLevelStyles(data.levelStyles);
+    if (typeof data.ruleNoAddress === 'boolean') setRuleNoAddress(data.ruleNoAddress);
+    if (typeof data.ruleNoMeet === 'boolean') setRuleNoMeet(data.ruleNoMeet);
+    if (typeof data.rulePoliteReject === 'boolean') setRulePoliteReject(data.rulePoliteReject);
+    if (data.secret) setSecret(data.secret);
+    if (data.immutableFacts) setImmutableFacts(data.immutableFacts);
+    if (data.openingLocation) setOpeningLocation(data.openingLocation);
+    if (data.openingGreeting) setOpeningGreeting(data.openingGreeting);
+    if (Array.isArray(data.rewards)) setRewards(data.rewards);
+  };
+
+  // Drafts live in D1 per account. A draft saved by the older localStorage-only Studio is loaded once as a starting point.
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('ig_cosplay_creator_draft');
-      if (saved) {
-        const data = JSON.parse(saved);
-        if (data.name) setName(data.name);
-        if (data.handle) setHandle(data.handle);
-        if (data.concept) setConcept(data.concept);
-        if (data.avatar) setAvatar(data.avatar);
-        if (data.tags) setTags(data.tags);
-        if (data.likes) setLikes(data.likes);
-        if (data.dislikes) setDislikes(data.dislikes);
-        if (data.pronouns) setPronouns(data.pronouns);
-        if (data.voiceTone) setVoiceTone(data.voiceTone);
-        if (data.sampleQuotes) setSampleQuotes(data.sampleQuotes);
-        if (Array.isArray(data.levelStyles) && data.levelStyles.length === 5) setLevelStyles(data.levelStyles);
-        if (typeof data.ruleNoAddress === 'boolean') setRuleNoAddress(data.ruleNoAddress);
-        if (typeof data.ruleNoMeet === 'boolean') setRuleNoMeet(data.ruleNoMeet);
-        if (typeof data.rulePoliteReject === 'boolean') setRulePoliteReject(data.rulePoliteReject);
-        if (data.secret) setSecret(data.secret);
-        if (data.immutableFacts) setImmutableFacts(data.immutableFacts);
-        if (data.openingLocation) setOpeningLocation(data.openingLocation);
-        if (data.openingGreeting) setOpeningGreeting(data.openingGreeting);
-        if (Array.isArray(data.rewards)) setRewards(data.rewards);
-      }
-    } catch {
-      // ignore JSON parse error
-    }
+    api<StudioState>('/api/studio/draft')
+      .then((res) => {
+        setStudio(res);
+        if (res.draft) applyDraft(res.draft);
+        else {
+          try { applyDraft(JSON.parse(localStorage.getItem('ig_cosplay_creator_draft') || 'null')); } catch { /* ignore */ }
+        }
+      })
+      .catch(() => setNotice({ ok: false, text: t.studioActionError }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Initialize test messages if empty
@@ -212,35 +227,61 @@ export function CosplayCreatorTab({ lang }: CosplayCreatorTabProps) {
     }
   };
 
-  const handleSaveDraft = () => {
-    const draft = {
-      name,
-      handle,
-      concept,
-      avatar,
-      tags,
-      likes,
-      dislikes,
-      pronouns,
-      voiceTone,
-      sampleQuotes,
-      levelStyles,
-      ruleNoAddress,
-      ruleNoMeet,
-      rulePoliteReject,
-      secret,
-      immutableFacts,
-      openingLocation,
-      openingGreeting,
-      rewards,
-      updatedAt: Date.now(),
-    };
+  const collectDraft = () => ({
+    name, handle, concept, age: Number(age) || 0, avatar, tags, likes, dislikes, pronouns, voiceTone, sampleQuotes,
+    levelStyles, ruleNoAddress, ruleNoMeet, rulePoliteReject, secret, immutableFacts, openingLocation, openingGreeting, rewards,
+  });
+
+  const problemLabels: Record<string, string> = {
+    name: t.studioNameLabel, handle: t.studioHandleLabel, concept: t.studioConceptLabel, age: `${t.studioAgeLabel} (${t.studioAgeHint})`,
+    avatar: t.studioAvatarLabel, voiceTone: t.studioVoiceToneLabel, levelStyles: t.studioLevelsLabel,
+  };
+  const missingText = (problems: string[]) => `${t.studioMissing} ${problems.map((p) => problemLabels[p] || p).join(', ')}`;
+  const flash = (ok: boolean, text: string) => { setNotice({ ok, text }); setTimeout(() => setNotice(null), 6000); };
+
+  const handleSaveDraft = async () => {
+    setBusyAction('save');
     try {
-      localStorage.setItem('ig_cosplay_creator_draft', JSON.stringify(draft));
+      const res = await api<StudioState & { problems: string[] }>('/api/studio/draft', { method: 'PUT', body: JSON.stringify(collectDraft()) });
+      setStudio(res);
+      try { localStorage.removeItem('ig_cosplay_creator_draft'); } catch { /* ignore */ }
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 3000);
+      if (res.problems.length) flash(false, missingText(res.problems));
     } catch {
-      // ignore
+      flash(false, t.studioActionError);
+    } finally {
+      setBusyAction('');
+    }
+  };
+
+  const handleLaunch = async () => {
+    setBusyAction('launch');
+    try {
+      const res = await fetch('/api/studio/launch', {
+        method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(collectDraft()),
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok) { setStudio(data); flash(true, t.studioLaunched); }
+      else if (data?.error === 'draft_incomplete') flash(false, missingText(data.problems || []));
+      else if (data?.error === 'handle_taken') flash(false, t.studioHandleTaken);
+      else flash(false, t.studioActionError);
+    } catch {
+      flash(false, t.studioActionError);
+    } finally {
+      setBusyAction('');
+    }
+  };
+
+  const handleUnpublish = async () => {
+    setBusyAction('unpublish');
+    try {
+      setStudio(await api<StudioState>('/api/studio/unpublish', { method: 'POST' }));
+      flash(true, t.studioUnpublished);
+    } catch {
+      flash(false, t.studioActionError);
+    } finally {
+      setBusyAction('');
     }
   };
 
@@ -443,6 +484,20 @@ export function CosplayCreatorTab({ lang }: CosplayCreatorTabProps) {
               value={handle}
               onChange={(e) => setHandle(e.target.value)}
               placeholder="e.g. yuki.cosplay"
+            />
+          </div>
+
+          <div className="fs-studio-field">
+            <label className="fs-studio-label">{t.studioAgeLabel} <span className="fs-studio-hint">({t.studioAgeHint})</span></label>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={20}
+              max={99}
+              className="fs-studio-input"
+              value={age}
+              onChange={(e) => setAge(e.target.value)}
+              placeholder="20+"
             />
           </div>
 
@@ -901,13 +956,42 @@ export function CosplayCreatorTab({ lang }: CosplayCreatorTabProps) {
       )}
 
       {/* Footer Actions */}
+      {notice && (
+        <div className={notice.ok ? 'fs-studio-alert-success' : 'fs-studio-alert-error'} role="status">
+          {notice.ok ? <Check size={16} /> : <X size={16} />}
+          <span>{notice.text}</span>
+        </div>
+      )}
+
+      {studio.status === 'live' && studio.creatorId && (
+        <div className="fs-studio-live-row">
+          <span className="fs-studio-live-badge">{t.studioLiveBadge(handle)}</span>
+          <button type="button" className="fs-studio-btn-save" onClick={() => onOpenLiveChat?.(studio.creatorId!)}>
+            <MessageCircle size={14} /> {t.studioOpenLiveChat}
+          </button>
+          <button type="button" className="fs-studio-btn-save" disabled={!!busyAction} onClick={handleUnpublish}>
+            {t.studioUnpublish}
+          </button>
+        </div>
+      )}
+
       <div className="fs-studio-footer-actions">
         <button
           type="button"
           className="fs-studio-btn-save"
+          disabled={!!busyAction}
           onClick={handleSaveDraft}
         >
-          {t.studioSaveDraft}
+          {busyAction === 'save' ? <Loader2 size={14} className="animate-spin" /> : t.studioSaveDraft}
+        </button>
+        <button
+          type="button"
+          className="fs-studio-btn-launch"
+          disabled={!!busyAction}
+          onClick={handleLaunch}
+        >
+          {busyAction === 'launch' ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+          <span>{busyAction === 'launch' ? t.studioLaunching : studio.status === 'live' ? t.studioRelaunch : t.studioLaunch}</span>
         </button>
       </div>
 
