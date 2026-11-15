@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { TRANSLATIONS, type Lang } from '../i18n';
-import { Sparkles, User, MessageCircle, ShieldCheck, Play, Check, Send, Heart, RotateCcw } from 'lucide-react';
+import { Sparkles, User, MessageCircle, ShieldCheck, Play, Check, Send, Heart, RotateCcw, Camera, X, Loader2 } from 'lucide-react';
 import { getAvatarSrc } from '../ui';
+import { resizeImageToStandard } from '../lib/image-resizer';
+import { api } from '../api';
 
 interface CosplayCreatorTabProps {
   lang: Lang;
@@ -20,6 +22,17 @@ export function CosplayCreatorTab({ lang }: CosplayCreatorTabProps) {
   const t = TRANSLATIONS[lang];
   const [activeTab, setActiveTab] = useState<'identity' | 'voice' | 'safety' | 'sandbox'>('identity');
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [uploadSuccessNotice, setUploadSuccessNotice] = useState(false);
+
+  // File upload & crop state
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [stagingFile, setStagingFile] = useState<File | null>(null);
+  const [stagingPreview, setStagingPreview] = useState<string>('');
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [zoom, setZoom] = useState(1.0);
+  const [panX, setPanX] = useState(0);
+  const [panY, setPanY] = useState(0);
 
   // Pillar 1: Identity & Visual
   const [name, setName] = useState('Yuki');
@@ -92,6 +105,63 @@ export function CosplayCreatorTab({ lang }: CosplayCreatorTabProps) {
     }
   }, [openingGreeting, testMessages.length]);
 
+  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setStagingFile(file);
+    setZoom(1.0);
+    setPanX(0);
+    setPanY(0);
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setStagingPreview(reader.result as string);
+      setCropModalOpen(true);
+    };
+    reader.readAsDataURL(file);
+
+    // reset input so the same file can be selected again
+    e.target.value = '';
+  };
+
+  const handleApplyCropAndUpload = async () => {
+    if (!stagingFile) return;
+    setUploading(true);
+    try {
+      const resized = await resizeImageToStandard(stagingFile, {
+        targetWidth: 512,
+        targetHeight: 640,
+        zoom,
+        panX,
+        panY,
+      });
+
+      try {
+        const res = await api<{ ok: boolean; mediaKey: string }>('/api/media/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'image/webp' },
+          body: resized.blob,
+        });
+        if (res.mediaKey) {
+          setAvatar(res.mediaKey);
+        } else {
+          setAvatar(resized.dataUrl);
+        }
+      } catch {
+        setAvatar(resized.dataUrl);
+      }
+
+      setUploadSuccessNotice(true);
+      setTimeout(() => setUploadSuccessNotice(false), 3000);
+      setCropModalOpen(false);
+    } catch (err) {
+      console.error('Failed to resize and upload', err);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleSaveDraft = () => {
     const draft = {
       name,
@@ -124,7 +194,6 @@ export function CosplayCreatorTab({ lang }: CosplayCreatorTabProps) {
   };
 
   const handleAiAutoTuneLevels = () => {
-    // Generate nuanced responses based on pronouns and tone
     const isAffectionate = voiceTone.includes('อ้อน') || voiceTone.includes('อบอุ่น');
     const pMe = pronouns.split('/')[0]?.trim() || 'เค้า';
     const pYou = pronouns.split('/')[1]?.trim() || 'ตัวเอง';
@@ -147,7 +216,6 @@ export function CosplayCreatorTab({ lang }: CosplayCreatorTabProps) {
     setTestMessages(newMsgs);
     setInputMessage('');
 
-    // Generate in-character reply
     setTimeout(() => {
       let reply = '';
       const style = levelStyles[testLevel - 1] || levelStyles[0];
@@ -243,6 +311,13 @@ export function CosplayCreatorTab({ lang }: CosplayCreatorTabProps) {
         </div>
       )}
 
+      {uploadSuccessNotice && (
+        <div className="fs-studio-alert-success">
+          <Check size={16} />
+          <span>{t.studioUploadSuccess}</span>
+        </div>
+      )}
+
       {/* Tab 1: Identity & Visual */}
       {activeTab === 'identity' && (
         <div className="fs-studio-card">
@@ -252,6 +327,27 @@ export function CosplayCreatorTab({ lang }: CosplayCreatorTabProps) {
               <div className="fs-studio-current-avatar">
                 <img src={getAvatarSrc(avatar) || avatar} alt="Avatar" className="fs-studio-avatar-img" />
               </div>
+
+              {/* Upload & Auto-Resize Controls */}
+              <div className="fs-studio-avatar-controls">
+                <input
+                  type="file"
+                  accept="image/*"
+                  ref={fileInputRef}
+                  style={{ display: 'none' }}
+                  onChange={handleFileSelected}
+                />
+                <button
+                  type="button"
+                  className="fs-studio-upload-btn"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                >
+                  <Camera size={14} />
+                  <span>{uploading ? t.studioUploading : t.studioUploadBtn}</span>
+                </button>
+              </div>
+
               <div className="fs-studio-preset-avatars">
                 {PRESET_AVATARS.map((p) => (
                   <button
@@ -577,6 +673,100 @@ export function CosplayCreatorTab({ lang }: CosplayCreatorTabProps) {
           <span>{t.studioPublish}</span>
         </button>
       </div>
+
+      {/* Interactive 512x640 Auto-Resize and Crop Modal */}
+      {cropModalOpen && stagingPreview && (
+        <div className="fs-studio-crop-modal-overlay">
+          <div className="fs-studio-crop-modal">
+            <div className="fs-studio-crop-header">
+              <span className="fs-studio-crop-title">{t.studioResizeTitle}</span>
+              <button
+                type="button"
+                className="fs-studio-crop-close"
+                onClick={() => setCropModalOpen(false)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="fs-studio-crop-preview-wrap">
+              <div className="fs-studio-crop-viewport">
+                <img
+                  src={stagingPreview}
+                  alt="Crop Preview"
+                  className="fs-studio-crop-img"
+                  style={{
+                    transform: `translate(${panX}%, ${panY}%) scale(${zoom})`,
+                  }}
+                />
+                <div className="fs-studio-crop-avatar-guide" />
+              </div>
+            </div>
+
+            <div className="fs-studio-crop-controls">
+              <div className="fs-studio-crop-slider-row">
+                <span className="fs-studio-crop-slider-label">{t.studioZoomLabel} ({zoom.toFixed(1)}x)</span>
+                <input
+                  type="range"
+                  min="1"
+                  max="3"
+                  step="0.1"
+                  value={zoom}
+                  onChange={(e) => setZoom(parseFloat(e.target.value))}
+                />
+              </div>
+              <div className="fs-studio-crop-slider-row">
+                <span className="fs-studio-crop-slider-label">{t.studioPanYLabel}</span>
+                <input
+                  type="range"
+                  min="-50"
+                  max="50"
+                  value={panY}
+                  onChange={(e) => setPanY(parseInt(e.target.value, 10))}
+                />
+              </div>
+              <div className="fs-studio-crop-slider-row">
+                <span className="fs-studio-crop-slider-label">{t.studioPanXLabel}</span>
+                <input
+                  type="range"
+                  min="-50"
+                  max="50"
+                  value={panX}
+                  onChange={(e) => setPanX(parseInt(e.target.value, 10))}
+                />
+              </div>
+            </div>
+
+            <div className="fs-studio-crop-actions">
+              <button
+                type="button"
+                className="fs-studio-btn-cancel"
+                onClick={() => setCropModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="fs-studio-btn-apply"
+                onClick={handleApplyCropAndUpload}
+                disabled={uploading}
+              >
+                {uploading ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>{t.studioUploading}</span>
+                  </>
+                ) : (
+                  <>
+                    <Check size={16} />
+                    <span>{t.studioCropApplyBtn}</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
