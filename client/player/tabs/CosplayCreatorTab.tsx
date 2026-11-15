@@ -1,9 +1,26 @@
 import { useState, useEffect, useRef } from 'react';
 import { TRANSLATIONS, type Lang } from '../i18n';
-import { Sparkles, User, MessageCircle, ShieldCheck, Play, Check, Send, RotateCcw, Camera, X, Loader2, Image as ImageIcon, Trash2, Plus, Gem } from 'lucide-react';
+import {
+  Sparkles,
+  User,
+  MessageCircle,
+  ShieldCheck,
+  Play,
+  Check,
+  Send,
+  RotateCcw,
+  Camera,
+  X,
+  Loader2,
+  Image as ImageIcon,
+  Trash2,
+  Plus,
+  Gem,
+} from 'lucide-react';
 import { media } from '../ui';
 import { resizeImageToStandard } from '../lib/image-resizer';
 import { api } from '../api';
+import './cosplay-studio.css';
 
 interface CosplayCreatorTabProps {
   lang: Lang;
@@ -11,7 +28,11 @@ interface CosplayCreatorTabProps {
   onOpenLiveChat?: (creatorId: string) => void;
 }
 
-type StudioState = { draft: Record<string, unknown> | null; creatorId: string | null; status: 'none' | 'draft' | 'live' };
+type StudioState = {
+  draft: Record<string, unknown> | null;
+  creatorId: string | null;
+  status: 'none' | 'draft' | 'live';
+};
 
 export interface RewardDraft {
   id: string;
@@ -52,43 +73,45 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
   // Pillar 1: Identity & Visual
   const [name, setName] = useState('Yuki');
   const [handle, setHandle] = useState('yuki.cosplay');
-  const [concept, setConcept] = useState('');
-  const [age, setAge] = useState('');
+  const [concept, setConcept] = useState('คอสเพลเยอร์สายน่ารักที่ชอบคอสตัวละครสายลับ ใจดีแต่แอบซุ่มซ่าม');
+  const [age, setAge] = useState('24');
   const [studio, setStudio] = useState<StudioState>({ draft: null, creatorId: null, status: 'none' });
   const [busyAction, setBusyAction] = useState<'' | 'save' | 'launch' | 'unpublish'>('');
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
   const [avatar, setAvatar] = useState('');
   const [tags, setTags] = useState('cosplay, anime, assassin, cute');
-  const [likes, setLikes] = useState('Macaron, photography, cute anime');
-  const [dislikes, setDislikes] = useState('Rude messages, bugs');
+  const [likes, setLikes] = useState('มาการอง, ถ่ายรูป, อนิเมะน่ารัก');
+  const [dislikes, setDislikes] = useState('ข้อความหยาบคาย, แมลง');
 
   // Pillar 2: Voice & Tone
   const [pronouns, setPronouns] = useState('เค้า / ตัวเอง');
   const [voiceTone, setVoiceTone] = useState('ขี้อ้อน อบอุ่น');
-  const [sampleQuotes, setSampleQuotes] = useState('ขอบคุณที่แวะมาถ่ายรูปด้วยกันนะคะ! / งอนแล้วนะ ไม่ยอมมากดหัวใจให้โพสต์เค้าเลย');
+  const [sampleQuotes, setSampleQuotes] = useState('ขอบคุณที่แวะมาถ่ายรูปด้วยกันนะคะ! / งอแงแล้วนะ ไม่รักมาเลย');
   const [levelStyles, setLevelStyles] = useState<string[]>([
-    'สวัสดีค่ะ ยินดีที่ได้คุยกันนะคะ วันนี้มีอะไรให้ช่วยไหมคะ',
-    'อ๊ะ จำได้สิคะ! แฟนคลับที่แวะมาหาบ่อยๆ วันนี้เป็นไงบ้าง',
-    'ดีใจจังที่เธอทักมา กำลังคิดถึงอยู่พอดีเลย วันนี้เหนื่อยไหม',
-    'จริงๆ วันนี้เค้าเหนื่อยมากเลย แต่พอได้คุยกับเธอก็ยิ้มออกนะ',
-    'คิดถึงที่สุดเลย! อย่าหายไปไหนนานๆ อีกนะ เค้าเหงามาก',
+    'สวัสดีค่า ยินดีที่ได้รู้จักนะคะ ขอบคุณที่แวะมาทักทายกันน้า มีอะไรให้เค้าช่วยไหมคะ?',
+    'อ๊ะ ตัวเองจำเค้าได้ด้วย ดีใจจัง วันนี้มาชวนคุยเรื่องอนิเมะเหรอคะ หรือว่าอยากให้เค้าคอสตัวไหนให้ดูเป็นพิเศษ?',
+    'เพิ่งนึกถึงตัวเองอยู่พอดีเลย วันนี้เค้าซื้อขนมมาการองมาเผื่อด้วยนะ อยากกินด้วยกันไหมคะ?',
+    'ชวนคุยได้เรื่อยๆ เลยนะ เค้ารอฟังตัวเองตลอดเลยแหละ... ตัวเองเป็นคนพิเศษมากๆ สำหรับเค้านะ',
+    'งื้อ ห้ามหายไปไหนอีกนะ เค้าคิดถึงตัวเองจะแย่แล้ว มาเป็นกำลังใจให้เค้าทุกวันเลยได้ไหมคะ?',
   ]);
 
   // Pillar 3: Safety & Secrets
   const [ruleNoAddress, setRuleNoAddress] = useState(true);
   const [ruleNoMeet, setRuleNoMeet] = useState(true);
   const [rulePoliteReject, setRulePoliteReject] = useState(true);
-  const [secret, setSecret] = useState('จริงๆ แล้วชุดคอสเพลย์ชุดนี้ ซิปข้างหลังเกือบแตกหลังเวที ดีนะที่เอาเข็มกลัดไปด้วย!');
-  const [immutableFacts, setImmutableFacts] = useState('เลี้ยงแมวส้มชื่อบ็อบบี้ 1 ตัว / ทำชุดคอสเพลย์เองเกือบทุกชุด');
+  const [secret, setSecret] = useState('จริงๆ แล้วชุดคอสชุดนี้เย็บเองทั้งชุด ซิปข้างหลังเกือบแตกหลังเวที ดีนะที่เอาเข็มกลัดไปด้วย!');
+  const [immutableFacts, setImmutableFacts] = useState('เลี้ยงแมวส้มชื่อป๊อกกี้ 1 ตัว / ทำชุดคอสเพลย์เองเกือบทุกชุด');
 
   // Pillar 4: First Meeting & Live Simulation
   const [openingLocation, setOpeningLocation] = useState('หลังเวทีงานคอสเพลย์');
-  const [openingGreeting, setOpeningGreeting] = useState('*(ยิ้มเขินๆ พลางจัดวิกผม)* สวัสดีค่ะ แวะมาทักทายเค้าเหรอคะ? ชุดวันนี้เป็นไงบ้าง?');
+  const [openingGreeting, setOpeningGreeting] = useState('*(ยิ้มเขินๆ พลางจัดวิกผม)* สวัสดีค่ะ แวะมาถ่ายรูปเหรอคะ? ชุดวันนี้เป็นไงบ้าง?');
   const [testLevel, setTestLevel] = useState<number>(1);
   const [testMessages, setTestMessages] = useState<Array<{ sender: 'user' | 'creator'; text: string; action?: string }>>([]);
   const [sandboxBusy, setSandboxBusy] = useState(false);
   const streamRef = useRef<HTMLDivElement>(null);
-  useEffect(() => { streamRef.current?.scrollTo({ top: streamRef.current.scrollHeight }); }, [testMessages, sandboxBusy]);
+  useEffect(() => {
+    streamRef.current?.scrollTo({ top: streamRef.current.scrollHeight });
+  }, [testMessages, sandboxBusy]);
   const [levelsBusy, setLevelsBusy] = useState(false);
   const [posts, setPosts] = useState<Array<{ media: string; caption: string }>>([]);
   const [inputMessage, setInputMessage] = useState('');
@@ -123,10 +146,11 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
     };
     setRewards([...rewards, item]);
     setNewRewardTitle('');
+    setNewRewardAsset('');
   };
 
   const handleDeleteReward = (id: string) => {
-    setRewards(rewards.filter(r => r.id !== id));
+    setRewards(rewards.filter((r) => r.id !== id));
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -155,26 +179,26 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
     if (Array.isArray(data.posts)) setPosts(data.posts);
   };
 
-  // Drafts live in D1 per account. A draft saved by the older localStorage-only Studio is loaded once as a starting point.
   useEffect(() => {
     api<StudioState>('/api/studio/draft')
       .then((res) => {
         setStudio(res);
         if (res.draft) applyDraft(res.draft);
         else {
-          try { applyDraft(JSON.parse(localStorage.getItem('ig_cosplay_creator_draft') || 'null')); } catch { /* ignore */ }
+          try {
+            applyDraft(JSON.parse(localStorage.getItem('ig_cosplay_creator_draft') || 'null'));
+          } catch {
+            /* ignore */
+          }
         }
       })
       .catch(() => setNotice({ ok: false, text: t.studioActionError }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Initialize test messages if empty
   useEffect(() => {
     if (testMessages.length === 0) {
-      setTestMessages([
-        { sender: 'creator', text: openingGreeting },
-      ]);
+      setTestMessages([{ sender: 'creator', text: openingGreeting }]);
     }
   }, [openingGreeting, testMessages.length]);
 
@@ -194,7 +218,6 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
     };
     reader.readAsDataURL(file);
 
-    // reset input so the same file can be selected again
     e.target.value = '';
   };
 
@@ -236,33 +259,80 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
   };
 
   const collectDraft = () => ({
-    name, handle, concept, age: Number(age) || 0, avatar, tags, likes, dislikes, pronouns, voiceTone, sampleQuotes,
-    levelStyles, ruleNoAddress, ruleNoMeet, rulePoliteReject, secret, immutableFacts, openingLocation, openingGreeting, rewards, posts,
+    name,
+    handle,
+    concept,
+    age: Number(age) || 0,
+    avatar,
+    tags,
+    likes,
+    dislikes,
+    pronouns,
+    voiceTone,
+    sampleQuotes,
+    levelStyles,
+    ruleNoAddress,
+    ruleNoMeet,
+    rulePoliteReject,
+    secret,
+    immutableFacts,
+    openingLocation,
+    openingGreeting,
+    rewards,
+    posts,
   });
 
   const problemLabels: Record<string, string> = {
-    name: t.studioNameLabel, handle: t.studioHandleLabel, concept: t.studioConceptLabel, age: `${t.studioAgeLabel} (${t.studioAgeHint})`,
-    avatar: t.studioAvatarLabel, voiceTone: t.studioVoiceToneLabel,
-    levelStyles: t.studioLevelsLabel, likes: t.studioLikesLabel, dislikes: t.studioDislikesLabel, pronouns: t.studioPronounsLabel,
-    sampleQuotes: t.studioSampleQuotesLabel, secret: t.studioSecretLabel, immutableFacts: t.studioImmutableFactsLabel, tags: 'Tags',
-    openingLocation: t.studioOpeningSceneLabel, openingGreeting: t.studioGreetingLabel, rewards: t.studioTabGallery,
+    name: t.studioNameLabel,
+    handle: t.studioHandleLabel,
+    concept: t.studioConceptLabel,
+    age: `${t.studioAgeLabel} (${t.studioAgeHint})`,
+    avatar: t.studioAvatarLabel,
+    voiceTone: t.studioVoiceToneLabel,
+    levelStyles: t.studioLevelsLabel,
+    likes: t.studioLikesLabel,
+    dislikes: t.studioDislikesLabel,
+    pronouns: t.studioPronounsLabel,
+    sampleQuotes: t.studioSampleQuotesLabel,
+    secret: t.studioSecretLabel,
+    immutableFacts: t.studioImmutableFactsLabel,
+    tags: 'Tags',
+    openingLocation: t.studioOpeningSceneLabel,
+    openingGreeting: t.studioGreetingLabel,
+    rewards: t.studioTabGallery,
   };
-  const problemText = (p: string) => (p.startsWith('unsafe:') ? t.studioUnsafe(problemLabels[p.slice(7)] || p.slice(7)) : problemLabels[p] || p);
+  const problemText = (p: string) =>
+    p.startsWith('unsafe:') ? t.studioUnsafe(problemLabels[p.slice(7)] || p.slice(7)) : problemLabels[p] || p;
   const missingText = (problems: string[]) => `${t.studioMissing} ${problems.map(problemText).join(', ')}`;
-  // Same required fields as launchProblems on the server, so the checklist is live while typing.
+
   const checklist: Array<[string, boolean]> = [
-    ['avatar', !!avatar], ['name', !!name.trim()], ['handle', /^@?[a-zA-Z0-9._]{3,30}$/.test(handle.trim())], ['age', Number(age) >= 20],
-    ['concept', !!concept.trim()], ['voiceTone', !!voiceTone.trim()], ['levelStyles', levelStyles.every((x) => !!x.trim())],
+    ['avatar', !!avatar],
+    ['name', !!name.trim()],
+    ['handle', /^@?[a-zA-Z0-9._]{3,30}$/.test(handle.trim())],
+    ['age', Number(age) >= 20],
+    ['concept', !!concept.trim()],
+    ['voiceTone', !!voiceTone.trim()],
+    ['levelStyles', levelStyles.every((x) => !!x.trim())],
   ];
   const readyCount = checklist.filter(([, ok]) => ok).length;
-  const flash = (ok: boolean, text: string) => { setNotice({ ok, text }); setTimeout(() => setNotice(null), 6000); };
+  const flash = (ok: boolean, text: string) => {
+    setNotice({ ok, text });
+    setTimeout(() => setNotice(null), 6000);
+  };
 
   const handleSaveDraft = async () => {
     setBusyAction('save');
     try {
-      const res = await api<StudioState & { problems: string[] }>('/api/studio/draft', { method: 'PUT', body: JSON.stringify(collectDraft()) });
+      const res = await api<StudioState & { problems: string[] }>('/api/studio/draft', {
+        method: 'PUT',
+        body: JSON.stringify(collectDraft()),
+      });
       setStudio(res);
-      try { localStorage.removeItem('ig_cosplay_creator_draft'); } catch { /* ignore */ }
+      try {
+        localStorage.removeItem('ig_cosplay_creator_draft');
+      } catch {
+        /* ignore */
+      }
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 3000);
       if (res.problems.length) flash(false, missingText(res.problems));
@@ -277,14 +347,24 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
     setBusyAction('launch');
     try {
       const res = await fetch('/api/studio/launch', {
-        method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(collectDraft()),
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(collectDraft()),
       });
       const data = await res.json().catch(() => null);
-      if (res.ok) { setStudio(data); flash(true, t.studioLaunched); }
-      else if (data?.error === 'draft_incomplete') flash(false, missingText(data.problems || []));
-      else if (data?.error === 'handle_taken') flash(false, t.studioHandleTaken);
-      else if (data?.error === 'launch_quota_exceeded') flash(false, t.studioLaunchQuota);
-      else flash(false, t.studioActionError);
+      if (res.ok) {
+        setStudio(data);
+        flash(true, t.studioLaunched);
+      } else if (data?.error === 'draft_incomplete') {
+        flash(false, missingText(data.problems || []));
+      } else if (data?.error === 'handle_taken') {
+        flash(false, t.studioHandleTaken);
+      } else if (data?.error === 'launch_quota_exceeded') {
+        flash(false, t.studioLaunchQuota);
+      } else {
+        flash(false, t.studioActionError);
+      }
     } catch {
       flash(false, t.studioActionError);
     } finally {
@@ -308,11 +388,18 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
     setLevelsBusy(true);
     try {
       const res = await fetch('/api/studio/suggest-levels', {
-        method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(collectDraft()),
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(collectDraft()),
       });
       const data = await res.json().catch(() => null);
-      if (res.ok && Array.isArray(data?.levels)) setLevelStyles(data.levels);
-      else flash(false, data?.error === 'energy_empty' ? t.studioEnergyEmpty : t.studioActionError);
+      if (res.ok && Array.isArray(data?.levels)) {
+        setLevelStyles(data.levels);
+        flash(true, '✨ AI ร่างบทพูด Lv.1–5 ตามบุคลิกตัวละครสำเร็จ!');
+      } else {
+        flash(false, data?.error === 'energy_empty' ? t.studioEnergyEmpty : t.studioActionError);
+      }
     } catch {
       flash(false, t.studioActionError);
     } finally {
@@ -323,7 +410,9 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sandboxCall = async (payload: Record<string, unknown>): Promise<{ ok: boolean; data: any }> => {
     const res = await fetch('/api/studio/sandbox', {
-      method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ draft: collectDraft(), level: testLevel, ...payload }),
     });
     return { ok: res.ok, data: await res.json().catch(() => null) };
@@ -343,8 +432,11 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
         const said = beats.filter((x) => x.kind === 'dialogue').map((x) => x.text).join(' ') || data?.reply || '';
         const acted = beats.filter((x) => x.kind === 'action').map((x) => x.text).join(' ') || data?.action || '';
         setTestMessages((list) => [...list, { sender: 'creator', text: said, action: acted || undefined }]);
-      } else if (data?.error === 'draft_incomplete') flash(false, missingText(data.problems || []));
-      else flash(false, data?.error === 'energy_empty' ? t.studioEnergyEmpty : t.studioActionError);
+      } else if (data?.error === 'draft_incomplete') {
+        flash(false, missingText(data.problems || []));
+      } else {
+        flash(false, data?.error === 'energy_empty' ? t.studioEnergyEmpty : t.studioActionError);
+      }
     } catch {
       flash(false, t.studioActionError);
     } finally {
@@ -354,245 +446,400 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
 
   const handleResetSandbox = async () => {
     setSandboxBusy(true);
-    try { await sandboxCall({ reset: true }); } catch { /* the local view resets either way */ }
+    try {
+      await sandboxCall({ reset: true });
+    } catch {
+      /* the local view resets either way */
+    }
     setTestMessages(openingGreeting ? [{ sender: 'creator', text: openingGreeting }] : []);
     setSandboxBusy(false);
   };
 
+  const handlePreviewCardPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === 'touch') return;
+    const card = e.currentTarget;
+    const rect = card.getBoundingClientRect();
+    const px = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+    const py = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
+    const sheen = card.querySelector('.holo-foil-sheen') as HTMLElement | null;
+    if (sheen) {
+      sheen.style.setProperty('--px', `${px}%`);
+      sheen.style.setProperty('--py', `${py}%`);
+    }
+  };
+
+  const handlePreviewCardPointerLeave = (e: React.PointerEvent<HTMLDivElement>) => {
+    const card = e.currentTarget;
+    const sheen = card.querySelector('.holo-foil-sheen') as HTMLElement | null;
+    if (sheen) {
+      sheen.style.setProperty('--px', '50%');
+      sheen.style.setProperty('--py', '50%');
+    }
+  };
+
+  const isLive = studio.status === 'live';
+
   return (
-    <div className="fs-cosplay-studio">
-      {/* Studio Header Banner */}
-      <div className="fs-studio-banner">
-        <div className="fs-studio-badge">
-          <Sparkles size={14} className="text-pink-400" />
-          <span>{t.studioBadge}</span>
+    <div className="fs-cosplay-studio relative flex flex-col gap-4 px-3.5 pb-28 pt-3 text-zinc-100 font-sans antialiased">
+      {/* Ambient Holographic Top Glow */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[380px] h-[240px] bg-gradient-to-b from-fuchsia-600/15 via-cyan-500/10 to-transparent blur-3xl z-0"
+      />
+
+      {/* 1. STUDIO TITLE HEADER */}
+      <section className="relative z-10 text-center space-y-1.5 pt-1">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-pink-500/15 via-purple-500/15 to-cyan-400/15 border border-pink-400/35 text-[11px] font-medium text-pink-200 shadow-sm">
+          <span>✨</span>
+          <span>{t.studioBadge || 'Cosplay AI Twin'}</span>
         </div>
-        <h1 className="fs-studio-title">{t.studioTitle}</h1>
-        <p className="fs-studio-subtitle">{t.studioSubtitle}</p>
-      </div>
+        <h1 className="text-[20px] font-bold tracking-tight text-white">
+          Cosplay Creator <span className="holo-text-shimmer">Studio</span>
+        </h1>
+        <p className="text-[11.5px] text-zinc-400">
+          {t.studioSubtitle || 'สร้าง AI Digital Twin จากคาแรคเตอร์คอสเพลย์ของคุณ'}
+        </p>
+      </section>
 
-      {/* 4 Pillars Navigation Bar */}
-      <div className="fs-studio-nav">
+      {/* 2. LIVE COLLECTIBLE TCG CARD PREVIEW BANNER */}
+      <section
+        id="live-tcg-preview"
+        onPointerMove={handlePreviewCardPointerMove}
+        onPointerLeave={handlePreviewCardPointerLeave}
+        className="holo-tcg-card relative z-10 p-3.5 overflow-hidden shadow-xl select-none"
+      >
+        <div className="holo-foil-sheen absolute inset-0 pointer-events-none" />
+        <div className="holo-sparkle-grain absolute inset-0 pointer-events-none" />
+
+        <div className="relative z-10 flex items-center gap-3">
+          {/* Holographic Portrait */}
+          <div className="avatar-foil-ring w-14 h-14 rounded-2xl shrink-0 shadow-lg">
+            <div className="w-full h-full rounded-[13px] overflow-hidden bg-zinc-900 flex items-center justify-center font-bold text-white text-base">
+              {avatar ? (
+                <img src={studioSrc(avatar)} alt={name} className="w-full h-full object-cover" />
+              ) : (
+                <span>{(name.trim()[0] || 'Y').toUpperCase()}</span>
+              )}
+            </div>
+          </div>
+
+          {/* Card Info */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold tracking-wider bg-gradient-to-r from-amber-200 via-pink-300 to-cyan-200 text-zinc-950 shadow-sm">
+                UR • FOIL
+              </span>
+              <span className="text-[10.5px] text-cyan-300 font-medium truncate">
+                @{handle.replace(/^@/, '') || 'yuki.cosplay'}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <h2 className="text-sm font-bold text-white truncate">{name || 'Yuki'}</h2>
+              <span className="text-[10px] text-zinc-400">• {age || '24'} ปี</span>
+            </div>
+            <p className="text-[10.5px] text-zinc-300 truncate mt-0.5 font-light">
+              {concept || 'คอสเพลเยอร์สายน่ารักที่ชอบคอสตัวละครสายลับ'}
+            </p>
+          </div>
+
+          {/* Card Edition Stamp */}
+          <div className="shrink-0 text-right">
+            <span className="block text-[8px] uppercase tracking-widest text-zinc-500">TCG TWIN</span>
+            <span className="text-[11px] font-bold holo-text-shimmer">#001</span>
+          </div>
+        </div>
+      </section>
+
+      {/* 3. 5-TAB SEGMENTED NAVIGATION */}
+      <nav aria-label="Studio Sections" className="relative z-10 bg-[#111119] border border-white/10 rounded-2xl p-1.5 grid grid-cols-5 gap-1 shadow-lg">
         <button
           type="button"
-          className={`fs-studio-tab-btn ${activeTab === 'identity' ? 'is-active' : ''}`}
           onClick={() => setActiveTab('identity')}
+          className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl text-center transition cursor-pointer ${
+            activeTab === 'identity'
+              ? 'bg-gradient-to-b from-pink-500/20 to-purple-500/15 border border-pink-400/60 text-pink-200 shadow-sm shadow-pink-500/20'
+              : 'text-zinc-400 hover:text-zinc-200 border border-transparent'
+          }`}
         >
-          <User size={15} />
-          <span>{t.studioTabIdentity}</span>
+          <User className="w-4 h-4 mb-1" />
+          <span className="text-[9.5px] leading-[1.2] font-medium">ตัวตน &<br />ภาพลักษณ์</span>
         </button>
         <button
           type="button"
-          className={`fs-studio-tab-btn ${activeTab === 'voice' ? 'is-active' : ''}`}
           onClick={() => setActiveTab('voice')}
+          className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl text-center transition cursor-pointer ${
+            activeTab === 'voice'
+              ? 'bg-gradient-to-b from-pink-500/20 to-purple-500/15 border border-pink-400/60 text-pink-200 shadow-sm shadow-pink-500/20'
+              : 'text-zinc-400 hover:text-zinc-200 border border-transparent'
+          }`}
         >
-          <MessageCircle size={15} />
-          <span>{t.studioTabVoice}</span>
+          <MessageCircle className="w-4 h-4 mb-1" />
+          <span className="text-[9.5px] leading-[1.2] font-medium">น้ำเสียง &<br />สไตล์พูด</span>
         </button>
         <button
           type="button"
-          className={`fs-studio-tab-btn ${activeTab === 'safety' ? 'is-active' : ''}`}
           onClick={() => setActiveTab('safety')}
+          className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl text-center transition cursor-pointer ${
+            activeTab === 'safety'
+              ? 'bg-gradient-to-b from-pink-500/20 to-purple-500/15 border border-pink-400/60 text-pink-200 shadow-sm shadow-pink-500/20'
+              : 'text-zinc-400 hover:text-zinc-200 border border-transparent'
+          }`}
         >
-          <ShieldCheck size={15} />
-          <span>{t.studioTabSafety}</span>
+          <ShieldCheck className="w-4 h-4 mb-1" />
+          <span className="text-[9.5px] leading-[1.2] font-medium">ความลับ &<br />ขอบเขต</span>
         </button>
         <button
           type="button"
-          className={`fs-studio-tab-btn ${activeTab === 'sandbox' ? 'is-active' : ''}`}
           onClick={() => setActiveTab('sandbox')}
+          className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl text-center transition cursor-pointer ${
+            activeTab === 'sandbox'
+              ? 'bg-gradient-to-b from-pink-500/20 to-purple-500/15 border border-pink-400/60 text-pink-200 shadow-sm shadow-pink-500/20'
+              : 'text-zinc-400 hover:text-zinc-200 border border-transparent'
+          }`}
         >
-          <Play size={15} />
-          <span>{t.studioTabSandbox}</span>
+          <Play className="w-4 h-4 mb-1" />
+          <span className="text-[9.5px] leading-[1.2] font-medium">ทดลองคุย<br />สด</span>
         </button>
         <button
           type="button"
-          className={`fs-studio-tab-btn ${activeTab === 'gallery' ? 'is-active' : ''}`}
           onClick={() => setActiveTab('gallery')}
+          className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl text-center transition cursor-pointer ${
+            activeTab === 'gallery'
+              ? 'bg-gradient-to-b from-pink-500/20 to-purple-500/15 border border-pink-400/60 text-pink-200 shadow-sm shadow-pink-500/20'
+              : 'text-zinc-400 hover:text-zinc-200 border border-transparent'
+          }`}
         >
-          <ImageIcon size={15} />
-          <span>{t.studioTabGallery}</span>
+          <ImageIcon className="w-4 h-4 mb-1" />
+          <span className="text-[9.5px] leading-[1.2] font-medium">คลังภาพ &<br />รางวัล</span>
         </button>
-      </div>
+      </nav>
 
+      {/* NOTICES */}
       {savedSuccess && (
-        <div className="fs-studio-alert-success">
+        <div className="p-3 rounded-xl bg-emerald-500/15 border border-emerald-400/35 text-xs text-emerald-300 flex items-center gap-2">
           <Check size={16} />
-          <span>{t.studioSavedNotice}</span>
+          <span>{t.studioSavedNotice || 'บันทึกข้อมูลร่างเรียบร้อยแล้ว'}</span>
         </div>
       )}
 
       {uploadError && (
-        <div className="fs-studio-alert-error" role="alert">
+        <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-400/35 text-xs text-rose-300 flex items-center gap-2" role="alert">
           <X size={16} />
-          <span>{t.studioUploadError}</span>
+          <span>{t.studioUploadError || 'เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ'}</span>
         </div>
       )}
 
       {uploadSuccessNotice && (
-        <div className="fs-studio-alert-success">
+        <div className="p-3 rounded-xl bg-emerald-500/15 border border-emerald-400/35 text-xs text-emerald-300 flex items-center gap-2">
           <Check size={16} />
-          <span>{t.studioUploadSuccess}</span>
+          <span>{t.studioUploadSuccess || 'อัปโหลดรูปภาพสำเร็จ'}</span>
         </div>
       )}
 
-      {/* Tab 1: Identity & Visual */}
-      {activeTab === 'identity' && (
-        <div className="fs-studio-card">
-          <div className="fs-studio-field">
-            <label className="fs-studio-label">{t.studioAvatarLabel}</label>
-            <div className="fs-studio-avatar-row">
-              <div className="fs-studio-current-avatar">
-                {avatar ? (
-                  <img src={studioSrc(avatar)} alt={name} className="fs-studio-avatar-img" />
-                ) : (
-                  <span className="fs-studio-avatar-placeholder">{(name.trim()[0] || '?').toUpperCase()}</span>
-                )}
-              </div>
+      {notice && (
+        <div className={`p-3 rounded-xl text-xs flex items-center gap-2 ${notice.ok ? 'bg-emerald-500/15 border border-emerald-400/35 text-emerald-300' : 'bg-rose-500/15 border border-rose-400/35 text-rose-300'}`}>
+          {notice.ok ? <Check size={16} /> : <X size={16} />}
+          <span>{notice.text}</span>
+        </div>
+      )}
 
-              {/* Upload & Auto-Resize Controls */}
-              <div className="fs-studio-avatar-controls">
-                <input
-                  type="file"
-                  accept="image/*"
-                  ref={fileInputRef}
-                  style={{ display: 'none' }}
-                  onChange={handleFileSelected}
-                />
+      {/* Hidden file input */}
+      <input
+        type="file"
+        accept="image/*"
+        ref={fileInputRef}
+        style={{ display: 'none' }}
+        onChange={handleFileSelected}
+      />
+
+      {/* ==========================================
+           TAB 1: ตัวตน & ภาพลักษณ์ (IDENTITY & APPEARANCE)
+           ========================================== */}
+      {activeTab === 'identity' && (
+        <section className="studio-panel relative z-10 p-4 space-y-4">
+          {/* Avatar Upload Row */}
+          <div className="space-y-2">
+            <label className="block text-[11px] font-medium text-zinc-300">{t.studioAvatarLabel}</label>
+            <div className="flex items-center gap-3">
+              <div className="avatar-foil-ring w-14 h-14 rounded-full shrink-0 shadow-md">
+                <div className="w-full h-full rounded-full overflow-hidden bg-zinc-900 flex items-center justify-center font-bold text-white text-base">
+                  {avatar ? (
+                    <img src={studioSrc(avatar)} alt={name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span>{(name.trim()[0] || '?').toUpperCase()}</span>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
-                  className="fs-studio-upload-btn"
                   onClick={() => {
                     setCropTarget('avatar');
                     fileInputRef.current?.click();
                   }}
                   disabled={uploading}
+                  className="px-3.5 py-2 rounded-xl bg-[#181824] hover:bg-[#222232] border border-white/15 hover:border-pink-400/50 text-xs font-medium text-white flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
                 >
-                  <Camera size={14} />
+                  <Camera className="w-3.5 h-3.5 text-pink-400" />
                   <span>{uploading ? t.studioUploading : t.studioUploadBtn}</span>
                 </button>
+                <span className="text-[10px] text-cyan-300 bg-cyan-500/10 border border-cyan-400/25 px-2.5 py-1 rounded-full">
+                  ลุค: {name} Cosplay
+                </span>
               </div>
-
             </div>
           </div>
 
-          <div className="fs-studio-field">
-            <label className="fs-studio-label">{t.studioPostsLabel} <span className="fs-studio-hint">({posts.length}/3)</span></label>
-            <div className="fs-studio-posts-row">
+          {/* Debut Posts (0/3) */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-[11px] font-medium text-zinc-300">
+                {t.studioPostsLabel} <span className="text-pink-400 font-semibold">({posts.length}/3)</span>
+              </label>
+              <span className="text-[10px] text-zinc-500">แตะช่องเพื่อเพิ่มภาพการ์ด</span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2.5">
               {posts.map((p, i) => (
-                <div key={p.media} className="fs-studio-post-item">
-                  <img src={studioSrc(p.media)} alt="" className="fs-studio-post-img" />
-                  <input
-                    type="text"
-                    className="fs-studio-input"
-                    value={p.caption}
-                    maxLength={500}
-                    placeholder={t.studioPostCaption}
-                    onChange={(e) => setPosts((list) => list.map((x, j) => (j === i ? { ...x, caption: e.target.value } : x)))}
-                  />
-                  <button type="button" className="fs-studio-vault-del-btn" onClick={() => setPosts((list) => list.filter((_, j) => j !== i))}>
-                    <Trash2 size={12} /> {t.studioDelete}
-                  </button>
+                <div key={p.media} className="relative aspect-[3/4] rounded-2xl overflow-hidden border border-pink-400/50 group shadow-md bg-zinc-900">
+                  <img src={studioSrc(p.media)} alt="" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition flex flex-col justify-between p-2">
+                    <button
+                      type="button"
+                      onClick={() => setPosts((list) => list.filter((_, j) => j !== i))}
+                      className="self-end p-1 rounded-full bg-rose-600/80 text-white"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                    <input
+                      type="text"
+                      className="w-full bg-black/70 border border-white/20 rounded px-1.5 py-0.5 text-[9.5px] text-white"
+                      value={p.caption}
+                      placeholder={t.studioPostCaption}
+                      onChange={(e) =>
+                        setPosts((list) => list.map((x, j) => (j === i ? { ...x, caption: e.target.value } : x)))
+                      }
+                    />
+                  </div>
+                  <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/70 text-[9px] text-cyan-300 font-bold">
+                    #{i + 1}
+                  </span>
                 </div>
               ))}
               {posts.length < 3 && (
                 <button
                   type="button"
-                  className="fs-studio-post-add"
                   disabled={uploading}
-                  onClick={() => { setCropTarget('post'); fileInputRef.current?.click(); }}
+                  onClick={() => {
+                    setCropTarget('post');
+                    fileInputRef.current?.click();
+                  }}
+                  className="aspect-[3/4] rounded-2xl bg-[#0e0e15] hover:bg-[#151520] border border-dashed border-white/15 hover:border-pink-400/50 flex flex-col items-center justify-center gap-1.5 text-zinc-400 hover:text-pink-200 transition active:scale-95 cursor-pointer"
                 >
-                  <Plus size={18} />
-                  <span>{t.studioPostAdd}</span>
+                  <Plus className="w-4 h-4" />
+                  <span className="text-[11px] font-medium">{t.studioPostAdd}</span>
                 </button>
               )}
             </div>
           </div>
 
-          <div className="fs-studio-field">
-            <label className="fs-studio-label">{t.studioNameLabel}</label>
+          {/* Creator Name */}
+          <div className="space-y-1.5">
+            <label className="block text-[11px] font-medium text-zinc-300">{t.studioNameLabel}</label>
             <input
               type="text"
-              className="fs-studio-input"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Yuki, Mira, Noey"
+              className="studio-input w-full px-3.5 py-2.5 text-xs"
             />
           </div>
 
-          <div className="fs-studio-field">
-            <label className="fs-studio-label">{t.studioHandleLabel}</label>
+          {/* Handle IG */}
+          <div className="space-y-1.5">
+            <label className="block text-[11px] font-medium text-zinc-300">{t.studioHandleLabel}</label>
             <input
               type="text"
-              className="fs-studio-input"
               value={handle}
               onChange={(e) => setHandle(e.target.value)}
               placeholder="e.g. yuki.cosplay"
+              className="studio-input w-full px-3.5 py-2.5 text-xs"
             />
           </div>
 
-          <div className="fs-studio-field">
-            <label className="fs-studio-label">{t.studioAgeLabel} <span className="fs-studio-hint">({t.studioAgeHint})</span></label>
+          {/* Age */}
+          <div className="space-y-1.5">
+            <label className="block text-[11px] font-medium text-zinc-300">
+              {t.studioAgeLabel} <span className="text-zinc-500">({t.studioAgeHint})</span>
+            </label>
             <input
               type="number"
-              inputMode="numeric"
               min={20}
               max={99}
-              className="fs-studio-input"
               value={age}
               onChange={(e) => setAge(e.target.value)}
               placeholder="20+"
+              className="studio-input w-full px-3.5 py-2.5 text-xs"
             />
           </div>
 
-          <div className="fs-studio-field">
-            <label className="fs-studio-label">{t.studioConceptLabel}</label>
+          {/* Concept */}
+          <div className="space-y-1.5">
+            <label className="block text-[11px] font-medium text-zinc-300">{t.studioConceptLabel}</label>
             <textarea
-              className="fs-studio-textarea"
               rows={2}
               value={concept}
               onChange={(e) => setConcept(e.target.value)}
-              placeholder="e.g. นักสืบสาวในชุดกิโมโนสีน้ำเงิน ขี้อายแต่แอบแกร่ง"
+              placeholder="e.g. คอสเพลเยอร์สายน่ารักที่ชอบคอสตัวละครสายลับ ใจดีแต่แอบซุ่มซ่าม"
+              className="studio-input w-full px-3.5 py-2.5 text-xs leading-relaxed"
             />
           </div>
 
-          <div className="fs-studio-grid-2">
-            <div className="fs-studio-field">
-              <label className="fs-studio-label">{t.studioLikesLabel}</label>
+          {/* Likes & Dislikes (2-Column Grid) */}
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="space-y-1.5">
+              <label className="block text-[11px] font-medium text-zinc-300">{t.studioLikesLabel}</label>
               <input
                 type="text"
-                className="fs-studio-input"
                 value={likes}
                 onChange={(e) => setLikes(e.target.value)}
-                placeholder="e.g. มาการอง, ถ่ายรูป"
+                placeholder="มาการอง, ถ่ายรูป"
+                className="studio-input w-full px-3 py-2.5 text-[11.5px]"
               />
             </div>
-            <div className="fs-studio-field">
-              <label className="fs-studio-label">{t.studioDislikesLabel}</label>
+            <div className="space-y-1.5">
+              <label className="block text-[11px] font-medium text-zinc-300">{t.studioDislikesLabel}</label>
               <input
                 type="text"
-                className="fs-studio-input"
                 value={dislikes}
                 onChange={(e) => setDislikes(e.target.value)}
-                placeholder="e.g. แมลง, คำหยาบคาย"
+                placeholder="ข้อความหยาบคาย, แมลง"
+                className="studio-input w-full px-3 py-2.5 text-[11.5px]"
               />
             </div>
           </div>
-        </div>
+        </section>
       )}
 
-      {/* Tab 2: Voice & Tone */}
+      {/* ==========================================
+           TAB 2: น้ำเสียง & สไตล์พูด (VOICE & SPEAKING STYLE)
+           ========================================== */}
       {activeTab === 'voice' && (
-        <div className="fs-studio-card">
-          <div className="fs-studio-field">
-            <label className="fs-studio-label">{t.studioPronounsLabel}</label>
-            <div className="fs-studio-chips">
+        <section className="studio-panel relative z-10 p-4 space-y-4">
+          {/* Pronouns Selector */}
+          <div className="space-y-2">
+            <label className="block text-[11px] font-medium text-zinc-300">{t.studioPronounsLabel}</label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {['เค้า / ตัวเอง', 'หนู / พี่', 'เรา / เธอ', 'ฉัน / คุณ'].map((p) => (
                 <button
                   key={p}
                   type="button"
-                  className={`fs-studio-chip ${pronouns === p ? 'is-active' : ''}`}
                   onClick={() => setPronouns(p)}
+                  className={`px-3 py-2 rounded-xl text-[11px] transition cursor-pointer ${
+                    pronouns === p
+                      ? 'font-semibold bg-gradient-to-r from-pink-500/25 to-purple-500/25 border border-pink-400 text-pink-200'
+                      : 'font-medium bg-[#0e0e15] border border-white/10 text-zinc-400 hover:text-zinc-200'
+                  }`}
                 >
                   {p}
                 </button>
@@ -600,155 +847,191 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
             </div>
           </div>
 
-          <div className="fs-studio-field">
-            <label className="fs-studio-label">{t.studioVoiceToneLabel}</label>
+          {/* Tone Input */}
+          <div className="space-y-1.5">
+            <label className="block text-[11px] font-medium text-zinc-300">{t.studioVoiceToneLabel}</label>
             <input
               type="text"
-              className="fs-studio-input"
               value={voiceTone}
               onChange={(e) => setVoiceTone(e.target.value)}
-              placeholder="e.g. ขี้อ้อน อบอุ่น, ร่าเริง กวนๆ"
+              placeholder="e.g. ขี้อ้อน อบอุ่น"
+              className="studio-input w-full px-3.5 py-2.5 text-xs"
             />
           </div>
 
-          <div className="fs-studio-field">
-            <label className="fs-studio-label">{t.studioSampleQuotesLabel}</label>
+          {/* Catchphrases */}
+          <div className="space-y-1.5">
+            <label className="block text-[11px] font-medium text-zinc-300">{t.studioSampleQuotesLabel}</label>
             <textarea
-              className="fs-studio-textarea"
               rows={2}
               value={sampleQuotes}
               onChange={(e) => setSampleQuotes(e.target.value)}
-              placeholder="พิมพ์ประโยคคำพูดจริง 2-3 ประโยค..."
+              placeholder="ขอบคุณที่แวะมาถ่ายรูปด้วยกันนะคะ! / งอแงแล้วนะ ไม่รักมาเลย"
+              className="studio-input w-full px-3.5 py-2.5 text-xs leading-relaxed"
             />
           </div>
 
-          <div className="fs-studio-ai-action">
+          {/* Generate Lv.1-5 Button */}
+          <div className="flex justify-end">
             <button
               type="button"
-              className="fs-studio-ai-btn"
               onClick={handleAiAutoTuneLevels}
               disabled={levelsBusy}
+              className="btn-holo-prism px-4 py-2 rounded-xl text-xs font-semibold text-white flex items-center gap-1.5 cursor-pointer"
             >
-              {levelsBusy ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-              <span>{t.studioAiGenerate}</span>
+              {levelsBusy ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+              <span>{t.studioAiGenerate || 'ให้ AI ร่าง Lv.1–5 (-1 พลังงาน)'}</span>
             </button>
           </div>
 
-          {/* 5 Levels Preview */}
-          <div className="fs-studio-levels-stack">
-            {[t.studioLevel1Label, t.studioLevel2Label, t.studioLevel3Label, t.studioLevel4Label, t.studioLevel5Label].map((lvlTitle, i) => (
-              <div key={lvlTitle} className="fs-studio-level-item">
-                <span className="fs-studio-level-title">{lvlTitle}</span>
-                <input
-                  type="text"
-                  className="fs-studio-input"
-                  value={levelStyles[i] || ''}
-                  onChange={(e) => {
-                    const copy = [...levelStyles];
-                    copy[i] = e.target.value;
-                    setLevelStyles(copy);
-                  }}
-                />
-              </div>
-            ))}
+          {/* Lv.1 to Lv.5 Dialogue Cards */}
+          <div className="space-y-2.5">
+            {[t.studioLevel1Label, t.studioLevel2Label, t.studioLevel3Label, t.studioLevel4Label, t.studioLevel5Label].map(
+              (lvlTitle, i) => (
+                <div key={lvlTitle} className="p-3 rounded-xl bg-[#0e0e15] border border-white/[0.08] space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10.5px] font-semibold text-pink-300">{lvlTitle}</span>
+                    <span className="text-[9px] text-zinc-500">ระดับ {i + 1}</span>
+                  </div>
+                  <input
+                    type="text"
+                    value={levelStyles[i] || ''}
+                    onChange={(e) => {
+                      const copy = [...levelStyles];
+                      copy[i] = e.target.value;
+                      setLevelStyles(copy);
+                    }}
+                    className="studio-input w-full px-3 py-1.5 text-xs"
+                  />
+                </div>
+              ),
+            )}
           </div>
-        </div>
+        </section>
       )}
 
-      {/* Tab 3: Safety & Secrets */}
+      {/* ==========================================
+           TAB 3: ความลับ & ขอบเขต (SECRETS & BOUNDARIES)
+           ========================================== */}
       {activeTab === 'safety' && (
-        <div className="fs-studio-card">
-          <div className="fs-studio-field">
-            <label className="fs-studio-label">{t.studioSafetyRulesLabel}</label>
-            <div className="fs-studio-checkbox-stack">
-              <label className="fs-studio-checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={ruleNoAddress}
-                  onChange={(e) => setRuleNoAddress(e.target.checked)}
-                />
-                <span>{t.studioRuleNoAddress}</span>
-              </label>
-              <label className="fs-studio-checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={ruleNoMeet}
-                  onChange={(e) => setRuleNoMeet(e.target.checked)}
-                />
-                <span>{t.studioRuleNoMeet}</span>
-              </label>
-              <label className="fs-studio-checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={rulePoliteReject}
-                  onChange={(e) => setRulePoliteReject(e.target.checked)}
-                />
-                <span>{t.studioRulePoliteReject}</span>
-              </label>
-            </div>
+        <section className="studio-panel relative z-10 p-4 space-y-4">
+          {/* Security Guard Checkboxes */}
+          <div className="space-y-2.5">
+            <label className="block text-[11.5px] font-semibold text-white">
+              กฎเหล็กความปลอดภัย <span className="text-zinc-400 font-normal">({t.studioSafetyRulesLabel})</span>
+            </label>
+
+            <label className="flex items-center gap-3 p-2.5 rounded-xl bg-[#0e0e15] border border-white/[0.07] cursor-pointer hover:border-pink-400/40 transition">
+              <input
+                type="checkbox"
+                checked={ruleNoAddress}
+                onChange={(e) => setRuleNoAddress(e.target.checked)}
+                className="w-4 h-4 rounded accent-pink-500 cursor-pointer"
+              />
+              <span className="text-xs text-zinc-200">{t.studioRuleNoAddress}</span>
+            </label>
+
+            <label className="flex items-center gap-3 p-2.5 rounded-xl bg-[#0e0e15] border border-white/[0.07] cursor-pointer hover:border-pink-400/40 transition">
+              <input
+                type="checkbox"
+                checked={ruleNoMeet}
+                onChange={(e) => setRuleNoMeet(e.target.checked)}
+                className="w-4 h-4 rounded accent-pink-500 cursor-pointer"
+              />
+              <span className="text-xs text-zinc-200">{t.studioRuleNoMeet}</span>
+            </label>
+
+            <label className="flex items-center gap-3 p-2.5 rounded-xl bg-[#0e0e15] border border-white/[0.07] cursor-pointer hover:border-pink-400/40 transition">
+              <input
+                type="checkbox"
+                checked={rulePoliteReject}
+                onChange={(e) => setRulePoliteReject(e.target.checked)}
+                className="w-4 h-4 rounded accent-pink-500 cursor-pointer"
+              />
+              <span className="text-xs text-zinc-200">{t.studioRulePoliteReject}</span>
+            </label>
           </div>
 
-          <div className="fs-studio-field">
-            <label className="fs-studio-label">{t.studioImmutableFactsLabel}</label>
+          {/* Immutable Facts */}
+          <div className="space-y-1.5">
+            <label className="block text-[11px] font-medium text-zinc-300">{t.studioImmutableFactsLabel}</label>
             <textarea
-              className="fs-studio-textarea"
               rows={2}
               value={immutableFacts}
               onChange={(e) => setImmutableFacts(e.target.value)}
-              placeholder="e.g. เลี้ยงแมวชื่อบ็อบบี้, ถ่ายคอสเพลย์มาแล้ว 3 ปี"
+              placeholder="เลี้ยงแมวส้มชื่อป๊อกกี้ / ทำชุดคอสเอง"
+              className="studio-input w-full px-3.5 py-2.5 text-xs leading-relaxed"
             />
           </div>
 
-          <div className="fs-studio-field">
-            <label className="fs-studio-label">{t.studioSecretLabel}</label>
+          {/* VIP Secret */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-[11px] font-medium text-zinc-300">{t.studioSecretLabel}</label>
+              <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-amber-400/15 text-amber-300 border border-amber-400/30">
+                VIP SECRET
+              </span>
+            </div>
             <textarea
-              className="fs-studio-textarea"
               rows={2}
               value={secret}
               onChange={(e) => setSecret(e.target.value)}
-              placeholder="ความลับที่จะเล่าเฉพาะเมื่อค่าความสนิทถึง Lv.3-4..."
+              placeholder="จริงๆ แล้วชุดคอสชุดนี้เย็บเองทั้งชุด"
+              className="studio-input w-full px-3.5 py-2.5 text-xs leading-relaxed"
             />
           </div>
-        </div>
+        </section>
       )}
 
-      {/* Tab 4: First Meeting & Live Simulation */}
+      {/* ==========================================
+           TAB 4: ทดลองคุยสด (LIVE DM SANDBOX)
+           ========================================== */}
       {activeTab === 'sandbox' && (
-        <div className="fs-studio-card">
-          <div className="fs-studio-field">
-            <label className="fs-studio-label">{t.studioOpeningSceneLabel}</label>
+        <section className="studio-panel relative z-10 p-4 space-y-3.5">
+          {/* Opening Scene */}
+          <div className="space-y-1.5">
+            <label className="block text-[11px] font-medium text-zinc-300">{t.studioOpeningSceneLabel}</label>
             <input
               type="text"
-              className="fs-studio-input"
               value={openingLocation}
               onChange={(e) => setOpeningLocation(e.target.value)}
-              placeholder="e.g. หลังเวทีงานคอสเพลย์, คาเฟ่หลังเลิกงาน"
+              placeholder="หลังเวทีงานคอสเพลย์"
+              className="studio-input w-full px-3.5 py-2.5 text-xs"
             />
           </div>
 
-          <div className="fs-studio-field">
-            <label className="fs-studio-label">{t.studioGreetingLabel}</label>
+          {/* First Greeting */}
+          <div className="space-y-1.5">
+            <label className="block text-[11px] font-medium text-zinc-300">{t.studioGreetingLabel}</label>
             <textarea
-              className="fs-studio-textarea"
               rows={2}
               value={openingGreeting}
               onChange={(e) => setOpeningGreeting(e.target.value)}
-              placeholder="คำทักทายแรกเมื่อแฟนคลับเปิดแชทเข้ามา..."
+              placeholder="*(ยิ้มเขินๆ พลางจัดวิกผม)* สวัสดีค่ะ แวะมาถ่ายรูปเหรอคะ?"
+              className="studio-input w-full px-3.5 py-2.5 text-xs leading-relaxed"
             />
           </div>
 
           {/* Live DM Sandbox Box */}
-          <div className="fs-studio-sandbox-box">
-            <div className="fs-studio-sandbox-header">
-              <span className="fs-studio-sandbox-title">{t.studioTestChatTitle}</span>
-              <div className="fs-studio-level-pills">
-                <span className="text-xs text-zinc-400">{t.studioTestSimulateLevel}</span>
+          <div className="rounded-2xl bg-[#0c0c13] border border-white/10 p-3 space-y-2.5">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div>
+                <div className="text-xs font-bold text-white">{t.studioTestChatTitle || 'ตู้ทดสอบคุยสด (Live DM Sandbox)'}</div>
+                <div className="text-[10px] text-zinc-400">{t.studioTestSimulateLevel || 'ทดสอบระดับความสนิท:'}</div>
+              </div>
+
+              {/* Lv.1 - Lv.5 Pills */}
+              <div className="flex items-center gap-1">
                 {[1, 2, 3, 4, 5].map((lvl) => (
                   <button
                     key={lvl}
                     type="button"
-                    className={`fs-studio-lvl-pill ${testLevel === lvl ? 'is-active' : ''}`}
                     onClick={() => setTestLevel(lvl)}
+                    className={`px-2 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer ${
+                      testLevel === lvl
+                        ? 'bg-pink-500 text-white shadow'
+                        : 'bg-[#161622] text-zinc-400 border border-white/10'
+                    }`}
                   >
                     Lv.{lvl}
                   </button>
@@ -756,103 +1039,135 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
               </div>
             </div>
 
-            <div className="fs-studio-quick-tunes">
-              <button type="button" className="fs-studio-tune-btn" disabled={sandboxBusy} onClick={handleResetSandbox}>
-                <RotateCcw size={12} className="text-yellow-400" />
-                <span>{t.studioSandboxReset}</span>
-              </button>
+            <button
+              type="button"
+              onClick={handleResetSandbox}
+              disabled={sandboxBusy}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#161622] hover:bg-[#1f1f2e] border border-white/10 text-[11px] font-medium text-zinc-200 transition cursor-pointer"
+            >
+              <RotateCcw className="w-3 h-3 text-cyan-300" />
+              <span>{t.studioSandboxReset || 'เริ่มบทสนทนาใหม่'}</span>
+            </button>
+
+            {/* Amber Notice Banner */}
+            <div className="px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-400/25 text-[10px] text-amber-300 leading-relaxed">
+              {t.studioMockNotice || 'ตอบด้วย AI จริงจากร่างปัจจุบัน (ไม่ต้องบันทึกก่อน) • หัก 1 พลังงานต่อข้อความ • ผู้เล่นคนอื่นไม่เห็น'}
             </div>
 
-            {/* Message Stream */}
-            <p className="fs-studio-mock-notice">{t.studioMockNotice}</p>
-            <div className="fs-studio-chat-stream" ref={streamRef}>
+            {/* Chat Log */}
+            <div ref={streamRef} className="h-44 overflow-y-auto space-y-2.5 pr-1 text-xs no-scrollbar">
               {testMessages.map((msg, i) => (
                 <div
                   key={i}
-                  className={`fs-studio-msg ${msg.sender === 'user' ? 'is-user' : 'is-creator'}`}
+                  className={`flex items-start gap-2 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   {msg.sender === 'creator' && (
-                    avatar ? <img src={studioSrc(avatar)} alt="" className="fs-studio-msg-avatar" /> : null
+                    <div className="w-6 h-6 rounded-full overflow-hidden shrink-0 mt-0.5 border border-pink-400/40 bg-zinc-800">
+                      {avatar ? <img src={studioSrc(avatar)} alt="" className="w-full h-full object-cover" /> : null}
+                    </div>
                   )}
-                  <div className="fs-studio-msg-bubble">
-                    {msg.action && <em className="fs-studio-msg-action">{msg.action}</em>}
-                    {msg.text}
+                  <div
+                    className={`rounded-2xl px-3 py-2 max-w-[82%] leading-relaxed ${
+                      msg.sender === 'user'
+                        ? 'btn-holo-pink text-white rounded-tr-sm'
+                        : 'bg-[#181826] border border-white/10 text-zinc-100 rounded-tl-sm'
+                    }`}
+                  >
+                    {msg.action && <em className="block text-[10px] text-pink-300 not-italic mb-0.5">{msg.action}</em>}
+                    <span>{msg.text}</span>
                   </div>
                 </div>
               ))}
               {sandboxBusy && (
-                <div className="fs-studio-msg is-creator">
-                  <div className="fs-studio-msg-bubble"><Loader2 size={14} className="animate-spin" /></div>
+                <div className="flex items-start gap-2">
+                  <div className="w-6 h-6 rounded-full overflow-hidden shrink-0 mt-0.5 border border-pink-400/40 bg-zinc-800" />
+                  <div className="bg-[#181826] border border-white/10 text-zinc-100 rounded-2xl rounded-tl-sm px-3 py-2">
+                    <Loader2 size={14} className="animate-spin text-pink-400" />
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* Composer */}
-            <form className="fs-studio-composer" onSubmit={handleSendTestMessage}>
+            {/* Sandbox Input Form */}
+            <form onSubmit={handleSendTestMessage} className="flex items-center gap-2 pt-1">
               <input
                 type="text"
-                className="fs-studio-composer-input"
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
-                placeholder={t.studioTestPlaceholder}
+                placeholder={t.studioTestPlaceholder || 'ลองพิมพ์คุยกับ AI Twin ของคุณ...'}
+                className="flex-1 bg-[#14141f] border border-white/10 focus:border-pink-400 focus:outline-none rounded-full px-3.5 py-2 text-xs text-white placeholder-zinc-500"
               />
-              <button type="submit" className="fs-studio-send-btn" disabled={!inputMessage.trim() || sandboxBusy}>
-                <Send size={15} />
+              <button
+                type="submit"
+                disabled={!inputMessage.trim() || sandboxBusy}
+                className="w-8 h-8 rounded-full btn-holo-pink flex items-center justify-center text-white shrink-0 cursor-pointer disabled:opacity-40"
+              >
+                <Send className="w-3.5 h-3.5" />
               </button>
             </form>
           </div>
-        </div>
+        </section>
       )}
 
-      {/* Pillar 5: Vault & Missions */}
+      {/* ==========================================
+           TAB 5: คลังภาพ & รางวัล (GALLERY & REWARDS)
+           ========================================== */}
       {activeTab === 'gallery' && (
-        <div className="fs-studio-pane">
-          <div className="fs-studio-card">
-            <h2 className="fs-studio-card-title">{t.studioAddReward}</h2>
+        <section className="relative z-10 space-y-4">
+          <div className="studio-panel p-4 space-y-4">
+            <h2 className="text-sm font-bold text-white">{t.studioAddReward || 'เพิ่มภาพภารกิจ / ตู้สุ่ม'}</h2>
 
-            {/* Photo preview & upload */}
-            <div className="fs-studio-field">
-              <label className="fs-studio-label">{t.studioAvatarLabel}</label>
-              <div className="fs-studio-avatar-row">
-                <div className="fs-studio-current-avatar" style={{ aspectRatio: '4/5', width: 90, height: 112, borderRadius: 12 }}>
-                  {newRewardAsset ? <img src={studioSrc(newRewardAsset)} alt="" className="fs-studio-avatar-img" /> : <span className="fs-studio-avatar-placeholder"><ImageIcon size={22} /></span>}
+            {/* Reward Image Picker */}
+            <div className="space-y-1.5">
+              <label className="block text-[11px] font-medium text-zinc-300">{t.studioAvatarLabel}</label>
+              <div className="flex items-center gap-3">
+                <div className="w-16 h-20 rounded-2xl bg-[#0e0e15] border border-dashed border-pink-400/45 flex items-center justify-center overflow-hidden shrink-0 shadow-md">
+                  {newRewardAsset ? (
+                    <img src={studioSrc(newRewardAsset)} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <ImageIcon className="w-5 h-5 text-zinc-500" />
+                  )}
                 </div>
                 <button
                   type="button"
-                  className="fs-studio-btn-upload"
                   onClick={() => {
                     setCropTarget('reward');
                     fileInputRef.current?.click();
                   }}
+                  className="px-3.5 py-2 rounded-xl bg-white text-zinc-950 hover:bg-zinc-200 text-xs font-semibold flex items-center gap-1.5 shadow transition active:scale-95 cursor-pointer"
                 >
-                  <Camera size={15} />
+                  <Camera className="w-3.5 h-3.5" />
                   <span>{t.studioUploadBtn}</span>
                 </button>
               </div>
             </div>
 
-            {/* Title */}
-            <div className="fs-studio-field">
-              <label className="fs-studio-label">{t.studioPhotoTitle}</label>
+            {/* Reward Title */}
+            <div className="space-y-1.5">
+              <label className="block text-[11px] font-medium text-zinc-300">{t.studioPhotoTitle}</label>
               <input
                 type="text"
-                className="fs-studio-input"
                 value={newRewardTitle}
                 onChange={(e) => setNewRewardTitle(e.target.value)}
                 placeholder="เช่น เรื่องที่เป็นไปไม่ได้, ชุดราตรีลับเฉพาะ"
+                className="studio-input w-full px-3.5 py-2.5 text-xs"
               />
             </div>
 
-            {/* Rarity */}
-            <div className="fs-studio-field">
-              <label className="fs-studio-label">{t.studioRewardRarity}</label>
-              <div className="fs-studio-chips">
+            {/* Rarity Selector */}
+            <div className="space-y-1.5">
+              <label className="block text-[11px] font-medium text-zinc-300">{t.studioRewardRarity}</label>
+              <div className="flex items-center gap-2">
                 {(['R', 'SR', 'SSR', 'UR'] as const).map((r) => (
                   <button
                     key={r}
                     type="button"
-                    className={`fs-studio-chip ${newRewardRarity === r ? 'is-active' : ''}`}
                     onClick={() => setNewRewardRarity(r)}
+                    className={`w-11 h-9 rounded-full text-xs font-bold transition cursor-pointer ${
+                      newRewardRarity === r
+                        ? 'bg-pink-500/20 border border-pink-400 text-pink-200 shadow-sm shadow-pink-500/30'
+                        : 'bg-[#0e0e15] border border-white/15 text-zinc-400'
+                    }`}
                   >
                     {r}
                   </button>
@@ -860,181 +1175,243 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
               </div>
             </div>
 
-            {/* Unlock Type */}
-            <div className="fs-studio-field">
-              <label className="fs-studio-label">{t.studioUnlockType}</label>
-              <div className="fs-studio-chips">
+            {/* Unlock Type Toggle */}
+            <div className="space-y-1.5">
+              <label className="block text-[11px] font-medium text-zinc-300">{t.studioUnlockType}</label>
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  className={`fs-studio-chip ${newRewardUnlockType === 'mission' ? 'is-active' : ''}`}
                   onClick={() => setNewRewardUnlockType('mission')}
+                  className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                    newRewardUnlockType === 'mission'
+                      ? 'bg-pink-500/20 border border-pink-400 text-pink-200'
+                      : 'bg-[#0e0e15] border border-white/10 text-zinc-400'
+                  }`}
                 >
-                  <MessageCircle size={13} />
-                  <span>{t.studioMissionMode}</span>
+                  <MessageCircle className="w-3.5 h-3.5" />
+                  <span>{t.studioMissionMode || 'ภารกิจแชท'}</span>
                 </button>
                 <button
                   type="button"
-                  className={`fs-studio-chip ${newRewardUnlockType === 'diamond_gacha' ? 'is-active' : ''}`}
                   onClick={() => setNewRewardUnlockType('diamond_gacha')}
+                  className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                    newRewardUnlockType === 'diamond_gacha'
+                      ? 'bg-cyan-500/20 border border-cyan-400 text-cyan-200'
+                      : 'bg-[#0e0e15] border border-white/10 text-zinc-400'
+                  }`}
                 >
-                  <Gem size={13} />
-                  <span>{t.studioGachaMode}</span>
+                  <Gem className="w-3.5 h-3.5" />
+                  <span>{t.studioGachaMode || 'ตู้สุ่มเพชร'}</span>
                 </button>
               </div>
             </div>
 
-            {/* If Mission: Target turns, trust, romance, hint */}
+            {/* Numeric Targets */}
             {newRewardUnlockType === 'mission' ? (
               <>
-                <div className="fs-studio-grid-2">
-                  <div className="fs-studio-field">
-                    <label className="fs-studio-label">{t.studioTargetTurns}</label>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="space-y-1">
+                    <label className="block text-[10.5px] font-medium text-zinc-300">{t.studioTargetTurns}</label>
                     <input
                       type="number"
-                      className="fs-studio-input"
                       value={newRewardTurns}
                       onChange={(e) => setNewRewardTurns(Number(e.target.value))}
+                      className="studio-input w-full px-3 py-2 text-xs"
                     />
                   </div>
-                  <div className="fs-studio-field">
-                    <label className="fs-studio-label">{t.studioTargetTrust}</label>
+                  <div className="space-y-1">
+                    <label className="block text-[10.5px] font-medium text-zinc-300">{t.studioTargetTrust}</label>
                     <input
                       type="number"
-                      className="fs-studio-input"
                       value={newRewardTrust}
                       onChange={(e) => setNewRewardTrust(Number(e.target.value))}
+                      className="studio-input w-full px-3 py-2 text-xs"
                     />
                   </div>
                 </div>
 
-                <div className="fs-studio-field">
-                  <label className="fs-studio-label">{t.studioTargetRomance}</label>
+                <div className="space-y-1">
+                  <label className="block text-[10.5px] font-medium text-zinc-300">{t.studioTargetRomance}</label>
                   <input
                     type="number"
-                    className="fs-studio-input"
                     value={newRewardRomance}
                     onChange={(e) => setNewRewardRomance(Number(e.target.value))}
+                    className="studio-input w-full px-3 py-2 text-xs"
                   />
                 </div>
 
-                <div className="fs-studio-field">
-                  <label className="fs-studio-label">{t.studioMissionHint}</label>
+                <div className="space-y-1">
+                  <label className="block text-[10.5px] font-medium text-zinc-300">{t.studioMissionHint}</label>
                   <input
                     type="text"
-                    className="fs-studio-input"
                     value={newRewardHint}
                     onChange={(e) => setNewRewardHint(e.target.value)}
-                    placeholder="เช่น ปรับความเข้าใจคืนดีกันไว้ใจกัน"
+                    placeholder="ปรับความเข้าใจคืนดีกันไว้ใจกัน"
+                    className="studio-input w-full px-3.5 py-2 text-xs"
                   />
                 </div>
               </>
             ) : (
-              <div className="fs-studio-field">
-                <label className="fs-studio-label">{t.studioFallbackEnergy}</label>
+              <div className="space-y-1">
+                <label className="block text-[10.5px] font-medium text-zinc-300">{t.studioFallbackEnergy}</label>
                 <input
                   type="number"
-                  className="fs-studio-input"
                   value={newRewardFallback}
                   onChange={(e) => setNewRewardFallback(Number(e.target.value))}
+                  className="studio-input w-full px-3 py-2 text-xs"
                 />
               </div>
             )}
 
+            {/* Add Reward CTA */}
             <button
               type="button"
-              className="fs-studio-ai-btn"
               onClick={handleAddReward}
               disabled={!newRewardTitle.trim()}
-              style={{ marginTop: 10, width: '100%', justifyContent: 'center' }}
+              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-purple-700/80 via-fuchsia-600/80 to-pink-600/80 hover:from-purple-600 hover:to-pink-500 border border-pink-400/35 text-xs font-semibold text-white flex items-center justify-center gap-1.5 shadow-lg transition active:scale-98 cursor-pointer disabled:opacity-40"
             >
-              <Plus size={16} />
-              <span>{t.studioAddReward}</span>
+              <span>+ {t.studioAddReward || 'เพิ่มภาพภารกิจ / ตู้สุ่ม'}</span>
             </button>
           </div>
 
-          {/* List of existing rewards */}
-          <div className="fs-studio-card">
-            <h2 className="fs-studio-card-title">{t.studioSavedRewards} ({rewards.length})</h2>
-            <div className="fs-studio-vault-grid">
-              {rewards.map((r) => (
-                <div key={r.id} className="fs-studio-vault-card">
-                  <div className="fs-studio-vault-thumb">
-                    {r.asset ? <img src={studioSrc(r.asset)} alt="" /> : null}
-                    <div style={{ position: 'absolute', top: 6, left: 6 }}>
-                      <span className={`fs-rarity-badge rarity-${r.rarity.toLowerCase()}`}>
+          {/* Vault Grid Card */}
+          <div className="studio-panel p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-white">
+                {t.studioSavedRewards || 'ภาพทั้งหมดในคลัง'} <span className="text-cyan-300">({rewards.length})</span>
+              </h3>
+              <span className="text-[10px] text-zinc-400">การ์ดสะสม TCG Foil</span>
+            </div>
+
+            {rewards.length === 0 ? (
+              <div className="py-6 text-center text-[11px] text-zinc-500 border border-dashed border-white/10 rounded-2xl">
+                ยังไม่มีภาพรางวัลในคลัง กดปุ่ม "+ เพิ่มภาพภารกิจ / ตู้สุ่ม" ด้านบนเพื่อสร้างการ์ดสะสม
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2.5">
+                {rewards.map((r) => (
+                  <div key={r.id} className="holo-tcg-card p-2.5 space-y-2 overflow-hidden">
+                    <div className="holo-sparkle-grain absolute inset-0 pointer-events-none" />
+                    <div className="relative aspect-[3/4] rounded-xl overflow-hidden border border-white/15 bg-zinc-900">
+                      {r.asset ? <img src={studioSrc(r.asset)} alt="" className="w-full h-full object-cover" /> : null}
+                      <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-gradient-to-r from-amber-200 via-pink-300 to-cyan-200 text-zinc-950 shadow">
                         {r.rarity}
                       </span>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteReward(r.id)}
+                        className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/65 text-zinc-200 hover:text-rose-400 flex items-center justify-center cursor-pointer"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                    <div className="relative z-10">
+                      <div className="text-xs font-bold text-white truncate">{r.name}</div>
+                      <div className="text-[10px] text-cyan-300 mt-0.5">
+                        {r.unlockType === 'mission'
+                          ? `💬 ${r.turns} ข้อความ • ♥ ${r.trust}`
+                          : `💎 ${r.energyFallback} เพชร`}
+                      </div>
                     </div>
                   </div>
-                  <div className="fs-studio-vault-details">
-                    <strong className="fs-studio-vault-name">{r.name}</strong>
-                    <span style={{ fontSize: '0.72rem', color: '#a1a1aa' }}>
-                      {r.unlockType === 'mission' ? t.studioMissionSummary(r.turns) : t.studioGachaSummary(r.energyFallback)}
-                    </span>
-                    <button
-                      type="button"
-                      className="fs-studio-vault-del-btn"
-                      onClick={() => handleDeleteReward(r.id)}
-                    >
-                      <Trash2 size={12} style={{ display: 'inline', marginRight: 4 }} />
-                      <span>{t.studioDelete}</span>
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
-        </div>
+        </section>
       )}
 
-      {/* Footer Actions */}
-      <div className="fs-studio-checklist" aria-label={t.studioChecklistTitle}>
-        <span className="fs-studio-checklist-title">{t.studioChecklistTitle} {readyCount}/{checklist.length}</span>
-        <div className="fs-studio-checklist-items">
+      {/* ==========================================
+           5. PERSISTENT LAUNCH READINESS & ACTION FOOTER
+           ========================================== */}
+      <section className="studio-panel relative z-10 p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-white">
+            {t.studioChecklistTitle || 'ความพร้อมเปิดตัว'}{' '}
+            <span className={readyCount === checklist.length ? 'text-emerald-400' : 'text-amber-400'}>
+              {readyCount}/{checklist.length}
+            </span>
+          </span>
+          <span className="text-[10px] text-cyan-300 font-medium">
+            {readyCount === checklist.length ? '✨ พร้อมเผยแพร่สู่หน้าหลัก' : 'กำลังจัดเตรียมข้อมูล'}
+          </span>
+        </div>
+
+        {/* 7 Check Pills */}
+        <div className="flex flex-wrap gap-1.5">
           {checklist.map(([k, ok]) => (
-            <span key={k} className={`fs-studio-check ${ok ? 'is-ok' : ''}`}>{ok ? '✓' : '•'} {problemLabels[k]}</span>
+            <span
+              key={k}
+              className={`px-2.5 py-1 rounded-full text-[10px] font-medium transition ${
+                ok
+                  ? 'bg-emerald-500/12 border border-emerald-500/30 text-emerald-300'
+                  : 'bg-zinc-800/40 border border-white/10 text-zinc-400'
+              }`}
+            >
+              {ok ? '✓' : '•'} {problemLabels[k]}
+            </span>
           ))}
         </div>
-      </div>
+      </section>
 
-      {notice && (
-        <div className={notice.ok ? 'fs-studio-alert-success' : 'fs-studio-alert-error'} role="status">
-          {notice.ok ? <Check size={16} /> : <X size={16} />}
-          <span>{notice.text}</span>
+      {/* Online Status & 2x2 Action Button Grid */}
+      <section className="relative z-10 space-y-2.5">
+        <div className="flex items-center gap-2 px-1">
+          <span
+            className={`w-2.5 h-2.5 rounded-full ${
+              isLive ? 'bg-emerald-400 shadow-[0_0_8px_#34d399]' : 'bg-zinc-500'
+            }`}
+          />
+          <span className={`text-[11px] font-medium ${isLive ? 'text-emerald-400' : 'text-zinc-400'}`}>
+            {isLive ? 'ออนไลน์อยู่' : 'ปิดชั่วคราว (Draft)'}
+          </span>
+          <span className="text-[11px] text-zinc-500">• @{handle.replace(/^@/, '') || 'yuki.cosplay'}</span>
         </div>
-      )}
 
-      {studio.status === 'live' && studio.creatorId && (
-        <div className="fs-studio-live-row">
-          <span className="fs-studio-live-badge">{t.studioLiveBadge(handle)}</span>
-          <button type="button" className="fs-studio-btn-save" onClick={() => onOpenLiveChat?.(studio.creatorId!)}>
-            <MessageCircle size={14} /> {t.studioOpenLiveChat}
+        <div className="grid grid-cols-2 gap-2.5">
+          <button
+            type="button"
+            disabled={!isLive || !studio.creatorId}
+            onClick={() => {
+              if (studio.creatorId) onOpenLiveChat?.(studio.creatorId);
+            }}
+            className="py-3 px-3 rounded-xl bg-[#14141d] hover:bg-[#1c1c28] border border-white/10 text-xs font-semibold text-white flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer disabled:opacity-40"
+          >
+            <MessageCircle className="w-3.5 h-3.5 text-cyan-300" />
+            <span>{t.studioOpenLiveChat || 'คุยกับตัวละครจริง'}</span>
           </button>
-          <button type="button" className="fs-studio-btn-save" disabled={!!busyAction} onClick={handleUnpublish}>
-            {t.studioUnpublish}
+
+          <button
+            type="button"
+            disabled={!isLive || !!busyAction}
+            onClick={handleUnpublish}
+            className="py-3 px-3 rounded-xl bg-[#14141d] hover:bg-rose-500/15 border border-white/10 hover:border-rose-400/40 text-xs font-semibold text-zinc-200 hover:text-rose-200 flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer disabled:opacity-40"
+          >
+            {busyAction === 'unpublish' ? <Loader2 size={14} className="animate-spin" /> : null}
+            <span>{t.studioUnpublish || 'ถอดตัวละคร'}</span>
+          </button>
+
+          <button
+            type="button"
+            disabled={!!busyAction}
+            onClick={handleSaveDraft}
+            className="py-3 px-3 rounded-xl bg-[#14141d] hover:bg-[#1c1c28] border border-white/10 text-xs font-semibold text-white flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer disabled:opacity-40"
+          >
+            {busyAction === 'save' ? <Loader2 size={14} className="animate-spin" /> : null}
+            <span>{t.studioSaveDraft || 'บันทึกข้อมูล'}</span>
+          </button>
+
+          <button
+            type="button"
+            disabled={!!busyAction}
+            onClick={handleLaunch}
+            className="btn-holo-pink py-3 px-3 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40"
+          >
+            {busyAction === 'launch' ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+            <span>{isLive ? t.studioRelaunch || 'อัปเดตตัวละคร' : t.studioLaunch || 'เปิดตัวตัวละคร'}</span>
           </button>
         </div>
-      )}
-
-      <div className="fs-studio-footer-actions">
-        <button
-          type="button"
-          className="fs-studio-btn-save"
-          disabled={!!busyAction}
-          onClick={handleSaveDraft}
-        >
-          {busyAction === 'save' ? <Loader2 size={14} className="animate-spin" /> : t.studioSaveDraft}
-        </button>
-        <button
-          type="button"
-          className="fs-studio-btn-launch"
-          disabled={!!busyAction}
-          onClick={handleLaunch}
-        >
-          {busyAction === 'launch' ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-          <span>{busyAction === 'launch' ? t.studioLaunching : studio.status === 'live' ? t.studioRelaunch : t.studioLaunch}</span>
-        </button>
-      </div>
+      </section>
 
       {/* Interactive 512x640 Auto-Resize and Crop Modal */}
       {cropModalOpen && stagingPreview && (
@@ -1044,7 +1421,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
               <span className="fs-studio-crop-title">{t.studioResizeTitle}</span>
               <button
                 type="button"
-                className="fs-studio-crop-close"
+                className="fs-studio-crop-close cursor-pointer"
                 onClick={() => setCropModalOpen(false)}
               >
                 <X size={18} />
@@ -1067,7 +1444,9 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
 
             <div className="fs-studio-crop-controls">
               <div className="fs-studio-crop-slider-row">
-                <span className="fs-studio-crop-slider-label">{t.studioZoomLabel} ({zoom.toFixed(1)}x)</span>
+                <span className="fs-studio-crop-slider-label">
+                  {t.studioZoomLabel} ({zoom.toFixed(1)}x)
+                </span>
                 <input
                   type="range"
                   min="1"
@@ -1102,14 +1481,14 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
             <div className="fs-studio-crop-actions">
               <button
                 type="button"
-                className="fs-studio-btn-cancel"
+                className="fs-studio-btn-cancel cursor-pointer"
                 onClick={() => setCropModalOpen(false)}
               >
                 {t.studioCancel}
               </button>
               <button
                 type="button"
-                className="fs-studio-btn-apply"
+                className="fs-studio-btn-apply cursor-pointer"
                 onClick={handleApplyCropAndUpload}
                 disabled={uploading}
               >

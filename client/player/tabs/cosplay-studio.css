@@ -1,0 +1,128 @@
+/* Cosplay Creator Studio - TCG Holographic UI Styles */
+.fs-cosplay-studio {
+  position: relative;
+  width: 100%;
+}
+
+/* Holographic Text Shimmer */
+@keyframes prismPulse {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+.fs-cosplay-studio .holo-text-shimmer {
+  background: linear-gradient(90deg, #f472b6, #c084fc, #38bdf8, #fbbf24, #f472b6);
+  background-size: 240% auto;
+  animation: prismPulse 5s linear infinite;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Collectible TCG Holographic Card */
+.fs-cosplay-studio .holo-tcg-card {
+  position: relative;
+  background: linear-gradient(145deg, #161624 0%, #0c0c14 100%);
+  border-radius: 20px;
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease;
+}
+.fs-cosplay-studio .holo-tcg-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  padding: 1.5px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.35) 0%,
+    rgba(56, 189, 248, 0.65) 28%,
+    rgba(236, 72, 153, 0.72) 58%,
+    rgba(251, 191, 36, 0.65) 85%,
+    rgba(255, 255, 255, 0.3) 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Interactive Pointer Foil Sheen */
+.fs-cosplay-studio .holo-foil-sheen {
+  --px: 50%;
+  --py: 50%;
+  background: radial-gradient(
+    circle at var(--px) var(--py),
+    rgba(255, 255, 255, 0.22) 0%,
+    rgba(56, 189, 248, 0.16) 25%,
+    rgba(236, 72, 153, 0.16) 50%,
+    transparent 76%
+  );
+  mix-blend-mode: screen;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+/* Micro-Sparkle Foil Grain */
+.fs-cosplay-studio .holo-sparkle-grain {
+  background-image:
+    radial-gradient(rgba(255, 255, 255, 0.28) 1px, transparent 1px),
+    radial-gradient(rgba(192, 132, 252, 0.24) 1px, transparent 1px);
+  background-size: 18px 18px, 27px 27px;
+  background-position: 0 0, 9px 12px;
+  mix-blend-mode: screen;
+  opacity: 0.24;
+  pointer-events: none;
+}
+
+/* Studio Panel Container */
+.fs-cosplay-studio .studio-panel {
+  background: linear-gradient(160deg, #111119 0%, #0b0b11 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+}
+
+/* Holographic Primary Action Button */
+.fs-cosplay-studio .btn-holo-pink {
+  background: linear-gradient(100deg, #ec4899 0%, #d946ef 50%, #8b5cf6 100%);
+  background-size: 180% 100%;
+  box-shadow: 0 6px 20px -4px rgba(236, 72, 153, 0.55), inset 0 1px 1px rgba(255, 255, 255, 0.35);
+  transition: background-position 0.3s ease, transform 0.15s ease, box-shadow 0.2s ease;
+}
+.fs-cosplay-studio .btn-holo-pink:hover {
+  background-position: 100% 0;
+  box-shadow: 0 8px 24px -3px rgba(217, 70, 239, 0.65);
+}
+.fs-cosplay-studio .btn-holo-pink:active {
+  transform: scale(0.96);
+}
+
+.fs-cosplay-studio .btn-holo-prism {
+  background: linear-gradient(100deg, #ec4899 0%, #8b5cf6 52%, #06b6d4 100%);
+  background-size: 180% 100%;
+  box-shadow: 0 6px 18px -4px rgba(139, 92, 246, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+  transition: background-position 0.3s ease, transform 0.15s ease;
+}
+.fs-cosplay-studio .btn-holo-prism:hover {
+  background-position: 100% 0;
+}
+.fs-cosplay-studio .btn-holo-prism:active {
+  transform: scale(0.96);
+}
+
+/* Avatar Prismatic Frame */
+.fs-cosplay-studio .avatar-foil-ring {
+  background: linear-gradient(135deg, #f472b6, #a855f7, #38bdf8, #fbbf24);
+  padding: 2.5px;
+}
+
+/* Custom Input Aesthetics */
+.fs-cosplay-studio .studio-input {
+  background-color: #0e0e15;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: #f4f4f5;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.fs-cosplay-studio .studio-input:focus {
+  outline: none;
+  border-color: rgba(236, 72, 153, 0.65);
+  box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.12);
+}
