@@ -31,6 +31,11 @@ const key = x => /^[a-zA-Z0-9_./-]{1,200}$/.test(x || '') && !x.includes('..') ?
 const integer = (v, fallback=0) => v == null ? fallback : Number.isSafeInteger(v) && v>=0 ? v : fail('invalid_number');
 const body = async req => { try {const x=await req.json(); if(!x||typeof x!=='object'||Array.isArray(x)) throw 0; return x;} catch {return fail('invalid_json');} };
 const isAdminUser = (env,user) => !!user && (user.role === 'admin' || (!!env.ADMIN_EMAIL && user.email.toLowerCase() === env.ADMIN_EMAIL.toLowerCase()));
+// Cosplay Creator Studio is still a prototype: only behind COSPLAY_STUDIO_V1 and only for admins or STAGING_EMAILS.
+const studioAllowed = (env,user) => String(env.COSPLAY_STUDIO_V1)==='true' && !!user && (isAdminUser(env,user) || String(env.STAGING_EMAILS||'').split(',').some(e=>e.trim().toLowerCase()===String(user.email||'').toLowerCase()));
+const STUDIO_UPLOAD_MAX_BYTES = 2000000; // D1 BLOB cap is 2,000,000 bytes
+const STUDIO_UPLOADS_PER_DAY = 30;
+const studioDraftPrefix = user => `studio-drafts/${String(user?.id||'').replace(/[^a-zA-Z0-9_-]/g,'')}/`;
 // DM Thread lease covers up to three primary model attempts plus the knowledge pass.
 const THREAD_LOCK_MS = 90000;
 const GEMINI_TIMEOUT_MS = 20000;
@@ -431,7 +436,7 @@ async function player(req,env,user,path,now,ctx) {
   await ensureUserProfileColumns(env);
   const uRow = await one(env, 'SELECT nickname, avatar_id FROM users WHERE id=?', user.id);
   const isAdmin = isAdminUser(env,user);
-  return json({user:{id:user.id,email:user.email,role:user.role||(isAdmin?'admin':'player'),isAdmin,ageVerifiedAt:user.age_verified_at,consentVersion:user.consent_version,nickname:uRow?.nickname||null,avatarId:uRow?.avatar_id||null},energy:await energy(env,user.id,now),uiFlags:{homeHubV1:String(env.HOME_HUB_V1)==='true'}});
+  return json({user:{id:user.id,email:user.email,role:user.role||(isAdmin?'admin':'player'),isAdmin,ageVerifiedAt:user.age_verified_at,consentVersion:user.consent_version,nickname:uRow?.nickname||null,avatarId:uRow?.avatar_id||null},energy:await energy(env,user.id,now),uiFlags:{homeHubV1:String(env.HOME_HUB_V1)==='true',cosplayStudioV1:studioAllowed(env,user)}});
  }
  if(path==='/api/me/profile' && method==='POST'){
   await ensureUserProfileColumns(env);
@@ -1948,6 +1953,9 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
   return json({notifications});
  }
  if(path==='/api/media/upload'&&method==='POST'){
+  if(!studioAllowed(env,user))return json({error:'forbidden'},403);
+  const recent=await one(env,"SELECT COUNT(*) n FROM activity WHERE user_id=? AND kind='studio_upload' AND created_at>?",user.id,now-86400000);
+  if((recent?.n||0)>=STUDIO_UPLOADS_PER_DAY)return json({error:'upload_quota_exceeded'},429);
   let uploadBytes;
   const contentType=req.headers.get('content-type')||'';
   if(contentType.includes('multipart/form-data')){
@@ -1958,22 +1966,23 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
   }else{
    uploadBytes=new Uint8Array(await req.arrayBuffer());
   }
-  if(!uploadBytes.byteLength||uploadBytes.byteLength>2*1024*1024)return json({error:'invalid_file_size'},400);
+  if(!uploadBytes.byteLength||uploadBytes.byteLength>STUDIO_UPLOAD_MAX_BYTES)return json({error:'invalid_file_size'},400);
   if(uploadBytes.byteLength<12||uploadBytes[0]!==0x52||uploadBytes[1]!==0x49||uploadBytes[2]!==0x46||uploadBytes[3]!==0x46||uploadBytes[8]!==0x57||uploadBytes[9]!==0x45||uploadBytes[10]!==0x42||uploadBytes[11]!==0x50){
    return json({error:'invalid_image_format',message:'Expected WebP image'},400);
   }
-  const uidClean=(user?.id||'anon').replace(/[^a-zA-Z0-9_-]/g,'');
-  const uploadKey=`avatars/cosplay_${uidClean}_${now}_${crypto.randomUUID().slice(0,8)}.webp`;
+  // Drafts stay private to their owner until a reviewed publish flow exists (never under the public avatars/ prefix).
+  const uploadKey=`${studioDraftPrefix(user)}${now}_${crypto.randomUUID().slice(0,8)}.webp`;
   if(env.MEDIA?.put){
    await env.MEDIA.put(uploadKey,uploadBytes,{httpMetadata:{contentType:'image/webp'}});
   }else if(env.DB){
    await env.DB.prepare('INSERT INTO media_blobs(key,content_type,bytes,size,uploaded_at) VALUES(?,?,?,?,?) ON CONFLICT(key) DO UPDATE SET bytes=excluded.bytes,size=excluded.size').bind(uploadKey,'image/webp',uploadBytes,uploadBytes.byteLength,now).run();
   }
-  return json({ok:true,mediaKey:uploadKey,url:`/api/media/${encodeURIComponent(uploadKey)}`});
+  await run(env,'INSERT INTO activity(user_id,kind,created_at) VALUES(?,?,?)',user.id,'studio_upload',now);
+  return json({ok:true,mediaKey:uploadKey,url:`/api/media/${uploadKey.split('/').map(encodeURIComponent).join('/')}`});
  }
  m=path.match(/^\/api\/media\/(.+)$/);
  if(m&&method==='GET'){
-  const mediaKey=key(decodeURIComponent(m[1]));const posts=await all(env,'SELECT id FROM posts WHERE media_key=?',mediaKey);let allowed=mediaKey.startsWith('avatars/')||!!await one(env,'SELECT id FROM creators WHERE avatar_key=?',mediaKey);
+  const mediaKey=key(decodeURIComponent(m[1]));if(mediaKey.startsWith('studio-drafts/')&&!mediaKey.startsWith(studioDraftPrefix(user)))return json({error:'not_found'},404);const posts=await all(env,'SELECT id FROM posts WHERE media_key=?',mediaKey);let allowed=mediaKey.startsWith(studioDraftPrefix(user))||mediaKey.startsWith('avatars/')||!!await one(env,'SELECT id FROM creators WHERE avatar_key=?',mediaKey);
   for(const p of posts)if(await visiblePost(env,user,p.id,now)){allowed=true;break;}
   if(!allowed){const stories=await all(env,'SELECT id FROM stories WHERE media_key=?',mediaKey);for(const s of stories){const story=await visibleStory(env,user,s.id,now);if(story && (story.type==='broadcast' || story.first_viewed_at!=null)){allowed=true;break;}}}
   if(!allowed){allowed=!!await one(env,'SELECT 1 FROM reward_unlocks WHERE user_id=? AND reward_key=?',user.id,mediaKey);}

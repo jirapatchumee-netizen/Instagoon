@@ -20,4 +20,5 @@ run_worker_first = ["/api/*", "/auth/*"]
 
 [vars]
 HOME_HUB_V1 = "true"
+COSPLAY_STUDIO_V1 = "true"
 GEMINI_MODEL = "gemini-2.5-flash"

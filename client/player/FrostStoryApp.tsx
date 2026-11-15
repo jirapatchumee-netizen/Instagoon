@@ -72,6 +72,8 @@ export function FrostStoryApp() {
   const [screen, setScreen] = useState<Screen>('feed');
   // HOME_HUB_V1 comes from /api/me so the whole hub can be switched off per environment.
   const [hubOn, setHubOn] = useState(false);
+  // COSPLAY_STUDIO_V1: the Studio prototype is staff-only until it has a real backend and review flow.
+  const [studioOn, setStudioOn] = useState(false);
   const routerRef = useRef<ReturnType<typeof createRouter> | null>(null);
   if (!routerRef.current && typeof window !== 'undefined') {
     routerRef.current = createRouter({
@@ -516,13 +518,19 @@ export function FrostStoryApp() {
   const followSyncRef = useRef(createFollowSync());
 
   const loadMe = useCallback(async () => {
-    const result = await api<{ user: User; energy: Energy; uiFlags?: { homeHubV1?: boolean } }>('/api/me');
+    const result = await api<{ user: User; energy: Energy; uiFlags?: { homeHubV1?: boolean; cosplayStudioV1?: boolean } }>('/api/me');
     setUser(result.user);
     setEnergy(result.energy);
     const hub = result.uiFlags?.homeHubV1 === true;
     setHubOn(hub);
-    // Only move a player who has not navigated anywhere yet; a deep link must win.
-    if (hub) setScreen((prev) => (prev === 'feed' ? 'home' : prev));
+    const studio = result.uiFlags?.cosplayStudioV1 === true;
+    setStudioOn(studio);
+    // Only move a player who has not navigated anywhere yet; a deep link (e.g. /studio) must win.
+    if (hub) {
+      const restored = routerRef.current?.restore()?.screen;
+      const target: Screen = restored && (restored !== 'studio' || studio) ? (restored as Screen) : 'home';
+      setScreen((prev) => (prev === 'feed' ? target : prev));
+    }
     return result.user;
   }, []);
 
@@ -1065,7 +1073,7 @@ export function FrostStoryApp() {
           />
         )}
 
-        {screen === "studio" && (
+        {screen === "studio" && studioOn && (
           <CosplayCreatorTab
             lang={lang}
             onOpenRecentChats={() => handleSelectTab('inbox')}
@@ -1152,15 +1160,17 @@ export function FrostStoryApp() {
             })() : null}
           </button>
 
-          <button
-            type="button"
-            className={`fs-nav-tab ${screen === 'studio' ? 'is-active' : ''}`}
-            onClick={() => handleSelectTab('studio')}
-            title={t.cosplayCreator}
-            aria-label={t.cosplayCreator}
-          >
-            <Sparkles size={25} className={screen === 'studio' ? 'text-pink-400' : ''} />
-          </button>
+          {studioOn && (
+            <button
+              type="button"
+              className={`fs-nav-tab ${screen === 'studio' ? 'is-active' : ''}`}
+              onClick={() => handleSelectTab('studio')}
+              title={t.cosplayCreator}
+              aria-label={t.cosplayCreator}
+            >
+              <Sparkles size={25} className={screen === 'studio' ? 'text-pink-400' : ''} />
+            </button>
+          )}
 
           <button
             type="button"

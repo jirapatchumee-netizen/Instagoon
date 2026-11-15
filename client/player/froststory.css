@@ -6770,7 +6770,7 @@ dialog.fs-overlay[open]::backdrop {
 
 .fs-studio-nav {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 4px;
   background: #18181b;
   padding: 4px;
@@ -6841,6 +6841,7 @@ dialog.fs-overlay[open]::backdrop {
 .fs-studio-input,
 .fs-studio-textarea {
   width: 100%;
+  font-family: inherit;
   background: #18181b;
   border: 1px solid #3f3f46;
   border-radius: 8px;
@@ -6884,37 +6885,37 @@ dialog.fs-overlay[open]::backdrop {
   object-fit: cover;
 }
 
-.fs-studio-preset-avatars {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  padding: 2px;
-}
-
-.fs-studio-preset-btn {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  overflow: hidden;
-  border: 1px solid #3f3f46;
-  background: none;
-  cursor: pointer;
-  padding: 0;
-  flex-shrink: 0;
-  opacity: 0.65;
-  transition: all 0.15s ease;
-}
-
-.fs-studio-preset-btn.is-selected {
-  border: 2px solid #ec4899;
-  opacity: 1;
-  transform: scale(1.08);
-}
-
-.fs-studio-preset-btn img {
+.fs-studio-avatar-placeholder {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #a1a1aa;
+  font-weight: 800;
+  background: #27272a;
+}
+
+.fs-studio-alert-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(244, 63, 94, 0.15);
+  border: 1px solid rgba(244, 63, 94, 0.4);
+  color: #fb7185;
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.fs-studio-mock-notice {
+  margin: 0;
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.08);
 }
 
 .fs-studio-chips {
@@ -7191,23 +7192,6 @@ dialog.fs-overlay[open]::backdrop {
   font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
-}
-
-.fs-studio-btn-publish {
-  flex: 1.5;
-  background: linear-gradient(135deg, #ec4899, #db2777);
-  border: none;
-  border-radius: 10px;
-  padding: 10px;
-  color: #fff;
-  font-size: 0.85rem;
-  font-weight: 800;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  box-shadow: 0 4px 14px rgba(236, 72, 153, 0.4);
 }
 
 /* ════════════════════════════════════════════════════════════════════════════════
