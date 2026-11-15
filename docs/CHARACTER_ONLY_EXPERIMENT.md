@@ -1,5 +1,7 @@
 # Character-only DeepSeek experiment
 
+> **Ended 16 Nov 2026 (owner decision).** Cheer and June now use the main chat pipeline (central prompt, provider order Gemini → DeepSeek → Workers AI on staging, relationship levels and memory). Their `chatExperiment` blocks were removed from `content/creators/*/character.json`; the authored openings became `openingGreeting`. The handler (`server/src/character-only-chat.mjs`) stays for future experiments, and its tests run on frozen copies in `server/tests/helpers/fixtures/*-experiment.character.json`. The `retire-cheer-20261108` reset was removed from `content/creator-resets.json` (completed on staging; **check the marker on prod before promoting**). Earlier experiment threads live in `experiment_chat_messages` and are no longer shown.
+
 ## Cheer response contract experiment (2026-11-08)
 
 Cheer defaults to the `contract` variant using v2 in `content/creators/cheer/response-contract.md` (2,329 trimmed characters after the distinct-beat revision). The original v1 is retained verbatim in `response-contract-v1.md` (2,093 characters). The build embeds both, but sends only the selected guide to DeepSeek. No filesystem read or second model call occurs during a turn. The original biography, authored opening, model alias and generation settings are unchanged. The Markdown contains principles, not scripted replies; it does not implement a fictional clock.
