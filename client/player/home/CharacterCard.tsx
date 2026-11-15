@@ -11,10 +11,13 @@ type Props = {
 };
 
 export function CharacterCard({ creator, t, onOpen, badge = 'default' }: Props) {
+  const isCosplay = creator.creatorType === 'cosplay' || (creator.tags || []).some((tag) => /cosplay|คอสเพลย์/i.test(tag));
+  const isVerified = creator.isVerified ?? isCosplay;
   const isExclusive = badge === 'exclusive' || creator.id === 'mook';
   const showEpisode = badge === 'specialEpisode' && !!creator.firstEpisodeTitle;
   const vaultCount = creator.vaultCount || 0;
   const tags = creator.tags || [];
+  const isOnline = creator.isOnline ?? ((creator.chatCount || 0) > 500 || creator.relationship > 0);
 
   return (
     <button
@@ -41,11 +44,15 @@ export function CharacterCard({ creator, t, onOpen, badge = 'default' }: Props) 
           <span className="rounded-full border border-amber-300/40 bg-amber-500/90 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm backdrop-blur-md">
             {t.freePlayBadge}
           </span>
+        ) : isCosplay ? (
+          <span className="rounded-full border border-violet-400/40 bg-violet-600/85 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm backdrop-blur-md">
+            🎭 {t.filterCosplay}
+          </span>
         ) : (
           <span />
         )}
         <span className="rounded-md bg-black/70 px-2 py-0.5 text-[10px] font-medium text-neutral-200 backdrop-blur-sm">
-          {t.aiImageBadge}
+          {isCosplay ? 'Cosplay AI' : t.aiImageBadge}
         </span>
       </div>
 
@@ -63,11 +70,35 @@ export function CharacterCard({ creator, t, onOpen, badge = 'default' }: Props) 
           <span className="inline-flex w-fit items-center gap-1 truncate rounded border border-amber-400/30 bg-amber-400/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-300 backdrop-blur-sm">
             {t.fromEpisodeLabel(creator.firstEpisodeTitle)}
           </span>
+        ) : creator.characterRole ? (
+          <span className="inline-flex w-fit items-center gap-1 truncate rounded border border-violet-400/30 bg-violet-500/20 px-1.5 py-0.5 text-[10px] font-medium text-violet-200 backdrop-blur-sm">
+            Cos: {creator.characterRole}
+          </span>
         ) : null}
 
         <div className="flex items-center justify-between gap-1.5">
-          <h3 className="truncate text-[15px] font-bold leading-tight text-white">
-            {creator.tagline ? `${creator.name} | ${creator.tagline}` : creator.name}
+          <h3 className="flex items-center gap-1 truncate text-[15px] font-bold leading-tight text-white">
+            <span className="truncate">
+              {creator.tagline ? `${creator.name} | ${creator.tagline}` : creator.name}
+            </span>
+            {isVerified ? (
+              <svg
+                className="h-3.5 w-3.5 shrink-0"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-label={t.verifiedCosplayBadge}
+              >
+                <circle cx="12" cy="12" r="10" fill="#38bdf8" />
+                <path
+                  d="m9 12 2 2 4-4"
+                  fill="none"
+                  stroke="#ffffff"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            ) : null}
           </h3>
           {creator.relationship ? (
             <span className="shrink-0 rounded-full border border-amber-400/50 bg-amber-400/20 px-1.5 py-0.5 text-[9.5px] font-semibold text-amber-300">
@@ -87,7 +118,18 @@ export function CharacterCard({ creator, t, onOpen, badge = 'default' }: Props) 
 
         <p className="line-clamp-2 text-[12px] leading-snug text-[#D3D1D1]">{creator.bio}</p>
 
-        <span className="truncate text-[11px] text-[#7A7C80]">{creator.handle || creator.id}</span>
+        <div className="flex items-center justify-between text-[11px] text-[#7A7C80]">
+          <span className="truncate">{creator.handle || creator.id}</span>
+          {isOnline ? (
+            <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              </span>
+              <span>{t.onlineNow}</span>
+            </span>
+          ) : null}
+        </div>
 
         <div className="flex items-center gap-1 text-[12px] font-medium text-[#FF9F8A]">
           <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">

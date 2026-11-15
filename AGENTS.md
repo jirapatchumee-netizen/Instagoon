@@ -1,105 +1,37 @@
 # 📱 Instagoon — Developer & AI Agent Contract
 
-> **เป้าหมายหลัก:** พัฒนาและต่อยอด **Instagoon** เกมแนว Simulation Instagram & AI Creator Dating Sim ขับเคลื่อนด้วย AI Chatbot Memory และโลกโซเชียลจำลอง
->
-> 🌐 **Instagoon Multi-Agent Sync Contract:** อ่านข้อตกลงการพัฒนาขนานและการซิงก์ Git ที่ [docs/MULTI_AGENT_SYNC_CONTRACT.md](docs/MULTI_AGENT_SYNC_CONTRACT.md)  
-> 📖 **Instagoon GDD:** อ่านวิสัยทัศน์และระบบเกมได้ที่ [docs/INSTAGOON_GDD.md](docs/INSTAGOON_GDD.md)  
-> 🧠 **AI Chat & Memory Design:** อ่านสถาปัตยกรรม DM Chatbot และหน่วยความจำที่ [docs/AI_CHAT_MEMORY_DESIGN.md](docs/AI_CHAT_MEMORY_DESIGN.md)  
-> 🎭 **AI Creator Persona & Banter Guideline:** อ่านคู่มือสร้างบุคลิก AI "รู้ทันมุก" ไม่ตอบทื่อที่ [docs/AI_CREATOR_PERSONA_GUIDELINE.md](docs/AI_CREATOR_PERSONA_GUIDELINE.md)
+> **Instagoon:** Simulation Instagram & AI Creator Dating Sim (`PUBLIC GitHub Repo`)
+> - 🌐 Sync Contract: [docs/MULTI_AGENT_SYNC_CONTRACT.md](docs/MULTI_AGENT_SYNC_CONTRACT.md) | 📖 GDD: [docs/INSTAGOON_GDD.md](docs/INSTAGOON_GDD.md)
+> - 🧠 AI Chat & Memory: [docs/AI_CHAT_MEMORY_DESIGN.md](docs/AI_CHAT_MEMORY_DESIGN.md) | 🎭 Persona Guideline: [docs/AI_CREATOR_PERSONA_GUIDELINE.md](docs/AI_CREATOR_PERSONA_GUIDELINE.md)
+> - 🛡️ Guardrails & Security Deep Dive: [docs/REPO_GUARDRAILS.md](docs/REPO_GUARDRAILS.md)
 
 ---
 
-## ⚡ 1. กฎเหล็กในการทำงาน (Non-Negotiable Workflow)
+## ⚡ 1. โครงสร้างและคำสั่งหลัก (Non-Negotiable Workflow)
 
-1. **โครงสร้างโฟลเดอร์ใหม่ (Clean Fullstack Architecture):**
-   - **Player App (Frontend):** `client/` (Vite + React 19 + Tailwind, UI สไตล์ Instagram ครบวงจร Feed, Stories, Reels, DM Chat)
-   - **Backend Worker & D1 Database:** `server/` (Cloudflare Workers API, Gemini AI integration, D1 SQLite migrations)
-   - **Game Content:** `content/` (`creators/`, `media/` ข้อมูลตัวละครและเนื้อหาเกม)
-   - **Shared Contracts:** `packages/contracts/` (`npc/schema.ts` สคีมากลาง)
-   - **Build & Helper Scripts:** `scripts/` (`build-content.mjs`, `validate-npc-bundle.mjs`)
-2. **รักษาขอบเขต Routing และความปลอดภัย:**
-   - Client App เป็น Player Mode เท่านั้น (Studio UI เดิมถูกถอดออกแล้ว)
-   - ปิดการปล่อย Source Maps ในโหมด Staging และ Production เสมอ (`sourcemap: false`)
-3. **การทดสอบและรันระบบ:**
-   - Frontend: `pnpm dev` (รันบน localhost:5173)
-   - Backend Worker: `cd server && pnpm dev` (รันบน localhost:8799)
-   - ตรวจสอบระบบและรันเทส: `pnpm build:staging && pnpm test`
-4. **การเปลี่ยนแปลง Schema และฐานข้อมูล D1:**
-   - ทุกการเปลี่ยนแปลงโครงสร้างข้อมูลแชท, ความทรงจำ, หรือตารางผู้เล่น ต้องสร้างไฟล์ Migration ใน `server/migrations/` เสมอ
-5. **ดึงอัปเดตก่อนเริ่มงานและไม่ Force-Push:**
-   - ดำเนินการตาม `docs/MULTI_AGENT_SYNC_CONTRACT.md` สม่ำเสมอเพื่อป้องกัน Merge Conflict ระหว่าง Agent
+- **Clean Fullstack Architecture:**
+  - `client/` — Player App เท่านั้น (Vite + React 19 + Tailwind; Studio UI เดิมถูกถอดออกแล้ว; บังคับ `sourcemap: false` ใน Staging/Prod)
+  - `server/` — Cloudflare Workers API, AI integration, D1 SQLite (`server/migrations/` ต้องสร้างไฟล์ migration ทุกครั้งที่แก้ schema)
+  - `content/` — `creators/`, `media/{assets|avatars|posts|stories}`
+  - `packages/contracts/` — `npc/schema.ts` สคีมากลาง
+  - `scripts/` — `build-content.mjs`, `validate-npc-bundle.mjs`, `guard-commit.mjs`
+- **Dev & Verification Commands:**
+  - Frontend: `pnpm dev` (`localhost:5173`) | Backend: `cd server && pnpm dev` (`localhost:8799`)
+  - Verify before completion: `pnpm build:staging && pnpm test` (หากติด `ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY` ใน worktree ให้รัน `node --experimental-strip-types --test server/tests/*.test.mjs`)
+  - First-time clone hook: `git config core.hooksPath .githooks` (ห้าม `--no-verify` และห้าม force-push)
 
 ---
 
-## 🎨 2. มาตรฐานการ Render ภาพและ Storyboard
+## 🎨 2. มาตรฐาน Art Pipeline & Public Repo Boundary
 
-Repo นี้เก็บเฉพาะกติกา ส่วนเครื่องมือ render (ComfyUI workflow, scripts/render_zimage_turbo.py (art pipeline บนเครื่อง),
-สำเนา workflow) อยู่ใน art pipeline ของเครื่อง ไม่ได้ขึ้น GitHub
-
-- **แนวทางสไตล์หลัก (Art Style Standard)**: **Modern Korean Romance Manhwa (Semi-Realistic 2.5D)** ดูรายละเอียดฉบับเต็มใน [DESIGN.md](DESIGN.md#2-instagoon-visual--art-style-system--modern-korean-romance-manhwa-semi-realistic-25d)
-- **สูตรเรนเดอร์เป็นความลับ (repo นี้เป็น public)**: ภาพต้นแบบ, ภาพ reference, workflow, ค่า node/LoRA, prompt template, prompt รายช็อต และ production manifest เก็บใน art pipeline บนเครื่องเท่านั้น (`projects/Instagoon/AGENTS.md`, `instagoon-workbench/art-pipeline/creators/<creator>/`) **ห้าม commit ลง repo นี้** `scripts/build-content.mjs` จะ fail ถ้าเจอ
-- **ภาพที่ commit ต้องไม่มี metadata**: ComfyUI ฝัง workflow + prompt ทั้งหมดไว้ในไฟล์ PNG และ server ส่งไฟล์ให้ผู้เล่นตามนั้น batch script บนเครื่องลบให้อัตโนมัติ ถ้าคัดลอกภาพเองให้รัน `instagoon-workbench/art-pipeline/scripts/strip_png_metadata.py <ไฟล์>` ก่อน (build จะ fail ถ้ายังมี)
-- **ขนาดภาพมาตรฐาน**: 512×640 (4:5 Vertical Portrait สไตล์ Instagram Feed)
-- **Framing Flexibility**: รองรับทั้ง Close-up Portrait (Avatars/Stories) และ Medium / 3/4 Body Shot (Feed Posts, Fashion Outfits, Cutscenes) ห้ามบังคับ override คำสั่งเต็มตัว/3/4 ตัวเป็น close-up
-- **Asset เข้าเกม**: ภาพที่ render เสร็จแล้วต้องถูกคัดลอกไปที่ `content/media/{assets|avatars|posts|stories}` แล้ว commit (ADR-0007) — ตัว pipeline/ไฟล์กลางไม่ต้อง commit
-- *Character Consistency Standard*: `content/creators/{creator}/visual_bible.json` ใน repo เป็น stub สาธารณะ (ลักษณะทั่วไป + รายชื่อชุด) ฉบับเต็มที่ล็อกหน้าตาและ prompt อยู่ในเครื่อง ห้ามพิมพ์ prompt หน้าตาตัวละครแบบ ad-hoc
+- **Art Style:** Modern Korean Romance Manhwa (Semi-Realistic 2.5D) ขนาด **512×640 (4:5)** รองรับทั้ง Close-up และ Medium / 3/4 Body Shot (ห้ามบังคับ override คำสั่ง 3/4 เป็น close-up) ดู [DESIGN.md](DESIGN.md)
+- **ห้าม Commit สูตรเรนเดอร์ลง Public Repo:** workflow, reference image, `masterPromptTemplate`/`renderRecipe`, คีย์ `goldenMasterSeeds`, และคีย์ `referenceImage` ใต้ `content/creators/` เก็บใน local workbench (`projects/Instagoon/AGENTS.md`) เท่านั้น ใน repo เก็บเฉพาะ stub (`creatorId name identity wardrobe note version`)
+- **PNG ต้องไร้ Metadata:** ต้องรัน `instagoon-workbench/art-pipeline/scripts/strip_png_metadata.py <ไฟล์>` ก่อนเข้า `content/media/` (`build-content.mjs` และ `guard-commit.mjs` จะบล็อกถ้ายังมี ComfyUI metadata)
 
 ---
 
-## 📦 3. ระบบเดิมที่เก็บเข้าแฟ้ม (Visual Novel / Overtime Secrets)
+## 🔒 3. ความปลอดภัย, Secret SOT และ Protected Zone
 
-Standalone Web Visual Novel เดิม (Overtime Secrets) พักการพัฒนา และ**ไม่อยู่ใน repo นี้แล้ว**
-(`src/`, `games/overtime/`, `index.html`, คำสั่ง `pnpm vn:*` ถูกย้ายไป local workbench ทั้งหมด)
-
-- เอกสารเดิม (`DESIGN_VN.md`, `GLOSSARY_VN.md`, `ARCHITECTURE_PLAN.md`, ADR เดิม) และ branch `archive/overtime` (commit `eb44447`) เก็บไว้เฉพาะบนเครื่อง + mirror ของประวัติ git เดิม
-- ถ้าต้อง resurrect ให้เปิด repo แยก อย่าเอากลับเข้า repo เกม
-
----
-
-## 🔒 4. ความปลอดภัยของระบบและนโยบาย Secret บน Public Repository (Mandatory for ALL Agents)
-
-`Instagoon-app` เป็น **PUBLIC GitHub Repository** ดังนั้น AI Agent ทุกตัวต้องปฏิบัติตามกฎความปลอดภัยอย่างเคร่งครัด:
-
-1. **ห้ามเปิดสิทธิ์ Direct D1 Access หรือ Cloudflare Account ให้ External Agent หรือบุคคลภายนอกเด็ดขาด**:
-   - Cloudflare D1 **ไม่มี Table/Row-Level Security** การให้สิทธิ์เข้า D1 จะทำให้บุคคลภายนอกสามารถ Query ข้อมูลได้ทุกตาราง (เห็นอีเมลผู้ใช้, hash รหัสผ่าน, สลิปโอนเงิน PromptPay/ข้อมูลทางการเงิน และประวัติแชทของตัวละครอื่นทั้งหมด เช่น Milin, Mook, Noey)
-   - หาก External Agent หรือทีมร่วมพัฒนาต้องการเข้าถึงข้อมูลเพื่อทดสอบ/ประเมินผลบท ให้สร้าง **Scoped Developer REST API** ที่:
-     - ล็อกสิทธิ์เฉพาะ `creatorId` ที่ได้รับอนุญาต (เช่น `cheer`) ปฏิเสธตัวละครอื่นด้วย `403 Forbidden`
-     - มี Authentication ผ่าน Bearer Token หรือ Custom Header Secret
-     - บังคับเป็น Read-Only (`GET` เท่านั้น)
-2. **ห้ามใส่ Secret Token / API Key ใน `[vars]` ของ `wrangler*.toml` เด็ดขาด (ใช้มาตรฐาน SOT)**:
-   - บล็อก `[vars]` ใน `wrangler.toml` เป็น environment variable แบบสาธารณะ ห้ามใส่ Secret, Token หรือ Password ใดๆ
-   - **มาตรฐาน Single Source of Truth (SOT) สำหรับ Secret**: ค่าความลับและ API Key ทั้งหมด (`DEEPSEEK_API_KEY`, `GEMINI_API_KEY`, `ELEVENLABS_API_KEY`, `FIFTY_SHADES_SECRET_PROMPT`) เก็บเป็น SOT ไว้ใน `private-docs/shared_secrets.env` (อยู่นอก repo)
-   - **ห้ามอัปเดตเฉพาะ Staging หรือ Prod ตัวใดตัวหนึ่ง**: ให้เพิ่ม/แก้ไขใน `private-docs/shared_secrets.env` แล้วรันสคริปต์ซิงก์เข้าทั้งสองระบบพร้อมกัน:
-     ```bash
-     ./scripts/sync_secrets.sh        # ซิงก์ SOT เข้าทั้ง Staging และ Production พร้อมกัน
-     ./scripts/sync_secrets.sh --list # ตรวจสอบความถูกต้องและ diff ของ Secret
-     ```
-   - หากต้องรันด้วยตนเอง ต้องรันใส่ทั้งสองฝั่งเสมอ:
-     ```bash
-     npx wrangler secret put <SECRET_NAME> --config server/wrangler.staging.toml
-     npx wrangler secret put <SECRET_NAME> --config server/wrangler.toml
-     ```
-3. **ห้ามเปิดเผย Secret ผ่าน Public Surface**:
-   - ห้ามใส่ Secret Token ลงใน Git commit message, PR description, หรือ GitHub Issues
-   - ให้ส่งต่อ Secret ให้ทีมงานหรือ External Agent ผ่านช่องทางส่วนตัว (DM/Private Chat) เท่านั้น
-
----
-
-## 🛡️ 5. Guardrail ของ repo (repo เป็น public — กติกาพวกนี้มีผลกับ Agent ทุกตัว)
-
-เปิด hook ต่อ clone ครั้งแรก (ค่านี้เก็บใน `.git/config` ไม่ได้มากับ repo):
-
-```sh
-git config core.hooksPath .githooks
-```
-
-- `scripts/guard-commit.mjs` คือตัวตรวจจริง `pre-commit` เรียกมันบนไฟล์ที่ staged ส่วน CI เรียก **สำเนาของ guard บน commit ต้นทาง** (`git show origin/<base>:scripts/guard-commit.mjs`) ตรวจ **ทุก commit + ผลสุทธิของทั้ง PR** — PR จึงลบ checker ของตัวเองไม่ได้ (ลบ guard = fail ทันทีใน CI), secret ที่ใส่แล้วลบยังโดนจับ, และของที่โผล่เฉพาะตอน resolve merge conflict ก็โดนจับ; ถ้า base ยังไม่มีไฟล์ guard (PR ที่มาเปิดใช้มันครั้งแรก) CI ใช้สำเนาของ PR นั้นเองและพิมพ์ notice บอก
-- **ห้ามขึ้น repo (public):** `.env`/`.dev.vars`/service-account key/private key, `private-docs/`, `docs/art/`, PNG ที่มี ComfyUI metadata, ไฟล์ที่มี `masterPromptTemplate`/`renderRecipe` หรือโครง ComfyUI workflow
-- **ห้ามขึ้น repo เช่นกัน — ข้อมูลหน้าตาตัวละครจาก art pipeline:** คีย์ `goldenMasterSeeds` (ห้ามทุก path) และคีย์ `referenceImage` ใต้ `content/creators/` ส่วนที่อยู่ใน repo คือ stub เท่านั้น (`creatorId name identity wardrobe note version`) ถ้าจะเพิ่ม creator ตัวใหม่ให้เขียน stub ห้าม copy ฉบับเต็มมาจาก workbench — ถ้า guard ปฏิเสธ ให้แก้ที่ไฟล์ (ลบ/ย้าย/strip) ไม่ใช่ `--no-verify`; barrier แรกจริงคือ hook ในเครื่อง (ต้องตั้ง `core.hooksPath` ต่อ clone) เพราะ CI เห็นไฟล์ตอนมัน push ขึ้น GitHub ไปแล้ว
-- ทุกกฎของไฟล์ data เป็น tripwire แบบตรง ๆ (จับรูป `"key":` ในข้อความ): ถ้าข้อมูลถูกใส่เป็น YAML `key:`, single quote, `golden_master_seeds`, ค่าใน JSON ที่ stringify ซ้อนอีกชั้น หรือตาราง markdown จะไม่โดนจับ — and because CI reviews **every commit** of the branch, a false positive in an early commit has to be reworded by fixing history, not by a follow-up commit: มันจับ form `"key":` ในไฟล์ text ถ้าข้อมูลถูกใส่ในรูปแบบอื่น (YAML `key:`, single quote, `golden_master_seeds`, ตาราง markdown) มันจะไม่เห็น — อย่าพึ่ง grep อย่างเดียวตอน review
-- `.claude/settings.json` deny ทั้ง zone, ไฟล์กลไก, `Read` ของ `.env`/`.dev.vars`, `private-docs/`, `docs/art/` และสั่ง `wrangler secret`/force-push/`--no-verify` — เป็นแนวกัน *เหตุพลาด* ของ agent ที่ใช้ Claude Code เท่านั้น ไม่ใช่ sandbox (Bash form ที่ pattern ไม่ครอบยังข้ามได้; `.claude/settings.local.json` ของแต่ละคนอย่า commit)
-- ค่าในไฟล์ zone ถูก pin hash ไว้ใน `server/tests/protected-zone.test.mjs` แก้แล้วเทสแดง แต่ค่าใน `wrangler*.toml` **ไม่ได้ pin hash** (ตรวจแค่ diff) และ vars ที่ตั้งบน Cloudflare dashboard มองจาก repo ไม่เห็น
-- **ประตูจริงของไฟล์พวกนี้คือรีวิวของเจ้าของ** (`.github/CODEOWNERS` + required review ที่ต้องเปิดใน branch protection เอง) ไม่ใช่ CI: ใน CI การแตะ zone/กลไกเป็นแค่ `::notice` เพราะมันมาอยู่ใน PR ที่เจ้าของกำลังอ่านอยู่แล้ว
-- ตอน merge / cherry-pick / revert guard ผ่อนผันเฉพาะพื้นที่ล็อก+กลไกให้เป็น annotation (tree ที่ staged มี commit ของคนอื่นปน) ส่วน secret / ไฟล์ art pipeline ยัง fail เสมอ
-- ถ้า secret หลุดเข้า history แล้ว การแก้ไฟล์ทีหลังไม่พอ — ต้อง rewrite history หรือ rotate credential (GitHub revoke token ที่ push เข้า public repo อัตโนมัติ)
-- ตรวจงานก่อนส่ง: `pnpm test` (ถ้า `pnpm install` ใน worktree ใหม่ติด `ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY` ให้รันตรง ๆ ว่า `node --experimental-strip-types --test server/tests/*.test.mjs`)
+1. **ห้ามเปิด Direct D1 Access ให้ External Agent:** D1 ไม่มี Row-Level Security หากต้องเปิดให้ทีมภายนอกทดสอบบท ต้องทำ **Scoped Read-Only (`GET`) REST API** ที่มี Bearer/Header Auth และล็อกเฉพาะ `creatorId` ที่อนุญาต (ตัวอื่นตอบ `403`)
+2. **ห้ามใส่ Secret ใน `[vars]` ของ `wrangler*.toml`:** เก็บ Secret ทั้งหมดใน `private-docs/shared_secrets.env` (นอก repo) แล้วซิงก์เข้า **ทั้ง Staging และ Prod พร้อมกัน** ด้วย `./scripts/sync_secrets.sh` (เช็ก diff ด้วย `--list`) ห้ามเผยแพร่ Secret ใน commit/PR/issue
+3. **Owner-Locked AI Zone ([ADR-0013](docs/adr/0013-owner-locked-ai-zone-and-commit-guardrails.md)):** ห้าม Agent แก้ไข `server/src/ai/protected/`, `GEMINI_MODEL`/`SUMMARY_MODEL`, `scripts/guard-commit.mjs`, `.githooks/`, `.github/`, `.claude/settings.json`, หรือบล็อก `"scripts"` ใน `package.json` โดยพลการ (ตรวจด้วย hash pin ใน `server/tests/protected-zone.test.mjs`) ดูรายละเอียดใน [docs/REPO_GUARDRAILS.md](docs/REPO_GUARDRAILS.md)

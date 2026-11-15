@@ -20,6 +20,7 @@ import { createRouter } from './routes';
 import { ExploreTab } from './tabs/ExploreTab';
 import { ReelsTab } from './tabs/ReelsTab';
 import { InboxTab } from './tabs/InboxTab';
+import { CosplayCreatorTab } from './tabs/CosplayCreatorTab';
 import { PlayerProfileTab } from './tabs/PlayerProfileTab';
 import { ActivityOverlay } from './overlays/ActivityOverlay';
 import { PostMenuSheet } from './overlays/PostMenuSheet';
@@ -957,6 +958,21 @@ export function FrostStoryApp() {
                 {energy ? `${energy.free} + ${energy.purchased}` : '–'}
                 {Boolean(energy?.diamonds) && <span style={{ marginLeft: 3, color: '#38bdf8' }}>💎{energy?.diamonds}</span>}
               </button>
+
+              {/* แชทล่าสุด (Recent Chats) Button */}
+              <button
+                type="button"
+                className={`fs-header-chat-btn ${screen === 'inbox' ? 'is-active' : ''}`}
+                onClick={() => handleSelectTab('inbox')}
+                title={t.recentChats}
+                aria-label={t.recentChats}
+              >
+                <IgShare size={21} active={screen === 'inbox'} />
+                {(() => {
+                  const unread = creators.filter((creator) => creator.unread).length;
+                  return unread ? <span className="fs-nav-badge">{unread > 99 ? '99+' : unread}</span> : null;
+                })()}
+              </button>
             </div>
           </div>
         </header>
@@ -1049,6 +1065,13 @@ export function FrostStoryApp() {
           />
         )}
 
+        {screen === "studio" && (
+          <CosplayCreatorTab
+            lang={lang}
+            onOpenRecentChats={() => handleSelectTab('inbox')}
+          />
+        )}
+
         {screen === "inbox" && (
           <InboxTab
             creators={creators}
@@ -1131,11 +1154,12 @@ export function FrostStoryApp() {
 
           <button
             type="button"
-            className={`fs-nav-tab ${screen === 'inbox' ? 'is-active' : ''}`}
-            onClick={() => handleSelectTab('inbox')}
-            title={t.inbox}
+            className={`fs-nav-tab ${screen === 'studio' ? 'is-active' : ''}`}
+            onClick={() => handleSelectTab('studio')}
+            title={t.cosplayCreator}
+            aria-label={t.cosplayCreator}
           >
-            <IgShare size={24} active={screen === 'inbox'} />
+            <Sparkles size={25} className={screen === 'studio' ? 'text-pink-400' : ''} />
           </button>
 
           <button

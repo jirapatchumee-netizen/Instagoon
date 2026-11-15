@@ -22,6 +22,10 @@ export type Creator = {
   artState?: 'real' | 'pending';
   firstEpisodeTitle?: string | null;
   vaultCount?: number;
+  creatorType?: 'ai' | 'cosplay';
+  isVerified?: boolean;
+  isOnline?: boolean;
+  characterRole?: string | null;
   relationship: number;
   following?: boolean;
   lastMessage?: { text: string; at: number; fromCreator: boolean } | null;
@@ -94,7 +98,7 @@ export type Chat = {
   score?: number;
   definition?: Record<string, unknown>;
 };
-export type Screen = 'home' | 'feed' | 'creators' | 'reels' | 'inbox' | 'account' | 'notifications';
+export type Screen = 'home' | 'feed' | 'creators' | 'reels' | 'studio' | 'inbox' | 'account' | 'notifications';
 
 export type ProfileVaultItem = {
   id: string;
