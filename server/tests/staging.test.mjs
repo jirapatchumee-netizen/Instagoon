@@ -22,6 +22,7 @@ user = { email: 'owner@example.com' };
  try {app.fetch=async (_req,passed)=>{forwarded=passed;return new Response('ok');};assert.equal((await request('/api/me','session')).status,200);assert.equal(forwarded,env,'staging passes its environment through unchanged');}finally{app.fetch=original;}
 }
 assert.equal(await (await request('/assets/game.js', 'session')).text(), 'private asset');
+assert.equal((await request('/studio', 'session')).status, 200, '/studio route reaches SPA assets');
 assert.equal((await request('/studio.html', 'session')).status, 404);
 assert.equal((await request('/_content/media/rewards/secret.webp', 'session')).status, 404);
 assert.equal((await request('/api/admin/overview', 'session')).status, 404);
