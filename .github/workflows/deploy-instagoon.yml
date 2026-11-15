@@ -53,6 +53,15 @@ jobs:
       - name: 🏗️ Build staging
         run: pnpm build:staging
 
+      - name: 🗄️ Apply D1 migrations (staging)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: 'server'
+          wranglerVersion: '4.154.0'
+          command: d1 migrations apply instagoon-staging --remote --config wrangler.staging.toml
+
       - name: 🚀 Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
