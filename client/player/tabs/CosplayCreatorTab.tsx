@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { TRANSLATIONS, type Lang } from '../i18n';
-import { Sparkles, User, MessageCircle, ShieldCheck, Play, Check, Send, Heart, RotateCcw, Camera, X, Loader2, Image as ImageIcon, Trash2, Plus, Gem } from 'lucide-react';
+import { Sparkles, User, MessageCircle, ShieldCheck, Play, Check, Send, RotateCcw, Camera, X, Loader2, Image as ImageIcon, Trash2, Plus, Gem } from 'lucide-react';
 import { media } from '../ui';
 import { resizeImageToStandard } from '../lib/image-resizer';
 import { api } from '../api';
@@ -43,7 +43,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
   const [stagingFile, setStagingFile] = useState<File | null>(null);
   const [stagingPreview, setStagingPreview] = useState<string>('');
   const [cropModalOpen, setCropModalOpen] = useState(false);
-  const [cropTarget, setCropTarget] = useState<'avatar' | 'reward'>('avatar');
+  const [cropTarget, setCropTarget] = useState<'avatar' | 'reward' | 'post'>('avatar');
   const [uploading, setUploading] = useState(false);
   const [zoom, setZoom] = useState(1.0);
   const [panX, setPanX] = useState(0);
@@ -85,7 +85,12 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
   const [openingLocation, setOpeningLocation] = useState('หลังเวทีงานคอสเพลย์');
   const [openingGreeting, setOpeningGreeting] = useState('*(ยิ้มเขินๆ พลางจัดวิกผม)* สวัสดีค่ะ แวะมาทักทายเค้าเหรอคะ? ชุดวันนี้เป็นไงบ้าง?');
   const [testLevel, setTestLevel] = useState<number>(1);
-  const [testMessages, setTestMessages] = useState<Array<{ sender: 'user' | 'creator'; text: string }>>([]);
+  const [testMessages, setTestMessages] = useState<Array<{ sender: 'user' | 'creator'; text: string; action?: string }>>([]);
+  const [sandboxBusy, setSandboxBusy] = useState(false);
+  const streamRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { streamRef.current?.scrollTo({ top: streamRef.current.scrollHeight }); }, [testMessages, sandboxBusy]);
+  const [levelsBusy, setLevelsBusy] = useState(false);
+  const [posts, setPosts] = useState<Array<{ media: string; caption: string }>>([]);
   const [inputMessage, setInputMessage] = useState('');
 
   // Pillar 5: Vault & Missions
@@ -147,6 +152,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
     if (data.openingLocation) setOpeningLocation(data.openingLocation);
     if (data.openingGreeting) setOpeningGreeting(data.openingGreeting);
     if (Array.isArray(data.rewards)) setRewards(data.rewards);
+    if (Array.isArray(data.posts)) setPosts(data.posts);
   };
 
   // Drafts live in D1 per account. A draft saved by the older localStorage-only Studio is loaded once as a starting point.
@@ -211,6 +217,8 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
       });
       if (cropTarget === 'avatar') {
         setAvatar(res.mediaKey);
+      } else if (cropTarget === 'post') {
+        setPosts((list) => [...list, { media: res.mediaKey, caption: '' }].slice(0, 3));
       } else {
         setNewRewardAsset(res.mediaKey);
       }
@@ -229,14 +237,24 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
 
   const collectDraft = () => ({
     name, handle, concept, age: Number(age) || 0, avatar, tags, likes, dislikes, pronouns, voiceTone, sampleQuotes,
-    levelStyles, ruleNoAddress, ruleNoMeet, rulePoliteReject, secret, immutableFacts, openingLocation, openingGreeting, rewards,
+    levelStyles, ruleNoAddress, ruleNoMeet, rulePoliteReject, secret, immutableFacts, openingLocation, openingGreeting, rewards, posts,
   });
 
   const problemLabels: Record<string, string> = {
     name: t.studioNameLabel, handle: t.studioHandleLabel, concept: t.studioConceptLabel, age: `${t.studioAgeLabel} (${t.studioAgeHint})`,
-    avatar: t.studioAvatarLabel, voiceTone: t.studioVoiceToneLabel, levelStyles: t.studioLevelsLabel,
+    avatar: t.studioAvatarLabel, voiceTone: t.studioVoiceToneLabel,
+    levelStyles: t.studioLevelsLabel, likes: t.studioLikesLabel, dislikes: t.studioDislikesLabel, pronouns: t.studioPronounsLabel,
+    sampleQuotes: t.studioSampleQuotesLabel, secret: t.studioSecretLabel, immutableFacts: t.studioImmutableFactsLabel, tags: 'Tags',
+    openingLocation: t.studioOpeningSceneLabel, openingGreeting: t.studioGreetingLabel, rewards: t.studioTabGallery,
   };
-  const missingText = (problems: string[]) => `${t.studioMissing} ${problems.map((p) => problemLabels[p] || p).join(', ')}`;
+  const problemText = (p: string) => (p.startsWith('unsafe:') ? t.studioUnsafe(problemLabels[p.slice(7)] || p.slice(7)) : problemLabels[p] || p);
+  const missingText = (problems: string[]) => `${t.studioMissing} ${problems.map(problemText).join(', ')}`;
+  // Same required fields as launchProblems on the server, so the checklist is live while typing.
+  const checklist: Array<[string, boolean]> = [
+    ['avatar', !!avatar], ['name', !!name.trim()], ['handle', /^@?[a-zA-Z0-9._]{3,30}$/.test(handle.trim())], ['age', Number(age) >= 20],
+    ['concept', !!concept.trim()], ['voiceTone', !!voiceTone.trim()], ['levelStyles', levelStyles.every((x) => !!x.trim())],
+  ];
+  const readyCount = checklist.filter(([, ok]) => ok).length;
   const flash = (ok: boolean, text: string) => { setNotice({ ok, text }); setTimeout(() => setNotice(null), 6000); };
 
   const handleSaveDraft = async () => {
@@ -265,6 +283,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
       if (res.ok) { setStudio(data); flash(true, t.studioLaunched); }
       else if (data?.error === 'draft_incomplete') flash(false, missingText(data.problems || []));
       else if (data?.error === 'handle_taken') flash(false, t.studioHandleTaken);
+      else if (data?.error === 'launch_quota_exceeded') flash(false, t.studioLaunchQuota);
       else flash(false, t.studioActionError);
     } catch {
       flash(false, t.studioActionError);
@@ -285,67 +304,59 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
     }
   };
 
-  const handleAiAutoTuneLevels = () => {
-    const isAffectionate = voiceTone.includes('อ้อน') || voiceTone.includes('อบอุ่น');
-    const pMe = pronouns.split('/')[0]?.trim() || 'เค้า';
-    const pYou = pronouns.split('/')[1]?.trim() || 'ตัวเอง';
-
-    setLevelStyles([
-      `สวัสดีค่ะ ยินดีที่ได้คุยกันนะคะ วันนี้มีเรื่องอะไรเกี่ยวกับชุดคอสเพลย์อยากถามไหมคะ`,
-      `อ๊ะ จำได้สิคะ! ${pYou}ที่แวะมาคอมเมนต์บ่อยๆ ขอบคุณที่คอยซัพพอร์ต${pMe}นะคะ`,
-      `ดีใจจังที่${pYou}ทักมา ${pMe}กำลังคิดถึงอยู่พอดีเลย วันนี้เหนื่อยไหมคะ มีอะไรเล่าให้ฟังได้นะ`,
-      `จริงๆ วันนี้${pMe}เหนื่อยมากเลย ซ้อมคอสเพลย์ทั้งวัน แต่พอเปิดข้อความเห็น${pYou}ทักมาก็ยิ้มออกเลย`,
-      `คิดถึงที่สุดเลย! ${isAffectionate ? 'อย่าปล่อยให้เค้ารอนานนะ' : 'อยากคุยด้วยตลอดเวลาเลย'} สัญญาแล้วนะว่าจะอยู่เป็นกำลังใจให้กันตลอดไป 💕`,
-    ]);
+  const handleAiAutoTuneLevels = async () => {
+    setLevelsBusy(true);
+    try {
+      const res = await fetch('/api/studio/suggest-levels', {
+        method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(collectDraft()),
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok && Array.isArray(data?.levels)) setLevelStyles(data.levels);
+      else flash(false, data?.error === 'energy_empty' ? t.studioEnergyEmpty : t.studioActionError);
+    } catch {
+      flash(false, t.studioActionError);
+    } finally {
+      setLevelsBusy(false);
+    }
   };
 
-  const handleSendTestMessage = (e?: React.FormEvent) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sandboxCall = async (payload: Record<string, unknown>): Promise<{ ok: boolean; data: any }> => {
+    const res = await fetch('/api/studio/sandbox', {
+      method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ draft: collectDraft(), level: testLevel, ...payload }),
+    });
+    return { ok: res.ok, data: await res.json().catch(() => null) };
+  };
+
+  const handleSendTestMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const text = inputMessage.trim();
-    if (!text) return;
-
-    const newMsgs = [...testMessages, { sender: 'user' as const, text }];
-    setTestMessages(newMsgs);
+    if (!text || sandboxBusy) return;
+    setTestMessages((list) => [...list, { sender: 'user', text }]);
     setInputMessage('');
-
-    setTimeout(() => {
-      let reply = '';
-      const style = levelStyles[testLevel - 1] || levelStyles[0];
-      const pMe = pronouns.split('/')[0]?.trim() || 'เค้า';
-
-      if (testLevel === 1) {
-        reply = `(ยิ้มต้อนรับอย่างสุภาพ) ขอบคุณสำหรับข้อความนะคะ! ${style}`;
-      } else if (testLevel === 2) {
-        reply = `(หัวเราะเบาๆ) แซวเก่งจังเลยนะคะ! ${style}`;
-      } else if (testLevel === 3) {
-        reply = `(ตาเป็นประกาย) จำเรื่องนี้ได้ด้วยเหรอคะ ดีใจจัง! ${pMe}ชอบที่${pronouns.split('/')[1]?.trim() || 'เธอ'}ใส่ใจนะ`;
-      } else if (testLevel === 4) {
-        reply = `(กระซิบเบาๆ) มีแค่เธอคนเดียวนะที่${pMe}กล้าเล่าเรื่องนี้ให้ฟัง... รู้สึกสบายใจเวลาได้คุยกับเธอจัง`;
-      } else {
-        reply = `(กอดแขนอ้อน) น่ารักที่สุดเลย! ถ้าวันไหนไม่ได้คุยกับเธอ ${pMe}คงนอนไม่หลับแน่ๆ เลย 💕`;
-      }
-
-      setTestMessages([...newMsgs, { sender: 'creator', text: reply }]);
-    }, 400);
+    setSandboxBusy(true);
+    try {
+      const { ok, data } = await sandboxCall({ message: text });
+      if (ok) {
+        const beats: Array<{ kind: string; text: string }> = Array.isArray(data?.beats) ? data.beats : [];
+        const said = beats.filter((x) => x.kind === 'dialogue').map((x) => x.text).join(' ') || data?.reply || '';
+        const acted = beats.filter((x) => x.kind === 'action').map((x) => x.text).join(' ') || data?.action || '';
+        setTestMessages((list) => [...list, { sender: 'creator', text: said, action: acted || undefined }]);
+      } else if (data?.error === 'draft_incomplete') flash(false, missingText(data.problems || []));
+      else flash(false, data?.error === 'energy_empty' ? t.studioEnergyEmpty : t.studioActionError);
+    } catch {
+      flash(false, t.studioActionError);
+    } finally {
+      setSandboxBusy(false);
+    }
   };
 
-  const handleTuneReply = (kind: 'cute' | 'formal' | 'short') => {
-    if (testMessages.length === 0) return;
-    const lastMsg = testMessages[testMessages.length - 1];
-    if (lastMsg.sender !== 'creator') return;
-
-    let tunedText = lastMsg.text;
-    if (kind === 'cute') {
-      tunedText = tunedText.replace(/นะคะ|ครับ|ค่ะ/g, 'นะค้าบ~') + ' 💕✨';
-    } else if (kind === 'formal') {
-      tunedText = tunedText.replace(/~|💕|✨/g, '') + ' ขอบคุณมากค่ะ ยินดีที่ได้คุยด้วยนะคะ';
-    } else if (kind === 'short') {
-      tunedText = tunedText.split('!')[0] + '! 😊';
-    }
-
-    const updated = [...testMessages];
-    updated[updated.length - 1] = { ...lastMsg, text: tunedText };
-    setTestMessages(updated);
+  const handleResetSandbox = async () => {
+    setSandboxBusy(true);
+    try { await sandboxCall({ reset: true }); } catch { /* the local view resets either way */ }
+    setTestMessages(openingGreeting ? [{ sender: 'creator', text: openingGreeting }] : []);
+    setSandboxBusy(false);
   };
 
   return (
@@ -462,6 +473,39 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
                 </button>
               </div>
 
+            </div>
+          </div>
+
+          <div className="fs-studio-field">
+            <label className="fs-studio-label">{t.studioPostsLabel} <span className="fs-studio-hint">({posts.length}/3)</span></label>
+            <div className="fs-studio-posts-row">
+              {posts.map((p, i) => (
+                <div key={p.media} className="fs-studio-post-item">
+                  <img src={studioSrc(p.media)} alt="" className="fs-studio-post-img" />
+                  <input
+                    type="text"
+                    className="fs-studio-input"
+                    value={p.caption}
+                    maxLength={500}
+                    placeholder={t.studioPostCaption}
+                    onChange={(e) => setPosts((list) => list.map((x, j) => (j === i ? { ...x, caption: e.target.value } : x)))}
+                  />
+                  <button type="button" className="fs-studio-vault-del-btn" onClick={() => setPosts((list) => list.filter((_, j) => j !== i))}>
+                    <Trash2 size={12} /> {t.studioDelete}
+                  </button>
+                </div>
+              ))}
+              {posts.length < 3 && (
+                <button
+                  type="button"
+                  className="fs-studio-post-add"
+                  disabled={uploading}
+                  onClick={() => { setCropTarget('post'); fileInputRef.current?.click(); }}
+                >
+                  <Plus size={18} />
+                  <span>{t.studioPostAdd}</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -583,8 +627,9 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
               type="button"
               className="fs-studio-ai-btn"
               onClick={handleAiAutoTuneLevels}
+              disabled={levelsBusy}
             >
-              <Sparkles size={16} />
+              {levelsBusy ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
               <span>{t.studioAiGenerate}</span>
             </button>
           </div>
@@ -644,7 +689,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
           </div>
 
           <div className="fs-studio-field">
-            <label className="fs-studio-label">ข้อเท็จจริงห้ามลืม (Immutable Facts)</label>
+            <label className="fs-studio-label">{t.studioImmutableFactsLabel}</label>
             <textarea
               className="fs-studio-textarea"
               rows={2}
@@ -711,37 +756,16 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
               </div>
             </div>
 
-            {/* Quick Refine Action Bar */}
             <div className="fs-studio-quick-tunes">
-              <button
-                type="button"
-                className="fs-studio-tune-btn"
-                onClick={() => handleTuneReply('cute')}
-              >
-                <Heart size={12} className="text-pink-400" />
-                <span>{t.studioToneCuter}</span>
-              </button>
-              <button
-                type="button"
-                className="fs-studio-tune-btn"
-                onClick={() => handleTuneReply('formal')}
-              >
-                <ShieldCheck size={12} className="text-blue-400" />
-                <span>{t.studioToneFormal}</span>
-              </button>
-              <button
-                type="button"
-                className="fs-studio-tune-btn"
-                onClick={() => handleTuneReply('short')}
-              >
+              <button type="button" className="fs-studio-tune-btn" disabled={sandboxBusy} onClick={handleResetSandbox}>
                 <RotateCcw size={12} className="text-yellow-400" />
-                <span>{t.studioToneShorter}</span>
+                <span>{t.studioSandboxReset}</span>
               </button>
             </div>
 
             {/* Message Stream */}
             <p className="fs-studio-mock-notice">{t.studioMockNotice}</p>
-            <div className="fs-studio-chat-stream">
+            <div className="fs-studio-chat-stream" ref={streamRef}>
               {testMessages.map((msg, i) => (
                 <div
                   key={i}
@@ -750,9 +774,17 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
                   {msg.sender === 'creator' && (
                     avatar ? <img src={studioSrc(avatar)} alt="" className="fs-studio-msg-avatar" /> : null
                   )}
-                  <div className="fs-studio-msg-bubble">{msg.text}</div>
+                  <div className="fs-studio-msg-bubble">
+                    {msg.action && <em className="fs-studio-msg-action">{msg.action}</em>}
+                    {msg.text}
+                  </div>
                 </div>
               ))}
+              {sandboxBusy && (
+                <div className="fs-studio-msg is-creator">
+                  <div className="fs-studio-msg-bubble"><Loader2 size={14} className="animate-spin" /></div>
+                </div>
+              )}
             </div>
 
             {/* Composer */}
@@ -764,7 +796,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
                 onChange={(e) => setInputMessage(e.target.value)}
                 placeholder={t.studioTestPlaceholder}
               />
-              <button type="submit" className="fs-studio-send-btn" disabled={!inputMessage.trim()}>
+              <button type="submit" className="fs-studio-send-btn" disabled={!inputMessage.trim() || sandboxBusy}>
                 <Send size={15} />
               </button>
             </form>
@@ -937,7 +969,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
                   <div className="fs-studio-vault-details">
                     <strong className="fs-studio-vault-name">{r.name}</strong>
                     <span style={{ fontSize: '0.72rem', color: '#a1a1aa' }}>
-                      {r.unlockType === 'mission' ? `💬 ภารกิจ (${r.turns} ข้อความ)` : `💎 ตู้สุ่ม (+${r.energyFallback} ⚡)`}
+                      {r.unlockType === 'mission' ? t.studioMissionSummary(r.turns) : t.studioGachaSummary(r.energyFallback)}
                     </span>
                     <button
                       type="button"
@@ -956,6 +988,15 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
       )}
 
       {/* Footer Actions */}
+      <div className="fs-studio-checklist" aria-label={t.studioChecklistTitle}>
+        <span className="fs-studio-checklist-title">{t.studioChecklistTitle} {readyCount}/{checklist.length}</span>
+        <div className="fs-studio-checklist-items">
+          {checklist.map(([k, ok]) => (
+            <span key={k} className={`fs-studio-check ${ok ? 'is-ok' : ''}`}>{ok ? '✓' : '•'} {problemLabels[k]}</span>
+          ))}
+        </div>
+      </div>
+
       {notice && (
         <div className={notice.ok ? 'fs-studio-alert-success' : 'fs-studio-alert-error'} role="status">
           {notice.ok ? <Check size={16} /> : <X size={16} />}

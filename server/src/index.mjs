@@ -10,7 +10,7 @@ import { narrativeTurnContext, restoreLegacyInteraction } from './narrative-inte
 import { characterOnlyEnabled, characterOnlyChat } from './character-only-chat.mjs';
 import { shopPlayer, shopAdmin, shopReportsApi, writeDailyReports } from './shop/index.mjs';
 import { handleAgentDevRoute } from './agent-dev-api.mjs';
-import { cleanDraft, launchProblems, studioCreatorId, buildDefinition } from './studio.mjs';
+import { cleanDraft, launchProblems, studioCreatorId, studioPreviewId, scoreForLevel, buildDefinition, suggestLevels } from './studio.mjs';
 
 const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), {status, headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store',...headers}});
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), {status}); };
@@ -36,6 +36,7 @@ const isAdminUser = (env,user) => !!user && (user.role === 'admin' || (!!env.ADM
 const studioAllowed = (env,user) => String(env.COSPLAY_STUDIO_V1)==='true' && !!user && (isAdminUser(env,user) || String(env.STAGING_EMAILS||'').split(',').some(e=>e.trim().toLowerCase()===String(user.email||'').toLowerCase()));
 const STUDIO_UPLOAD_MAX_BYTES = 2000000; // D1 BLOB cap is 2,000,000 bytes
 const STUDIO_UPLOADS_PER_DAY = 30;
+const STUDIO_LAUNCHES_PER_DAY = 20;
 const studioDraftPrefix = user => `studio-drafts/${String(user?.id||'').replace(/[^a-zA-Z0-9_-]/g,'')}/`;
 // DM Thread lease covers up to three primary model attempts plus the knowledge pass.
 const THREAD_LOCK_MS = 90000;
@@ -544,6 +545,8 @@ async function player(req,env,user,path,now,ctx) {
  if (creatorRoute && (await removedCreators(env)).includes(creatorRoute[1])) return json({error:'not_found'},404);
  // A Studio character (cos_ id) is live only while it has a definition: taken down, or its owner deleted the account.
  if (creatorRoute && creatorRoute[1].startsWith('cos_') && !await one(env, 'SELECT 1 x FROM npc_definitions WHERE creator_id=?', creatorRoute[1])) return json({error:'not_found'},404);
+ // The Studio test twin (cosp_) belongs to one owner and only while the Studio is open to them.
+ if (creatorRoute && creatorRoute[1].startsWith('cosp_') && (creatorRoute[1] !== studioPreviewId(user) || !studioAllowed(env,user))) return json({error:'not_found'},404);
  const experimentRoute = path.match(/^\/api\/chats\/([\w-]+)(?:\/(message|edit-message|reset-chat|memories))?$/);
  if (experimentRoute) {
   const row = await one(env, 'SELECT definition_json FROM npc_definitions WHERE creator_id=?', experimentRoute[1]);
@@ -571,7 +574,7 @@ async function player(req,env,user,path,now,ctx) {
   const firstEp=new Map(firstEpRows.map(r=>[r.creator_id,r.title]));
   const preview=r=>r?{text:inboxPreview(r.content),at:r.created_at,fromCreator:r.role==='assistant'}:null;
   const live=new Set(defRows.map(r=>r.creator_id));
-  return json({creators:rows.filter(c=>!removed.has(c.id)&&(!c.id.startsWith('cos_')||live.has(c.id))).map(c=>{
+  return json({creators:rows.filter(c=>!removed.has(c.id)&&!c.id.startsWith('cosp_')&&(!c.id.startsWith('cos_')||live.has(c.id))).map(c=>{
    const l=last.get(c.id),d=def.get(c.id)||{};
    const isCosplay=d.creatorType==='cosplay'||(Array.isArray(d.tags)&&d.tags.some(t=>/cosplay|คอสเพลย์/i.test(t)));
    return {
@@ -583,6 +586,7 @@ async function player(req,env,user,path,now,ctx) {
      creatorType:isCosplay?'cosplay':'ai',
      isVerified:typeof d.isVerified==='boolean'?d.isVerified:isCosplay,
      characterRole:d.characterRole||null,
+     greeting:typeof d.openingGreeting==='string'&&d.openingGreeting?d.openingGreeting:null,
      isOnline:!!(c.relationship>0||(chatCount.get(c.id)||0)>100)
    };
   })});
@@ -1957,7 +1961,7 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
   return json({notifications});
  }
  // ---- Cosplay Creator Studio: one character per account, saved in D1, launched straight to staging players ----
- if(path==='/api/studio/draft'||path==='/api/studio/launch'||path==='/api/studio/unpublish'){
+ if(path.startsWith('/api/studio/')){
   if(!studioAllowed(env,user))return json({error:'forbidden'},403);
   const row=await one(env,'SELECT creator_id,draft_json,status,launched_at,updated_at FROM studio_creators WHERE user_id=?',user.id);
   const view=r=>({draft:r?JSON.parse(r.draft_json||'{}'):null,creatorId:r?.creator_id||null,status:r?.status||'none',launchedAt:r?.launched_at||null,updatedAt:r?.updated_at||null});
@@ -1971,14 +1975,45 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
    if(row?.status!=='live')return json({error:'not_live'},409);
    await env.DB.batch([
     env.DB.prepare("UPDATE studio_creators SET status='draft',updated_at=? WHERE user_id=?").bind(now,user.id),
-    env.DB.prepare('DELETE FROM npc_definitions WHERE creator_id=?').bind(row.creator_id)
+    env.DB.prepare('DELETE FROM npc_definitions WHERE creator_id=?').bind(row.creator_id),
+    env.DB.prepare("UPDATE posts SET status='suspended' WHERE creator_id=?").bind(row.creator_id)
    ]);
    return json(view({...row,status:'draft',updated_at:now}));
+  }
+  if(path==='/api/studio/suggest-levels'&&method==='POST'){
+   const draft=cleanDraft(await body(req));
+   const charge=await takeEnergy(env,user.id,now);
+   if(!charge)return json({error:'energy_empty'},402);
+   const levels=await suggestLevels(env,draft);
+   if(!levels){await refundEnergy(env,user.id,charge,now,'studio_refund');return json({error:'ai_unavailable'},503);}
+   return json({levels,energy:await energy(env,user.id,now)});
+  }
+  if(path==='/api/studio/sandbox'&&method==='POST'){
+   // The test room runs the real DM pipeline (prompt, provider order, leak filter, energy) on a private twin of
+   // the draft at the chosen level, so what the creator sees is what players will get.
+   const b=await body(req), draft=cleanDraft(b.draft&&typeof b.draft==='object'?b.draft:{}), pid=studioPreviewId(user);
+   const unsafe=launchProblems(draft).filter(p=>p.startsWith('unsafe:'));
+   if(unsafe.length)return json({error:'draft_incomplete',problems:unsafe},400);
+   if(!draft.name)return json({error:'draft_incomplete',problems:['name']},400);
+   const chatPath=`/api/chats/${pid}/${b.reset===true?'reset-chat':'message'}`;
+   if(b.reset!==true){
+    const assetMap=Object.fromEntries([draft.avatar,...draft.rewards.map(r=>r.asset)].filter(k=>k&&k.startsWith(studioDraftPrefix(user))).map(k=>[k,k]));
+    const definition={...buildDefinition(draft,pid,assetMap),rewards:[]};
+    const score=scoreForLevel(b.level);
+    await env.DB.batch([
+     env.DB.prepare('INSERT INTO creators(id,name,bio,avatar_key) VALUES(?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,bio=excluded.bio,avatar_key=excluded.avatar_key').bind(pid,draft.name,definition.tagline,assetMap[draft.avatar]||null),
+     env.DB.prepare('INSERT INTO npc_definitions(creator_id,definition_json,updated_at) VALUES(?,?,?) ON CONFLICT(creator_id) DO UPDATE SET definition_json=excluded.definition_json,updated_at=excluded.updated_at').bind(pid,JSON.stringify(definition),now),
+     env.DB.prepare('INSERT INTO relationships(user_id,creator_id,score,closeness,trust,romance) VALUES(?,?,?,?,?,?) ON CONFLICT(user_id,creator_id) DO UPDATE SET score=excluded.score,closeness=excluded.closeness,trust=excluded.trust,romance=excluded.romance').bind(user.id,pid,score,score,score,score)
+    ]);
+   }else if(!await one(env,'SELECT 1 x FROM creators WHERE id=?',pid))return json({ok:true});
+   return player(new Request(new URL(chatPath,req.url),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({message:typeof b.message==='string'?b.message:''})}),env,user,chatPath,now,ctx);
   }
   if(path==='/api/studio/launch'&&method==='POST'){
    const draft=cleanDraft(await body(req));
    const problems=launchProblems(draft);
    if(problems.length)return json({error:'draft_incomplete',problems},400);
+   const launches=await one(env,"SELECT COUNT(*) n FROM activity WHERE user_id=? AND kind='studio_launch' AND created_at>?",user.id,now-86400000);
+   if((launches?.n||0)>=STUDIO_LAUNCHES_PER_DAY)return json({error:'launch_quota_exceeded'},429);
    // The id is fixed at first launch, so a later handle change cannot move the character or take another id.
    const creatorId=row?.creator_id||studioCreatorId(draft.handle);
    if(!row?.creator_id){
@@ -1999,11 +2034,18 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
    };
    const avatarKey=await publish(draft.avatar);
    for(const r of draft.rewards)await publish(r.asset);
+   for(const x of draft.posts)await publish(x.media);
    const definition=buildDefinition(draft,creatorId,assetMap);
+   // Launch posts keep stable ids per slot; a slot dropped on relaunch is suspended, not deleted (likes/saves keep their rows).
+   const postIds=draft.posts.map((_,i)=>`${creatorId}_p${i+1}`);
    await env.DB.batch([
+    env.DB.prepare('INSERT INTO activity(user_id,kind,created_at) VALUES(?,?,?)').bind(user.id,'studio_launch',now),
     env.DB.prepare('INSERT INTO creators(id,name,bio,avatar_key) VALUES(?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,bio=excluded.bio,avatar_key=excluded.avatar_key').bind(creatorId,draft.name,definition.tagline,avatarKey),
     env.DB.prepare('INSERT INTO npc_definitions(creator_id,definition_json,updated_at) VALUES(?,?,?) ON CONFLICT(creator_id) DO UPDATE SET definition_json=excluded.definition_json,updated_at=excluded.updated_at').bind(creatorId,JSON.stringify(definition),now),
-    env.DB.prepare("INSERT INTO studio_creators(user_id,creator_id,draft_json,status,launched_at,updated_at) VALUES(?,?,?,'live',?,?) ON CONFLICT(user_id) DO UPDATE SET creator_id=excluded.creator_id,draft_json=excluded.draft_json,status='live',launched_at=COALESCE(studio_creators.launched_at,excluded.launched_at),updated_at=excluded.updated_at").bind(user.id,creatorId,JSON.stringify(draft),now,now)
+    env.DB.prepare("INSERT INTO studio_creators(user_id,creator_id,draft_json,status,launched_at,updated_at) VALUES(?,?,?,'live',?,?) ON CONFLICT(user_id) DO UPDATE SET creator_id=excluded.creator_id,draft_json=excluded.draft_json,status='live',launched_at=COALESCE(studio_creators.launched_at,excluded.launched_at),updated_at=excluded.updated_at").bind(user.id,creatorId,JSON.stringify(draft),now,now),
+    // after the creators row, which posts reference
+    env.DB.prepare("UPDATE posts SET status='suspended' WHERE creator_id=? AND id NOT IN (SELECT value FROM json_each(?))").bind(creatorId,JSON.stringify(postIds)),
+    ...draft.posts.map((x,i)=>env.DB.prepare("INSERT INTO posts(id,creator_id,caption,media_key,published_at,relationship_required,simulated_likes,status) VALUES(?,?,?,?,?,0,0,'published') ON CONFLICT(id) DO UPDATE SET caption=excluded.caption,media_key=excluded.media_key,status='published'").bind(postIds[i],creatorId,x.caption,assetMap[x.media],now-i))
    ]);
    return json(view({creator_id:creatorId,draft_json:JSON.stringify(draft),status:'live',launched_at:row?.launched_at||now,updated_at:now}));
   }
@@ -2104,7 +2146,7 @@ async fetch(req,env,ctx){
   if(path.startsWith('/api/reports/'))return await shopReportsApi(req,env,path);
   const user=await session(req,env);
   if(path==='/api/logout'&&req.method==='POST'){if(user)await run(env,'DELETE FROM sessions WHERE id=?',await hash(cookie(req,'frost_session')));return json({ok:true},200,{'set-cookie':secureCookie('frost_session','',0)});}
-  if(path==='/api/account'&&req.method==='DELETE'){if(!user)return json({error:'unauthorized'},401);await env.DB.batch([env.DB.prepare('DELETE FROM invites WHERE email=?').bind(user.email),env.DB.prepare('DELETE FROM npc_definitions WHERE creator_id IN (SELECT creator_id FROM studio_creators WHERE user_id=?)').bind(user.id),env.DB.prepare('DELETE FROM users WHERE id=?').bind(user.id)]);return json({ok:true},200,{'set-cookie':secureCookie('frost_session','',0)});}
+  if(path==='/api/account'&&req.method==='DELETE'){if(!user)return json({error:'unauthorized'},401);await env.DB.batch([env.DB.prepare('DELETE FROM invites WHERE email=?').bind(user.email),env.DB.prepare('DELETE FROM npc_definitions WHERE creator_id IN (SELECT creator_id FROM studio_creators WHERE user_id=?)').bind(user.id),env.DB.prepare("UPDATE posts SET status='suspended' WHERE creator_id IN (SELECT creator_id FROM studio_creators WHERE user_id=?)").bind(user.id),env.DB.prepare('DELETE FROM users WHERE id=?').bind(user.id)]);return json({ok:true},200,{'set-cookie':secureCookie('frost_session','',0)});}
   if(path.startsWith('/api/admin/')){
    if(!user)return json({error:'unauthorized'},401);
    if(!isAdminUser(env,user) && !await access(req,env,user))return json({error:'forbidden'},403);

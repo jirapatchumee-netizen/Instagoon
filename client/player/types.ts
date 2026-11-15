@@ -26,6 +26,7 @@ export type Creator = {
   isVerified?: boolean;
   isOnline?: boolean;
   characterRole?: string | null;
+  greeting?: string | null;
   relationship: number;
   following?: boolean;
   lastMessage?: { text: string; at: number; fromCreator: boolean } | null;

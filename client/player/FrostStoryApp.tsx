@@ -670,6 +670,11 @@ export function FrostStoryApp() {
     }
   }
 
+  // Studio-launched cosplay characters are not verified accounts; every other creator keeps the badge.
+  function showVerified(c?: { creatorType?: string; isVerified?: boolean } | null) {
+    return !(c?.creatorType === 'cosplay' && c.isVerified === false);
+  }
+
   function chatPath(creatorId: string) {
     return `/api/chats/${encodeURIComponent(creatorId)}`;
   }
@@ -1350,7 +1355,7 @@ export function FrostStoryApp() {
               </button>
               <h2 id="fs-profile-title">
                 {profileCreator.name}
-                <IgVerified size={15} />
+                {showVerified(profileCreator) && <IgVerified size={15} />}
               </h2>
               <div style={{ width: 22 }} />
             </header>
@@ -1395,7 +1400,7 @@ export function FrostStoryApp() {
                     </div>
                     <div className="fs-profile-name-row">
                       <h1>{profileData.creator.name}</h1>
-                      <IgVerified size={18} />
+                      {showVerified(profileCreator) && <IgVerified size={18} />}
                     </div>
                     <span className="fs-profile-handle">
                       @{profileData.creator.id === 'milin' ? 'milin.zip' : profileData.creator.id}
@@ -1714,7 +1719,7 @@ export function FrostStoryApp() {
                 <div className="fs-dm-header-text">
                   <div className="fs-dm-title-row">
                     <h2 id="fs-chat-title">{selectedCreator.name}</h2>
-                    <IgVerified size={14} />
+                    {showVerified(selectedCreator) && <IgVerified size={14} />}
                     {selectedCreator.relationship >= 100 && (
                       <span className="fs-top-fan-badge" title={t.topFanTitle}>
                         {t.topFanBadge}
@@ -1882,7 +1887,7 @@ export function FrostStoryApp() {
                           )}
                 </div>
                 <strong>{selectedCreator.name}</strong>
-                <span className="fs-dm-handle">@{selectedCreator.id === 'milin' ? 'milin.zip' : selectedCreator.id}</span>
+                <span className="fs-dm-handle">@{selectedCreator.id === 'milin' ? 'milin.zip' : selectedCreator.handle || selectedCreator.id}</span>
                 <p>{selectedCreator.bio}</p>
               </div>
 
@@ -1904,7 +1909,9 @@ export function FrostStoryApp() {
                         )}
                       </div>
                       <div className="fs-bubble">
-                        {selectedCreator.id === 'milin'
+                        {selectedCreator.greeting
+                          ? selectedCreator.greeting
+                          : selectedCreator.id === 'milin'
                           ? 'จัดห้องเสร็จแล้ว มัวแต่นั่งมองเพดาน... ดีใจจังที่แวะเข้ามาหา 🥺✨ วันนี้ทำงานเหนื่อยไหมน้า?'
                           : `สวัสดีค่ะ แวะมาคุยกับ ${selectedCreator.name.replace(/\s*\([^)]*\)/, '')} ได้ตลอดเลยน้า ✨`}
                       </div>

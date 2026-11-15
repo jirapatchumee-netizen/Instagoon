@@ -7182,6 +7182,89 @@ dialog.fs-overlay[open]::backdrop {
   margin-top: 14px;
 }
 
+.fs-studio-checklist {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border: 1px solid #27272a;
+  border-radius: 12px;
+  background: #18181b;
+}
+
+.fs-studio-checklist-title {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #f4f4f5;
+  margin-bottom: 6px;
+}
+
+.fs-studio-checklist-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.fs-studio-check {
+  font-size: 0.7rem;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #27272a;
+  color: #a1a1aa;
+}
+
+.fs-studio-check.is-ok {
+  background: rgba(74, 222, 128, 0.12);
+  color: #4ade80;
+}
+
+.fs-studio-posts-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.fs-studio-post-item {
+  width: 112px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fs-studio-post-img {
+  width: 112px;
+  height: 140px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.fs-studio-post-item .fs-studio-input {
+  padding: 6px 8px;
+  font-size: 0.72rem;
+}
+
+.fs-studio-post-add {
+  width: 112px;
+  height: 140px;
+  border: 1px dashed #3f3f46;
+  border-radius: 10px;
+  background: #18181b;
+  color: #a1a1aa;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.fs-studio-msg-action {
+  display: block;
+  color: #f9a8d4;
+  font-size: 0.75rem;
+  margin-bottom: 4px;
+}
+
 .fs-studio-btn-save:disabled,
 .fs-studio-btn-launch:disabled {
   opacity: 0.5;
