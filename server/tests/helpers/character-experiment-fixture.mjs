@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { narrativeFixture } from './narrative-fixture.mjs';
-export const sourceNpc = JSON.parse(readFileSync(new URL('../../../content/creators/cheer/character.json', import.meta.url), 'utf8'));
-export const juneNpc = JSON.parse(readFileSync(new URL('../../../content/creators/june/character.json', import.meta.url), 'utf8'));
+export const sourceNpc = JSON.parse(readFileSync(new URL('./fixtures/cheer-experiment.character.json', import.meta.url), 'utf8'));
+export const juneNpc = JSON.parse(readFileSync(new URL('./fixtures/june-experiment.character.json', import.meta.url), 'utf8'));
 export async function characterExperimentFixture({ scene = false, opening = false, creator = 'cheer' } = {}) {
   const f = await narrativeFixture();
   for (const key of Object.keys(f.npc)) delete f.npc[key];
