@@ -1525,13 +1525,16 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
    async function callWorkersAi() {
      if (!env.AI || replyText) return;
      try {
-       const cfModel = env.CF_AI_MODEL || '@cf/qwen/qwen2.5-coder-32b-instruct';
+       // Last-resort fallback. Llama 4 Scout gave the steadiest Thai voice/pronouns with valid JSON in ~2 s when compared on
+       // 16 Nov 2026 (qwen2.5-coder mixed in Cyrillic and swapped pronouns; gemma-3 is not enabled on this account).
+       const cfModel = env.CF_AI_MODEL || '@cf/meta/llama-4-scout-17b-16e-instruct';
        const aiPrompt = systemPrompt + `\n\nCRITICAL OUTPUT REQUIREMENT: You MUST output a single valid JSON object matching this schema:\n${JSON.stringify(responseSchema)}\nOutput ONLY valid JSON.`;
        const aiRes = await env.AI.run(cfModel, {
          messages: [
            { role: 'system', content: aiPrompt },
            { role: 'user', content: playerTurn }
          ],
+         response_format: { type: 'json_object' },
          max_tokens: 1024,
          temperature: 0.7
        });
@@ -1545,7 +1548,9 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
        } else if (typeof aiRes === 'object' && aiRes !== null && typeof aiRes.reply === 'string') {
          parsed = aiRes;
        } else {
-         const rawAi = typeof aiRes?.response === 'string' ? aiRes.response : (typeof aiRes === 'string' ? aiRes : null);
+         // Newer chat models answer in the OpenAI shape (choices[0].message.content) instead of { response }.
+         const chatContent = aiRes?.choices?.[0]?.message?.content;
+         const rawAi = typeof aiRes?.response === 'string' ? aiRes.response : typeof chatContent === 'string' ? chatContent : (typeof aiRes === 'string' ? aiRes : null);
          if (rawAi) {
            try { parsed = JSON.parse(rawAi); }
            catch {
