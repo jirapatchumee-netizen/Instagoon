@@ -1,7 +1,7 @@
 // Tab-level routing on top of the History API — no router dependency (owner decision, PLAN rev 3).
 // Companion to ADR 0014: overlay entries are pushed by overlay-history.ts and must never be read
 // as a screen change here, otherwise one back press would close the overlay and switch tab at once.
-export type HomeScreen = 'home' | 'creators' | 'reels' | 'inbox' | 'account';
+export type HomeScreen = 'home' | 'creators' | 'reels' | 'studio' | 'inbox' | 'account';
 
 export type Route = { screen: HomeScreen; creatorId?: string };
 
@@ -12,6 +12,7 @@ const SCREEN_BY_PATH: Record<string, HomeScreen> = {
   '/': 'home',
   '/creators': 'creators',
   '/reels': 'reels',
+  '/studio': 'studio',
   '/inbox': 'inbox',
   '/profile': 'account',
 };
@@ -35,6 +36,8 @@ export function routeToPath(route: Route): string {
       return '/creators';
     case 'reels':
       return '/reels';
+    case 'studio':
+      return '/studio';
     case 'inbox':
       return '/inbox';
     case 'account':

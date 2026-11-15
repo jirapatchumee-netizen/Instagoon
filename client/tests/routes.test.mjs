@@ -29,6 +29,7 @@ test('every tab has a stable path and unknown paths are rejected', () => {
   assert.deepEqual(pathToRoute('/'), { screen: 'home' });
   assert.deepEqual(pathToRoute('/reels'), { screen: 'reels' });
   assert.deepEqual(pathToRoute('/creators'), { screen: 'creators' });
+  assert.deepEqual(pathToRoute('/studio'), { screen: 'studio' });
   assert.deepEqual(pathToRoute('/inbox'), { screen: 'inbox' });
   assert.deepEqual(pathToRoute('/profile'), { screen: 'account' });
   assert.deepEqual(pathToRoute('/creators/milin'), { screen: 'creators', creatorId: 'milin' });
@@ -37,6 +38,7 @@ test('every tab has a stable path and unknown paths are rejected', () => {
   assert.equal(pathToRoute('/unknown'), null);
   assert.equal(pathToRoute('/api/feed'), null, 'API paths are never a screen');
   assert.equal(routeToPath({ screen: 'account' }), '/profile');
+  assert.equal(routeToPath({ screen: 'studio' }), '/studio');
   assert.equal(routeToPath({ screen: 'creators', creatorId: 'a b' }), '/creators/a%20b');
 });
 

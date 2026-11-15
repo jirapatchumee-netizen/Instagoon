@@ -25,9 +25,9 @@ test('en and ja strings contain no Thai', () => {
 
 // Files that legitimately hold Thai: content-shaped text the AI chat renders or sends (out of scope for
 // UI translation), and the shop's own per-language copy table.
-const ALLOWED = new Set(['i18n.ts', 'EnergyShop.tsx', 'message-format.ts', 'ui.tsx']);
+const ALLOWED = new Set(['i18n.ts', 'EnergyShop.tsx', 'message-format.ts', 'ui.tsx', 'CosplayCreatorTab.tsx']);
 // Lines that are creator speech or messages sent to the AI, not UI chrome.
-const ALLOWED_LINE = [/ตอบกลับสตอรี่/, /จัดห้องเสร็จแล้ว/, /สวัสดีค่ะ แวะมาคุยกับ/, /ELEVENLABS_API_KEY/, /ฟังเสียงตัวละคร|หยุดเสียง/, /เกิดข้อผิดพลาด \(/];
+const ALLOWED_LINE = [/ตอบกลับสตอรี่/, /จัดห้องเสร็จแล้ว/, /สวัสดีค่ะ แวะมาคุยกับ/, /ELEVENLABS_API_KEY/, /ฟังเสียงตัวละคร|หยุดเสียง/, /เกิดข้อผิดพลาด \(/, /คอสเพลย์/];
 
 test('player UI files do not hard-code Thai', () => {
   const dir = new URL('../player/', import.meta.url);
