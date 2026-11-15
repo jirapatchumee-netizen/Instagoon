@@ -20,6 +20,8 @@ export type Creator = {
   tags?: string[];
   chatCount?: number;
   artState?: 'real' | 'pending';
+  firstEpisodeTitle?: string | null;
+  vaultCount?: number;
   relationship: number;
   following?: boolean;
   lastMessage?: { text: string; at: number; fromCreator: boolean } | null;
