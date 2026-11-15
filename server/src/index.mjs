@@ -1777,9 +1777,33 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
   const notifications=[...posts.map(p=>({id:'post-'+p.id,text:p.name+' มีโพสต์ใหม่',createdAt:p.created_at,readAt:null})),...revisions.map(r=>({id:'dm-'+r.id,text:r.name+' มีบทสนทนาใหม่',createdAt:r.created_at,readAt:null}))].sort((a,b)=>b.createdAt-a.createdAt).slice(0,100);
   return json({notifications});
  }
+ if(path==='/api/media/upload'&&method==='POST'){
+  let uploadBytes;
+  const contentType=req.headers.get('content-type')||'';
+  if(contentType.includes('multipart/form-data')){
+   const formData=await req.formData();
+   const file=formData.get('file');
+   if(!file||typeof file==='string')return json({error:'file_missing'},400);
+   uploadBytes=new Uint8Array(await file.arrayBuffer());
+  }else{
+   uploadBytes=new Uint8Array(await req.arrayBuffer());
+  }
+  if(!uploadBytes.byteLength||uploadBytes.byteLength>2*1024*1024)return json({error:'invalid_file_size'},400);
+  if(uploadBytes.byteLength<12||uploadBytes[0]!==0x52||uploadBytes[1]!==0x49||uploadBytes[2]!==0x46||uploadBytes[3]!==0x46||uploadBytes[8]!==0x57||uploadBytes[9]!==0x45||uploadBytes[10]!==0x42||uploadBytes[11]!==0x50){
+   return json({error:'invalid_image_format',message:'Expected WebP image'},400);
+  }
+  const uidClean=(user?.id||'anon').replace(/[^a-zA-Z0-9_-]/g,'');
+  const uploadKey=`avatars/cosplay_${uidClean}_${now}_${crypto.randomUUID().slice(0,8)}.webp`;
+  if(env.MEDIA?.put){
+   await env.MEDIA.put(uploadKey,uploadBytes,{httpMetadata:{contentType:'image/webp'}});
+  }else if(env.DB){
+   await env.DB.prepare('INSERT INTO media_blobs(key,content_type,bytes,size,uploaded_at) VALUES(?,?,?,?,?) ON CONFLICT(key) DO UPDATE SET bytes=excluded.bytes,size=excluded.size').bind(uploadKey,'image/webp',uploadBytes,uploadBytes.byteLength,now).run();
+  }
+  return json({ok:true,mediaKey:uploadKey,url:`/api/media/${encodeURIComponent(uploadKey)}`});
+ }
  m=path.match(/^\/api\/media\/(.+)$/);
  if(m&&method==='GET'){
-  const mediaKey=key(decodeURIComponent(m[1]));const posts=await all(env,'SELECT id FROM posts WHERE media_key=?',mediaKey);let allowed=!!await one(env,'SELECT id FROM creators WHERE avatar_key=?',mediaKey);
+  const mediaKey=key(decodeURIComponent(m[1]));const posts=await all(env,'SELECT id FROM posts WHERE media_key=?',mediaKey);let allowed=mediaKey.startsWith('avatars/')||!!await one(env,'SELECT id FROM creators WHERE avatar_key=?',mediaKey);
   for(const p of posts)if(await visiblePost(env,user,p.id,now)){allowed=true;break;}
   if(!allowed){const stories=await all(env,'SELECT id FROM stories WHERE media_key=?',mediaKey);for(const s of stories){const story=await visibleStory(env,user,s.id,now);if(story && (story.type==='broadcast' || story.first_viewed_at!=null)){allowed=true;break;}}}
   if(!allowed){allowed=!!await one(env,'SELECT 1 FROM reward_unlocks WHERE user_id=? AND reward_key=?',user.id,mediaKey);}
