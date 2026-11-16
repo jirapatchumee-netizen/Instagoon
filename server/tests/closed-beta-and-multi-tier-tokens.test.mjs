@@ -215,7 +215,7 @@ test('public check token: allows unauthenticated verification of valid and inval
   assert.equal(checkInvalid.status, 400);
   assert.equal(checkInvalid.body.error, 'invalid_token');
 
-  // 3. Redeeming the token makes it no longer available for new checks
+  // 3. Redeeming the token makes it report alreadyRedeemed: true
   await call('/api/access/redeem', {
     uid: 'player_1',
     method: 'POST',
@@ -227,8 +227,9 @@ test('public check token: allows unauthenticated verification of valid and inval
     method: 'POST',
     json: { token: minted.token },
   });
-  assert.equal(checkAfterRedeem.status, 400);
-  assert.equal(checkAfterRedeem.body.error, 'invalid_token');
+  assert.equal(checkAfterRedeem.status, 200);
+  assert.equal(checkAfterRedeem.body.ok, true);
+  assert.equal(checkAfterRedeem.body.alreadyRedeemed, true);
 });
 
 test('auth/google sets frost_invite cookie when token is provided', async () => {

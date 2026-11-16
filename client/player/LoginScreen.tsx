@@ -53,7 +53,7 @@ export function LoginScreen({
     return sessionStorage.getItem('instagoon_pending_token') || '';
   });
 
-  const [tokenStatus, setTokenStatus] = useState<'idle' | 'checking' | 'valid' | 'invalid'>('idle');
+  const [tokenStatus, setTokenStatus] = useState<'idle' | 'checking' | 'valid' | 'already_redeemed' | 'invalid'>('idle');
   const [tokenRole, setTokenRole] = useState<'player' | 'creator' | 'admin' | null>(null);
 
   const checkToken = async (tok: string) => {
@@ -61,12 +61,16 @@ export function LoginScreen({
     if (!clean) return;
     setTokenStatus('checking');
     try {
-      const res = await api<{ ok: boolean; role?: 'player' | 'creator' | 'admin' }>('/api/access/check', {
+      const res = await api<{ ok: boolean; role?: 'player' | 'creator' | 'admin'; alreadyRedeemed?: boolean }>('/api/access/check', {
         method: 'POST',
         body: JSON.stringify({ token: clean }),
       });
       if (res.ok) {
-        setTokenStatus('valid');
+        if (res.alreadyRedeemed) {
+          setTokenStatus('already_redeemed');
+        } else {
+          setTokenStatus('valid');
+        }
         setTokenRole(res.role || 'player');
         sessionStorage.setItem('instagoon_pending_token', clean);
       } else {
@@ -172,6 +176,26 @@ export function LoginScreen({
             </p>
           )}
 
+          <a
+            className="fs-login-google"
+            href={tokenStatus === 'valid'
+              ? `${loginTargetUrl}${loginTargetUrl.includes('?') ? '&' : '?'}token=${encodeURIComponent(inviteToken.trim())}`
+              : loginTargetUrl}
+            onClick={handleLoginClick}
+          >
+            <GoogleG size={20} />
+            <span>
+              {activePreview
+                ? `${tokenStatus === 'valid' ? t.loginGoogleWithInvite : t.loginGoogle} (${activePreview.name})`
+                : (tokenStatus === 'valid' ? t.loginGoogleWithInvite : t.loginGoogle)}
+            </span>
+          </a>
+          <p className="fs-login-google-sub">{t.loginGoogleSub}</p>
+
+          <div className="fs-login-divider">
+            <span>{t.loginDividerOr}</span>
+          </div>
+
           <div className="fs-login-invite">
             <div className="fs-login-invite-header">
               <Ticket size={14} className="fs-login-invite-icon" />
@@ -206,15 +230,31 @@ export function LoginScreen({
               </button>
             </div>
             {tokenStatus === 'valid' && (
-              <p className="fs-login-invite-msg is-valid">
+              <>
+                <p className="fs-login-invite-msg is-valid">
+                  <CheckCircle2 size={13} />
+                  <span>
+                    {tokenRole === 'creator'
+                      ? t.loginInviteCodeValidCreator
+                      : tokenRole === 'admin'
+                      ? t.loginInviteCodeValidAdmin
+                      : t.loginInviteCodeValidPlayer}
+                  </span>
+                </p>
+                <a
+                  className="fs-login-google fs-login-google--invite"
+                  href={`${loginTargetUrl}${loginTargetUrl.includes('?') ? '&' : '?'}token=${encodeURIComponent(inviteToken.trim())}`}
+                  onClick={handleLoginClick}
+                >
+                  <GoogleG size={18} />
+                  <span>{t.loginGoogleWithInvite}</span>
+                </a>
+              </>
+            )}
+            {tokenStatus === 'already_redeemed' && (
+              <p className="fs-login-invite-msg is-redeemed">
                 <CheckCircle2 size={13} />
-                <span>
-                  {tokenRole === 'creator'
-                    ? t.loginInviteCodeValidCreator
-                    : tokenRole === 'admin'
-                    ? t.loginInviteCodeValidAdmin
-                    : t.loginInviteCodeValidPlayer}
-                </span>
+                <span>{t.loginInviteCodeAlreadyRedeemed}</span>
               </p>
             )}
             {tokenStatus === 'invalid' && (
@@ -224,39 +264,6 @@ export function LoginScreen({
             )}
           </div>
 
-          {tokenStatus === 'valid' ? (
-            <a
-              className="fs-login-google"
-              href={`${loginTargetUrl}${loginTargetUrl.includes('?') ? '&' : '?'}token=${encodeURIComponent(inviteToken.trim())}`}
-              onClick={handleLoginClick}
-            >
-              <GoogleG size={20} />
-              <span>
-                {activePreview
-                  ? `${t.loginGoogle} (${activePreview.name})`
-                  : t.loginGoogle}
-              </span>
-            </a>
-          ) : (
-            <>
-              <button
-                type="button"
-                className="fs-login-google is-locked"
-                disabled
-                aria-disabled="true"
-              >
-                <LockKeyhole size={18} />
-                <span>{t.loginGoogleLocked}</span>
-              </button>
-              <a
-                href={loginTargetUrl}
-                className="fs-login-existing-link"
-                onClick={handleLoginClick}
-              >
-                {t.loginExistingAccountBtn}
-              </a>
-            </>
-          )}
           <p className="fs-login-note">{t.loginAgeNote}</p>
           <nav className="fs-login-legal">
             <a href="/privacy.html">{t.loginPrivacy}</a>

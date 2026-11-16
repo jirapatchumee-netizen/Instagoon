@@ -2595,8 +2595,51 @@ dialog.fs-overlay::backdrop {
   color: #6ee7b7;
 }
 
+.fs-login-invite-msg.is-redeemed {
+  color: #67e8f9;
+}
+
 .fs-login-invite-msg.is-invalid {
   color: #fda4af;
+}
+
+.fs-login-google-sub {
+  font-size: 0.72rem;
+  color: var(--login-muted);
+  text-align: center;
+  margin-top: -6px;
+  margin-bottom: 2px;
+}
+
+.fs-login-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 4px 0;
+  color: var(--login-muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}
+
+.fs-login-divider::before,
+.fs-login-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.fs-login-google--invite {
+  margin-top: 4px;
+  min-height: 48px;
+  font-size: 0.92rem;
+  background: linear-gradient(135deg, #ec4899 0%, #a855f7 100%);
+  color: #ffffff;
+  box-shadow: 0 10px 24px -6px rgba(236, 72, 153, 0.6);
+}
+
+.fs-login-google--invite:hover {
+  box-shadow: 0 14px 28px -6px rgba(236, 72, 153, 0.8);
 }
 
 .fs-login-google {
