@@ -1,4 +1,4 @@
-import { PATHS, analyticsJson, analyticsReady, analyticsSession, creatorView, overview, rollupNow, tiersFor } from './analytics-api.mjs';
+import { PATHS, analyticsJson, analyticsReady, analyticsSession, creatorView, overview, rollupNow, tiersFor, tokenTier } from './analytics-api.mjs';
 import { runHourly, hourBucket } from './analytics-rollup.mjs';
 
 // One Worker, one database binding, prod only. It reads rollups written by its own cron and answers
@@ -8,10 +8,16 @@ async function handle(req, env) {
   if (!Object.values(PATHS).includes(pathname)) return analyticsJson({ error: 'not_found' }, 404);
   if (!analyticsReady(env)) return analyticsJson({ error: 'analytics_disabled' }, 503);
 
-  const user = await analyticsSession(req, env);
-  if (!user) return analyticsJson({ error: 'unauthorized' }, 401);
-  const tier = await tiersFor(env, user);
-  if (!tier) return analyticsJson({ error: 'forbidden' }, 403);
+  let tier;
+  if (req.headers.has('authorization')) {
+    tier = await tokenTier(env, req);
+    if (!tier) return analyticsJson({ error: 'unauthorized' }, 401);
+  } else {
+    const user = await analyticsSession(req, env);
+    if (!user) return analyticsJson({ error: 'unauthorized' }, 401);
+    tier = await tiersFor(env, user);
+    if (!tier) return analyticsJson({ error: 'forbidden' }, 403);
+  }
 
   const hours = Math.min(Math.max(Number(new URL(req.url).searchParams.get('hours')) || 24, 1), 168);
 

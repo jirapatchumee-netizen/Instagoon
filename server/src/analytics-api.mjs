@@ -41,6 +41,18 @@ export async function analyticsSession(req, env) {
   return user || null;
 }
 
+// A creator token is a bearer credential: the analytics site sends it instead of the game cookie, so
+// no session row is written and this plane stays read-only. It only ever resolves to the creator tier.
+export async function tokenTier(env, req) {
+  const raw = req.headers.get('authorization')?.match(/^Bearer (igs_[0-9a-f]{64})$/)?.[1];
+  if (!raw) return null;
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
+  const hash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+  const row = await env.ANALYTICS_DB.prepare('SELECT creator_id FROM studio_tokens WHERE token_hash=?').bind(hash).first();
+  if (!row) return null;
+  return { user: null, admin: false, creatorIds: row.creator_id ? [row.creator_id] : [] };
+}
+
 export async function tiersFor(env, user) {
   if (!user) return null;
   const admins = String(env.ANALYTICS_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);

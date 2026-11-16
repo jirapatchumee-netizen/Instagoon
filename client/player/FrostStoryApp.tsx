@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useState, useRef, type FormEvent } from 'react';
 import { formatFastForwardAction } from './message-format';
 import { useOverlayHistory } from './overlay-history';
-import { ArrowLeft, Loader2, Lock, MessageSquareX, Palette, Pencil, RotateCcw, Send, Settings, Sparkles, TrendingUp, User as UserIcon, Volume2, VolumeX, X, Zap } from 'lucide-react';
+import { ArrowLeft, Loader2, Lock, MessageSquareX, Palette, Pencil, RotateCcw, Send, Settings, Sparkles, User as UserIcon, Volume2, VolumeX, X, Zap } from 'lucide-react';
 import { IgShare, IgHome, IgSearch, IgReels, IgVerified } from './InstagramIcons';
 import { EnergyShop } from './EnergyShop';
 import { type Lang, LANGS, TRANSLATIONS } from './i18n';
@@ -22,7 +22,6 @@ import { ReelsTab } from './tabs/ReelsTab';
 import { InboxTab } from './tabs/InboxTab';
 import { CosplayCreatorTab } from './tabs/CosplayCreatorTab';
 import { CreditProgressCard } from './components/CreditProgressCard';
-import { StagingAnalyticsModal } from './components/StagingAnalyticsModal';
 import { PlayerProfileTab } from './tabs/PlayerProfileTab';
 import { ActivityOverlay } from './overlays/ActivityOverlay';
 import { PostMenuSheet } from './overlays/PostMenuSheet';
@@ -79,7 +78,8 @@ export function FrostStoryApp() {
   // COSPLAY_ANALYTICS_ORIGIN is only set on staging: an empty string means this build must not offer
   // the dashboard at all, because the data it would show lives in the staging isolate.
   const [analyticsOrigin, setAnalyticsOrigin] = useState('');
-  const [analyticsOpen, setAnalyticsOpen] = useState(false);
+  const [studioGate, setStudioGate] = useState(false);
+  const [creatorUid, setCreatorUid] = useState<string | null>(null);
   const routerRef = useRef<ReturnType<typeof createRouter> | null>(null);
   if (!routerRef.current && typeof window !== 'undefined') {
     routerRef.current = createRouter({
@@ -529,13 +529,15 @@ export function FrostStoryApp() {
   const followSyncRef = useRef(createFollowSync());
 
   const loadMe = useCallback(async () => {
-    const result = await api<{ user: User; energy: Energy; uiFlags?: { homeHubV1?: boolean; cosplayStudioV1?: boolean; cosplayAnalyticsOrigin?: string } }>('/api/me');
+    const result = await api<{ user: User; energy: Energy; uiFlags?: { homeHubV1?: boolean; cosplayStudioV1?: boolean; cosplayStudioGate?: boolean; cosplayCreatorUid?: string | null; cosplayAnalyticsOrigin?: string } }>('/api/me');
     setUser(result.user);
     setEnergy(result.energy);
     const hub = result.uiFlags?.homeHubV1 === true;
     setHubOn(hub);
     const studio = result.uiFlags?.cosplayStudioV1 === true;
     setStudioOn(studio);
+    setStudioGate(result.uiFlags?.cosplayStudioGate === true);
+    setCreatorUid(result.uiFlags?.cosplayCreatorUid || null);
     setAnalyticsOrigin(result.uiFlags?.cosplayAnalyticsOrigin || '');
     // Only move a player who has not navigated anywhere yet; a deep link (e.g. /studio) must win.
     if (hub) {
@@ -1091,18 +1093,6 @@ export function FrostStoryApp() {
           />
         )}
 
-        {screen === "studio" && studioOn && analyticsOrigin && (
-          <div className="flex justify-end px-4 pt-2">
-            <button
-              type="button"
-              onClick={() => setAnalyticsOpen(true)}
-              className="flex items-center gap-1.5 rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1 text-xs text-zinc-300 hover:bg-zinc-800"
-            >
-              <TrendingUp size={13} className="text-pink-400" /> Staging analytics
-            </button>
-          </div>
-        )}
-
         {screen === "studio" && studioOn && (
           <CosplayCreatorTab
             lang={lang}
@@ -1148,6 +1138,7 @@ export function FrostStoryApp() {
               setBugReportOpen(true);
             }}
             onOpenShop={() => setShopOpen(true)}
+            studio={studioGate ? { lang, unlocked: studioOn, creatorUid, analyticsOrigin, onOpenStudio: () => handleSelectTab('studio'), onUnlocked: loadMe } : null}
             onOpenChat={(creator) => void openChat(creator)}
             onLogout={() =>
               void action(async () => {
@@ -1201,21 +1192,9 @@ export function FrostStoryApp() {
             })() : null}
           </button>
 
-          {studioOn && (
-            <button
-              type="button"
-              className={`fs-nav-tab ${screen === 'studio' ? 'is-active' : ''}`}
-              onClick={() => handleSelectTab('studio')}
-              title={t.cosplayCreator}
-              aria-label={t.cosplayCreator}
-            >
-              <Sparkles size={25} className={screen === 'studio' ? 'text-pink-400' : ''} />
-            </button>
-          )}
-
           <button
             type="button"
-            className={`fs-nav-tab fs-profile-tab ${screen === 'account' ? 'is-active' : ''}`}
+            className={`fs-nav-tab fs-profile-tab ${screen === 'account' || screen === 'studio' ? 'is-active' : ''}`}
             onClick={() => handleSelectTab('account')}
             title={t.account}
           >
@@ -2707,10 +2686,6 @@ export function FrostStoryApp() {
           contextInfo={bugReportConfig.contextInfo}
           onClose={() => setBugReportOpen(false)}
         />
-      )}
-
-      {analyticsOpen && analyticsOrigin && (
-        <StagingAnalyticsModal origin={analyticsOrigin} onClose={() => setAnalyticsOpen(false)} />
       )}
 
       {/* Dev Tools Telemetry Drawer */}

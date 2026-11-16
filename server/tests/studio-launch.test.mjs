@@ -8,10 +8,13 @@ import { narrativeFixture } from './helpers/narrative-fixture.mjs';
 const WEBP = new Uint8Array([0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50, 1, 2, 3, 4]);
 const LEVELS = ['สวัสดีค่ะ', 'จำได้นะ', 'คิดถึงจัง', 'เล่าให้ฟังนะ', 'อยู่ด้วยกันนะ'];
 
+const grant = (f, uid) => f.sql.prepare('INSERT INTO studio_tokens(id,creator_uid,token_hash,issued_email,created_at,user_id,redeemed_at) VALUES(?,?,?,?,?,?,?)').run(`tok_${uid}`, `ccu_${uid}`, `hash_${uid}`, `${uid}@example.com`, Date.now(), uid, Date.now());
+
 async function studio() {
   const f = await narrativeFixture();
-  Object.assign(f.env, { COSPLAY_STUDIO_V1: 'true', STAGING_EMAILS: 'one@example.com', PRIMARY_AI_PROVIDER: 'workers-ai',
+  Object.assign(f.env, { COSPLAY_STUDIO_V1: 'true', PRIMARY_AI_PROVIDER: 'workers-ai',
     AI: { async run() { return { response: JSON.stringify({ reply: 'ยินดีที่ได้รู้จักนะคะ', innerThought: 'เขินจัง', action: 'โบกมือ' }) }; } } });
+  grant(f, 'one');
   const cookie = {};
   for (const uid of ['one', 'two']) {
     const raw = crypto.randomUUID();
@@ -36,7 +39,7 @@ test('draft is stored per account and launch refuses an incomplete or under-age 
   assert.deepEqual(saved.body.problems, ['age']);
   assert.equal(saved.body.status, 'draft');
   assert.equal((await call('/api/studio/draft')).body.draft.age, 17);
-  assert.equal((await call('/api/studio/draft', { uid: 'two' })).status, 403, 'outside STAGING_EMAILS');
+  assert.equal((await call('/api/studio/draft', { uid: 'two' })).status, 403, 'no token');
   const r = await call('/api/studio/launch', { method: 'POST', json: { ...draft, age: 17 } });
   assert.equal(r.status, 400);
   assert.deepEqual(r.body.problems, ['age']);
@@ -44,7 +47,7 @@ test('draft is stored per account and launch refuses an incomplete or under-age 
 
 test('launch makes the character visible and chattable for another player, and unpublish hides it again', async () => {
   const { f, call, draft } = await studio();
-  f.env.STAGING_EMAILS = 'one@example.com,two@example.com';
+  grant(f, 'two');
   const r = await call('/api/studio/launch', { method: 'POST', json: draft });
   assert.equal(r.status, 200);
   assert.equal(r.body.status, 'live');
@@ -82,7 +85,7 @@ test('launch cannot take an existing creator id or publish another account\'s me
 
 test('sandbox runs the real DM pipeline on a private twin at the chosen level', async () => {
   const { f, call, draft } = await studio();
-  f.env.STAGING_EMAILS = 'one@example.com,two@example.com';
+  grant(f, 'two');
   const r = await call('/api/studio/sandbox', { method: 'POST', json: { draft, level: 4, message: 'สวัสดีครับ' } });
   assert.equal(r.status, 200, JSON.stringify(r.body));
   assert.match(r.body.reply, /ยินดีที่ได้รู้จักนะคะ/);
@@ -100,7 +103,7 @@ test('sandbox runs the real DM pipeline on a private twin at the chosen level', 
 
 test('public profile fields and the private character brief survive save/launch without exposing the brief to players', async () => {
   const { f, call, draft } = await studio();
-  f.env.STAGING_EMAILS='one@example.com,two@example.com';
+  grant(f, 'two');
   const characterBrief='PRIVATE_CHARACTER_BRIEF_SENTINEL: เมื่อถูกชมให้เขินเล็กน้อยแล้วชวนคุยเรื่องการทำชุด';
   const referenceBiography='AI_REFERENCE_BIOGRAPHY_SENTINEL: เริ่มคอสตอนมหาวิทยาลัยเพราะชอบทำพร็อพ ชุดแรกเย็บเองและยังเก็บเข็มกลัดอันแรกไว้';
   const full={...draft,concept:'old concept must not replace the new fields',tagline:'มาแบ่งปันโลกคอสเพลย์ด้วยกัน',
@@ -240,4 +243,42 @@ test('launch brokers the 1:1 cosplay account and staging hands the UI the analyt
   assert.equal((await call('/api/me')).body.uiFlags.cosplayAnalyticsOrigin, 'https://analytics-staging.instagoon.app');
   delete f.env.COSPLAY_ANALYTICS_ORIGIN;
   assert.equal((await call('/api/me')).body.uiFlags.cosplayAnalyticsOrigin, '', 'no origin, no dashboard entry');
+});
+
+test('an admin-issued token unlocks the studio once, binds to the creator permanently and logs the creator into analytics', async () => {
+  const { f, call, draft } = await studio();
+  f.sql.exec('DELETE FROM studio_tokens');
+  f.env.ADMIN_EMAIL = 'two@example.com';
+  assert.equal((await call('/api/studio/draft')).status, 403, 'no token yet');
+  assert.equal((await call('/api/studio/redeem', { method: 'POST', json: { token: 'igs_nope' } })).status, 400);
+  assert.equal((await call('/api/admin/studio-tokens', { uid: 'one', method: 'POST', json: { email: 'one@example.com' } })).status, 403, 'players cannot mint tokens');
+
+  const issued = (await call('/api/admin/studio-tokens', { uid: 'two', method: 'POST', json: { email: 'creator@example.com' } })).body;
+  assert.match(issued.token, /^igs_[0-9a-f]{64}$/);
+  assert.match(issued.creatorUid, /^ccu_/);
+  assert.equal(JSON.stringify(f.sql.prepare('SELECT * FROM studio_tokens').all()).includes(issued.token), false, 'only the hash is stored');
+
+  const redeemed = await call('/api/studio/redeem', { method: 'POST', json: { token: issued.token } });
+  assert.equal(redeemed.status, 200);
+  assert.equal(redeemed.body.creatorUid, issued.creatorUid);
+  assert.equal((await call('/api/studio/draft')).status, 200, 'redeeming opens the studio');
+  const me = (await call('/api/me')).body.uiFlags;
+  assert.equal(me.cosplayStudioV1, true);
+  assert.equal(me.cosplayCreatorUid, issued.creatorUid);
+  assert.equal((await call('/api/studio/redeem', { uid: 'two', method: 'POST', json: { token: issued.token } })).status, 400, 'a redeemed token cannot move to another account');
+
+  const emails = f.sql.prepare('SELECT email FROM studio_token_emails ORDER BY email').all().map(r => r.email);
+  assert.deepEqual(emails, ['creator@example.com', 'one@example.com']);
+
+  const analytics = (await import('../src/analytics.mjs')).default;
+  const aenv = { ANALYTICS_READ_ENABLED: 'true', ANALYTICS_DB: f.env.DB };
+  const ask = (path, bearer) => analytics.fetch(new Request('https://analytics.instagoon.app' + path, { headers: { authorization: `Bearer ${bearer}` } }), aenv, {});
+  assert.equal((await ask('/api/analytics/me', issued.token)).status, 403, 'token holder has no character before launch');
+  assert.equal((await call('/api/studio/launch', { method: 'POST', json: draft })).status, 200);
+  assert.equal(f.sql.prepare('SELECT creator_id FROM studio_tokens').get().creator_id, 'cos_yuki_cosplay');
+  const mine = await ask('/api/analytics/me', issued.token);
+  assert.equal(mine.status, 200);
+  assert.deepEqual((await mine.json()).creators, ['cos_yuki_cosplay']);
+  assert.equal((await ask('/api/analytics/overview', issued.token)).status, 403, 'token is creator tier only');
+  assert.equal((await ask('/api/analytics/me', 'igs_' + '0'.repeat(64))).status, 401);
 });
