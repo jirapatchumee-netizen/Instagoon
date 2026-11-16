@@ -35,9 +35,19 @@ const integer = (v, fallback=0) => v == null ? fallback : Number.isSafeInteger(v
 const body = async req => { try {const x=await req.json(); if(!x||typeof x!=='object'||Array.isArray(x)) throw 0; return x;} catch {return fail('invalid_json');} };
 const isAdminUser = (env,user) => !!user && (user.role === 'admin' || (!!env.ADMIN_EMAIL && user.email.toLowerCase() === env.ADMIN_EMAIL.toLowerCase()));
 // Cosplay Creator Studio is behind COSPLAY_STUDIO_V1 and opens only for admins or a player who redeemed an admin-issued token.
-const studioToken = (env,user) => user ? one(env,'SELECT id,creator_uid FROM studio_tokens WHERE user_id=?',user.id) : null;
+// revoked_at is the only lever that still works after a token has leaked, so a revoked token stops
+// opening the studio for its holder as well as refusing to be redeemed.
+const studioToken = (env,user) => user ? one(env,'SELECT id,creator_uid FROM studio_tokens WHERE user_id=? AND revoked_at IS NULL',user.id) : null;
 const studioAllowed = async (env,user) => String(env.COSPLAY_STUDIO_V1)==='true' && !!user && (isAdminUser(env,user) || !!await studioToken(env,user));
 const recordTokenEmail = (env,tokenId,email,now) => run(env,'INSERT INTO studio_token_emails(token_id,email,first_seen_at,last_seen_at) VALUES(?,?,?,?) ON CONFLICT(token_id,email) DO UPDATE SET last_seen_at=excluded.last_seen_at',tokenId,String(email).toLowerCase(),now,now);
+const touchStudioToken = (env,userId,now) => run(env,'UPDATE studio_tokens SET last_used_at=? WHERE user_id=?',now,userId);
+// The address a creator signs in with is an attribute of the account, never the account itself: it is
+// movable with a single-use code on the new address, and every address seen is kept as history.
+const EMAIL_CODE_TTL_MS = 15*60000;
+const EMAIL_CODE_MAX_ATTEMPTS = 5;
+const studioTokenTtlMs = env => Math.min(Math.max(Number(env.STUDIO_TOKEN_TTL_DAYS)||30,1),365)*86400000;
+const isEmail = email => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+const recordEmailSeen = (env,userId,email,now) => run(env,'INSERT INTO email_history(user_id,email,first_seen_at,last_seen_at) VALUES(?,?,?,?) ON CONFLICT(user_id,email) DO UPDATE SET last_seen_at=excluded.last_seen_at',userId,String(email).toLowerCase(),now,now);
 const STUDIO_UPLOAD_MAX_BYTES = 2000000; // D1 BLOB cap is 2,000,000 bytes
 const STUDIO_UPLOADS_PER_DAY = 30;
 const STUDIO_LAUNCHES_PER_DAY = 20;
@@ -264,7 +274,7 @@ async function chatMetrics(env, from, to) {
 const secureCookie = (name, value, age) => `${name}=${value}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${age}`;
 async function session(req, env) {
  const raw=cookie(req,'frost_session'); if(!raw)return null;
- const user=await one(env,`SELECT u.*, c.role FROM sessions s JOIN users u ON u.id=s.user_id LEFT JOIN user_credentials c ON c.user_id=u.id LEFT JOIN invites i ON i.email=u.email WHERE s.id=? AND s.expires_at>? AND (COALESCE(i.status,'active')='active' OR lower(u.email)=lower(?))`,await hash(raw),Date.now(),env.ADMIN_EMAIL||'');
+ const user=await one(env,`SELECT u.*, c.role FROM sessions s JOIN users u ON u.id=s.user_id LEFT JOIN user_credentials c ON c.user_id=u.id WHERE s.id=? AND s.expires_at>? AND COALESCE(u.access_status,'active')='active' AND (NOT EXISTS(SELECT 1 FROM invites i WHERE i.status='revoked' AND (i.email=u.email OR i.user_id=u.id)) OR lower(u.email)=lower(?))`,await hash(raw),Date.now(),env.ADMIN_EMAIL||'');
  return user || null;
 }
 async function access(req,env,user) {
@@ -343,8 +353,12 @@ async function auth(req,env,url) {
  const now=Date.now(); let user=await one(env,'SELECT * FROM users WHERE google_id=?',profile.sub);
  // Google verified this email, so an earlier account with the same email (pre-Google sign-up) is linked rather than duplicated.
  if(!user){user=await one(env,'SELECT * FROM users WHERE lower(email)=?',email); if(user) await run(env,'UPDATE users SET google_id=? WHERE id=?',profile.sub,user.id);}
- if(user && user.email.toLowerCase()!==email) { await run(env,'UPDATE users SET email=? WHERE id=?',email,user.id); }
- if(!user){const uid=crypto.randomUUID(); await env.DB.batch([env.DB.prepare('INSERT INTO users(id,email,google_id,created_at) VALUES(?,?,?,?)').bind(uid,email,profile.sub,now),env.DB.prepare('INSERT OR IGNORE INTO energy(user_id,free) VALUES(?,?)').bind(uid,freeEnergyGrant(env))]); user={id:uid};}
+ if(user?.access_status==='revoked')return authError('access_revoked');
+ if(!user){const uid=crypto.randomUUID(); await env.DB.batch([env.DB.prepare('INSERT INTO users(id,email,google_id,created_at) VALUES(?,?,?,?)').bind(uid,email,profile.sub,now),env.DB.prepare('INSERT OR IGNORE INTO energy(user_id,free) VALUES(?,?)').bind(uid,freeEnergyGrant(env))]); user={id:uid,email};}
+ // A Google address that differs from the account email is recorded as seen, never silently promoted: an
+ // account keeps the address its owner proved until a code on the new address moves it, so a recycled or
+ // renamed address cannot repoint an account and the payout address cannot drift without anyone noticing.
+ await recordEmailSeen(env,user.id,email,now);
  const raw=token(); await run(env,'INSERT INTO sessions(id,user_id,expires_at) VALUES(?,?,?)',await hash(raw),user.id,now+604800000);
  const redirectTarget = cookie(req, 'frost_redirect');
  const safeTarget = redirectTarget && redirectTarget.startsWith('/') && !redirectTarget.startsWith('//') ? redirectTarget : '/';
@@ -455,6 +469,53 @@ async function player(req,env,user,path,now,ctx) {
   }
   const uRow = await one(env, 'SELECT nickname, avatar_id FROM users WHERE id=?', user.id);
   return json({ok:true, nickname:uRow?.nickname||null, avatarId:uRow?.avatar_id||null});
+ }
+ // A creator moves their own address: the new one must be proved with a single-use code, and every address
+ // the account has held stays in email_history so support and payout records never lose the trail.
+ if(path==='/api/account/email' && method==='GET'){
+  const pending=await one(env,'SELECT new_email,expires_at FROM email_changes WHERE user_id=? AND verified_at IS NULL',user.id);
+  return json({email:user.email,pendingEmail:pending?.new_email||null,history:(await all(env,'SELECT email,first_seen_at firstSeenAt,last_seen_at lastSeenAt FROM email_history WHERE user_id=? ORDER BY last_seen_at DESC',user.id)).map(h=>({...h,email:h.email.toLowerCase()}))});
+ }
+ if(path==='/api/account/email/request' && method==='POST'){
+  const email=string((await body(req)).email,254).toLowerCase();
+  if(!isEmail(email))return fail('invalid_email');
+  if(email===String(user.email).toLowerCase())return fail('same_email');
+  if(await one(env,'SELECT 1 x FROM users WHERE lower(email)=? AND id<>?',email,user.id))return fail('email_taken');
+  const recent=await one(env,"SELECT COUNT(*) n FROM activity WHERE user_id=? AND kind='email_change_request' AND created_at>?",user.id,now-3600000);
+  if((recent?.n||0)>=5)return json({error:'too_many_attempts'},429);
+  const webhook=env.EMAIL_CODE_WEBHOOK, devMode=String(env.DEV_EMAIL_CODES)==='true';
+  if(!webhook&&!devMode)return json({error:'email_transport_missing'},503);
+  const code=token().slice(0,10);
+  await env.DB.batch([
+   env.DB.prepare('INSERT INTO activity(user_id,kind,created_at) VALUES(?,?,?)').bind(user.id,'email_change_request',now),
+   env.DB.prepare('INSERT INTO email_changes(id,user_id,new_email,code_hash,created_at,expires_at,attempts,verified_at) VALUES(?,?,?,?,?,?,0,NULL) ON CONFLICT(user_id) DO UPDATE SET new_email=excluded.new_email,code_hash=excluded.code_hash,created_at=excluded.created_at,expires_at=excluded.expires_at,attempts=0,verified_at=NULL').bind(crypto.randomUUID(),user.id,email,await hash(code),now,now+EMAIL_CODE_TTL_MS),
+  ]);
+  if(webhook)fetch(webhook,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({to:email,code})}).catch(()=>{});
+  return json({ok:true,sent:!!webhook,expiresInSec:Math.floor(EMAIL_CODE_TTL_MS/1000),...(devMode?{devCode:code}:{})});
+ }
+ if(path==='/api/account/email/verify' && method==='POST'){
+  const code=string((await body(req)).code,64).toLowerCase();
+  const row=await one(env,'SELECT * FROM email_changes WHERE user_id=? AND verified_at IS NULL',user.id);
+  if(!row)return json({error:'no_pending_change'},409);
+  if(row.expires_at<=now){await run(env,'DELETE FROM email_changes WHERE id=?',row.id);return json({error:'expired'},409);}
+  const misses=await one(env,"SELECT COUNT(*) n FROM activity WHERE user_id=? AND kind='email_code_miss' AND created_at>?",user.id,now-3600000);
+  if((misses?.n||0)>=EMAIL_CODE_MAX_ATTEMPTS)return json({error:'too_many_attempts'},429);
+  if(await hash(code)!==row.code_hash){
+   await env.DB.batch([
+    env.DB.prepare('UPDATE email_changes SET attempts=attempts+1 WHERE id=?').bind(row.id),
+    env.DB.prepare('INSERT INTO activity(user_id,kind,created_at) VALUES(?,?,?)').bind(user.id,'email_code_miss',now),
+   ]);
+   return json({error:'invalid_code'},400);
+  }
+  const previous=String(user.email).toLowerCase(), next=row.new_email;
+  await env.DB.batch([
+   env.DB.prepare('UPDATE users SET email=? WHERE id=?').bind(next,user.id),
+   env.DB.prepare('DELETE FROM email_changes WHERE id=?').bind(row.id),
+   env.DB.prepare('INSERT INTO activity(user_id,kind,created_at) VALUES(?,?,?)').bind(user.id,'email_change_verified',now),
+  ]);
+  await recordEmailSeen(env,user.id,previous,now);
+  await recordEmailSeen(env,user.id,next,now);
+  return json({ok:true,email:next});
  }
  if(path==='/api/reports' && method==='POST'){
   await ensureBugReportsStorage(env);
@@ -2042,8 +2103,10 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
    if(String(env.COSPLAY_STUDIO_V1)!=='true')return json({error:'forbidden'},403);
    const misses=await one(env,"SELECT COUNT(*) n FROM activity WHERE user_id=? AND kind='studio_token_miss' AND created_at>?",user.id,now-3600000);
    if((misses?.n||0)>=10)return json({error:'too_many_attempts'},429);
-   const tok=await one(env,'SELECT id,creator_uid,user_id FROM studio_tokens WHERE token_hash=?',await hash(string((await body(req)).token,200)));
-   if(!tok||(tok.user_id&&tok.user_id!==user.id)){await run(env,'INSERT INTO activity(user_id,kind,created_at) VALUES(?,?,?)',user.id,'studio_token_miss',now);return json({error:'invalid_token'},400);}
+   const tok=await one(env,'SELECT id,creator_uid,user_id,revoked_at,expires_at,redeemed_at FROM studio_tokens WHERE token_hash=?',await hash(string((await body(req)).token,200)));
+   // A revoked token is dead for good. expires_at only bounds the hand-over window before a redeem: after an
+   // account has claimed a token, taking it away by clock would lock a creator out of their own character.
+   if(!tok||tok.revoked_at||(!tok.redeemed_at&&tok.expires_at!=null&&tok.expires_at<=now)||(tok.user_id&&tok.user_id!==user.id)){await run(env,'INSERT INTO activity(user_id,kind,created_at) VALUES(?,?,?)',user.id,'studio_token_miss',now);return json({error:'invalid_token'},400);}
    const held=await studioToken(env,user);
    if(held&&held.id!==tok.id)return json({error:'already_has_token'},409);
    await run(env,'UPDATE studio_tokens SET user_id=?,redeemed_at=COALESCE(redeemed_at,?) WHERE id=?',user.id,now,tok.id);
@@ -2051,7 +2114,7 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
    return json({ok:true,creatorUid:tok.creator_uid});
   }
   if(!await studioAllowed(env,user))return json({error:'forbidden'},403);
-  if(method!=='GET'){const held=await studioToken(env,user);if(held)await recordTokenEmail(env,held.id,user.email,now);}
+  if(method!=='GET'){const held=await studioToken(env,user);if(held){await recordTokenEmail(env,held.id,user.email,now);await touchStudioToken(env,user.id,now);}}
   const row=await one(env,'SELECT creator_id,draft_json,status,launched_at,updated_at FROM studio_creators WHERE user_id=?',user.id);
   const view=r=>({draft:r?cleanDraft(JSON.parse(r.draft_json||'{}')):null,creatorId:r?.creator_id||null,status:r?.status||'none',launchedAt:r?.launched_at||null,updatedAt:r?.updated_at||null});
   if(path==='/api/studio/draft'&&method==='GET')return json(view(row));
@@ -2189,12 +2252,14 @@ async function admin(req,env,path,now,user){
  const method=req.method;
  if(path.startsWith('/api/admin/orders')||path.startsWith('/api/admin/shop/')){const r=await shopAdmin(req,env,path,now);if(r)return r;}
  if(path==='/api/admin/metrics'&&method==='GET'){
-  const admin=(env.ADMIN_EMAIL||'').toLowerCase();
-  const eligible=await all(env,`SELECT a.user_id,MIN(a.created_at) first_at FROM activity a JOIN users u ON u.id=a.user_id WHERE u.is_test=0 AND lower(u.email)<>? GROUP BY a.user_id HAVING MIN(a.created_at)<=?`,admin,now-14*86400000);
+  // The admin's own traffic is excluded by account, not by address: an admin who moves to a new email would
+  // otherwise start counting as a player in their own funnel.
+  const adminId=(await one(env,'SELECT id FROM users WHERE lower(email)=?',(env.ADMIN_EMAIL||'').toLowerCase()))?.id||'';
+  const eligible=await all(env,`SELECT a.user_id,MIN(a.created_at) first_at FROM activity a JOIN users u ON u.id=a.user_id WHERE u.is_test=0 AND u.id<>? GROUP BY a.user_id HAVING MIN(a.created_at)<=?`,adminId,now-14*86400000);
   let returned=0;for(const u of eligible){const activity=await one(env,"SELECT 1 ok FROM activity WHERE user_id=? AND kind IN ('feed','story','dm') AND created_at>=? AND created_at<? LIMIT 1",u.user_id,u.first_at+7*86400000,u.first_at+14*86400000);if(activity)returned++;}
-  const started=(await one(env,"SELECT COUNT(DISTINCT a.user_id) count FROM activity a JOIN users u ON u.id=a.user_id WHERE a.kind='dm_start' AND u.is_test=0 AND lower(u.email)<>?",admin)).count;
-  const completed=(await one(env,"SELECT COUNT(DISTINCT a.user_id) count FROM activity a JOIN users u ON u.id=a.user_id WHERE a.kind='dm_end' AND u.is_test=0 AND lower(u.email)<>?",admin)).count;
-  const continued=(await one(env,"SELECT COUNT(DISTINCT s.user_id) count FROM activity s JOIN users u ON u.id=s.user_id WHERE s.kind='dm_start' AND u.is_test=0 AND lower(u.email)<>? AND EXISTS(SELECT 1 FROM activity a WHERE a.user_id=s.user_id AND a.kind='dm' AND date(a.created_at/1000,'unixepoch','+7 hours')>date(s.created_at/1000,'unixepoch','+7 hours'))",admin)).count;
+  const started=(await one(env,"SELECT COUNT(DISTINCT a.user_id) count FROM activity a JOIN users u ON u.id=a.user_id WHERE a.kind='dm_start' AND u.is_test=0 AND u.id<>?",adminId)).count;
+  const completed=(await one(env,"SELECT COUNT(DISTINCT a.user_id) count FROM activity a JOIN users u ON u.id=a.user_id WHERE a.kind='dm_end' AND u.is_test=0 AND u.id<>?",adminId)).count;
+  const continued=(await one(env,"SELECT COUNT(DISTINCT s.user_id) count FROM activity s JOIN users u ON u.id=s.user_id WHERE s.kind='dm_start' AND u.is_test=0 AND u.id<>? AND EXISTS(SELECT 1 FROM activity a WHERE a.user_id=s.user_id AND a.kind='dm' AND date(a.created_at/1000,'unixepoch','+7 hours')>date(s.created_at/1000,'unixepoch','+7 hours'))",adminId)).count;
   return json({eligible14:eligible.length,returned7to14:returned,dmStarted:started,dmContinuedAnotherDay:continued,dmCompleted:completed,dayTimezone:'Asia/Bangkok'});
  }
  if(path==='/api/admin/chat-metrics'&&method==='GET'){
@@ -2215,12 +2280,38 @@ async function admin(req,env,path,now,user){
   return json({creators,posts,stories,episodes,revisions:revisions.map(r=>({...r,nodes:JSON.parse(r.nodes)})),invites,reports,users,comments,media:(media?.objects||[]).map(o=>({key:o.key,size:o.size,uploaded:o.uploaded}))});
  }
  if(path==='/api/admin/studio-tokens'&&method==='POST'){
-  const email=string((await body(req)).email,254).toLowerCase();
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return fail('invalid_email');
+  // issued_email is optional: the first hand-over is often a message to someone who has not picked a creator
+  // address yet, so what must be stable is the creator_uid minted with the token, not an inbox.
+  const b=await body(req), email=b.email==null?'':string(b.email,254).toLowerCase();
+  if(email&&!isEmail(email))return fail('invalid_email');
   const raw='igs_'+token(), tokenId=crypto.randomUUID(), creatorUid='ccu_'+crypto.randomUUID().replaceAll('-','');
-  await run(env,'INSERT INTO studio_tokens(id,creator_uid,token_hash,issued_email,created_by,created_at) VALUES(?,?,?,?,?,?)',tokenId,creatorUid,await hash(raw),email,user?.id||null,now);
-  await recordTokenEmail(env,tokenId,email,now);
+  await run(env,'INSERT INTO studio_tokens(id,creator_uid,token_hash,issued_email,created_by,created_at,expires_at) VALUES(?,?,?,?,?,?,?)',tokenId,creatorUid,await hash(raw),email,user?.id||null,now,now+studioTokenTtlMs(env));
+  if(email)await recordTokenEmail(env,tokenId,email,now);
   return json({token:raw,creatorUid,email});
+ }
+ if(path==='/api/admin/studio-tokens/revoke'&&method==='POST'){
+  // A token is never stored in the clear, so revoke by the value in hand or by the stable creator_uid.
+  const b=await body(req);
+  const tok=b.token?await one(env,'SELECT id FROM studio_tokens WHERE token_hash=?',await hash(string(b.token,200))):await one(env,'SELECT id FROM studio_tokens WHERE creator_uid=?',id(string(b.creatorUid,80)));
+  if(!tok)return json({error:'not_found'},404);
+  await run(env,'UPDATE studio_tokens SET revoked_at=? WHERE id=?',now,tok.id);
+  return json({ok:true});
+ }
+ if(path==='/api/admin/users/access'&&method==='POST'){
+  // Identity, not address: revoking an account also marks its known addresses, so signing in again with an
+  // old or a fresh email cannot restore access, and the live sessions die on the spot.
+  const b=await body(req), userId=id(b.userId), status=string(b.status,20);
+  if(!['active','revoked'].includes(status))return fail('invalid_status');
+  if(!await one(env,'SELECT id FROM users WHERE id=?',userId))return json({error:'not_found'},404);
+  const known=status==='revoked'?await all(env,'SELECT email FROM email_history WHERE user_id=? UNION SELECT email FROM users WHERE id=?',userId,userId):[];
+  await env.DB.batch([
+   env.DB.prepare('UPDATE users SET access_status=? WHERE id=?').bind(status,userId),
+   ...(status==='revoked'
+    ? [env.DB.prepare('DELETE FROM sessions WHERE user_id=?').bind(userId),
+       ...known.map(e=>env.DB.prepare("INSERT INTO invites(email,status,user_id) VALUES(?,'revoked',?) ON CONFLICT(email) DO UPDATE SET status='revoked',user_id=COALESCE(invites.user_id,excluded.user_id)").bind(String(e.email).toLowerCase(),userId))]
+    : [env.DB.prepare("UPDATE invites SET status='active' WHERE user_id=?").bind(userId)])
+  ]);
+  return json({ok:true,userId,accessStatus:status});
  }
  if(path==='/api/admin/invites'&&method==='POST'){const b=await body(req),email=string(b.email,254).toLowerCase();if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return fail('invalid_email');await run(env,"INSERT INTO invites(email,status) VALUES(?,'active') ON CONFLICT(email) DO UPDATE SET status='active'",email);return json({ok:true});}
  let m=path.match(/^\/api\/admin\/invites\/(.+)$/);

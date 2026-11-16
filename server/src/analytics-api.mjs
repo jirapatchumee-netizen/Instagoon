@@ -36,7 +36,7 @@ export async function analyticsSession(req, env) {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
   const hash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
   const user = await env.ANALYTICS_DB.prepare(
-    "SELECT u.id, u.email, COALESCE(c.role, 'player') role FROM sessions s JOIN users u ON u.id=s.user_id LEFT JOIN user_credentials c ON c.user_id=u.id WHERE s.id=? AND s.expires_at>?"
+    "SELECT u.id, u.email, COALESCE(c.role, 'player') role FROM sessions s JOIN users u ON u.id=s.user_id LEFT JOIN user_credentials c ON c.user_id=u.id WHERE s.id=? AND s.expires_at>? AND COALESCE(u.access_status,'active')='active'"
   ).bind(hash, Date.now()).first();
   return user || null;
 }
@@ -48,7 +48,7 @@ export async function tokenTier(env, req) {
   if (!raw) return null;
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
   const hash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
-  const row = await env.ANALYTICS_DB.prepare('SELECT creator_id FROM studio_tokens WHERE token_hash=?').bind(hash).first();
+  const row = await env.ANALYTICS_DB.prepare('SELECT creator_id FROM studio_tokens WHERE token_hash=? AND revoked_at IS NULL').bind(hash).first();
   if (!row) return null;
   return { user: null, admin: false, creatorIds: row.creator_id ? [row.creator_id] : [] };
 }
