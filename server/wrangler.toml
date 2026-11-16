@@ -30,6 +30,8 @@ crons = ["0 19 * * *"]
 
 [vars]
 GEMINI_MODEL = "gemini-2.5-flash"
+COSPLAY_STUDIO_V1 = "true"
+CLOSED_BETA_V1 = "true"
 # The dashboard is a separate Worker on its own subdomain reading production data; /api/me hands
 # this URL to staff sessions only, so players never see it and staging (a test field) never links
 # to real numbers.
