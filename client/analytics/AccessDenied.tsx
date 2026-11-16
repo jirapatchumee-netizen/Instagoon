@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
-  ShieldAlert, Lock, ArrowLeft, RefreshCw, AlertCircle, Key, ShieldCheck, Sparkles, ArrowRight
+  ShieldAlert, Lock, ArrowLeft, RefreshCw, AlertCircle, Key, ShieldCheck, Sparkles,
+  ArrowRight, Mail, Loader2, CheckCircle2
 } from 'lucide-react';
 
 interface Props {
@@ -13,17 +14,51 @@ export function AccessDenied({ type, message, onRetry }: Props) {
   const is401 = type === '401';
   const is403 = type === '403';
   const is503 = type === '503';
-  const [token, setToken] = useState('');
-  const [showTokenInput, setShowTokenInput] = useState(false);
 
-  const handleTokenSubmit = (e: React.FormEvent) => {
+  const [email, setEmail] = useState('');
+  const [token, setToken] = useState('');
+  const [verifying, setVerifying] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [verifySuccess, setVerifySuccess] = useState(false);
+
+  const handleDualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token.trim()) return;
-    window.location.href = `/auth/session?token=${encodeURIComponent(token.trim())}`;
+    if (!email.trim() || !token.trim()) {
+      setErrorMsg('กรุณากรอกทั้งอีเมล Gmail และ Access Token ให้ครบถ้วน');
+      return;
+    }
+
+    try {
+      setVerifying(true);
+      setErrorMsg(null);
+      const res = await fetch('/auth/verify', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), token: token.trim() })
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || !data.ok) {
+        throw new Error(data.message || data.error || `HTTP ${res.status}`);
+      }
+
+      setVerifySuccess(true);
+      setTimeout(() => {
+        if (onRetry) onRetry();
+        else window.location.reload();
+      }, 600);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'การตรวจสอบตัวตนล้มเหลว');
+    } finally {
+      setVerifying(false);
+    }
   };
 
-  const handleQuickSession = (sessionToken: string) => {
-    window.location.href = `/auth/session?token=${encodeURIComponent(sessionToken)}`;
+  const handlePresetFill = (presetEmail: string, presetToken: string) => {
+    setEmail(presetEmail);
+    setToken(presetToken);
+    setErrorMsg(null);
   };
 
   return (
@@ -31,7 +66,7 @@ export function AccessDenied({ type, message, onRetry }: Props) {
       {/* Ambient Background Glows */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[520px] h-[520px] rounded-full bg-gradient-to-tr from-pink-600/15 via-purple-600/10 to-indigo-600/15 blur-3xl pointer-events-none" />
 
-      <div className="w-full max-w-md glass-panel rounded-3xl p-6 sm:p-8 border border-white/10 shadow-2xl relative z-10 animate-fadeIn">
+      <div className="w-full max-w-lg glass-panel rounded-3xl p-6 sm:p-8 border border-white/10 shadow-2xl relative z-10 animate-fadeIn">
         {/* Brand Header */}
         <div className="flex items-center justify-between mb-6 pb-5 border-b border-white/10">
           <div className="flex items-center gap-2.5">
@@ -47,7 +82,7 @@ export function AccessDenied({ type, message, onRetry }: Props) {
           </div>
           <span className="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full bg-zinc-900/90 border border-zinc-800 text-zinc-300">
             <span className={`w-1.5 h-1.5 rounded-full ${is503 ? 'bg-amber-400' : 'bg-emerald-400'}`} />
-            Production
+            Production Plane
           </span>
         </div>
 
@@ -66,14 +101,14 @@ export function AccessDenied({ type, message, onRetry }: Props) {
           </div>
 
           <h1 className="text-lg font-bold tracking-tight text-white mb-1.5">
-            {is401 && 'เข้าสู่ระบบ Analytics'}
+            {is401 && 'ระบบยืนยันตัวตน 2 Checkpoints'}
             {is403 && 'ไม่มีสิทธิ์เข้าถึงแดชบอร์ด (403)'}
             {is503 && 'ระบบ Analytics ปิดปรับปรุง (503)'}
             {type === 'error' && 'เกิดข้อผิดพลาดในการเชื่อมต่อ'}
           </h1>
 
-          <p className="text-xs text-zinc-400 leading-relaxed">
-            {is401 && 'ยืนยันตัวตนด้วยบัญชี Google (Gmail) หรือ Session Token ที่มีสิทธิ์ Creator / Admin'}
+          <p className="text-xs text-zinc-400 leading-relaxed max-w-sm mx-auto">
+            {is401 && 'ต้องผ่านทั้ง Checkpoint Gmail ที่ได้รับสิทธิ์ และ Checkpoint Token ประจำตัวพร้อมกันในรอบเดียว'}
             {is403 && (
               <>
                 บัญชีปัจจุบันเป็นผู้เล่นทั่วไป (Player) สงวนสิทธิ์เฉพาะ{' '}
@@ -88,98 +123,126 @@ export function AccessDenied({ type, message, onRetry }: Props) {
 
         {is401 && (
           <div className="space-y-5">
-            {/* Step 1: Primary Google Login */}
-            <div className="space-y-2">
-              <a
-                href="/auth/google"
-                className="w-full flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl bg-white text-zinc-900 font-semibold text-xs hover:bg-zinc-100 active:scale-[0.99] transition shadow-lg shadow-white/5"
-              >
-                <svg className="w-4 h-4 shrink-0" viewBox="0 0 48 48">
-                  <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
-                  <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
-                  <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
-                  <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
-                </svg>
-                <span>เข้าสู่ระบบด้วย Google (Gmail)</span>
-              </a>
-              <p className="text-[11px] text-zinc-500 text-center leading-relaxed">
-                * หากกดแล้วเด้งไปหน้า <span className="text-zinc-400">instagoon.app</span> แสดงว่าฝั่ง Prod ยังรอ Merge PR #124 — ใช้ปุ่ม Admin หรือ Token ด้านล่างได้ทันที
-              </p>
+            {/* Error or Success notification */}
+            {errorMsg && (
+              <div className="p-3 rounded-2xl bg-red-950/40 border border-red-800/60 text-xs text-red-300 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                <span>{errorMsg}</span>
+              </div>
+            )}
+
+            {verifySuccess && (
+              <div className="p-3 rounded-2xl bg-emerald-950/40 border border-emerald-800/60 text-xs text-emerald-300 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>ผ่านการตรวจสอบทั้ง 2 Checkpoints กำลังเข้าสู่แดชบอร์ด...</span>
+              </div>
+            )}
+
+            {/* Quick Fill Admin Presets */}
+            <div className="p-3 rounded-2xl bg-zinc-900/60 border border-zinc-800/80 space-y-2">
+              <div className="flex items-center justify-between text-[11px] text-zinc-400">
+                <span className="font-medium">คลิกเติมข้อมูลอัตโนมัติ (Admin Quick Fill):</span>
+                <span className="text-[10px] text-zinc-500">ทั้ง 2 Checkpoints</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handlePresetFill('jirapat.chumee@gmail.com', 'igx_59c6dd16a85d4e2db17063af8f39214620c11c502ea44604b52052cbc31a60e3')}
+                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-medium text-pink-300 hover:bg-zinc-800 hover:border-pink-500/40 transition"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-pink-400 shrink-0" />
+                  <span>Jirapat (Admin)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handlePresetFill('taychinsgo@gmail.com', 'igx_taychin_1ddfd8d99064419e8645011dfd1008b57ed9effdcb5146b99df5c7cd9adbae7c')}
+                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-medium text-purple-300 hover:bg-zinc-800 hover:border-purple-500/40 transition"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                  <span>Taychin (Admin)</span>
+                </button>
+              </div>
             </div>
 
-            {/* Divider */}
-            <div className="relative flex items-center py-1">
-              <div className="flex-grow border-t border-zinc-800" />
-              <span className="shrink-0 mx-3 text-[11px] text-zinc-500">หรือเข้าใช้งานด้วย Session Token</span>
-              <div className="flex-grow border-t border-zinc-800" />
-            </div>
-
-            {/* Quick Admin Access */}
-            <div className="grid grid-cols-2 gap-2.5">
-              <button
-                type="button"
-                onClick={() => handleQuickSession('igx_59c6dd16a85d4e2db17063af8f39214620c11c502ea44604b52052cbc31a60e3')}
-                className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-medium text-pink-300 hover:bg-zinc-800/80 hover:border-pink-500/40 transition"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 text-pink-400 shrink-0" />
-                <span>Jirapat (Admin)</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickSession('igx_taychin_1ddfd8d99064419e8645011dfd1008b57ed9effdcb5146b99df5c7cd9adbae7c')}
-                className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-medium text-purple-300 hover:bg-zinc-800/80 hover:border-purple-500/40 transition"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-                <span>Taychin (Admin)</span>
-              </button>
-            </div>
-
-            {/* Manual Token Input Toggle */}
-            {!showTokenInput ? (
-              <button
-                type="button"
-                onClick={() => setShowTokenInput(true)}
-                className="w-full py-2 rounded-xl border border-zinc-800/80 bg-zinc-900/40 text-xs text-zinc-300 hover:text-white hover:bg-zinc-800/60 transition flex items-center justify-center gap-1.5"
-              >
-                <Key className="w-3.5 h-3.5 text-zinc-400" />
-                <span>กรอก Access Token ด้วยตนเอง</span>
-              </button>
-            ) : (
-              <form onSubmit={handleTokenSubmit} className="space-y-2 p-3 rounded-2xl bg-zinc-900/70 border border-zinc-800">
-                <div className="flex items-center justify-between text-[11px] text-zinc-400">
-                  <span>วาง Session Token ของคุณ</span>
-                  <button
-                    type="button"
-                    onClick={() => setShowTokenInput(false)}
-                    className="text-zinc-500 hover:text-zinc-300"
-                  >
-                    ปิด
-                  </button>
+            {/* Dual Checkpoint Form */}
+            <form onSubmit={handleDualSubmit} className="space-y-4">
+              {/* Checkpoint 1: Gmail Input */}
+              <div className="space-y-1.5">
+                <label className="flex items-center justify-between text-xs text-zinc-300 font-medium">
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-4 h-4 rounded-full bg-pink-500/20 text-pink-400 text-[10px] flex items-center justify-center font-bold">1</span>
+                    <span>Checkpoint 1: บัญชี Google (Gmail)</span>
+                  </span>
+                  <span className="text-[10px] text-zinc-500">จำกัดสิทธิ์แบบ Staging</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <Mail className="w-4 h-4 text-zinc-500" />
+                  </div>
+                  <input
+                    type="email"
+                    required
+                    placeholder="เช่น jirapat.chumee@gmail.com หรือ taychinsgo@gmail.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-pink-500/60"
+                  />
                 </div>
-                <div className="flex gap-2">
+              </div>
+
+              {/* Checkpoint 2: Access Token Input */}
+              <div className="space-y-1.5">
+                <label className="flex items-center justify-between text-xs text-zinc-300 font-medium">
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-4 h-4 rounded-full bg-purple-500/20 text-purple-400 text-[10px] flex items-center justify-center font-bold">2</span>
+                    <span>Checkpoint 2: รหัส Access Token ประจำตัว</span>
+                  </span>
+                  <span className="text-[10px] text-zinc-500">เช็กสิทธิ์และสถานะใน D1</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <Key className="w-4 h-4 text-zinc-500" />
+                  </div>
                   <input
                     type="text"
+                    required
                     placeholder="igx_..."
                     value={token}
                     onChange={(e) => setToken(e.target.value)}
-                    className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs font-mono text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-pink-500/60"
+                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-mono text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-purple-500/60"
                   />
-                  <button
-                    type="submit"
-                    disabled={!token.trim()}
-                    className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white font-medium text-xs transition disabled:opacity-40 flex items-center gap-1 shrink-0"
-                  >
-                    <span>เข้าสู่ระบบ</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
                 </div>
-              </form>
-            )}
+              </div>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={verifying || verifySuccess || !email.trim() || !token.trim()}
+                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 hover:from-pink-500 hover:via-purple-500 hover:to-indigo-500 text-white font-semibold text-xs transition shadow-lg shadow-pink-600/20 disabled:opacity-40"
+              >
+                {verifying ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>กำลังตรวจสอบทั้ง 2 Checkpoints...</span>
+                  </>
+                ) : verifySuccess ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                    <span>ตรวจสอบสำเร็จ</span>
+                  </>
+                ) : (
+                  <>
+                    <span>ตรวจสอบ 2 Checkpoints & เข้าสู่ระบบ</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </form>
           </div>
         )}
 
         {/* Footer Actions */}
-        <div className="mt-5 pt-4 border-t border-zinc-800/80 flex flex-col gap-2">
+        <div className="mt-6 pt-4 border-t border-zinc-800/80 flex flex-col gap-2">
           {is403 && (
             <a
               href="https://instagoon.app"

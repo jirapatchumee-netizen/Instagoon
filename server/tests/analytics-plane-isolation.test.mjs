@@ -251,3 +251,55 @@ test('wrangler config keeps production data reachable only from the analytics wo
     assert.ok(!(/^\s*COSPLAY_ANALYTICS_ORIGIN\s*=/m).test(read(name)), `${name} must not link staging to real production numbers`);
   }
 });
+
+test('dual-checkpoint /auth/verify requires matching gmail and valid token with creator/admin tier', async () => {
+  const { db, tokens } = await seedProdDb();
+  const env = envFor(db);
+
+  const postVerify = (body) => analyticsWorker.fetch(
+    new Request(HOST + '/auth/verify', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body)
+    }),
+    env,
+    {}
+  );
+
+  // 1. Missing or invalid input
+  const empty = await postVerify({});
+  assert.equal(empty.status, 400);
+
+  // 2. Token invalid / nonexistent
+  const badToken = await postVerify({ email: 'ops@instagoon.app', token: 'token-not-exist-123456' });
+  assert.equal(badToken.status, 401);
+  const badTokenBody = await badToken.json();
+  assert.equal(badTokenBody.error, 'invalid_token');
+
+  // 3. Email mismatch: valid token of usr_ops (ops@instagoon.app) submitted with wrong email
+  const mismatch = await postVerify({ email: 'wrong@example.com', token: tokens.usr_ops });
+  assert.equal(mismatch.status, 403);
+  const mismatchBody = await mismatch.json();
+  assert.equal(mismatchBody.error, 'email_mismatch');
+
+  // 4. Token belongs to plain player: player has no creator and no admin role
+  const player = await postVerify({ email: 'player@example.com', token: tokens.usr_player });
+  assert.equal(player.status, 403);
+  const playerBody = await player.json();
+  assert.equal(playerBody.error, 'forbidden');
+
+  // 5. Valid Admin: ops@instagoon.app + tokens.usr_ops
+  const adminRes = await postVerify({ email: 'ops@instagoon.app', token: tokens.usr_ops });
+  assert.equal(adminRes.status, 200);
+  const adminBody = await adminRes.json();
+  assert.equal(adminBody.ok, true);
+  assert.equal(adminBody.admin, true);
+  assert.ok(adminRes.headers.get('set-cookie')?.includes('frost_session=' + tokens.usr_ops));
+
+  // 6. Valid Creator: yuki@instagoon.app + tokens.usr_yuki
+  const creatorRes = await postVerify({ email: 'yuki@instagoon.app', token: tokens.usr_yuki });
+  assert.equal(creatorRes.status, 200);
+  const creatorBody = await creatorRes.json();
+  assert.equal(creatorBody.ok, true);
+  assert.ok(creatorRes.headers.get('set-cookie')?.includes('frost_session=' + tokens.usr_yuki));
+});
