@@ -231,3 +231,20 @@ test('public check token: allows unauthenticated verification of valid and inval
   assert.equal(checkAfterRedeem.status, 400);
   assert.equal(checkAfterRedeem.body.error, 'invalid_token');
 });
+
+test('auth/google sets frost_invite cookie when token is provided', async () => {
+  const { f } = await setup();
+  f.env.GOOGLE_CLIENT_ID = 'test_id';
+  f.env.GOOGLE_CLIENT_SECRET = 'test_secret';
+  const res = await worker.fetch(
+    new Request(f.env.PUBLIC_ORIGIN + '/auth/google?token=igb_testtoken123', {
+      method: 'GET',
+    }),
+    f.env,
+    { waitUntil() {} }
+  );
+
+  assert.equal(res.status, 302);
+  const setCookie = res.headers.get('set-cookie');
+  assert.match(setCookie, /frost_invite=igb_testtoken123/);
+});

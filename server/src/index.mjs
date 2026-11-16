@@ -331,11 +331,13 @@ async function auth(req,env,url) {
   const state=token(), verifier=token(), challenge=base64url(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(verifier))));
   const target = url.searchParams.get('redirect') || '';
   const safeTarget = target.startsWith('/') && !target.startsWith('//') ? target : '';
+  const inviteTokenParam = (url.searchParams.get('token') || '').trim();
   await run(env,'INSERT INTO oauth_states(id,verifier,expires_at) VALUES(?,?,?)',await hash(state),verifier,Date.now()+600000);
   const q=new URLSearchParams({client_id:env.GOOGLE_CLIENT_ID,redirect_uri:redirect,response_type:'code',scope:'openid email',state,code_challenge:challenge,code_challenge_method:'S256'});
   const headers = new Headers({location:'https://accounts.google.com/o/oauth2/v2/auth?'+q,'cache-control':'no-store'});
   headers.append('set-cookie', secureCookie('frost_oauth',state,600));
   if (safeTarget) headers.append('set-cookie', secureCookie('frost_redirect', safeTarget, 600));
+  if (inviteTokenParam) headers.append('set-cookie', secureCookie('frost_invite', inviteTokenParam, 600));
   return new Response(null,{status:302,headers});
  }
  if(url.searchParams.get('error')==='access_denied')return authError('login_cancelled');
@@ -356,7 +358,57 @@ async function auth(req,env,url) {
  // Google verified this email, so an earlier account with the same email (pre-Google sign-up) is linked rather than duplicated.
  if(!user){user=await one(env,'SELECT * FROM users WHERE lower(email)=?',email); if(user) await run(env,'UPDATE users SET google_id=? WHERE id=?',profile.sub,user.id);}
  if(user?.access_status==='revoked')return authError('access_revoked');
- if(!user){const uid=crypto.randomUUID(); await env.DB.batch([env.DB.prepare('INSERT INTO users(id,email,google_id,created_at) VALUES(?,?,?,?)').bind(uid,email,profile.sub,now),env.DB.prepare('INSERT OR IGNORE INTO energy(user_id,free,diamonds) VALUES(?,?,?)').bind(uid,freeEnergyGrant(env),initialDiamondsGrant(env))]); user={id:uid,email};}
+ const isAdmin = email === (env.ADMIN_EMAIL || '').toLowerCase() || (user ? isAdminUser(env, user) : false);
+ const closedBetaActive = String(env.CLOSED_BETA_V1) === 'true';
+
+ const rawInviteToken = cookie(req, 'frost_invite')?.trim();
+ let validTok = null;
+ if(rawInviteToken){
+  const tok = await one(env,"SELECT id,creator_uid,user_id,revoked_at,expires_at,redeemed_at,COALESCE(role,'creator') role,grants_json FROM studio_tokens WHERE token_hash=?",await hash(rawInviteToken));
+  if(tok && !tok.revoked_at && !tok.redeemed_at && (tok.expires_at == null || tok.expires_at > now)){
+   validTok = tok;
+  }
+ }
+
+ if(!user){
+  if(closedBetaActive && !isAdmin && !validTok){
+   return authError('closed_beta_required');
+  }
+  const uid=crypto.randomUUID();
+  const isBeta = closedBetaActive ? (isAdmin || !!validTok ? 1 : 0) : 0;
+  await env.DB.batch([
+   env.DB.prepare('INSERT INTO users(id,email,google_id,beta_access,created_at) VALUES(?,?,?,?,?)').bind(uid,email,profile.sub,isBeta,now),
+   env.DB.prepare('INSERT OR IGNORE INTO energy(user_id,free,diamonds) VALUES(?,?,?)').bind(uid,freeEnergyGrant(env),initialDiamondsGrant(env))
+  ]);
+  user={id:uid,email,beta_access:isBeta};
+ }
+
+ if(validTok && user){
+  const role = validTok.role || 'creator';
+  if(role === 'creator'){
+   await env.DB.batch([
+    env.DB.prepare('UPDATE studio_tokens SET user_id=?,redeemed_at=? WHERE id=?').bind(user.id,now,validTok.id),
+    env.DB.prepare('UPDATE users SET beta_access=1 WHERE id=?').bind(user.id)
+   ]);
+   await recordTokenEmail(env,validTok.id,user.email,now);
+  } else if(role === 'player'){
+   let grants={};try{if(validTok.grants_json)grants=JSON.parse(validTok.grants_json);}catch{}
+   const bonusEnergy=Number.isSafeInteger(grants.energy)&&grants.energy>0?grants.energy:0;
+   const bonusDiamonds=Number.isSafeInteger(grants.diamonds)&&grants.diamonds>0?grants.diamonds:0;
+   await env.DB.batch([
+    env.DB.prepare('UPDATE studio_tokens SET user_id=?,redeemed_at=? WHERE id=?').bind(user.id,now,validTok.id),
+    env.DB.prepare('UPDATE users SET beta_access=1 WHERE id=?').bind(user.id),
+    ...(bonusEnergy>0||bonusDiamonds>0?[env.DB.prepare('UPDATE energy SET free=free+?,diamonds=diamonds+? WHERE user_id=?').bind(bonusEnergy,bonusDiamonds,user.id)]:[]),
+   ]);
+  } else if(role === 'admin'){
+   await env.DB.batch([
+    env.DB.prepare('UPDATE studio_tokens SET user_id=?,redeemed_at=? WHERE id=?').bind(user.id,now,validTok.id),
+    env.DB.prepare('UPDATE users SET beta_access=1 WHERE id=?').bind(user.id),
+    env.DB.prepare("INSERT OR REPLACE INTO user_credentials(user_id,password_hash,salt,role,updated_at) VALUES(?,'TOKEN','TOKEN','admin',?)").bind(user.id,now)
+   ]);
+  }
+ }
+
  // A Google address that differs from the account email is recorded as seen, never silently promoted: an
  // account keeps the address its owner proved until a code on the new address moves it, so a recycled or
  // renamed address cannot repoint an account and the payout address cannot drift without anyone noticing.
@@ -367,6 +419,7 @@ async function auth(req,env,url) {
  const headers = new Headers({location: safeTarget, 'cache-control':'no-store'});
  headers.append('set-cookie', secureCookie('frost_session',raw,604800));
  if (redirectTarget) headers.append('set-cookie', secureCookie('frost_redirect', '', 0));
+ if (rawInviteToken) headers.append('set-cookie', secureCookie('frost_invite', '', 0));
  return new Response(null,{status:302,headers});
 }
 // Choice outcomes of a scripted episode (ADR 0008). Score is recomputed from the three axes with the character's

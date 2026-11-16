@@ -224,18 +224,39 @@ export function LoginScreen({
             )}
           </div>
 
-          <a
-            className="fs-login-google"
-            href={loginTargetUrl}
-            onClick={handleLoginClick}
-          >
-            <GoogleG size={20} />
-            <span>
-              {activePreview
-                ? `${t.loginGoogle} (${activePreview.name})`
-                : t.loginGoogle}
-            </span>
-          </a>
+          {tokenStatus === 'valid' ? (
+            <a
+              className="fs-login-google"
+              href={`${loginTargetUrl}${loginTargetUrl.includes('?') ? '&' : '?'}token=${encodeURIComponent(inviteToken.trim())}`}
+              onClick={handleLoginClick}
+            >
+              <GoogleG size={20} />
+              <span>
+                {activePreview
+                  ? `${t.loginGoogle} (${activePreview.name})`
+                  : t.loginGoogle}
+              </span>
+            </a>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="fs-login-google is-locked"
+                disabled
+                aria-disabled="true"
+              >
+                <LockKeyhole size={18} />
+                <span>{t.loginGoogleLocked}</span>
+              </button>
+              <a
+                href={loginTargetUrl}
+                className="fs-login-existing-link"
+                onClick={handleLoginClick}
+              >
+                {t.loginExistingAccountBtn}
+              </a>
+            </>
+          )}
           <p className="fs-login-note">{t.loginAgeNote}</p>
           <nav className="fs-login-legal">
             <a href="/privacy.html">{t.loginPrivacy}</a>
