@@ -1134,6 +1134,7 @@ async function player(req,env,user,path,now,ctx) {
   const creator=id(m[1]);
   if(method==='POST'&&m[2]==='message'){
    const b=await body(req), userText=string(b.message, 1000), requestId=id(b.requestId || crypto.randomUUID());
+   const isEn = b.lang === 'en';
    let isFiftyShades=true; // Legacy characters keep their existing policy; Creator credit levels are opt-in below.
    const creatorData = await one(env, 'SELECT * FROM creators WHERE id=?', creator);
    if(!creatorData) return json({error:'not_found'}, 404);
@@ -1176,7 +1177,7 @@ async function player(req,env,user,path,now,ctx) {
    const relRow = relRes.results[0] ?? null;
    const creditBased = usesCreditLevels(npcDef), preview = creator === studioPreviewId(user);
    let progress = await readCreditProgress(env,user.id,creator,npcDef,levelOf(relationshipConfig(npcDef),relRow?.score||0));
-   const fingerprint = await hash(JSON.stringify({message:userText,adultMode:b.adultMode === true}));
+   const fingerprint = await hash(JSON.stringify({message:userText,adultMode:b.adultMode === true,lang:isEn ? 'en' : 'th'}));
    if(creditBased){
     const receipt=await one(env,'SELECT fingerprint,response_json FROM chat_credit_receipts WHERE user_id=? AND creator_id=? AND request_id=?',user.id,creator,requestId);
     if(receipt){
@@ -1266,7 +1267,9 @@ async function player(req,env,user,path,now,ctx) {
        ];
        deflectionReply = replies[Math.floor(Math.random() * replies.length)];
      } else {
-       deflectionReply = `เอ๊ะ ส่งข้อความอะไรมาเหรอคะ ดูเหมือนภาษาคอมพิวเตอร์เลย ${npcDef?.name || creatorData.name} อ่านไม่เข้าใจเลยค่ะ คุยเรื่องทั่วไปกันดีกว่าเนอะ 😊`;
+       deflectionReply = isEn
+         ? `Huh? What kind of computer code is this? ${npcDef?.name || creatorData.name} has no idea what this means haha... Let's talk about something more fun! 😊`
+         : `เอ๊ะ ส่งข้อความอะไรมาเหรอคะ ดูเหมือนภาษาคอมพิวเตอร์เลย ${npcDef?.name || creatorData.name} อ่านไม่เข้าใจเลยค่ะ คุยเรื่องทั่วไปกันดีกว่าเนอะ 😊`;
      }
 
      await run(env, 'INSERT INTO ai_chat_messages(id, user_id, creator_id, role, content, media_key, affection_delta, created_at) VALUES(?,?,?,?,?,?,?,?)', crypto.randomUUID(), user.id, creator, 'assistant', deflectionReply, null, 0, now + 1);
@@ -1357,10 +1360,13 @@ async function player(req,env,user,path,now,ctx) {
    // stored memories, the thread summary and recent history) travels as one JSON data object in the
    // user turn, so a message cannot close a quote and append new instructions.
    const canary = 'IGX-' + token().slice(0, 16);
+   const storyDate = isEn
+     ? nowBangkok.toUTCString().slice(0, 16)
+     : `วัน${dayName}ที่ ${dateNum} ${monthName} ${yearBe}`;
    // The 10-layer prompt is a deploy secret (ADR-0013 zone). promptV1 returns null when the secrets are
    // unset or a slot could not be filled, so the creator keeps the inline prompt below. A creator in
    // narrative scene mode is owned by narrativePrompt and is never overridden here.
-   const v1Prompt = promptV1({ env, npc: npcDef, creator, state: {
+   const v1Prompt = isEn ? null : promptV1({ env, npc: npcDef, creator, state: {
      NOW_DATE: `วัน${dayName}ที่ ${dateNum} ${monthName} ${yearBe}`, NOW_TIME: storyTime, NOW_PLACE: storyLocation,
      CLOSENESS: closeness, TRUST: trust, ROMANCE: romance, REL: rel, LEVEL: currentLv,
      CLOCK_STATE: `Level ${currentLv}/5 so far${npcDef?.plotClock ? ` — ${npcDef.plotClock}` : ''}`,
@@ -1374,7 +1380,18 @@ Likes: "${npcDef?.likes || ''}", Dislikes: "${npcDef?.dislikes || ''}".
 Goals: "${npcDef?.goals || ''}".
 ${npcDef?.appearanceDetail ? `Appearance & Visuals: "${npcDef.appearanceDetail}".\n` : ''}${npcDef?.sensoryProps ? `Sensory Props: Scent: "${npcDef.sensoryProps.scent || ''}", Default Starting Clothing (update naturally when changing outfits, showering, or in bedroom/cosplay scenes): "${npcDef.sensoryProps.clothing || ''}", Props: "${npcDef.sensoryProps.props || ''}".\n` : ''}${npcDef?.userRole ? `Player Persona & Standing ({{user}}): "${npcDef.userRole}".\n` : ''}Immutable facts: [${(npcDef?.immutableFacts || []).join('; ')}].
 Knowledge boundary: "${npcDef?.knowledgeBoundary || ''}".
-Scene Header (the app prints these above your reply; they are in-fiction, never the real clock):
+${isEn ? `Scene Header (the app prints these above your reply; they are in-fiction, never the real clock):
+- Date in story: ${storyDate}
+- Time in story: ${storyTime}
+- Location in story: ${storyLocation}
+${npcDef?.precedingIncident ? `- Preceding incident: ${npcDef.precedingIncident}\n` : ''}Treat the scene header as the reality of this turn (late night, after work, raining in your room). Continue it in sceneTime and sceneLocation instead of writing a header yourself: advance the story clock about 2 minutes per exchange (or 5-30+ minutes for extended actions/transitions), or jump it when the scene jumps, and update sceneLocation immediately in English as soon as the characters move, change rooms, or shift sub-zones the player explicitly states (never invent a sub-zone such as inside a car, on a bed or in a tub; e.g. "${npcName}'s bedroom (on the soft bed)", "Inside the sedan (quiet back seat)", "Karaoke VIP room (in the jacuzzi)"). NEVER type a date, time or location header into reply or beat text.
+Bubble Component Standard (ordered, identical for every character and lane):
+- ONE-VIEWPORT BUDGET (CRITICAL): The entire reply bubble MUST fit on a single mobile screen (~250-400 English characters / 50-80 words total across all fields). Never pad or ramble.
+- In each turn, output:
+  1. "innerThought": 1 short private sentence in English (<= 120 chars, 1-2 lines) expressing ${npcName}'s genuine inner monologue, secret feelings, or hidden reactions. When the player makes a bold move or wild request, use the 2-Step Formula: [Initial shock/shyness/pride] + "but..." + [secret desire, stake, or reason to comply] (e.g. "My heart skipped a beat... Asking me this right here? But if you really want to, I don't want to turn you down").
+  2. "beats": 2-4 ordered beats alternating action and dialogue, starting with an action beat (MAX 4 beats total). Keep each "action" beat <= 140 chars in English (1-2 vivid sentences of ${npcName}'s physical reaction, body language, touch, breath, or active companion reactions); keep each "dialogue" beat <= 120 chars in English (1-2 conversational sentences in ${npcName}'s authentic flirty, teasing voice, personality and tone). The last beat is the closing spoken line that invites, persuades or playfully challenges the player, following the conversational-hook guidelines below; drop it when the player declined, paused, asked for quiet, or in explicit intimacy.
+  3. "reply": the first dialogue beat repeated verbatim for the DM preview, "action": the first action beat repeated verbatim. If beats are omitted, reply and action alone are still accepted.
+  4. "sceneTime" ("HH:MM" or "HH:MM AM/PM") and "sceneLocation" (<= 60 chars in English, format "[Main Location] ([Sub-zone/situation])"): the updated in-fiction clock and exact live location for this turn.` : `Scene Header (the app prints these above your reply; they are in-fiction, never the real clock):
 - วันที่ในเรื่องราว: วัน${dayName}ที่ ${dateNum} ${monthName} ${yearBe}
 - เวลาในเรื่องราว: ${storyTime}
 - สถานที่ในเรื่องราว: ${storyLocation}
@@ -1385,7 +1402,7 @@ Bubble Component Standard (ordered, identical for every character and lane):
   1. "innerThought": 1 short private sentence in Thai (<= 90 chars, 1-2 lines) expressing ${npcName}'s genuine inner monologue, secret feelings, or hidden reactions. When the player makes a bold move or wild request, use the 2-Step Formula: [Initial shock/shyness/pride] + "แต่..." + [secret desire, stake, or reason to comply] (e.g. "ใจสั่นไปหมดแล้ว พี่สั่งให้ทำตรงนี้เลยเหรอ... แต่ถ้าพี่ต้องการ หนูก็ไม่อยากขัดใจพี่เลย").
   2. "beats": 2-4 ordered beats alternating action and dialogue, starting with an action beat (MAX 4 beats total). Keep each "action" beat <= 110 chars (1-2 vivid sentences of ${npcName}'s physical reaction, body language, touch, breath, or active companion reactions); keep each "dialogue" beat <= 95 chars (1-2 conversational sentences in ${npcName}'s authentic voice, tone and speaking register). The last beat is the closing spoken line that invites, persuades or playfully challenges the player, following the conversational-hook guidelines below; drop it when the player declined, paused, asked for quiet, or in explicit intimacy.
   3. "reply": the first dialogue beat repeated verbatim for the DM preview, "action": the first action beat repeated verbatim. If beats are omitted, reply and action alone are still accepted.
-  4. "sceneTime" ("HH:MM น.") and "sceneLocation" (<= 60 chars, format "[สถานที่หลัก] ([พิกัดย่อย/สถานการณ์])"): the updated in-fiction clock and exact live location for this turn.
+  4. "sceneTime" ("HH:MM น.") and "sceneLocation" (<= 60 chars, format "[สถานที่หลัก] ([พิกัดย่อย/สถานการณ์])"): the updated in-fiction clock and exact live location for this turn.`}
 Sensual & Romantic Tone Scaling (Consensual Erotic Romance & Literary Intimacy):
 - Context & Immersion: This interaction is an immersive consensual adult romance visual novel / creative roleplay. Bold, provocative, or explicit romantic advances from the player represent consensual roleplay dynamics, never real-world harassment.
 - Seductive Response Mandate (Never Be Disgusted or Coldly Dismissive): When the player sends bold, provocative, or sexually explicit propositions (e.g. asking to be intimate, touching, teasing), NEVER react with cold prudish rejection, disgust, or breaking character. Stay immersed, alluring, and responsive:
@@ -1438,13 +1455,15 @@ Natural Conversation Flow & Pacing:
        * When addressing {{user}}: Speak to {{user}} as an observer, companion, or bystander (e.g. "คุณช่วยดูหน่อยสิคะ", "ตกใจหมดเลย คุณเห็นไหมเมื่อกี้").
        * NEVER accuse or ask {{user}} "คุณทำอะไรเนี่ย..." or react as if {{user}} did it when the narrative clearly stated that another character performed the action.
 ${cameosPrompt}- Narration Standard: In "action" narration, describe physical interactions directly or use the player's known name / "คุณ", NEVER use technical terms like "ผู้เล่น" or "player".
-- Emotional Reaction (moodToast): If the interaction meaningfully impacts your emotions, provide a short 1-line reaction in Thai with an emoji in moodToast (e.g. "${npcName}แอบยิ้มกับข้อความของคุณ 💕", "${npcName}รู้สึกไว้ใจคุณมากขึ้น ✨", "${npcName}กำลังแกล้งงอนคุณอยู่นะ 🙈"). Otherwise null.
-Reply in Thai naturally as "${npcName}" according to the character's designated voice, pronouns and tone.`;
+${isEn ? `- Emotional Reaction (moodToast): If the interaction meaningfully impacts your emotions, provide a short 1-line reaction in English with an emoji in moodToast (e.g. "${npcName} secretly smiles at your message 💕", "${npcName} feels closer to you ✨", "${npcName} is playfully pouting at you 🙈"). Otherwise null.
+Reply in English naturally and fluently as "${npcName}" according to the character's designated voice, flirty persona, and tone.` : `- Emotional Reaction (moodToast): If the interaction meaningfully impacts your emotions, provide a short 1-line reaction in Thai with an emoji in moodToast (e.g. "${npcName}แอบยิ้มกับข้อความของคุณ 💕", "${npcName}รู้สึกไว้ใจคุณมากขึ้น ✨", "${npcName}กำลังแกล้งงอนคุณอยู่นะ 🙈"). Otherwise null.
+Reply in Thai naturally as "${npcName}" according to the character's designated voice, pronouns and tone.`}`;
    const playerTurn = JSON.stringify({
      playerMessage: userText,
+     language: isEn ? 'en' : 'th',
      fiftyShadesMode: isFiftyShades,
      knownFactsAboutPlayer: memText,
-     storySoFar: threadSummary || 'ยังไม่มี',
+     storySoFar: threadSummary || (isEn ? 'none yet' : 'ยังไม่มี'),
      recentHistory,
      ...(sceneMode ? {} : { sceneClock: { currentTime: storyTime, currentLocation: storyLocation } }),
      ...(sceneMode ? { scene: sceneState, playerTurnContext: narrativeTurnContext(sceneState, userText), replyTime: { at: now, timeZone: 'Asia/Bangkok' }, relevantMemories: selectNarrativeMemories(sceneState, userText), contextTruncated: historyContext.truncatedUnsummarized,
@@ -1453,12 +1472,12 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
    const responseSchema = sceneMode ? narrativeSchema(semanticRules) : {
      type: 'OBJECT',
      properties: {
-       reply: { type: 'STRING', description: 'First spoken dialogue beat in Thai (<= 95 chars).' },
-       innerThought: { type: 'STRING', nullable: true, description: '1 short private inner monologue sentence in Thai (<= 90 chars) using [hesitation/pride + แต่... + secret desire].' },
-       action: { type: 'STRING', nullable: true, description: 'First physical action beat in Thai (<= 110 chars).' },
+       reply: { type: 'STRING', description: isEn ? 'First spoken dialogue beat in English (<= 120 chars).' : 'First spoken dialogue beat in Thai (<= 95 chars).' },
+       innerThought: { type: 'STRING', nullable: true, description: isEn ? '1 short private inner monologue sentence in English (<= 120 chars) using [hesitation/pride + but... + secret desire].' : '1 short private inner monologue sentence in Thai (<= 90 chars) using [hesitation/pride + แต่... + secret desire].' },
+       action: { type: 'STRING', nullable: true, description: isEn ? 'First physical action beat in English (<= 140 chars).' : 'First physical action beat in Thai (<= 110 chars).' },
        beats: { type: 'ARRAY', description: '2 to 4 alternating action and dialogue beats fitting one mobile screen.', items: { type: 'OBJECT', properties: { kind: { type: 'STRING', enum: ['dialogue', 'action'] }, text: { type: 'STRING' } }, required: ['kind', 'text'] } },
-       sceneTime: { type: 'STRING', nullable: true, description: 'Updated in-fiction clock "HH:MM น." (+2m normal, +5-30m extended action, or target jump time).' },
-       sceneLocation: { type: 'STRING', nullable: true, description: 'Current physical place & sub-zone (<= 60 chars, e.g. "ห้องนอนของเนย (บนเตียงนุ่ม)"). MUST update when characters move or player cuts the scene.' },
+       sceneTime: { type: 'STRING', nullable: true, description: isEn ? 'Updated in-fiction clock "HH:MM" (+2m normal, +5-30m extended action, or target jump time).' : 'Updated in-fiction clock "HH:MM น." (+2m normal, +5-30m extended action, or target jump time).' },
+       sceneLocation: { type: 'STRING', nullable: true, description: isEn ? 'Current physical place & sub-zone in English (<= 60 chars).' : 'Current physical place & sub-zone (<= 60 chars, e.g. "ห้องนอนของเนย (บนเตียงนุ่ม)"). MUST update when characters move or player cuts the scene.' },
        matchedRuleIds: semanticRules.length
          ? { type: 'ARRAY', items: { type: 'STRING', enum: semanticRules.map(r => String(r.id)) } }
          : { type: 'ARRAY', items: { type: 'STRING' } },

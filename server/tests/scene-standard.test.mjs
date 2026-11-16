@@ -197,6 +197,34 @@ test('inline DM prompt reflects character-defined voice, pronouns and cameos wit
   assert.match(capturedSystem, /STRICT SENTIMENT INVARIANT/);
 });
 
+test('inline DM prompt switches to English instructions when lang is en', async () => {
+  const f = await narrativeFixture();
+  const custom = { ...f.npc };
+  delete custom.narrative;
+  f.sql.prepare('UPDATE npc_definitions SET definition_json=? WHERE creator_id=?').run(JSON.stringify(custom), custom.id);
+
+  let capturedSystem = '';
+  f.env.PRIMARY_AI_PROVIDER = 'workers-ai';
+  f.env.AI = { async run(_model, input) {
+    capturedSystem = input.messages[0].content;
+    return { response: JSON.stringify({
+      reply: 'Hey there! So glad to see you',
+      innerThought: 'My heart is racing...',
+      action: 'Smiles warmly at you',
+      beats: [{ kind: 'action', text: 'Smiles warmly at you' }, { kind: 'dialogue', text: 'Hey there! So glad to see you' }],
+      sceneTime: '12:15',
+      sceneLocation: 'Living room',
+      affectionDelta: 1
+    }) };
+  } };
+
+  const res = await f.request('Hello there', { data: { message: 'Hello there', lang: 'en' } });
+  assert.equal(res.status, 200);
+  assert.match(capturedSystem, /Reply in English naturally and fluently/);
+  assert.match(capturedSystem, /ONE-VIEWPORT BUDGET \(CRITICAL\): The entire reply bubble MUST fit on a single mobile screen \(~250-400 English characters/);
+  assert.match(capturedSystem, /Date in story:/);
+});
+
 test('advanceFictionClock strictly prevents clock stagnation and backward drift', () => {
   // First turn without stored clock: proposed clock seeds it
   assert.equal(advanceFictionClock({ stored: null, proposed: '12:17 น.' }), '12:17 น.');
