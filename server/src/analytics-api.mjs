@@ -31,37 +31,86 @@ export async function analyticsReader(req, env) {
   return allow.split(',').some(entry => entry.trim().toLowerCase() === email) ? { email } : null;
 }
 
+// Only a launched or bound character belongs in a creator PnL report; the git-driven static canon would
+// otherwise show up as rows that look like zero-sales creators.
+const CREATORS_SQL = `SELECT c.id creator_id, c.name, c.avatar_key, ca.user_id, ca.account_status, ca.rev_share_bps,
+  ca.created_at bound_at, u.email user_email
+  FROM creators c
+  LEFT JOIN cosplay_accounts ca ON ca.creator_id=c.id
+  LEFT JOIN users u ON u.id=ca.user_id
+  LEFT JOIN studio_creators sc ON sc.creator_id=c.id
+  WHERE ca.id IS NOT NULL OR sc.status='live'
+  ORDER BY c.id LIMIT ?`;
+
 export async function cosplayAnalytics(env) {
   const limit = Number(env.ANALYTICS_MAX_CREATORS) > 0 ? Number(env.ANALYTICS_MAX_CREATORS) : 200;
-  const { results = [] } = await env.ANALYTICS_DB.prepare(
-    "SELECT ca.creator_id, ca.rev_share_bps, c.name FROM cosplay_accounts ca JOIN creators c ON c.id=ca.creator_id WHERE ca.account_status='active' ORDER BY ca.created_at, ca.creator_id LIMIT ?"
-  ).bind(limit).all();
-
   const db = { DB: env.ANALYTICS_DB };
+  const { results = [] } = await env.ANALYTICS_DB.prepare(CREATORS_SQL).bind(limit).all();
+
+  const { results: perUser = [] } = await env.ANALYTICS_DB.prepare(
+    'SELECT user_id, COUNT(*) n FROM cosplay_accounts GROUP BY user_id'
+  ).all();
+  const charactersPerAccount = new Map(perUser.map(row => [row.user_id, Number(row.n || 0)]));
+
   const creators = [];
   for (const row of results) {
     const pnl = await getCreatorPnL(db, row.creator_id);
-    if (pnl) creators.push({ name: row.name, ...pnl });
+    if (!pnl) continue;
+    creators.push({
+      creatorId: row.creator_id,
+      name: row.name,
+      avatarKey: row.avatar_key || null,
+      cosplayAccount: row.user_id ? {
+        userId: row.user_id,
+        userEmail: row.user_email || null,
+        accountStatus: row.account_status,
+        revShareBps: Number(row.rev_share_bps || 3000),
+        boundAt: Number(row.bound_at || 0),
+        oneAccountOneCharacterEnforced: charactersPerAccount.get(row.user_id) === 1
+      } : null,
+      ...pnl
+    });
   }
 
-  const totals = creators.reduce((sum, c) => {
-    sum.turns += c.turns;
-    sum.tokens += c.tokens.total;
-    sum.aiCostSatang += c.costs.aiCostSatang;
-    sum.grossRevenueSatang += c.revenue.grossRevenueSatang;
-    sum.creatorEarningSatang += c.revenue.creatorEarningSatang;
-    sum.platformFeeSatang += c.revenue.platformFeeSatang;
-    sum.platformNetProfitSatang += c.pnl.platformNetProfitSatang;
-    return sum;
-  }, { turns: 0, tokens: 0, aiCostSatang: 0, grossRevenueSatang: 0, creatorEarningSatang: 0, platformFeeSatang: 0, platformNetProfitSatang: 0 });
-
+  const sum = fn => creators.reduce((total, c) => total + fn(c), 0);
+  const grossRevenueSatang = sum(c => c.revenue.grossRevenueSatang);
+  const creatorPayoutSatang = sum(c => c.revenue.creatorEarningSatang);
+  const platformNetProfitSatang = sum(c => c.pnl.platformNetProfitSatang);
+  const aiCostSatang = sum(c => c.costs.aiCostSatang);
+  const totalTurns = sum(c => c.turns);
+  const promptTokens = sum(c => c.tokens.prompt);
+  const completionTokens = sum(c => c.tokens.completion);
   const thb = satang => Number((satang / 100).toFixed(2));
+
+  // Nothing writes creator_financial_ledger yet, so a zero here means "not measured", not "no sales".
+  const ledgerRows = Number((await env.ANALYTICS_DB.prepare('SELECT COUNT(*) n FROM creator_financial_ledger').first())?.n || 0);
+
   return {
-    scope: 'read-only',
+    mode: String(env.ANALYTICS_MODE || 'staging'),
     source: String(env.ANALYTICS_SOURCE || 'unlabelled'),
     generatedAt: Date.now(),
-    modelPricing: { activeModel: 'deepseek-flash', exchangeRateThb: EXCHANGE_RATE_THB, pricing: MODEL_PRICING },
-    totals: { creators: creators.length, ...totals, aiCostThb: thb(totals.aiCostSatang), grossRevenueThb: thb(totals.grossRevenueSatang), platformNetProfitThb: thb(totals.platformNetProfitSatang) },
+    revenueInstrumented: ledgerRows > 0,
+    modelPricing: { activeModel: 'deepseek-flash', exchangeRateThb: EXCHANGE_RATE_THB, rates: MODEL_PRICING['deepseek-flash'] },
+    overview: {
+      totalCreators: creators.length,
+      boundCosplayAccounts: creators.filter(c => c.cosplayAccount).length,
+      totalTurns,
+      tokens: { prompt: promptTokens, completion: completionTokens, total: promptTokens + completionTokens },
+      costs: {
+        aiCostSatang,
+        aiCostThb: thb(aiCostSatang),
+        avgCostPerTurnThb: totalTurns > 0 ? Number(((aiCostSatang / totalTurns) / 100).toFixed(4)) : 0
+      },
+      revenue: {
+        grossRevenueSatang,
+        grossRevenueThb: thb(grossRevenueSatang),
+        creatorPayoutSatang,
+        creatorPayoutThb: thb(creatorPayoutSatang),
+        platformNetProfitSatang,
+        platformNetProfitThb: thb(platformNetProfitSatang),
+        netMarginPercent: grossRevenueSatang > 0 ? Number(((platformNetProfitSatang / grossRevenueSatang) * 100).toFixed(2)) : 0
+      }
+    },
     creators
   };
 }

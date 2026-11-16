@@ -7,21 +7,28 @@ import app from '../src/index.mjs';
 
 const TOKEN = 'analytics-plane-session-token';
 const READER = 'analyst@instagoon.com';
-const ANALYTICS_URL = 'https://analytics-staging.instagoon.local/api/analytics/cosplay';
+const ANALYTICS_URL = 'https://analytics-staging.instagoon.app/api/analytics/cosplay';
 
 const sha256 = async value => Array.from(
   new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))),
   n => n.toString(16).padStart(2, '0')
 ).join('');
 
-// Stands in for the staging database the read plane is bound to: one Cosplay Creator with
-// 10 turns of DeepSeek-Flash traffic and one settled 500 THB payment.
+// Stands in for the staging database the read plane is bound to. One Cosplay Creator launched by a
+// person (10 turns of DeepSeek-Flash, one settled 500 THB payment) and one live character that was
+// never brokered, which is exactly what a PnL report must tell apart.
 async function seedStagingDb(email = READER) {
   const db = createTestDb();
   db.raw.prepare('INSERT INTO users(id, email, google_id, created_at) VALUES (?, ?, ?, 1000)').run('usr_analyst', email, 'g_analyst');
   db.raw.prepare("INSERT INTO creators(id, name, bio) VALUES ('crt_yuki', 'Yuki Cosplay', 'Bio')").run();
+  db.raw.prepare("INSERT INTO creators(id, name, bio) VALUES ('crt_unbound', 'Unbound Cosplay', 'Bio')").run();
   db.raw.prepare('INSERT INTO cosplay_accounts(id, user_id, creator_id, account_status, rev_share_bps, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
     .run('acc_01', 'usr_analyst', 'crt_yuki', 'active', 3000, 1000, 1000);
+  db.raw.prepare('INSERT INTO studio_creators(user_id, creator_id, draft_json, status, launched_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)')
+    .run('usr_analyst', 'crt_yuki', '{}', 'live', 1000, 1000);
+  db.raw.prepare('INSERT INTO users(id, email, google_id, created_at) VALUES (?, ?, ?, 1000)').run('usr_unbound', 'unbound@instagoon.local', 'g_unbound');
+  db.raw.prepare('INSERT INTO studio_creators(user_id, creator_id, draft_json, status, launched_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)')
+    .run('usr_unbound', 'crt_unbound', '{}', 'live', 1000, 1000);
   db.raw.prepare('INSERT INTO sessions(id, user_id, expires_at) VALUES (?, ?, ?)')
     .run(await sha256(TOKEN), 'usr_analyst', Date.now() + 60000);
   for (let turn = 0; turn < 10; turn++) {
@@ -42,27 +49,41 @@ const analyticsEnv = (db, overrides = {}) => ({
   ANALYTICS_DB: db,
   ANALYTICS_READ_ENABLED: 'true',
   ANALYTICS_EMAILS: READER,
+  ANALYTICS_MODE: 'staging',
   ANALYTICS_SOURCE: 'instagoon-staging',
   ...overrides
 });
 
-test('read plane serves Cosplay PnL from the staging database to an allowlisted reader', async () => {
+test('read plane serves the dashboard payload for an allowlisted reader', async () => {
   const response = await analyticsWorker.fetch(request(), analyticsEnv(await seedStagingDb()), {});
   assert.equal(response.status, 200);
   const data = await response.json();
-  assert.equal(data.scope, 'read-only');
+  assert.equal(data.mode, 'staging');
   assert.equal(data.source, 'instagoon-staging');
-  assert.equal(data.totals.creators, 1);
-  assert.equal(data.creators[0].creatorId, 'crt_yuki');
-  assert.equal(data.creators[0].turns, 10);
-  assert.equal(data.creators[0].revenue.grossRevenueThb, 500);
-  assert.equal(data.creators[0].revenue.platformFeeThb, 350);
-  assert.ok(data.creators[0].pnl.platformNetProfitThb > 349);
-  assert.equal(data.totals.grossRevenueSatang, 50000);
+  assert.equal(data.revenueInstrumented, true);
+  assert.equal(data.modelPricing.activeModel, 'deepseek-flash');
+  assert.equal(data.modelPricing.exchangeRateThb, 34.5);
+  assert.equal(data.modelPricing.rates.inputCacheMissUsdPerM, 0.14);
+  assert.equal(data.overview.totalCreators, 2);
+  assert.equal(data.overview.boundCosplayAccounts, 1);
+  assert.equal(data.overview.revenue.grossRevenueSatang, 50000);
+  assert.equal(data.overview.revenue.grossRevenueThb, 500);
+
+  const yuki = data.creators.find(c => c.creatorId === 'crt_yuki');
+  assert.equal(yuki.turns, 10);
+  assert.equal(yuki.revenue.platformFeeThb, 350);
+  assert.ok(yuki.pnl.platformNetProfitThb > 349);
+  assert.equal(yuki.cosplayAccount.userId, 'usr_analyst');
+  assert.equal(yuki.cosplayAccount.userEmail, READER);
+  assert.equal(yuki.cosplayAccount.oneAccountOneCharacterEnforced, true);
+
+  const unbound = data.creators.find(c => c.creatorId === 'crt_unbound');
+  assert.equal(unbound.cosplayAccount, null, 'a live character nobody brokered stays visible as unbound');
+  assert.equal(unbound.turns, 0);
 });
 
 test('a session outside the reader list is refused before any number is read', async () => {
-  const env = analyticsEnv(await seedStagingDb('other@instagoon.com'));
+  const env = analyticsEnv(await seedStagingDb('someone-else@instagoon.com'));
   const response = await analyticsWorker.fetch(request(), env, {});
   assert.equal(response.status, 401);
   assert.deepEqual(await response.json(), { error: 'unauthorized' });
@@ -78,8 +99,8 @@ test('the read plane fails closed: no session, no reader list, no flag, no bindi
 
 test('only the one analytics path is addressable', async () => {
   const env = analyticsEnv(await seedStagingDb());
-  assert.equal((await analyticsWorker.fetch(request('https://analytics-staging.instagoon.local/api/analytics/creators'), env, {})).status, 404);
-  assert.equal((await analyticsWorker.fetch(request('https://analytics-staging.instagoon.local/api/staging/analytics'), env, {})).status, 404);
+  assert.equal((await analyticsWorker.fetch(request('https://analytics-staging.instagoon.app/api/analytics/creators'), env, {})).status, 404);
+  assert.equal((await analyticsWorker.fetch(request('https://analytics-staging.instagoon.app/api/staging/analytics'), env, {})).status, 404);
   assert.equal((await analyticsWorker.fetch(request(ANALYTICS_URL, TOKEN, 'POST'), env, {})).status, 405);
 });
 
@@ -89,6 +110,10 @@ test('browser reads are only granted to the origin the owner named', async () =>
   assert.equal(allowed.status, 200);
   assert.equal(allowed.headers.get('access-control-allow-origin'), 'https://staging.instagoon.app');
   assert.equal(allowed.headers.get('access-control-allow-credentials'), 'true');
+
+  const preflight = await analyticsWorker.fetch(request(ANALYTICS_URL, TOKEN, 'OPTIONS', { origin: 'https://staging.instagoon.app' }), env, {});
+  assert.equal(preflight.status, 204);
+  assert.equal(preflight.headers.get('access-control-allow-methods'), 'GET, OPTIONS');
 
   const stranger = await analyticsWorker.fetch(request(ANALYTICS_URL, TOKEN, 'GET', { origin: 'https://evil.example' }), env, {});
   assert.equal(stranger.headers.get('access-control-allow-origin'), null);
@@ -105,8 +130,8 @@ test('the production worker never answers the read plane', async () => {
   const authenticated = await app.fetch(request('https://instagoon.app/api/analytics/cosplay'), { DB: db, ADMIN_EMAIL: READER }, {});
   assert.notEqual(authenticated.status, 200);
   const body = await authenticated.json();
+  assert.equal(body.overview, undefined);
   assert.equal(body.creators, undefined);
-  assert.equal(body.scope, undefined);
 });
 
 test('wrangler config keeps the ANALYTICS_DB binding off production and pointed at staging only', () => {
@@ -115,11 +140,14 @@ test('wrangler config keeps the ANALYTICS_DB binding off production and pointed 
   const STAGING_ID = /database_id\s*=\s*"([^"]+)"/.exec(staging)[1];
   const PROD_ID = /database_id\s*=\s*"([^"]+)"/.exec(read('wrangler.toml'))[1];
 
-  for (const name of ['wrangler.toml', 'wrangler.staging.toml', 'wrangler.local-staging.toml']) {
+  for (const name of ['wrangler.toml', 'wrangler.local-staging.toml']) {
     const config = read(name);
     assert.ok(!config.includes('ANALYTICS_DB'), `${name} must not bind the analytics database`);
     assert.ok(!config.includes('analytics.mjs'), `${name} must not run the analytics worker`);
+    assert.ok(!config.includes('COSPLAY_ANALYTICS_ORIGIN'), `${name} must not hand out an analytics origin`);
   }
+
+  assert.ok(staging.includes('COSPLAY_ANALYTICS_ORIGIN'), 'staging hands the UI the analytics origin');
 
   const analytics = read('wrangler.analytics.toml');
   assert.match(analytics, /binding\s*=\s*"ANALYTICS_DB"/);

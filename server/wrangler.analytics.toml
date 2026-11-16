@@ -22,8 +22,9 @@ database_id = "386f836c-5bb7-4eb2-a1b0-87dfd85fa5e6"
 ANALYTICS_READ_ENABLED = "true"
 # Printed in every payload so a chart always says which database it came from.
 ANALYTICS_SOURCE = "instagoon-staging"
-# Browser origin allowed to call this plane; leave unset until the UI is wired for it.
-# ANALYTICS_ALLOWED_ORIGIN = "https://staging.instagoon.app"
+# ANALYTICS_ALLOWED_ORIGIN must equal the staging origin exactly, or the browser blocks the response.
+# Keep it in step with COSPLAY_ANALYTICS_ORIGIN in wrangler.staging.toml.
+ANALYTICS_ALLOWED_ORIGIN = "https://staging.instagoon.app"
 
 # ANALYTICS_EMAILS (who may read) and any future key are Secrets, never vars, because the repo is
 # public (ADR-0018 D1):

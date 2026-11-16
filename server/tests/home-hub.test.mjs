@@ -60,7 +60,7 @@ test('GET /api/creators carries Home Hub discovery fields without a migration', 
 
 test('GET /api/me exposes the home hub feature flag from env only', async () => {
   const { env } = setup();
-  assert.deepEqual((await get(env, '/api/me')).payload.uiFlags, { homeHubV1: false, cosplayStudioV1: false }, 'off unless the Worker says otherwise');
+  assert.deepEqual((await get(env, '/api/me')).payload.uiFlags, { homeHubV1: false, cosplayStudioV1: false, cosplayAnalyticsOrigin: '' }, 'off unless the Worker says otherwise');
   const res = await get({ ...env, HOME_HUB_V1: 'true' }, '/api/me');
-  assert.deepEqual(res.payload.uiFlags, { homeHubV1: true, cosplayStudioV1: false });
+  assert.deepEqual(res.payload.uiFlags, { homeHubV1: true, cosplayStudioV1: false, cosplayAnalyticsOrigin: '' });
 });

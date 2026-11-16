@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useState, useRef, type FormEvent } from 'react';
 import { formatFastForwardAction } from './message-format';
 import { useOverlayHistory } from './overlay-history';
-import { ArrowLeft, Loader2, Lock, MessageSquareX, Palette, Pencil, RotateCcw, Send, Settings, Sparkles, User as UserIcon, Volume2, VolumeX, X, Zap } from 'lucide-react';
+import { ArrowLeft, Loader2, Lock, MessageSquareX, Palette, Pencil, RotateCcw, Send, Settings, Sparkles, TrendingUp, User as UserIcon, Volume2, VolumeX, X, Zap } from 'lucide-react';
 import { IgShare, IgHome, IgSearch, IgReels, IgVerified } from './InstagramIcons';
 import { EnergyShop } from './EnergyShop';
 import { type Lang, LANGS, TRANSLATIONS } from './i18n';
@@ -21,6 +21,7 @@ import { ExploreTab } from './tabs/ExploreTab';
 import { ReelsTab } from './tabs/ReelsTab';
 import { InboxTab } from './tabs/InboxTab';
 import { CosplayCreatorTab } from './tabs/CosplayCreatorTab';
+import { StagingAnalyticsModal } from './components/StagingAnalyticsModal';
 import { PlayerProfileTab } from './tabs/PlayerProfileTab';
 import { ActivityOverlay } from './overlays/ActivityOverlay';
 import { PostMenuSheet } from './overlays/PostMenuSheet';
@@ -74,6 +75,10 @@ export function FrostStoryApp() {
   const [hubOn, setHubOn] = useState(false);
   // COSPLAY_STUDIO_V1: the Studio prototype is staff-only until it has a real backend and review flow.
   const [studioOn, setStudioOn] = useState(false);
+  // COSPLAY_ANALYTICS_ORIGIN is only set on staging: an empty string means this build must not offer
+  // the dashboard at all, because the data it would show lives in the staging isolate.
+  const [analyticsOrigin, setAnalyticsOrigin] = useState('');
+  const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const routerRef = useRef<ReturnType<typeof createRouter> | null>(null);
   if (!routerRef.current && typeof window !== 'undefined') {
     routerRef.current = createRouter({
@@ -518,13 +523,14 @@ export function FrostStoryApp() {
   const followSyncRef = useRef(createFollowSync());
 
   const loadMe = useCallback(async () => {
-    const result = await api<{ user: User; energy: Energy; uiFlags?: { homeHubV1?: boolean; cosplayStudioV1?: boolean } }>('/api/me');
+    const result = await api<{ user: User; energy: Energy; uiFlags?: { homeHubV1?: boolean; cosplayStudioV1?: boolean; cosplayAnalyticsOrigin?: string } }>('/api/me');
     setUser(result.user);
     setEnergy(result.energy);
     const hub = result.uiFlags?.homeHubV1 === true;
     setHubOn(hub);
     const studio = result.uiFlags?.cosplayStudioV1 === true;
     setStudioOn(studio);
+    setAnalyticsOrigin(result.uiFlags?.cosplayAnalyticsOrigin || '');
     // Only move a player who has not navigated anywhere yet; a deep link (e.g. /studio) must win.
     if (hub) {
       const restored = routerRef.current?.restore()?.screen;
@@ -1076,6 +1082,18 @@ export function FrostStoryApp() {
             onViewProfile={(creator) => void openProfile(creator)}
             busy={busy || !!openingStoryId}
           />
+        )}
+
+        {screen === "studio" && studioOn && analyticsOrigin && (
+          <div className="flex justify-end px-4 pt-2">
+            <button
+              type="button"
+              onClick={() => setAnalyticsOpen(true)}
+              className="flex items-center gap-1.5 rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1 text-xs text-zinc-300 hover:bg-zinc-800"
+            >
+              <TrendingUp size={13} className="text-pink-400" /> Staging analytics
+            </button>
+          </div>
         )}
 
         {screen === "studio" && studioOn && (
@@ -2674,6 +2692,10 @@ export function FrostStoryApp() {
           contextInfo={bugReportConfig.contextInfo}
           onClose={() => setBugReportOpen(false)}
         />
+      )}
+
+      {analyticsOpen && analyticsOrigin && (
+        <StagingAnalyticsModal origin={analyticsOrigin} onClose={() => setAnalyticsOpen(false)} />
       )}
 
       {/* Dev Tools Telemetry Drawer */}

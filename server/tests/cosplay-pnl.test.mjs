@@ -175,8 +175,8 @@ test('Token usage ledger records sub-turn calls and calculates creator PnL', asy
   assert.ok(pnl.pnl.platformNetProfitThb > 349);
 });
 
-// The read plane is its own Worker bound to the staging database; the staging wrapper no longer
-// serves PnL. analytics-plane-isolation.test.mjs holds both directions of that promise.
+// The read plane is its own Worker bound to the staging database, and it answers in the shape the
+// dashboard renders. analytics-plane-isolation.test.mjs holds both directions of the split.
 test('Analytics read plane returns DeepSeek-Flash PnL for an allowlisted staging session', async () => {
   const d1 = createTestDb();
   const creatorId = 'crt_test';
@@ -190,16 +190,19 @@ test('Analytics read plane returns DeepSeek-Flash PnL for an allowlisted staging
   d1.raw.prepare("INSERT INTO creators(id, name, bio) VALUES (?, 'Test Creator', 'Bio')").run(creatorId);
   d1.raw.prepare('INSERT INTO cosplay_accounts(id, user_id, creator_id, account_status, rev_share_bps, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
     .run('acc_test', 'usr_test', creatorId, 'active', 3000, 1000, 1000);
+  d1.raw.prepare('INSERT INTO studio_creators(user_id, creator_id, draft_json, status, launched_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)')
+    .run('usr_test', creatorId, '{}', 'live', 1000, 1000);
   d1.raw.prepare('INSERT INTO sessions(id, user_id, expires_at) VALUES (?, ?, ?)').run(sessionId, 'usr_test', Date.now() + 60000);
 
   const env = {
     ANALYTICS_DB: d1,
     ANALYTICS_READ_ENABLED: 'true',
     ANALYTICS_EMAILS: 'admin@instagoon.com',
+    ANALYTICS_MODE: 'staging',
     ANALYTICS_SOURCE: 'instagoon-staging'
   };
 
-  const req = new Request('https://analytics-staging.instagoon.local/api/analytics/cosplay', {
+  const req = new Request('https://analytics-staging.instagoon.app/api/analytics/cosplay', {
     headers: { cookie: `frost_session=${token}` }
   });
 
@@ -207,7 +210,7 @@ test('Analytics read plane returns DeepSeek-Flash PnL for an allowlisted staging
   assert.equal(res.status, 200);
   const data = await res.json();
 
-  assert.equal(data.scope, 'read-only');
+  assert.equal(data.mode, 'staging');
   assert.equal(data.source, 'instagoon-staging');
   assert.equal(data.modelPricing.activeModel, 'deepseek-flash');
   assert.equal(data.modelPricing.exchangeRateThb, 34.50);
