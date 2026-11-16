@@ -129,3 +129,22 @@ test('Lv.1-5 suggestions come from the model, and energy is refunded when no mod
     assert.deepEqual(r.body.levels, ['a', 'b', 'c', 'd', 'e']);
   } finally { globalThis.fetch = realFetch; }
 });
+
+test('launch brokers the 1:1 cosplay account and staging hands the UI the analytics origin', async () => {
+  const { f, call, draft } = await studio();
+  assert.equal((await call('/api/studio/launch', { method: 'POST', json: draft })).status, 200);
+
+  const account = f.sql.prepare("SELECT * FROM cosplay_accounts WHERE user_id='one'").get();
+  assert.equal(account.creator_id, 'cos_yuki_cosplay');
+  assert.equal(account.account_status, 'active');
+  assert.equal(account.rev_share_bps, 3000, 'default commission until a human sets one');
+
+  // Relaunch must keep one account, not broker a second row for the same person.
+  assert.equal((await call('/api/studio/launch', { method: 'POST', json: draft })).status, 200);
+  assert.equal(f.sql.prepare("SELECT COUNT(*) n FROM cosplay_accounts WHERE user_id='one'").get().n, 1);
+
+  f.env.COSPLAY_ANALYTICS_ORIGIN = 'https://analytics-staging.instagoon.app';
+  assert.equal((await call('/api/me')).body.uiFlags.cosplayAnalyticsOrigin, 'https://analytics-staging.instagoon.app');
+  delete f.env.COSPLAY_ANALYTICS_ORIGIN;
+  assert.equal((await call('/api/me')).body.uiFlags.cosplayAnalyticsOrigin, '', 'no origin, no dashboard entry');
+});

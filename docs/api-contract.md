@@ -24,9 +24,24 @@
 | `/studio` และ assets ของ `dist-studio` | **404** | เปิดให้ allowlist |
 | `/api/studio/*` | **404** | เปิดให้ allowlist |
 | `/api/admin/*`, `/api/dev/*` | **404** (ย้ายไป CI job/สคริปต์) | เปิดให้ allowlist เฉพาะสิ่งที่เฟส 1 ต้องการ |
+| PnL / data analytics ของ Cosplay Creator | **ไม่มี binding ให้อ่านได้เลย** (`ANALYTICS_DB` ไม่อยู่ใน `wrangler.toml`) | worker แยก `instagoon-analytics` อ่าน D1 staging เท่านั้น + `ANALYTICS_EMAILS` |
 | `POST /auth/login` (passcode), `/auth/demo`, `/auth/register` | **404** | **404** (ใช้ Gmail login) |
 
-## OpenAPI skeleton (เฟส 1)
+## Read plane ของ Cosplay analytics (เพิ่ม 16 พ.ย. 2026)
+
+การทดลองให้ Cosplay Creator เติมข้อมูลจริงอยู่คนละส่วนกับการวิเคราะห์ตัวเลขนั้น แยกกันด้วย **binding** ไม่ใช่ด้วย `if`
+
+- `server/wrangler.analytics.toml` → worker `instagoon-analytics`, มี `ANALYTICS_DB` ผูกกับ D1 `instagoon-staging` เท่านั้น และไม่มี `[assets]`/cron
+- `server/src/analytics.mjs` → มี path เดียว `GET /api/analytics/cosplay`; ไม่มี flag หรือไม่มี binding = 503, session email ไม่อยู่ใน Secret `ANALYTICS_EMAILS` = 401, CORS เปิดเฉพาะ `ANALYTICS_ALLOWED_ORIGIN`
+- `.github/workflows/deploy-instagoon.yml` ต้องเพิ่ม 2 step ใน job staging (deploy `wrangler.analytics.toml`
+  ที่ผูกโดเมน `analytics-staging.instagoon.app` + ตั้ง Secret `ANALYTICS_EMAILS` จาก `STAGING_EMAILS`)
+  ส่วน job production ไม่มีสองขั้นนี้ **ขั้นนี้ยังไม่ได้ merge** เพราะ `scripts/guard-commit.mjs` กันการแก้
+  workflow ไว้ตาม ADR-0013 (owner review) → diff พร้อมใช้อยู่ที่ `outputs/analytics-ci-deploy.patch`
+- `froststory-api` (prod) ไม่เคยผูก `ANALYTICS_DB` จึงอ่านฐาน staging ไม่ได้ทางกายภาพ — ไม่ใช่เรื่องที่ว่าลืมใส่ gate; `analytics-plane-isolation.test.mjs` ตรวจทั้งสองทิศและตรวจไฟล์ config ด้วย
+- ฝั่ง UI ไม่ได้ตัดสินจาก hostname: `/api/me` ส่ง `uiFlags.cosplayAnalyticsOrigin` มาให้ (prod ไม่มี var `COSPLAY_ANALYTICS_ORIGIN` ⇒ ค่าว่าง ⇒ ไม่มีปุ่ม)
+- **ยังไม่มีผู้เขียน `creator_financial_ledger`**: ตัวเลขรายได้จึงเป็น 0 แบบ "ยังไม่ได้วัด" payload มี `revenueInstrumented: false` กำกับไว้ ห้ามตีความเป็นยอดขายศูนย์ และห้ามเชื่อม analytics กับ prod D1 เพื่อหาตัวเลขมาเติม
+
+
 
 ```yaml
 openapi: 3.1.0

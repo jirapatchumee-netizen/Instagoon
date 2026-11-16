@@ -35,6 +35,10 @@ FREE_ENERGY_GRANT = "100"
 # Home Hub (rev 3): hub เป็นค่าเริ่มต้นบน staging เท่านั้น — production ไม่มี var นี้จึงได้ UI เดิม
 HOME_HUB_V1 = "true"
 COSPLAY_STUDIO_V1 = "true"
+# Where the browser reads the Cosplay PnL dashboard from. Points at the separate instagoon-analytics
+# worker (wrangler.analytics.toml), not at this Worker: production has no such var, so production gets
+# an empty string and the dashboard never appears.
+COSPLAY_ANALYTICS_ORIGIN = "https://analytics-staging.instagoon.app"
 # Staging pays into the real collection account, by the owner's decision on 2026-11-11 (ADR-0018 D3).
 # The three values are not in this file because the repo is public (ADR-0018 D1). Set them once with
 #   cd server && npx wrangler secret put BANK_NAME   (then BANK_ACCOUNT_NO, BANK_ACCOUNT_NAME)

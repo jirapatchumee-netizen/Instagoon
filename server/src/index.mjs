@@ -438,7 +438,7 @@ async function player(req,env,user,path,now,ctx) {
   await ensureUserProfileColumns(env);
   const uRow = await one(env, 'SELECT nickname, avatar_id FROM users WHERE id=?', user.id);
   const isAdmin = isAdminUser(env,user);
-  return json({user:{id:user.id,email:user.email,role:user.role||(isAdmin?'admin':'player'),isAdmin,ageVerifiedAt:user.age_verified_at,consentVersion:user.consent_version,nickname:uRow?.nickname||null,avatarId:uRow?.avatar_id||null},energy:await energy(env,user.id,now),uiFlags:{homeHubV1:String(env.HOME_HUB_V1)==='true',cosplayStudioV1:studioAllowed(env,user)}});
+  return json({user:{id:user.id,email:user.email,role:user.role||(isAdmin?'admin':'player'),isAdmin,ageVerifiedAt:user.age_verified_at,consentVersion:user.consent_version,nickname:uRow?.nickname||null,avatarId:uRow?.avatar_id||null},energy:await energy(env,user.id,now),uiFlags:{homeHubV1:String(env.HOME_HUB_V1)==='true',cosplayStudioV1:studioAllowed(env,user),cosplayAnalyticsOrigin:studioAllowed(env,user)?String(env.COSPLAY_ANALYTICS_ORIGIN||''):''}});
  }
  if(path==='/api/me/profile' && method==='POST'){
   await ensureUserProfileColumns(env);
@@ -2047,6 +2047,9 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
     env.DB.prepare('INSERT INTO activity(user_id,kind,created_at) VALUES(?,?,?)').bind(user.id,'studio_launch',now),
     env.DB.prepare('INSERT INTO creators(id,name,bio,avatar_key) VALUES(?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,bio=excluded.bio,avatar_key=excluded.avatar_key').bind(creatorId,draft.name,definition.tagline,avatarKey),
     env.DB.prepare('INSERT INTO npc_definitions(creator_id,definition_json,updated_at) VALUES(?,?,?) ON CONFLICT(creator_id) DO UPDATE SET definition_json=excluded.definition_json,updated_at=excluded.updated_at').bind(creatorId,JSON.stringify(definition),now),
+    // Launched characters need a brokered cosplay_accounts row, otherwise the PnL plane has nothing to
+    // read as "this creator was made by a person" even though the AI and payment data exist.
+    env.DB.prepare('INSERT INTO cosplay_accounts(id,user_id,creator_id,account_status,rev_share_bps,created_at,updated_at) VALUES(?,?,?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET creator_id=excluded.creator_id,updated_at=excluded.updated_at').bind(crypto.randomUUID(),user.id,creatorId,'active',3000,now,now),
     env.DB.prepare("INSERT INTO studio_creators(user_id,creator_id,draft_json,status,launched_at,updated_at) VALUES(?,?,?,'live',?,?) ON CONFLICT(user_id) DO UPDATE SET creator_id=excluded.creator_id,draft_json=excluded.draft_json,status='live',launched_at=COALESCE(studio_creators.launched_at,excluded.launched_at),updated_at=excluded.updated_at").bind(user.id,creatorId,JSON.stringify(draft),now,now),
     // after the creators row, which posts reference
     env.DB.prepare("UPDATE posts SET status='suspended' WHERE creator_id=? AND id NOT IN (SELECT value FROM json_each(?))").bind(creatorId,JSON.stringify(postIds)),
