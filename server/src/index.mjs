@@ -381,6 +381,8 @@ async function auth(req,env,url) {
    env.DB.prepare('INSERT OR IGNORE INTO energy(user_id,free,diamonds) VALUES(?,?,?)').bind(uid,freeEnergyGrant(env),initialDiamondsGrant(env))
   ]);
   user={id:uid,email,beta_access:isBeta};
+ } else if(closedBetaActive && !isAdmin && !user.beta_access && !validTok){
+  return authError('closed_beta_required');
  }
 
  if(validTok && user){
@@ -2428,10 +2430,13 @@ async fetch(req,env,ctx){
    const rawToken=string(b?.token,200).trim();
    if(!rawToken)return json({error:'invalid_token'},400);
    const tok=await one(env,"SELECT id,role,revoked_at,expires_at,redeemed_at FROM studio_tokens WHERE token_hash=?",await hash(rawToken));
-   if(!tok||tok.revoked_at||tok.redeemed_at||(tok.expires_at!=null&&tok.expires_at<=now)){
+   if(!tok||tok.revoked_at||(tok.expires_at!=null&&tok.expires_at<=now)){
     return json({error:'invalid_token'},400);
    }
-   return json({ok:true,role:tok.role||'creator'});
+   if(tok.redeemed_at){
+    return json({ok:true,role:tok.role||'creator',alreadyRedeemed:true});
+   }
+   return json({ok:true,role:tok.role||'creator',alreadyRedeemed:false});
   }
   const user=await session(req,env);
   if(path==='/api/logout'&&req.method==='POST'){if(user)await run(env,'DELETE FROM sessions WHERE id=?',await hash(cookie(req,'frost_session')));return json({ok:true},200,{'set-cookie':secureCookie('frost_session','',0)});}
