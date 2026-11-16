@@ -164,7 +164,8 @@ test('admin reads the site-wide dashboard, creator reads only their own characte
   const creatorData = await me.json();
   assert.equal(creatorData.scope, 'creator');
   assert.deepEqual(creatorData.creators, ['crt_yuki']);
-  const json = JSON.stringify(creatorData);
+  const { generatedAt: _ignored, ...payloadWithoutTimestamp } = creatorData;
+  const json = JSON.stringify(payloadWithoutTimestamp);
   const everyKey = creatorData.hours.flatMap(h => Object.keys(h.metrics));
   assert.ok(!everyKey.some(k => k.includes('money') || k.includes('orders') || k.includes('deposit')));
   assert.ok(!json.includes('2937'), 'no revenue figure appears anywhere in the creator payload');
@@ -202,6 +203,17 @@ test('it fails closed: no session, no flag, no binding, unknown path, non-admin 
   assert.equal((await analyticsWorker.fetch(request(OVERVIEW, tokens.usr_yuki), env, {})).status, 403);
   assert.equal((await analyticsWorker.fetch(request(RUN, tokens.usr_yuki, 'POST'), env, {})).status, 403);
   assert.equal((await analyticsWorker.fetch(request(RUN, tokens.usr_ops, 'POST'), env, {})).status, 200);
+
+  // SPA assets delegation: non-api path routes to env.ASSETS when bound, fails closed otherwise
+  const withAssets = await analyticsWorker.fetch(
+    new Request(HOST + '/'),
+    envFor(db, { ASSETS: { fetch: req => new Response('<!doctype html>SPA', { status: 200 }) } }),
+    {}
+  );
+  assert.equal(withAssets.status, 200);
+  assert.equal(await withAssets.text(), '<!doctype html>SPA');
+  const withoutAssets = await analyticsWorker.fetch(new Request(HOST + '/'), env, {});
+  assert.equal(withoutAssets.status, 404);
 });
 
 test('the game worker never serves the dashboard, even for the admin session', async () => {
@@ -224,6 +236,8 @@ test('wrangler config keeps production data reachable only from the analytics wo
   assert.ok(analytics.includes(PROD_ID), 'the dashboard must read the database players actually use');
   assert.ok(!analytics.includes(STAGING_ID), 'the dashboard must not read the test field');
   assert.match(analytics, /\[\[routes\]\][\s\S]*analytics\.instagoon\.app/, 'routes must be their own table');
+  assert.match(analytics, /\[assets\][\s\S]*directory\s*=\s*"\.\.\/client\/dist-analytics"/, 'analytics assets directory must point to client/dist-analytics');
+  assert.match(analytics, /not_found_handling\s*=\s*"single-page-application"/, 'SPA fallback must be enabled');
   assert.match(analytics, /crons\s*=\s*\[/, 'rollups need a schedule');
 
   for (const name of ['wrangler.toml', 'wrangler.staging.toml', 'wrangler.local-staging.toml']) {

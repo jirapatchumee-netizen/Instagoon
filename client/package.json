@@ -6,7 +6,8 @@
     "dev": "vite --host 127.0.0.1",
     "build": "tsc -p tsconfig.json && vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "build:staging": "tsc -p tsconfig.json && vite build --mode staging && vite build --config vite.staging-login.config.ts"
+    "build:staging": "tsc -p tsconfig.json && vite build --mode staging && vite build --config vite.staging-login.config.ts",
+    "build:analytics": "tsc -p tsconfig.json && vite build --config vite.analytics.config.ts"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.3.1",

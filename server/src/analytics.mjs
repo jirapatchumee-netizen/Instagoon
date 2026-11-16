@@ -5,6 +5,10 @@ import { runHourly, hourBucket } from './analytics-rollup.mjs';
 // three paths; anything else is 404 so the surface cannot grow by accident.
 async function handle(req, env) {
   const { pathname } = new URL(req.url);
+  if (!pathname.startsWith('/api/')) {
+    if (env.ASSETS) return env.ASSETS.fetch(req);
+    return analyticsJson({ error: 'not_found' }, 404);
+  }
   if (!Object.values(PATHS).includes(pathname)) return analyticsJson({ error: 'not_found' }, 404);
   if (!analyticsReady(env)) return analyticsJson({ error: 'analytics_disabled' }, 503);
 

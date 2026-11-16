@@ -10,7 +10,7 @@
 Because multiple autonomous agents (Antigravity, Claude Code, Codex, Cursor) and developers work in parallel and ship continuously to Staging (`https://staging.instagoon.app`):
 
 1. **Standing Authorization to Auto-Update Staging (`main` → Staging)**:
-   - AI Agents are **authorized and expected to commit and push/merge verified non-protected work to `main` automatically** without pausing to ask the human for commit/push confirmation (this project rule overrides generic `"Never commit or push unless asked"` rules for Staging updates).
+   - AI Agents are **authorized and expected to ship verified non-protected work to `main` automatically** without pausing to ask the human for commit/push confirmation (this project rule overrides generic `"Never commit or push unless asked"` rules for Staging updates). "Ship" means exactly one path: feature branch off the latest `origin/main` → PR → CI green → `gh pr merge --squash`. **Never push directly to `main`** — the GitHub Ruleset `protect-main` (`GH013`) rejects it (see `AGENTS.md` §1).
    - Every push or merge into `main` triggers GitHub Actions (`Deploy staging (automatic)`), which automatically applies unapplied D1 migrations on `instagoon-staging` and deploys the Worker + Frontend assets to `https://staging.instagoon.app`.
    - **Production (`https://instagoon.app`) remains strictly gated** by GitHub Environment (`production`) required reviewers (`jirapatchumee-netizen`, `taychinsgo`).
    - **Protected Zone Exception (ADR-0013 — Must Ask Owner First)**: Agents MUST pause and ask the owner before modifying or shipping any file in the Owner-Locked AI Zone (`server/src/ai/protected/`, `GEMINI_MODEL`/`SUMMARY_MODEL`, `scripts/guard-commit.mjs`, `.githooks/`, `.github/`, `.claude/settings.json`, or the `"scripts"` block in `package.json`), changing Cloudflare secrets, or authoring destructive (non-additive) D1 migrations.
@@ -47,13 +47,11 @@ Game content (characters, posts, stories, media) is edited as files in `content/
 
 ## 🧠 3. AI Cognitive Engine & Model Policy
 
-The backend Worker (`apps/Instagoon/worker/src/index.mjs`) connects to Google Gemini API:
+The backend Worker (`server/src/index.mjs`) connects to Google Gemini API:
 
 1. **Active Model Pool**:
-   The pool used by a DM turn is hardcoded in `worker/src/index.mjs:543-547`:
+   The pool used by a DM turn is governed by `server/src/ai/protected/gemini-config.mjs` (Owner-Locked Zone / ADR-0013):
    `gemini-2.5-flash`, `gemini-3.1-flash-lite`, `gemini-3.5-flash-lite`.
-   **These names are not yet confirmed against a real API key.** Two other lists in the same file disagree with it: `/api/dev/test-models` defaults to six different names (`:259-264`) and the knowledge rewrite falls back to `env.GEMINI_MODEL || 'gemini-2.5-flash-lite'` (`:640`), a fourth name that is not in the pool. Confirm with `POST /api/dev/test-models` on staging and make all three lists agree before quoting any model in a change.
-   Earlier revisions of this file claimed response times and daily request limits per model. Those figures had no measurement behind them and are removed. If you need them, measure and store the result.
    Chat picks one model per **Chat Visit**: `modelsForVisit()` rotates the pool by an FNV-1a hash of `visit_id`, so a player's conversation keeps the same persona while separate visits still spread evenly across the three quota pools. The rest of the pool is only the failover order inside a single turn.
    The persona eval harness must pin one model through an env override (`EVAL_MODEL`) so a prompt change and a model change cannot be measured as the same thing. Player behaviour stays as above. See `docs/INSTAGOON_DEV_PLAN_2026-11-01.md` §3.1.
 2. **No Expensive Fallbacks**:
@@ -67,7 +65,7 @@ The backend Worker (`apps/Instagoon/worker/src/index.mjs`) connects to Google Ge
 
 ## 📦 4. Asset Validation & Schema Protocol
 
-When updating Zod schemas in `apps/Instagoon/lib/npc/schema.ts`:
+When updating Zod schemas in `packages/contracts/npc/schema.ts`:
 - Asset paths must accept all valid storage categories:
   `^(|(assets|avatars|rewards|posts)/[a-zA-Z0-9_.-]+\.(png|jpg|jpeg|webp|gif))$`
 - Never restrict assets to only `assets/` as production data uses `avatars/` and `rewards/`.
@@ -106,6 +104,7 @@ You MUST provide a clear, concise **Sync Briefing** in the chat using this stand
 
 ```text
 🔄 **[Instagoon Sync Briefing]**
+- 🧾 **Provenance**: `HEAD=<hash> | origin/main=<hash from git ls-remote> | branch=<name> | fetched=<ISO time>` (see §9)
 - 📦 **Commits**: <commit hash, author, title>
 - 🛠️ **Functional Changes**: <what was added, modified, or fixed>
 - 🔍 **Impact & Blast Radius**: <affected files, schemas, APIs, or UI routes>
@@ -125,7 +124,7 @@ You MUST provide a clear, concise **Sync Briefing** in the chat using this stand
 
 ### 7.1 Isolated Character Workspaces (แยกโฟลเดอร์ขาดจากกัน)
 - ครีเอเตอร์แต่ละคนต้องอยู่ในโฟลเดอร์เฉพาะของตัวเอง:  
-  `apps/Instagoon/content/creators/<creator_id>/`
+  `content/creators/<creator_id>/`
 - ภายในประกอบด้วย 5 ไฟล์มาตรฐาน:
   - `character.json`: ชีวประวัติ, กฎคีย์เวิร์ด (Rules), ความลับ (Secrets), สไตล์ภาษา และ Thresholds
   - `episodes.json`: สคริปต์บทสนทนา Interactive Story
@@ -135,7 +134,7 @@ You MUST provide a clear, concise **Sync Briefing** in the chat using this stand
 - **กติกาห้ามทับซ้อน**: แต่ละทีมจะแก้ไขเฉพาะโฟลเดอร์ตัวละครที่ตนเองรับผิดชอบเท่านั้น ห้ามแก้ไขไฟล์ตัวละครของทีมอื่น
 
 ### 7.2 Media Namespacing Convention (การตั้งชื่อไฟล์สื่อกลาง)
-เพื่อป้องกันไม่ให้ชื่อไฟล์ภาพใน `apps/Instagoon/content/media/` ชนกัน ให้ขึ้นต้นด้วย `<creator_id>_` เสมอ:
+เพื่อป้องกันไม่ให้ชื่อไฟล์ภาพใน `content/media/` ชนกัน ให้ขึ้นต้นด้วย `<creator_id>_` เสมอ:
 - **Avatars**: `content/media/avatars/<creator_id>_avatar.png`
 - **Episode Assets**: `content/media/assets/<creator_id>_<asset_name>.png`
 - **Feed Posts**: `content/media/posts/<creator_id>_<post_name>.png`
@@ -170,6 +169,59 @@ node server/tests/api.mjs
    บล็อก `[vars]` เป็น public environment variables ห้ามใส่ค่า token หรือ secret ใดๆ ค่าความลับทั้งหมดต้องตั้งผ่าน Cloudflare Worker Secrets (`wrangler secret put <SECRET_NAME>`) เท่านั้น
 3. **ห้ามเปิดเผย Secret ผ่าน Public Issues, PRs หรือ Git Commits:**
    ต้องส่ง credentials ให้บุคคลภายนอกหรือทีมงานผ่านช่องทางส่วนตัว (DM/Private Chat) เท่านั้น
+
+---
+
+## 🔎 9. State Provenance & Read Scope (Non-Negotiable)
+
+> **จุดกำเนิด:** เมื่อ 2026-11-16 มี agent รายงาน `commit 0dbe2c8 (2026-10-31)` ว่าเป็น "สถานะปัจจุบันของ repo" — object นั้น **ไม่มีอยู่ใน repository นี้เลย** มันถูกก๊อปมาจาก `instagoon-workbench/agent-worklog/PENDING_WORK_AUDIT_2026-10-31.md` ซึ่งอ้างถึง legacy mirror ก่อน restructure (`_archive/legacy-repo.git`) ขณะที่ `origin/main` จริงตอนนั้นคือ `d53a278` ความผิดพลาดนี้ทำให้ agent สรุปผิดว่า "เอกสารเก่าเพราะอ่านสำเนาค้าง" ทั้งที่สำเนาหลักสดและ **positioning เก่านั้นถูก commit บน `main` จริง**
+
+### 9.1 ลำดับความน่าเชื่อถือของหลักฐาน (สูง → ต่ำ)
+
+| ระดับ | แหล่ง | สรุปสถานะปัจจุบันได้ไหม |
+|---|---|---|
+| 1 | `git ls-remote origin <ref>`, `gh api`, `gh pr view` | ✅ จริงที่สุด |
+| 2 | `git log` / `git show` ใน repo นี้หลัง `git fetch` | ✅ ได้ (ต้องบอกเวลา fetch) |
+| 3 | ไฟล์ใน worktree ที่ checkout อยู่ | ✅ เฉพาะเมื่อ `HEAD == origin/main` |
+| 4 | feature branch / worktree อื่น | ⚠️ ต้องระบุชื่อ branch และตามหลัง `main` กี่ commits |
+| 5 | handoff / worklog / audit / proposal / report docs | ❌ ห้ามใช้เป็นหลักฐานของสถานะระบบ ใช้เป็นบริบททางประวัติเท่านั้น |
+
+### 9.2 Provenance block บังคับ
+
+ทุกคำตอบที่อ้างสถานะโปรเจ็กต์ (โค้ดเป็นอะไร, ฟีเจอร์ไหนเสร็จ, อยู่ version ใด) ต้องรันสามคำสั่งนี้และแนบผลก่อนสรุป:
+
+```bash
+git rev-parse --abbrev-ref HEAD
+git log -1 --format='%h %ad %s' --date=iso
+git ls-remote origin refs/heads/main
+```
+
+- ถ้า `git ls-remote` แตะไม่ได้ ให้เขียนว่า **"unverified — could not reach origin"** และห้ามสรุปต่อเป็นข้อเท็จจริง
+- **ห้ามอ้างว่า "เครื่องมือยืนยัน GitHub โดยตรงไม่ได้"** ทั้งที่เครื่องมี `gh` login อยู่และ `git ls-remote` ทำงานได้ ให้ตรวจก่อนแล้วค่อยรายงานข้อจำกัดจริง
+
+### 9.3 กฎ commit hash
+
+- ห้ามคัดลอก commit hash จากไฟล์เอกสารมาอ้างเป็นสถานะปัจจุบัน
+- ถ้าต้องกล่าวถึง hash ที่มาจากเอกสาร ต้องตรวจก่อน: `git cat-file -e <hash>^{commit}`
+- ถ้าไม่มี object จริง ให้ตอบตรง ๆ ว่า "hash นี้ไม่อยู่ใน repo ปัจจุบัน (น่าจะมาจาก legacy history ก่อน restructure 2026-11-02)" ห้ามตีความเป็น HEAD ล่าสุด
+
+### 9.4 Read scope (โฟลเดอร์ที่ agent ห้ามใช้สรุปสถานะ)
+
+| โฟลเดอร์ | สถานะ |
+|---|---|
+| `projects/Instagoon/Instagoon-app` @ `origin/main` | ✅ **Authoritative copy เดียว** |
+| `worktrees/*`, `ig-fix-tailwind/`, `Instagoon-studio-launch/` | ⚠️ สำเนา/งานแยก branch — ตรวจเมื่อ 2026-11-16: `worktrees/tts` และ `worktrees/adr12` ตามหลัง `main` 170 commits; หลาย branch upstream `[gone]` |
+| `instagoon-workbench/*` (รวม `agent-worklog/`, `_legacy-tree/`, `_archive/`) | ❌ local-only ไม่มี GitHub worklog ระบุตัวเองไว้แล้วว่า "ไม่ใช่กติกา" |
+| `archive/*`, `To_Delete/*`, `*-wip-backup-*`, `outputs/*` | ❌ ของเก่า/ของชั่วคราว |
+
+ห้าม `grep` ข้ามโฟลเดอร์เหล่านี้แล้วสรุปเป็นสถานะปัจจุบันของโปรเจ็กต์ ถ้าเจ้าของสั่งให้ดูเป็นพิเศษ ต้องบอกด้วยว่าสำเนานั้นตามหลัง `main` เท่าไร
+
+### 9.5 เมื่อ positioning ในแชทขัดกับเอกสารใน repo
+
+ถ้าสิ่งที่เจ้าของยืนยันด้วยปาก/แชท ขัดกับ `AGENTS.md` หรือ `docs/INSTAGOON_GDD.md` ให้ถือว่า **เอกสารใน repo ล้าหลัง** ไม่ใช่ข้อมูลที่เจ้าของบอกผิด แล้ว:
+1. รายงานความต่างพร้อมหลักฐาน (ไฟล์ + บรรทัด + commit ที่แก้ล่าสุด)
+2. เปิด ADR/PR แก้เอกสารให้ตรงทิศทางธุรกิจ (ห้ามลบประวัติ ให้ปิดป้าย `SUPERSEDED by ADR-xxxx`)
+3. ห้ามเงียบแล้วทำงานต่อบน positioning เก่า และห้ามเขียนเอกสารใหม่ทับโดยไม่มี ADR อ้างอิง
 
 
 

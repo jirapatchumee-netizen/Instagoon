@@ -27,6 +27,7 @@
     3. เปิด PR เข้า `main` (`gh pr create --fill`), รอ CI `Tests + build` ผ่าน (`gh pr checks --watch`), แล้วสั่ง Merge ทันที (`gh pr merge --squash --delete-branch`) เพื่อให้ GitHub Actions (`Deploy staging (automatic)`) รัน D1 Migration บน `instagoon-staging` และ Deploy ขึ้น `https://staging.instagoon.app` อัตโนมัติ (ขณะที่ Production ยังล็อกรอเจ้าของกด Approve เสมอ)
     4. รายงาน **Sync Briefing** ตามมาตรฐานใน [docs/MULTI_AGENT_SYNC_CONTRACT.md](docs/MULTI_AGENT_SYNC_CONTRACT.md)
   - **ข้อยกเว้นที่ห้าม Auto-Ship (ต้องถามเจ้าของก่อนเสมอ):** การแก้ไขที่แตะ **Owner-Locked AI Zone ([ADR-0013](docs/adr/0013-owner-locked-ai-zone-and-commit-guardrails.md))** (ดูหัวข้อ 3.3), การแก้ไข Secrets, หรือ D1 Migration ที่ทำลายข้อมูลเดิม (DROP/ลบคอลัมน์)
+  - **State Provenance Gate (ห้ามข้าม):** ก่อนสรุป "สถานะปัจจุบัน" ของโปรเจ็กต์ ต้องอ่านจาก git จริงและแนบ provenance block ในรายงานเสมอ **ห้ามอ้าง commit hash หรือสถานะ repo ที่ลอกมาจากเอกสาร handoff/worklog/audit** ดู [docs/MULTI_AGENT_SYNC_CONTRACT.md](docs/MULTI_AGENT_SYNC_CONTRACT.md) หัวข้อ 9
 
 ---
 
