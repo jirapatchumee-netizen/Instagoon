@@ -1,4 +1,5 @@
 import { SAFETY_SETTINGS, pickLiteModel, rewriteGenerationConfig } from './ai/protected/gemini-config.mjs';
+import { DEFAULT_LEVEL_COSTS, DEFAULT_ADULT_LEVELS, validLevelCosts, validAdultLevels } from './credit-levels.mjs';
 
 // Cosplay Creator Studio: turns the Studio form into the same NPC definition that content/creators/<id>/character.json
 // produces, so a launched character uses the normal DM pipeline (prompt, leak filter, energy, relationship levels).
@@ -17,13 +18,16 @@ export function cleanDraft(b) {
     rarity: RARITY.includes(r?.rarity) ? r.rarity : 'SR',
     unlockType: r?.unlockType === 'diamond_gacha' ? 'diamond_gacha' : 'mission',
     hint: str(r?.hint, 200), turns: clampInt(r?.turns, 0, 100000, 0), trust: clampInt(r?.trust, 0, 100, 0),
-    romance: clampInt(r?.romance, 0, 100, 0), energyFallback: clampInt(r?.energyFallback, 1, 50, 5)
+    romance: clampInt(r?.romance, 0, 100, 0), minLevel: clampInt(r?.minLevel, 1, 5, 2), energyFallback: clampInt(r?.energyFallback, 1, 50, 5)
   })).filter(r => r.name && r.asset);
   return {
     name: str(b.name, 60), handle: str(b.handle, 40).replace(/^@/, ''), concept: str(b.concept, 1500),
     age: clampInt(b.age, 0, 120, 0), avatar: str(b.avatar, 200), tags: str(b.tags, 300),
     likes: str(b.likes, 500), dislikes: str(b.dislikes, 500), pronouns: str(b.pronouns, 60),
     voiceTone: str(b.voiceTone, 300), sampleQuotes: str(b.sampleQuotes, 1500), levelStyles,
+    // Missing keys migrate old drafts; malformed supplied keys remain invalid and cannot be launched.
+    levelCosts: b.levelCosts === undefined ? [...DEFAULT_LEVEL_COSTS] : (validLevelCosts(b.levelCosts) ? [...b.levelCosts] : null),
+    adultLevels: b.adultLevels === undefined ? [...DEFAULT_ADULT_LEVELS] : (validAdultLevels(b.adultLevels) ? [...b.adultLevels] : null),
     ruleNoAddress: b.ruleNoAddress !== false, ruleNoMeet: b.ruleNoMeet !== false, rulePoliteReject: b.rulePoliteReject !== false,
     secret: str(b.secret, 1000), immutableFacts: str(b.immutableFacts, 2000),
     openingLocation: str(b.openingLocation, 100), openingGreeting: str(b.openingGreeting, 600), rewards,
@@ -54,6 +58,8 @@ export function launchProblems(d) {
   if (!d.avatar) p.push('avatar');
   if (!d.voiceTone) p.push('voiceTone');
   if (d.levelStyles.some(s => !s)) p.push('levelStyles');
+  if (!validLevelCosts(d.levelCosts)) p.push('levelCosts');
+  if (!validAdultLevels(d.adultLevels)) p.push('adultLevels');
   for (const f of unsafeFields(d)) p.push(`unsafe:${f}`);
   return p;
 }
@@ -86,12 +92,13 @@ export function buildDefinition(d, creatorId, assetMap) {
       examples: [d.openingGreeting, ...list(d.sampleQuotes, 10)].filter(Boolean).join('\n'),
       fallback: `ขอโทษนะ ${me}ขอคิดแป๊บนึงนะ`, levelStyles: d.levelStyles
     },
-    relationship: { weights: { closeness: 40, trust: 40, romance: 20 }, thresholds: [0, 20, 40, 60, 80], romanceEnabled: true },
+    relationship: { weights: { closeness: 40, trust: 40, romance: 20 }, thresholds: [0, 20, 40, 60, 80], romanceEnabled: true,
+      creditProgression: { mode: 'credits', costs: d.levelCosts, adultLevels: d.adultLevels } },
     rules: [],
     rewards: d.rewards.filter(r => assetMap[r.asset]).map(r => ({
       id: r.id, name: r.name, asset: assetMap[r.asset], caption: r.caption, message: r.message, rarity: r.rarity,
       unlockType: r.unlockType, hint: r.hint || undefined, energyFallback: r.energyFallback, gachaWeight: 100,
-      conditions: [['turns', r.turns], ['trust', r.trust], ['romance', r.romance]].filter(([, v]) => v > 0).map(([field, value]) => ({ field, value, eventId: '' }))
+      conditions: [['level', r.minLevel], ['turns', r.turns]].filter(([, v]) => v > 0).map(([field, value]) => ({ field, value, eventId: '' }))
     }))
   };
 }
