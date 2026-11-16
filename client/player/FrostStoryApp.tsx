@@ -1435,6 +1435,12 @@ export function FrostStoryApp() {
                     {profileData.creator.tagline && (
                       <p className="fs-profile-tagline">{profileData.creator.tagline}</p>
                     )}
+                    {profileData.creator.bio && (
+                      <section className="fs-profile-about" aria-label={t.studioProfileDescriptionLabel}>
+                        <h3>{t.studioProfileDescriptionLabel}</h3>
+                        <p>{profileData.creator.bio}</p>
+                      </section>
+                    )}
                     {profileData.creator.tags && profileData.creator.tags.length > 0 && (
                       <div className="fs-profile-tags">
                         {profileData.creator.tags.map((tag, i) => (

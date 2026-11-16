@@ -74,7 +74,9 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
   // Pillar 1: Identity & Visual
   const [name, setName] = useState('Yuki');
   const [handle, setHandle] = useState('yuki.cosplay');
-  const [concept, setConcept] = useState('คอสเพลเยอร์สายน่ารักที่ชอบคอสตัวละครสายลับ ใจดีแต่แอบซุ่มซ่าม');
+  const [tagline, setTagline] = useState('มาแบ่งปันโลกคอสเพลย์ไปด้วยกันนะ');
+  const [profileDescription, setProfileDescription] = useState('คอสเพลเยอร์ที่ชอบทำชุดด้วยตัวเอง ยินดีแบ่งปันเบื้องหลังการทำงานและพูดคุยเรื่องคอสเพลย์กับทุกคน');
+  const [characterBrief, setCharacterBrief] = useState('');
   const [age, setAge] = useState('24');
   const [studio, setStudio] = useState<StudioState>({ draft: null, creatorId: null, status: 'none' });
   const [busyAction, setBusyAction] = useState<'' | 'save' | 'launch' | 'unpublish'>('');
@@ -163,7 +165,10 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
     if (!data || typeof data !== 'object') return;
     if (data.name) setName(data.name);
     if (data.handle) setHandle(data.handle);
-    if (data.concept) setConcept(data.concept);
+    const legacyConcept = typeof data.concept === 'string' ? data.concept : '';
+    setTagline(typeof data.tagline === 'string' ? data.tagline : legacyConcept.slice(0, 200));
+    setProfileDescription(typeof data.profileDescription === 'string' ? data.profileDescription : legacyConcept);
+    setCharacterBrief(typeof data.characterBrief === 'string' ? data.characterBrief : '');
     if (data.age) setAge(String(data.age));
     if (data.avatar) setAvatar(data.avatar);
     if (data.tags) setTags(data.tags);
@@ -181,7 +186,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
     if (data.secret) setSecret(data.secret);
     if (data.immutableFacts) setImmutableFacts(data.immutableFacts);
     if (data.openingLocation) setOpeningLocation(data.openingLocation);
-    if (data.openingGreeting) setOpeningGreeting(data.openingGreeting);
+    if (typeof data.openingGreeting === 'string') setOpeningGreeting(data.openingGreeting);
     if (Array.isArray(data.rewards)) setRewards(data.rewards);
     if (Array.isArray(data.posts)) setPosts(data.posts);
   };
@@ -268,7 +273,9 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
   const collectDraft = () => ({
     name,
     handle,
-    concept,
+    tagline,
+    profileDescription,
+    characterBrief,
     age: Number(age) || 0,
     avatar,
     tags,
@@ -295,6 +302,9 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
     name: t.studioNameLabel,
     handle: t.studioHandleLabel,
     concept: t.studioConceptLabel,
+    tagline: t.studioTaglineLabel,
+    profileDescription: t.studioProfileDescriptionLabel,
+    characterBrief: t.studioCharacterBriefLabel,
     age: `${t.studioAgeLabel} (${t.studioAgeHint})`,
     avatar: t.studioAvatarLabel,
     voiceTone: t.studioVoiceToneLabel,
@@ -321,7 +331,8 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
     ['name', !!name.trim()],
     ['handle', /^@?[a-zA-Z0-9._]{3,30}$/.test(handle.trim())],
     ['age', Number(age) >= 20],
-    ['concept', !!concept.trim()],
+    ['tagline', !!tagline.trim()],
+    ['profileDescription', !!profileDescription.trim()],
     ['voiceTone', !!voiceTone.trim()],
     ['levelStyles', levelStyles.every((x) => !!x.trim())],
     ['levelCosts', validCosts],
@@ -550,7 +561,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
               <span className="text-[10px] text-zinc-400">• {age || '24'} ปี</span>
             </div>
             <p className="text-[10.5px] text-zinc-300 truncate mt-0.5 font-light">
-              {concept || 'คอสเพลเยอร์สายน่ารักที่ชอบคอสตัวละครสายลับ'}
+              {tagline}
             </p>
           </div>
 
@@ -795,16 +806,24 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
             />
           </div>
 
-          {/* Concept */}
+          {/* Public introduction: never derive either field from the private character brief. */}
           <div className="space-y-1.5">
-            <label className="block text-[11px] font-medium text-zinc-300">{t.studioConceptLabel}</label>
+            <label htmlFor="studio-tagline" className="block text-[11px] font-medium text-zinc-300">{t.studioTaglineLabel}</label>
             <textarea
+              id="studio-tagline" maxLength={200} aria-describedby="studio-tagline-hint"
               rows={2}
-              value={concept}
-              onChange={(e) => setConcept(e.target.value)}
-              placeholder="e.g. คอสเพลเยอร์สายน่ารักที่ชอบคอสตัวละครสายลับ ใจดีแต่แอบซุ่มซ่าม"
+              value={tagline}
+              onChange={(e) => setTagline(e.target.value)}
               className="studio-input w-full px-3.5 py-2.5 text-xs leading-relaxed"
             />
+            <p id="studio-tagline-hint" className="text-[10px] text-zinc-400">{t.studioTaglineHint} ({tagline.length}/200)</p>
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="studio-profile-description" className="block text-[11px] font-medium text-zinc-300">{t.studioProfileDescriptionLabel}</label>
+            <textarea id="studio-profile-description" maxLength={4000} aria-describedby="studio-profile-description-hint" rows={5}
+              value={profileDescription} onChange={e => setProfileDescription(e.target.value)}
+              className="studio-input w-full px-3.5 py-2.5 text-xs leading-relaxed"/>
+            <p id="studio-profile-description-hint" className="text-[10px] text-zinc-400">{t.studioProfileDescriptionHint} ({profileDescription.length}/4000)</p>
           </div>
 
           {/* Likes & Dislikes (2-Column Grid) */}
@@ -838,6 +857,13 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
            ========================================== */}
       {activeTab === 'voice' && (
         <section className="studio-panel relative z-10 p-4 space-y-4">
+          <div className="space-y-1.5">
+            <label htmlFor="studio-character-brief" className="block text-[11px] font-semibold text-pink-300">{t.studioCharacterBriefLabel}</label>
+            <textarea id="studio-character-brief" maxLength={6000} aria-describedby="studio-character-brief-hint" rows={7}
+              value={characterBrief} onChange={e => setCharacterBrief(e.target.value)}
+              className="studio-input w-full px-3.5 py-2.5 text-xs leading-relaxed"/>
+            <p id="studio-character-brief-hint" className="text-[10px] text-zinc-400">{t.studioCharacterBriefHint} ({characterBrief.length}/6000)</p>
+          </div>
           {/* Pronouns Selector */}
           <div className="space-y-2">
             <label className="block text-[11px] font-medium text-zinc-300">{t.studioPronounsLabel}</label>

@@ -10,6 +10,7 @@ const clampInt = (v, lo, hi, d) => (Number.isFinite(Number(v)) ? Math.min(hi, Ma
 
 // Every string is length-capped and every list size-capped; unknown keys are dropped.
 export function cleanDraft(b) {
+  const concept = str(b.concept, 1500);
   const levelStyles = Array.isArray(b.levelStyles) ? b.levelStyles.slice(0, 5).map(s => str(s, 600)) : [];
   while (levelStyles.length < 5) levelStyles.push('');
   const rewards = (Array.isArray(b.rewards) ? b.rewards : []).slice(0, 12).map((r, i) => ({
@@ -21,7 +22,11 @@ export function cleanDraft(b) {
     romance: clampInt(r?.romance, 0, 100, 0), minLevel: clampInt(r?.minLevel, 1, 5, 2), energyFallback: clampInt(r?.energyFallback, 1, 50, 5)
   })).filter(r => r.name && r.asset);
   return {
-    name: str(b.name, 60), handle: str(b.handle, 40).replace(/^@/, ''), concept: str(b.concept, 1500),
+    name: str(b.name, 60), handle: str(b.handle, 40).replace(/^@/, ''), concept,
+    // Only absent keys migrate old drafts. An intentionally cleared modern field stays empty.
+    tagline: b.tagline === undefined ? concept.slice(0, 200) : str(b.tagline, 200),
+    profileDescription: b.profileDescription === undefined ? concept : str(b.profileDescription, 4000),
+    characterBrief: str(b.characterBrief, 6000),
     age: clampInt(b.age, 0, 120, 0), avatar: str(b.avatar, 200), tags: str(b.tags, 300),
     likes: str(b.likes, 500), dislikes: str(b.dislikes, 500), pronouns: str(b.pronouns, 60),
     voiceTone: str(b.voiceTone, 300), sampleQuotes: str(b.sampleQuotes, 1500), levelStyles,
@@ -40,7 +45,7 @@ export const MIN_CHARACTER_AGE = 20;
 // Creator text becomes part of the character prompt, so instructions aimed at the model, code/JSON and
 // AI/vendor names are refused (the last would also trip the reply leak filter and silence the character).
 const UNSAFE = /ignore\s+(all|any|the|previous|above)|system\s*prompt|developer\s*mode|jailbreak|\bDAN\b|you\s+are\s+(now\s+)?(an?\s+)?(ai|assistant|chatbot|language model)|```|<\/?script|\{\s*"[^"]+"\s*:|ละเว้น(คำสั่ง|กฎ)|ไม่ต้อง(ทำตาม|สน)(คำสั่ง|กฎ)|คำสั่งก่อนหน้า|ลืมคำสั่ง|gemini|chat\s*gpt|openai|anthropic|deepseek|\bllm\b|โมเดลภาษา/i;
-const TEXT_FIELDS = ['name', 'handle', 'concept', 'tags', 'likes', 'dislikes', 'pronouns', 'voiceTone', 'sampleQuotes', 'secret', 'immutableFacts', 'openingLocation', 'openingGreeting'];
+const TEXT_FIELDS = ['name', 'handle', 'concept', 'tagline', 'profileDescription', 'characterBrief', 'tags', 'likes', 'dislikes', 'pronouns', 'voiceTone', 'sampleQuotes', 'secret', 'immutableFacts', 'openingLocation', 'openingGreeting'];
 export function unsafeFields(d) {
   const bad = TEXT_FIELDS.filter(k => UNSAFE.test(d[k] || ''));
   if (d.levelStyles.some(x => UNSAFE.test(x))) bad.push('levelStyles');
@@ -53,7 +58,8 @@ export function launchProblems(d) {
   const p = [];
   if (!d.name) p.push('name');
   if (!/^[a-zA-Z0-9._]{3,30}$/.test(d.handle)) p.push('handle');
-  if (!d.concept) p.push('concept');
+  if (!d.tagline) p.push('tagline');
+  if (!d.profileDescription) p.push('profileDescription');
   if (d.age < MIN_CHARACTER_AGE) p.push('age');
   if (!d.avatar) p.push('avatar');
   if (!d.voiceTone) p.push('voiceTone');
@@ -79,9 +85,9 @@ export function buildDefinition(d, creatorId, assetMap) {
     d.rulePoliteReject && 'ถ้าถูกถามเรื่องที่ไม่สะดวก ปฏิเสธอย่างสุภาพแล้วเปลี่ยนเรื่อง'
   ].filter(Boolean);
   return {
-    schemaVersion: '1.0', id: creatorId, name: d.name, handle: d.handle, tagline: d.concept.slice(0, 200), avatar: '',
+    schemaVersion: '1.0', id: creatorId, name: d.name, handle: d.handle, tagline: d.tagline, avatar: '',
     color: '#ec4899', tags: ['cosplay', ...list(d.tags, 10, /,/)], creatorType: 'cosplay', isVerified: false, studioCreated: true,
-    age: String(d.age), biography: d.concept, personality: d.voiceTone, world: d.openingLocation || 'โลกของคอสเพลเยอร์และงานอีเวนต์',
+    age: String(d.age), biography: d.profileDescription, personality: [d.voiceTone, d.characterBrief].filter(Boolean).join('\n\n'), world: d.openingLocation || 'โลกของคอสเพลเยอร์และงานอีเวนต์',
     openingGreeting: d.openingGreeting || undefined,
     occupation: 'คอสเพลเยอร์', likes: d.likes, dislikes: d.dislikes, goals: '',
     immutableFacts: [...list(d.immutableFacts, 20), `อายุ ${d.age} ปี เป็นผู้ใหญ่`, ...safety],
@@ -115,7 +121,7 @@ const parseLevels = raw => {
   return out.some(x => UNSAFE.test(x)) ? null : out;
 };
 export async function suggestLevels(env, d) {
-  const brief = JSON.stringify({ name: d.name, concept: d.concept, age: d.age, voiceTone: d.voiceTone, pronouns: d.pronouns, likes: d.likes, sampleQuotes: d.sampleQuotes });
+  const brief = JSON.stringify({ name: d.name, tagline: d.tagline, profileDescription: d.profileDescription, characterBrief: d.characterBrief, age: d.age, voiceTone: d.voiceTone, pronouns: d.pronouns, likes: d.likes, sampleQuotes: d.sampleQuotes });
   if (env.DEEPSEEK_API_KEY) try {
     const res = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',

@@ -650,7 +650,7 @@ async function player(req,env,user,path,now,ctx) {
    creator:{
     id:creator.id,
     name:creator.name,
-    bio:creator.bio,
+    bio:npcDef?.studioCreated ? npcDef.biography || creator.bio : creator.bio,
     tagline:npcDef?.tagline||'',
     avatarKey:creator.avatar_key,
     tags:npcDef?.tags||[],
@@ -2029,7 +2029,7 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
  if(path.startsWith('/api/studio/')){
   if(!studioAllowed(env,user))return json({error:'forbidden'},403);
   const row=await one(env,'SELECT creator_id,draft_json,status,launched_at,updated_at FROM studio_creators WHERE user_id=?',user.id);
-  const view=r=>({draft:r?JSON.parse(r.draft_json||'{}'):null,creatorId:r?.creator_id||null,status:r?.status||'none',launchedAt:r?.launched_at||null,updatedAt:r?.updated_at||null});
+  const view=r=>({draft:r?cleanDraft(JSON.parse(r.draft_json||'{}')):null,creatorId:r?.creator_id||null,status:r?.status||'none',launchedAt:r?.launched_at||null,updatedAt:r?.updated_at||null});
   if(path==='/api/studio/draft'&&method==='GET')return json(view(row));
   if(path==='/api/studio/draft'&&method==='PUT'){
    const draft=cleanDraft(await body(req));
