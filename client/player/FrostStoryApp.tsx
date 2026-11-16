@@ -10,6 +10,7 @@ import { type Energy, type User, type Creator, type Post, type Story, type AiCha
 import { ApiError, api, createFollowSync } from './api';
 import { ChatComposer, media, AvatarImg, hasSpokenDialogue, renderBubbleContent, json, StoryContent, Modal, getAvatarSrc } from './ui';
 import { ProfileSetupModal } from './overlays/ProfileSetupModal';
+import { ClosedBetaGateModal } from './overlays/ClosedBetaGateModal';
 import { BugReportModal } from './overlays/BugReportModal';
 import { CliffhangerOfferModal, type CliffhangerOffer } from './overlays/CliffhangerOfferModal';
 import { UnlockEpisodeModal } from './overlays/UnlockEpisodeModal';
@@ -80,6 +81,7 @@ export function FrostStoryApp() {
   // the dashboard at all, because the data it would show lives in the staging isolate.
   const [analyticsOrigin, setAnalyticsOrigin] = useState('');
   const [studioGate, setStudioGate] = useState(false);
+  const [closedBetaBlocked, setClosedBetaBlocked] = useState(false);
   const [creatorUid, setCreatorUid] = useState<string | null>(null);
   const routerRef = useRef<ReturnType<typeof createRouter> | null>(null);
   if (!routerRef.current && typeof window !== 'undefined') {
@@ -530,9 +532,11 @@ export function FrostStoryApp() {
   const followSyncRef = useRef(createFollowSync());
 
   const loadMe = useCallback(async () => {
-    const result = await api<{ user: User; energy: Energy; uiFlags?: { homeHubV1?: boolean; cosplayStudioV1?: boolean; cosplayStudioGate?: boolean; cosplayCreatorUid?: string | null; cosplayAnalyticsOrigin?: string } }>('/api/me');
+    const result = await api<{ user: User; energy: Energy; betaAccess?: boolean; closedBeta?: boolean; uiFlags?: { homeHubV1?: boolean; cosplayStudioV1?: boolean; cosplayStudioGate?: boolean; cosplayCreatorUid?: string | null; cosplayAnalyticsOrigin?: string } }>('/api/me');
     setUser(result.user);
     setEnergy(result.energy);
+    const isBetaBlocked = result.closedBeta === true && (result.betaAccess === false || result.user?.betaAccess === false);
+    setClosedBetaBlocked(isBetaBlocked);
     const hub = result.uiFlags?.homeHubV1 === true;
     setHubOn(hub);
     const studio = result.uiFlags?.cosplayStudioV1 === true;
@@ -2619,6 +2623,14 @@ export function FrostStoryApp() {
               setSavingProfile(false);
             }
           }}
+        />
+      )}
+
+      {/* Closed Beta Gate Modal */}
+      {closedBetaBlocked && user && (
+        <ClosedBetaGateModal
+          lang={lang}
+          onUnlocked={loadMe}
         />
       )}
 

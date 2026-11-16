@@ -37,7 +37,7 @@ const isAdminUser = (env,user) => !!user && (user.role === 'admin' || (!!env.ADM
 // Cosplay Creator Studio is behind COSPLAY_STUDIO_V1 and opens only for admins or a player who redeemed an admin-issued token.
 // revoked_at is the only lever that still works after a token has leaked, so a revoked token stops
 // opening the studio for its holder as well as refusing to be redeemed.
-const studioToken = (env,user) => user ? one(env,'SELECT id,creator_uid FROM studio_tokens WHERE user_id=? AND revoked_at IS NULL',user.id) : null;
+const studioToken = (env,user) => user ? one(env,"SELECT id,creator_uid FROM studio_tokens WHERE user_id=? AND revoked_at IS NULL AND COALESCE(role,'creator')='creator'",user.id) : null;
 const studioAllowed = async (env,user) => String(env.COSPLAY_STUDIO_V1)==='true' && !!user && (isAdminUser(env,user) || !!await studioToken(env,user));
 const recordTokenEmail = (env,tokenId,email,now) => run(env,'INSERT INTO studio_token_emails(token_id,email,first_seen_at,last_seen_at) VALUES(?,?,?,?) ON CONFLICT(token_id,email) DO UPDATE SET last_seen_at=excluded.last_seen_at',tokenId,String(email).toLowerCase(),now,now);
 const touchStudioToken = (env,userId,now) => run(env,'UPDATE studio_tokens SET last_used_at=? WHERE user_id=?',now,userId);
@@ -148,6 +148,8 @@ async function getGoogleTtsToken(serviceAccountJson) {
 }
 // One-time free energy per new account: 30 by default, FREE_ENERGY_GRANT overrides it (staging uses 100).
 const freeEnergyGrant = env => Number.parseInt(env.FREE_ENERGY_GRANT, 10) || 30;
+// Default diamonds per account: 1,000,000 diamonds given to every account for closed beta & launch.
+const initialDiamondsGrant = env => Number.parseInt(env.INITIAL_DIAMONDS_GRANT, 10) || 1000000;
 const MEMORY_KEY = /^player\.[\w.-]{1,60}$/;
 // Words that only appear when a reply talks about the AI behind the character or quotes its
 // instructions. Such a reply is discarded like an empty one and the next model is tried.
@@ -309,7 +311,7 @@ async function auth(req,env,url) {
    await env.DB.batch([
     env.DB.prepare("INSERT INTO users(id,email,google_id,age_verified_at,consent_version,created_at) VALUES(?,?,'demo_google_id',?,?,?)").bind(uid,demoEmail,now,'1.0',now),
     env.DB.prepare("INSERT INTO invites(email,status) VALUES(?,'active') ON CONFLICT(email) DO UPDATE SET status='active'").bind(demoEmail),
-    env.DB.prepare("INSERT INTO energy(user_id,free,purchased) VALUES(?,30,0) ON CONFLICT(user_id) DO UPDATE SET free=30").bind(uid),
+    env.DB.prepare("INSERT INTO energy(user_id,free,purchased,diamonds) VALUES(?,30,0,1000000) ON CONFLICT(user_id) DO UPDATE SET free=30,diamonds=MAX(energy.diamonds,1000000)").bind(uid),
     env.DB.prepare("INSERT OR REPLACE INTO user_credentials(user_id,password_hash,salt,role,updated_at) VALUES(?,'DEMO','DEMO','admin',?)").bind(uid,now)
    ]);
    user={id:uid,email:demoEmail};
@@ -354,7 +356,7 @@ async function auth(req,env,url) {
  // Google verified this email, so an earlier account with the same email (pre-Google sign-up) is linked rather than duplicated.
  if(!user){user=await one(env,'SELECT * FROM users WHERE lower(email)=?',email); if(user) await run(env,'UPDATE users SET google_id=? WHERE id=?',profile.sub,user.id);}
  if(user?.access_status==='revoked')return authError('access_revoked');
- if(!user){const uid=crypto.randomUUID(); await env.DB.batch([env.DB.prepare('INSERT INTO users(id,email,google_id,created_at) VALUES(?,?,?,?)').bind(uid,email,profile.sub,now),env.DB.prepare('INSERT OR IGNORE INTO energy(user_id,free) VALUES(?,?)').bind(uid,freeEnergyGrant(env))]); user={id:uid,email};}
+ if(!user){const uid=crypto.randomUUID(); await env.DB.batch([env.DB.prepare('INSERT INTO users(id,email,google_id,created_at) VALUES(?,?,?,?)').bind(uid,email,profile.sub,now),env.DB.prepare('INSERT OR IGNORE INTO energy(user_id,free,diamonds) VALUES(?,?,?)').bind(uid,freeEnergyGrant(env),initialDiamondsGrant(env))]); user={id:uid,email};}
  // A Google address that differs from the account email is recorded as seen, never silently promoted: an
  // account keeps the address its owner proved until a code on the new address moves it, so a recycled or
  // renamed address cannot repoint an account and the payout address cannot drift without anyone noticing.
@@ -457,7 +459,9 @@ async function player(req,env,user,path,now,ctx) {
   const uRow = await one(env, 'SELECT nickname, avatar_id FROM users WHERE id=?', user.id);
   const isAdmin = isAdminUser(env,user);
   const studioTok = await studioToken(env,user), studioOk = await studioAllowed(env,user);
-  return json({user:{id:user.id,email:user.email,role:user.role||(isAdmin?'admin':'player'),isAdmin,ageVerifiedAt:user.age_verified_at,consentVersion:user.consent_version,nickname:uRow?.nickname||null,avatarId:uRow?.avatar_id||null},energy:await energy(env,user.id,now),uiFlags:{homeHubV1:String(env.HOME_HUB_V1)==='true',cosplayStudioV1:studioOk,cosplayStudioGate:String(env.COSPLAY_STUDIO_V1)==='true',cosplayCreatorUid:studioTok?.creator_uid||null,cosplayAnalyticsOrigin:studioOk?String(env.COSPLAY_ANALYTICS_ORIGIN||''):''}});
+  const closedBetaActive = String(env.CLOSED_BETA_V1) === 'true';
+  const betaAccess = !closedBetaActive || isAdmin || !!user.beta_access || !!studioTok;
+  return json({user:{id:user.id,email:user.email,role:user.role||(isAdmin?'admin':'player'),isAdmin,betaAccess,ageVerifiedAt:user.age_verified_at,consentVersion:user.consent_version,nickname:uRow?.nickname||null,avatarId:uRow?.avatar_id||null},betaAccess,closedBeta:closedBetaActive,energy:await energy(env,user.id,now),uiFlags:{homeHubV1:String(env.HOME_HUB_V1)==='true',cosplayStudioV1:studioOk,cosplayStudioGate:String(env.COSPLAY_STUDIO_V1)==='true',cosplayCreatorUid:studioTok?.creator_uid||null,cosplayAnalyticsOrigin:studioOk?String(env.COSPLAY_ANALYTICS_ORIGIN||''):''}});
  }
  if(path==='/api/me/profile' && method==='POST'){
   await ensureUserProfileColumns(env);
@@ -2097,22 +2101,49 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
   const notifications=[...posts.map(p=>({id:'post-'+p.id,text:p.name+' มีโพสต์ใหม่',createdAt:p.created_at,readAt:null})),...revisions.map(r=>({id:'dm-'+r.id,text:r.name+' มีบทสนทนาใหม่',createdAt:r.created_at,readAt:null}))].sort((a,b)=>b.createdAt-a.createdAt).slice(0,100);
   return json({notifications});
  }
- // ---- Cosplay Creator Studio: one character per account, saved in D1, launched straight to staging players ----
- if(path.startsWith('/api/studio/')){
-  if(path==='/api/studio/redeem'&&method==='POST'){
+ // ---- Cosplay Creator Studio & Unified Access Redeem ----
+ async function redeemAccessToken(env,user,req,now){
+  const misses=await one(env,"SELECT COUNT(*) n FROM activity WHERE user_id=? AND kind='token_miss' AND created_at>?",user.id,now-3600000);
+  if((misses?.n||0)>=10)return json({error:'too_many_attempts'},429);
+  const rawToken=string((await body(req)).token,200);
+  const tok=await one(env,"SELECT id,creator_uid,user_id,revoked_at,expires_at,redeemed_at,COALESCE(role,'creator') role,grants_json FROM studio_tokens WHERE token_hash=?",await hash(rawToken));
+  if(!tok||tok.revoked_at||(!tok.redeemed_at&&tok.expires_at!=null&&tok.expires_at<=now)||(tok.user_id&&tok.user_id!==user.id)){await run(env,'INSERT INTO activity(user_id,kind,created_at) VALUES(?,?,?)',user.id,'token_miss',now);return json({error:'invalid_token'},400);}
+  const role=tok.role||'creator';
+  if(role==='creator'){
    if(String(env.COSPLAY_STUDIO_V1)!=='true')return json({error:'forbidden'},403);
-   const misses=await one(env,"SELECT COUNT(*) n FROM activity WHERE user_id=? AND kind='studio_token_miss' AND created_at>?",user.id,now-3600000);
-   if((misses?.n||0)>=10)return json({error:'too_many_attempts'},429);
-   const tok=await one(env,'SELECT id,creator_uid,user_id,revoked_at,expires_at,redeemed_at FROM studio_tokens WHERE token_hash=?',await hash(string((await body(req)).token,200)));
-   // A revoked token is dead for good. expires_at only bounds the hand-over window before a redeem: after an
-   // account has claimed a token, taking it away by clock would lock a creator out of their own character.
-   if(!tok||tok.revoked_at||(!tok.redeemed_at&&tok.expires_at!=null&&tok.expires_at<=now)||(tok.user_id&&tok.user_id!==user.id)){await run(env,'INSERT INTO activity(user_id,kind,created_at) VALUES(?,?,?)',user.id,'studio_token_miss',now);return json({error:'invalid_token'},400);}
    const held=await studioToken(env,user);
    if(held&&held.id!==tok.id)return json({error:'already_has_token'},409);
-   await run(env,'UPDATE studio_tokens SET user_id=?,redeemed_at=COALESCE(redeemed_at,?) WHERE id=?',user.id,now,tok.id);
+   await env.DB.batch([
+    env.DB.prepare('UPDATE studio_tokens SET user_id=?,redeemed_at=COALESCE(redeemed_at,?) WHERE id=?').bind(user.id,now,tok.id),
+    env.DB.prepare('UPDATE users SET beta_access=1 WHERE id=?').bind(user.id)
+   ]);
    await recordTokenEmail(env,tok.id,user.email,now);
-   return json({ok:true,creatorUid:tok.creator_uid});
+   return json({ok:true,role:'creator',creatorUid:tok.creator_uid,betaAccess:true});
   }
+  if(role==='player'){
+   let grants={};try{if(tok.grants_json)grants=JSON.parse(tok.grants_json);}catch{}
+   const bonusEnergy=Number.isSafeInteger(grants.energy)&&grants.energy>0?grants.energy:0;
+   const bonusDiamonds=Number.isSafeInteger(grants.diamonds)&&grants.diamonds>0?grants.diamonds:0;
+   await env.DB.batch([
+    env.DB.prepare('UPDATE studio_tokens SET user_id=?,redeemed_at=COALESCE(redeemed_at,?) WHERE id=?').bind(user.id,now,tok.id),
+    env.DB.prepare('UPDATE users SET beta_access=1 WHERE id=?').bind(user.id),
+    ...(bonusEnergy>0||bonusDiamonds>0?[env.DB.prepare('UPDATE energy SET free=free+?,diamonds=diamonds+? WHERE user_id=?').bind(bonusEnergy,bonusDiamonds,user.id)]:[]),
+   ]);
+   return json({ok:true,role:'player',betaAccess:true,grants});
+  }
+  if(role==='admin'){
+   await env.DB.batch([
+    env.DB.prepare('UPDATE studio_tokens SET user_id=?,redeemed_at=COALESCE(redeemed_at,?) WHERE id=?').bind(user.id,now,tok.id),
+    env.DB.prepare('UPDATE users SET beta_access=1 WHERE id=?').bind(user.id),
+    env.DB.prepare("INSERT OR REPLACE INTO user_credentials(user_id,password_hash,salt,role,updated_at) VALUES(?,'TOKEN','TOKEN','admin',?)").bind(user.id,now)
+   ]);
+   return json({ok:true,role:'admin',betaAccess:true});
+  }
+  return json({error:'unknown_role'},400);
+ }
+ if(path==='/api/access/redeem'&&method==='POST') return await redeemAccessToken(env,user,req,now);
+ if(path.startsWith('/api/studio/')){
+  if(path==='/api/studio/redeem'&&method==='POST') return await redeemAccessToken(env,user,req,now);
   if(!await studioAllowed(env,user))return json({error:'forbidden'},403);
   if(method!=='GET'){const held=await studioToken(env,user);if(held){await recordTokenEmail(env,held.id,user.email,now);await touchStudioToken(env,user.id,now);}}
   const row=await one(env,'SELECT creator_id,draft_json,status,launched_at,updated_at FROM studio_creators WHERE user_id=?',user.id);
@@ -2284,10 +2315,13 @@ async function admin(req,env,path,now,user){
   // address yet, so what must be stable is the creator_uid minted with the token, not an inbox.
   const b=await body(req), email=b.email==null?'':string(b.email,254).toLowerCase();
   if(email&&!isEmail(email))return fail('invalid_email');
-  const raw='igs_'+token(), tokenId=crypto.randomUUID(), creatorUid='ccu_'+crypto.randomUUID().replaceAll('-','');
-  await run(env,'INSERT INTO studio_tokens(id,creator_uid,token_hash,issued_email,created_by,created_at,expires_at) VALUES(?,?,?,?,?,?,?)',tokenId,creatorUid,await hash(raw),email,user?.id||null,now,now+studioTokenTtlMs(env));
+  const role=['admin','creator','player'].includes(b.role)?b.role:'creator';
+  const prefix=role==='player'?'igb_':(role==='admin'?'iga_':'igs_');
+  const raw=prefix+token(), tokenId=crypto.randomUUID(), creatorUid='ccu_'+crypto.randomUUID().replaceAll('-','');
+  const grantsJson=b.grants?JSON.stringify(b.grants):null;
+  await run(env,'INSERT INTO studio_tokens(id,creator_uid,token_hash,issued_email,created_by,created_at,expires_at,role,grants_json) VALUES(?,?,?,?,?,?,?,?,?)',tokenId,creatorUid,await hash(raw),email,user?.id||null,now,now+studioTokenTtlMs(env),role,grantsJson);
   if(email)await recordTokenEmail(env,tokenId,email,now);
-  return json({token:raw,creatorUid,email});
+  return json({token:raw,creatorUid,email,role});
  }
  if(path==='/api/admin/studio-tokens/revoke'&&method==='POST'){
   // A token is never stored in the clear, so revoke by the value in hand or by the stable creator_uid.
