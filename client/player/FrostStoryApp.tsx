@@ -573,7 +573,20 @@ export function FrostStoryApp() {
     let active = true;
     (async () => {
       try {
-        const me = await loadMe();
+        let me = await loadMe();
+        const pendingToken = typeof window !== 'undefined' ? sessionStorage.getItem('instagoon_pending_token') : null;
+        if (pendingToken) {
+          try {
+            await api('/api/access/redeem', {
+              method: 'POST',
+              body: JSON.stringify({ token: pendingToken.trim() }),
+            });
+            sessionStorage.removeItem('instagoon_pending_token');
+            me = await loadMe();
+          } catch (err) {
+            console.warn('Auto-redeem pending invite token failed:', err);
+          }
+        }
         if (me.ageVerifiedAt) await loadFeed();
       } catch (e) {
         if (active && !(e instanceof ApiError && e.status === 401))
