@@ -21,6 +21,7 @@ import { media } from '../ui';
 import { resizeImageToStandard } from '../lib/image-resizer';
 import { api } from '../api';
 import './cosplay-studio.css';
+import { AiReferenceField } from '../components/AiReferenceField';
 
 interface CosplayCreatorTabProps {
   lang: Lang;
@@ -77,6 +78,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
   const [tagline, setTagline] = useState('มาแบ่งปันโลกคอสเพลย์ไปด้วยกันนะ');
   const [profileDescription, setProfileDescription] = useState('คอสเพลเยอร์ที่ชอบทำชุดด้วยตัวเอง ยินดีแบ่งปันเบื้องหลังการทำงานและพูดคุยเรื่องคอสเพลย์กับทุกคน');
   const [characterBrief, setCharacterBrief] = useState('');
+  const [referenceBiography, setReferenceBiography] = useState('');
   const [age, setAge] = useState('24');
   const [studio, setStudio] = useState<StudioState>({ draft: null, creatorId: null, status: 'none' });
   const [busyAction, setBusyAction] = useState<'' | 'save' | 'launch' | 'unpublish'>('');
@@ -169,6 +171,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
     setTagline(typeof data.tagline === 'string' ? data.tagline : legacyConcept.slice(0, 200));
     setProfileDescription(typeof data.profileDescription === 'string' ? data.profileDescription : legacyConcept);
     setCharacterBrief(typeof data.characterBrief === 'string' ? data.characterBrief : '');
+    setReferenceBiography(typeof data.referenceBiography === 'string' ? data.referenceBiography : '');
     if (data.age) setAge(String(data.age));
     if (data.avatar) setAvatar(data.avatar);
     if (data.tags) setTags(data.tags);
@@ -276,6 +279,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
     tagline,
     profileDescription,
     characterBrief,
+    referenceBiography,
     age: Number(age) || 0,
     avatar,
     tags,
@@ -305,6 +309,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
     tagline: t.studioTaglineLabel,
     profileDescription: t.studioProfileDescriptionLabel,
     characterBrief: t.studioCharacterBriefLabel,
+    referenceBiography: t.studioReferenceBiographyLabel,
     age: `${t.studioAgeLabel} (${t.studioAgeHint})`,
     avatar: t.studioAvatarLabel,
     voiceTone: t.studioVoiceToneLabel,
@@ -857,6 +862,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
            ========================================== */}
       {activeTab === 'voice' && (
         <section className="studio-panel relative z-10 p-4 space-y-4">
+          <AiReferenceField lang={lang} value={referenceBiography} onChange={setReferenceBiography}/>
           <div className="space-y-1.5">
             <label htmlFor="studio-character-brief" className="block text-[11px] font-semibold text-pink-300">{t.studioCharacterBriefLabel}</label>
             <textarea id="studio-character-brief" maxLength={6000} aria-describedby="studio-character-brief-hint" rows={7}
