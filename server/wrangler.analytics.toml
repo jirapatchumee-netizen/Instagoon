@@ -14,8 +14,9 @@ database_name = "instagoon-staging"
 database_id = "386f836c-5bb7-4eb2-a1b0-87dfd85fa5e6"
 
 # No [assets] and no [triggers]: this Worker serves one JSON path and nothing else.
-# Reachable only when the owner attaches an entry point, e.g.
-#   routes = [{ pattern = "analytics-staging.instagoon.app", custom_domain = true }]
+# The staging UI reads it from its own origin. It is deliberately NOT deployed by the production
+# job in .github/workflows/deploy-instagoon.yml, so no production build can point at this plane.
+routes = [{ pattern = "analytics-staging.instagoon.app", custom_domain = true }]
 
 [vars]
 # Absent or any other value = 503, so an unconfigured deploy cannot leak numbers.
@@ -26,6 +27,7 @@ ANALYTICS_SOURCE = "instagoon-staging"
 # Keep it in step with COSPLAY_ANALYTICS_ORIGIN in wrangler.staging.toml.
 ANALYTICS_ALLOWED_ORIGIN = "https://staging.instagoon.app"
 
-# ANALYTICS_EMAILS (who may read) and any future key are Secrets, never vars, because the repo is
-# public (ADR-0018 D1):
-#   npx wrangler secret put ANALYTICS_EMAILS --config wrangler.analytics.toml
+# ANALYTICS_EMAILS (who may read) is a Secret, not a var, and the staging CI job sets it on every
+# deploy from STAGING_EMAILS in wrangler.staging.toml, so the two allowlists cannot drift apart.
+# To do it by hand instead:
+#   printf '%s' 'someone@example.com' | npx wrangler secret put ANALYTICS_EMAILS --config wrangler.analytics.toml
