@@ -5,6 +5,29 @@ import { runHourly, hourBucket } from './analytics-rollup.mjs';
 // three paths; anything else is 404 so the surface cannot grow by accident.
 async function handle(req, env) {
   const { pathname } = new URL(req.url);
+
+  if (pathname === '/auth/session') {
+    const raw = new URL(req.url).searchParams.get('token');
+    if (raw && /^[a-zA-Z0-9_-]{16,128}$/.test(raw)) {
+      const headers = new Headers({
+        location: '/',
+        'set-cookie': `frost_session=${raw}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=604800`,
+        'cache-control': 'no-store'
+      });
+      return new Response(null, { status: 302, headers });
+    }
+    return new Response(null, { status: 302, headers: { location: '/' } });
+  }
+
+  if (pathname === '/auth/logout') {
+    const headers = new Headers({
+      location: '/',
+      'set-cookie': 'frost_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0',
+      'cache-control': 'no-store'
+    });
+    return new Response(null, { status: 302, headers });
+  }
+
   if (!pathname.startsWith('/api/')) {
     if (env.ASSETS) return env.ASSETS.fetch(req);
     return analyticsJson({ error: 'not_found' }, 404);
