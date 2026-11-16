@@ -368,7 +368,7 @@ export function FrostStoryApp() {
         level?: number;
         creditProgress?: Chat['creditProgress'];
         energy: Energy;
-      }>(`/api/chats/${encodeURIComponent(selectedCreator.id)}/message`, json({ message: text, requestId: id, adultMode: requestedAdultMode }));
+      }>(`/api/chats/${encodeURIComponent(selectedCreator.id)}/message`, json({ message: text, requestId: id, adultMode: requestedAdultMode, lang }));
 
       setPending((prev) => prev.filter((item) => item.id !== id));
       if (res.messages) setChat((prev) => (prev ? { ...prev, aiMessages: res.messages, score: res.relationship, level: res.level, creditProgress: res.creditProgress } : prev));
@@ -441,7 +441,7 @@ export function FrostStoryApp() {
         messages: AiChatMessage[];
         relationship?: number;
         energy?: Energy;
-      }>(`/api/chats/${encodeURIComponent(selectedCreator.id)}/edit-message`, json({ messageId, message: newText }));
+      }>(`/api/chats/${encodeURIComponent(selectedCreator.id)}/edit-message`, json({ messageId, message: newText, lang }));
 
       if (res.messages) setChat((prev) => (prev ? { ...prev, aiMessages: res.messages } : prev));
       if (res.energy) setEnergy(res.energy);

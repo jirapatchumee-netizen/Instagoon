@@ -36,7 +36,7 @@ export function LoginScreen({
   );
 
   const initialPathCreator = window.location.pathname.replace(/^\//, '').toLowerCase();
-  const [selectedCreatorId, setSelectedCreatorId] = useState<string | null>(() => {
+  const [selectedCreatorId] = useState<string | null>(() => {
     return creatorPreviews[initialPathCreator] ? initialPathCreator : null;
   });
 
@@ -53,16 +53,6 @@ export function LoginScreen({
       });
     }
   }, [selectedCreatorId]);
-
-  const handleSelectCreator = (creatorId: string) => {
-    const nextId = selectedCreatorId === creatorId ? null : creatorId;
-    setSelectedCreatorId(nextId);
-    if (nextId) {
-      window.history.pushState(null, '', `/${nextId}`);
-    } else {
-      window.history.pushState(null, '', '/');
-    }
-  };
 
   const handleLoginClick = () => {
     if (typeof (window as unknown as { gtag?: (...args: unknown[]) => void }).gtag === 'function') {
@@ -99,35 +89,6 @@ export function LoginScreen({
             <span key={line}>{line}</span>
           ))}
         </h1>
-
-        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginBottom: '14px' }}>
-          {Object.values(creatorPreviews).map(c => {
-            const isSelected = selectedCreatorId === c.id;
-            return (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => handleSelectCreator(c.id)}
-                style={{
-                  background: isSelected ? 'rgba(244, 63, 94, 0.2)' : 'rgba(255, 255, 255, 0.05)',
-                  border: isSelected ? '1px solid #f43f5e' : '1px solid rgba(255, 255, 255, 0.1)',
-                  borderRadius: '999px',
-                  color: isSelected ? '#fb7185' : '#cbd5e1',
-                  padding: '4px 12px',
-                  fontSize: '12px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <span>{c.emoji}</span>
-                <span>{c.name}</span>
-              </button>
-            );
-          })}
-        </div>
 
         <div className="fs-login-preview" aria-hidden="true">
           <div className="fs-login-preview-head">

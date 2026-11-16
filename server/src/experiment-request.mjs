@@ -23,7 +23,8 @@ export function findLastStoryTime(history = [], defaultTime = '12:15 น.') {
   return defaultTime;
 }
 
-export function buildExperimentRequest(npc, { history = [], userText, now, modePrompt = '', nickname = '' }) {
+export function buildExperimentRequest(npc, { history = [], userText, now, modePrompt = '', nickname = '', lang = 'th' }) {
+  const isEn = lang === 'en';
   const scene = npc.chatExperiment.presentation === SCENE_FORMAT_VERSION;
   const currentStoryTime = scene ? findLastStoryTime(history, npc.chatExperiment?.opening?.time || '12:15 น.') : '';
   const biography = nickname && typeof nickname === 'string' && nickname.trim()
@@ -32,6 +33,7 @@ export function buildExperimentRequest(npc, { history = [], userText, now, modeP
   return { model: npc.chatExperiment.model, ...EXPERIMENT_GENERATION,
     ...(scene ? { response_format: { type: 'json_object' } } : {}),
     messages: [{ role: 'system', content: biography },
+      ...(isEn ? [{ role: 'system', content: `Communicate and reply fluently in English as ${npc.name}, keeping the authentic personality and roleplay immersion.` }] : []),
       ...(modePrompt ? [{ role: 'system', content: modePrompt }] : []),
       ...(scene ? [{ role: 'system', content: SCENE_FORMAT_INSTRUCTION + '\nCurrent story time: ' + currentStoryTime }] : []),
       ...history.map(m => ({ role: m.role, content: m.content })), { role: 'user', content: userText }] };
