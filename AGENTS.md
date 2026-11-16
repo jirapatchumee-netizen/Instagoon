@@ -3,7 +3,7 @@
 > **Instagoon:** Simulation Instagram & AI Creator Dating Sim (`PUBLIC GitHub Repo`)
 > - 🌐 Sync Contract: [docs/MULTI_AGENT_SYNC_CONTRACT.md](docs/MULTI_AGENT_SYNC_CONTRACT.md) | 📖 GDD: [docs/INSTAGOON_GDD.md](docs/INSTAGOON_GDD.md)
 > - 🧠 AI Chat & Memory: [docs/AI_CHAT_MEMORY_DESIGN.md](docs/AI_CHAT_MEMORY_DESIGN.md) | 🎭 Persona Guideline: [docs/AI_CREATOR_PERSONA_GUIDELINE.md](docs/AI_CREATOR_PERSONA_GUIDELINE.md)
-> - 🛡️ Guardrails & Security Deep Dive: [docs/REPO_GUARDRAILS.md](docs/REPO_GUARDRAILS.md)
+> - 🛡️ Guardrails & Security Deep Dive: [docs/REPO_GUARDRAILS.md](docs/REPO_GUARDRAILS.md) | 📊 Analytics Plane: [docs/ANALYTICS_PLANE.md](docs/ANALYTICS_PLANE.md)
 
 ---
 
@@ -15,6 +15,8 @@
   - `content/` — `creators/`, `media/{assets|avatars|posts|stories}`
   - `packages/contracts/` — `npc/schema.ts` สคีมากลาง
   - `scripts/` — `build-content.mjs`, `validate-npc-bundle.mjs`, `guard-commit.mjs`
+- **Analytics Plane (`analytics.instagoon.app`):**
+  - AI Agent ทุกตัวรวมถึง Agent ของ Taychin (`taychinsgo`) มีสิทธิ์เต็มในการปรับปรุง UI (`client/analytics/`), บิลด์ (`pnpm --dir client build:analytics`) และ Deploy (`cd server && npx wrangler deploy --config wrangler.analytics.toml`) ขึ้น Production Analytics Worker โดยตรงตามคู่มือ [docs/ANALYTICS_PLANE.md](docs/ANALYTICS_PLANE.md)
 - **Dev & Verification Commands:**
   - Frontend: `pnpm dev` (`localhost:5173`) | Backend: `cd server && pnpm dev` (`localhost:8799`)
   - Verify before completion: `pnpm build:staging && pnpm test && node server/tests/api.mjs` (หากติด `ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY` ใน worktree ให้รัน `node --experimental-strip-types --test server/tests/*.test.mjs`)
