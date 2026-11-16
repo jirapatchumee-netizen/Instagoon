@@ -22,6 +22,8 @@ export const TRANSLATIONS = {
     loginInviteCodeValidAdmin: '✓ รหัสถูกต้อง: สิทธิ์ผู้ดูแลระบบ',
     loginInviteCodeInvalid: 'Token ไม่ถูกต้อง หมดอายุ หรือถูกใช้งานแล้ว',
     loginInviteCodeChecking: 'กำลังตรวจสอบ...',
+    loginGoogleLocked: 'ใส่ Invite Code เพื่อปลดล็อกเข้าสู่ระบบ',
+    loginExistingAccountBtn: 'เคยเปิดใช้งานสิทธิ์แล้ว? เข้าสู่ระบบด้วย Google',
     loginSecret: 'จริง ๆ แล้วมีเรื่องหนึ่งที่ไม่เคยบอกใครเลย',
     loginSecretLock: 'สนิทกันอีกนิดถึงจะเห็น',
     creatorPreviews: {
@@ -116,6 +118,7 @@ export const TRANSLATIONS = {
       email_not_verified: 'อีเมล Google นี้ยังไม่ได้ยืนยัน กรุณายืนยันแล้วลองอีกครั้ง',
       google_auth_failed: 'เชื่อมต่อ Google ไม่สำเร็จ กรุณาลองอีกครั้ง',
       invalid_oauth_state: 'หมดเวลาเข้าสู่ระบบ กรุณาลองอีกครั้ง',
+      closed_beta_required: 'ระบบอยู่ในช่วง Closed Beta กรุณาใส่ Invite Code ที่ถูกต้องก่อนเข้าสู่ระบบ',
     },
     consentTitle: 'ก่อนเริ่มเรื่องราว',
     consentDesc1:
@@ -537,6 +540,8 @@ export const TRANSLATIONS = {
     loginInviteCodeValidAdmin: '✓ Valid Token: Administrator Access',
     loginInviteCodeInvalid: 'Token is invalid, expired, or already used',
     loginInviteCodeChecking: 'Checking...',
+    loginGoogleLocked: 'Enter Invite Code to unlock sign-in',
+    loginExistingAccountBtn: 'Already activated? Sign in with Google',
     loginSecret: 'There’s something I’ve never told anyone…',
     loginSecretLock: 'Get closer to read this',
     creatorPreviews: {
@@ -631,6 +636,7 @@ export const TRANSLATIONS = {
       email_not_verified: 'This Google email is not verified. Verify it and try again.',
       google_auth_failed: 'Could not reach Google. Please try again.',
       invalid_oauth_state: 'Sign-in timed out. Please try again.',
+      closed_beta_required: 'Closed Beta in progress. Please enter a valid Invite Code before signing in.',
     },
     consentTitle: 'Before Beginning',
     consentDesc1:
@@ -1052,6 +1058,8 @@ export const TRANSLATIONS = {
     loginInviteCodeValidAdmin: '✓ 有効なトークン: 管理者アクセス',
     loginInviteCodeInvalid: 'トークンが無効、期限切れ、または使用済みです',
     loginInviteCodeChecking: '確認中...',
+    loginGoogleLocked: '招待コードを入力してログインを解除',
+    loginExistingAccountBtn: 'すでに有効化済みですか？ Google でログイン',
     loginSecret: 'ほんとうはね、誰にも言ったことがない話があるの',
     loginSecretLock: 'もっと仲良くなると読めます',
     creatorPreviews: {
@@ -1146,6 +1154,7 @@ export const TRANSLATIONS = {
       email_not_verified: 'この Google メールアドレスは未確認です。確認してからもう一度お試しください。',
       google_auth_failed: 'Google に接続できませんでした。もう一度お試しください。',
       invalid_oauth_state: 'ログインの有効期限が切れました。もう一度お試しください。',
+      closed_beta_required: 'クローズドベータテスト中です。ログインする前に有効な招待コードを入力してください。',
     },
     consentTitle: 'はじめる前に',
     consentDesc1:
