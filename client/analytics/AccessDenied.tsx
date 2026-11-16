@@ -55,12 +55,6 @@ export function AccessDenied({ type, message, onRetry }: Props) {
     }
   };
 
-  const handlePresetFill = (presetEmail: string, presetToken: string) => {
-    setEmail(presetEmail);
-    setToken(presetToken);
-    setErrorMsg(null);
-  };
-
   return (
     <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 bg-zinc-950 text-zinc-100 relative overflow-hidden">
       {/* Ambient Background Glows */}
@@ -138,32 +132,6 @@ export function AccessDenied({ type, message, onRetry }: Props) {
               </div>
             )}
 
-            {/* Quick Fill Admin Presets */}
-            <div className="p-3 rounded-2xl bg-zinc-900/60 border border-zinc-800/80 space-y-2">
-              <div className="flex items-center justify-between text-[11px] text-zinc-400">
-                <span className="font-medium">คลิกเติมข้อมูลอัตโนมัติ (Admin Quick Fill):</span>
-                <span className="text-[10px] text-zinc-500">ทั้ง 2 Checkpoints</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => handlePresetFill('jirapat.chumee@gmail.com', 'igx_59c6dd16a85d4e2db17063af8f39214620c11c502ea44604b52052cbc31a60e3')}
-                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-medium text-pink-300 hover:bg-zinc-800 hover:border-pink-500/40 transition"
-                >
-                  <ShieldCheck className="w-3.5 h-3.5 text-pink-400 shrink-0" />
-                  <span>Jirapat (Admin)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handlePresetFill('taychinsgo@gmail.com', 'igx_taychin_1ddfd8d99064419e8645011dfd1008b57ed9effdcb5146b99df5c7cd9adbae7c')}
-                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-medium text-purple-300 hover:bg-zinc-800 hover:border-purple-500/40 transition"
-                >
-                  <ShieldCheck className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-                  <span>Taychin (Admin)</span>
-                </button>
-              </div>
-            </div>
-
             {/* Dual Checkpoint Form */}
             <form onSubmit={handleDualSubmit} className="space-y-4">
               {/* Checkpoint 1: Gmail Input */}
@@ -182,7 +150,7 @@ export function AccessDenied({ type, message, onRetry }: Props) {
                   <input
                     type="email"
                     required
-                    placeholder="เช่น jirapat.chumee@gmail.com หรือ taychinsgo@gmail.com"
+                    placeholder="your-name@gmail.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-pink-500/60"
