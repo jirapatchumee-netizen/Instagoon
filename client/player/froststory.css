@@ -3278,6 +3278,16 @@ dialog.fs-overlay[open]::backdrop {
   color: #ffffff;
 }
 
+.fs-credit-progress { padding: 12px 16px; border: 1px solid #ffffff16; border-radius: 14px; background: #14131f; color: #e4e4ef; margin: 8px 12px; font-size: 12px; flex-shrink: 0; }
+.fs-credit-progress-title, .fs-credit-adult-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.fs-credit-progress-title strong { color: #f9a8d4; font-size: 14px; }
+.fs-credit-progress-track { height: 5px; background: #ffffff12; border-radius: 8px; overflow: hidden; margin: 8px 0 5px; }
+.fs-credit-progress-track i { display: block; height: 100%; background: linear-gradient(90deg,#ec4899,#a855f7); }
+.fs-credit-progress small { display: block; color: #a1a1b5; font-size: 11px; }
+.fs-credit-adult-row { border-top: 1px solid #ffffff12; margin-top: 10px; padding-top: 10px; }
+.fs-credit-adult-row button { border: 1px solid #a855f7; border-radius: 16px; padding: 5px 12px; white-space: nowrap; }
+.fs-credit-adult-row button[aria-checked="true"] { background: #9333ea; color: white; }
+.fs-credit-adult-row button:disabled { opacity: .4; cursor: not-allowed; }
 .fs-dm-gear-btn.has-fiftyshades {
   background: rgba(236, 72, 153, 0.28);
   border-color: rgba(236, 72, 153, 0.6);

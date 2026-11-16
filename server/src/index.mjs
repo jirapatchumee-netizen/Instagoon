@@ -11,6 +11,7 @@ import { characterOnlyEnabled, characterOnlyChat } from './character-only-chat.m
 import { shopPlayer, shopAdmin, shopReportsApi, writeDailyReports } from './shop/index.mjs';
 import { handleAgentDevRoute } from './agent-dev-api.mjs';
 import { cleanDraft, launchProblems, studioCreatorId, studioPreviewId, scoreForLevel, buildDefinition, suggestLevels } from './studio.mjs';
+import { usesCreditLevels, readCreditProgress, nextCreditProgress, creditProgressStatement, levelScore } from './credit-levels.mjs';
 
 const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), {status, headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store',...headers}});
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), {status}); };
@@ -658,6 +659,7 @@ async function player(req,env,user,path,now,ctx) {
     trust:relRow?.trust||0,
     romance:relRow?.romance||0,
     level:currentLv,
+    creditProgress:await readCreditProgress(env,user.id,creatorId,npcDef),
     following:!!(await one(env,'SELECT 1 FROM follows WHERE user_id=? AND creator_id=?',user.id,creatorId))
    },
    posts:(postsRes.results||[]).map(p=>({...postShape(p),comments:[]})),
@@ -670,7 +672,7 @@ async function player(req,env,user,path,now,ctx) {
   const creatorId=id(m[1]);
   const [creator, relRes, defRes, unlocksRes, turnsRow, energyRow]=await Promise.all([
    one(env,'SELECT * FROM creators WHERE id=?',creatorId),
-   one(env,'SELECT score,closeness,trust,romance FROM relationships WHERE user_id=? AND creator_id=?',user.id,creatorId),
+   one(env,'SELECT score,closeness,trust,romance,turns FROM relationships WHERE user_id=? AND creator_id=?',user.id,creatorId),
    one(env,'SELECT definition_json FROM npc_definitions WHERE creator_id=?',creatorId),
    all(env,'SELECT reward_key,unlocked_at FROM reward_unlocks WHERE user_id=? AND creator_id=?',user.id,creatorId),
    one(env,"SELECT COUNT(*) AS total_turns FROM ai_chat_messages WHERE user_id=? AND creator_id=? AND role='user'",user.id,creatorId),
@@ -682,7 +684,7 @@ async function player(req,env,user,path,now,ctx) {
   const closeness=relRes?.closeness||0;
   const trust=relRes?.trust||0;
   const romance=relRes?.romance||0;
-  const turns=turnsRow?.total_turns||0;
+  const turns=usesCreditLevels(npcDef) ? relRes?.turns||0 : turnsRow?.total_turns||0;
   const score=relRes?.score||0;
   const cfg=relationshipConfig(npcDef);
   const currentLv=levelOf(cfg,score);
@@ -723,7 +725,7 @@ async function player(req,env,user,path,now,ctx) {
 
   return json({
     creator: { id: creator.id, name: creator.name, avatarKey: creator.avatar_key },
-    stats: { closeness, trust, romance, turns, level: currentLv, score },
+    stats: { closeness, trust, romance, turns, level: currentLv, score, creditProgress:await readCreditProgress(env,user.id,creatorId,npcDef) },
     missions: rewards.filter(r=>r.unlockType==='mission'),
     gachaPool: rewards.filter(r=>r.unlockType==='diamond_gacha'),
     diamonds: energyRow?.diamonds||0,
@@ -900,22 +902,28 @@ async function player(req,env,user,path,now,ctx) {
   const creator=id(m[1]), b=await body(req), mediaKey=key(b.mediaKey), unlockMethod=string(b.method||'level', 16);
   const already=await one(env,'SELECT 1 FROM reward_unlocks WHERE user_id=? AND creator_id=? AND reward_key=?',user.id,creator,mediaKey);
   if(already) return json({ok:true,unlocked:true,already:true,energy:await energy(env,user.id,now)});
+  const [relRow, defRow]=await env.DB.batch([
+   env.DB.prepare('SELECT score,closeness,trust,romance,turns FROM relationships WHERE user_id=? AND creator_id=?').bind(user.id,creator),
+   env.DB.prepare('SELECT definition_json FROM npc_definitions WHERE creator_id=?').bind(creator)
+  ]);
+  let npcDef=null;if(defRow.results[0]?.definition_json){try{npcDef=JSON.parse(defRow.results[0].definition_json);}catch(e){}}
+  const rewItem=(npcDef?.rewards||[]).find(r=>r.asset===mediaKey);
+  if(usesCreditLevels(npcDef)&&!rewItem)return json({error:'not_found'},404);
   if(unlockMethod==='energy'){
    const spent=await spendEnergy(env,user.id,3,'unlock_reward:'+mediaKey,now);
    if(!spent) return json({error:'energy_empty'},402);
    await run(env,'INSERT INTO reward_unlocks(user_id,creator_id,reward_key,unlocked_at) VALUES(?,?,?,?)',user.id,creator,mediaKey,now);
    return json({ok:true,unlocked:true,energy:spent.energy});
   }
-  const [relRow, defRow]=await env.DB.batch([
-   env.DB.prepare('SELECT score,closeness,trust,romance FROM relationships WHERE user_id=? AND creator_id=?').bind(user.id,creator),
-   env.DB.prepare('SELECT definition_json FROM npc_definitions WHERE creator_id=?').bind(creator)
-  ]);
-  let npcDef=null;if(defRow.results[0]?.definition_json){try{npcDef=JSON.parse(defRow.results[0].definition_json);}catch(e){}}
   const cfg=relationshipConfig(npcDef);
   const currentLv=levelOf(cfg, relRow.results[0]?.score||0);
-  const rewItem=(npcDef?.rewards||[]).find(r=>r.asset===mediaKey);
   const requiredLevel=rewItem?.conditions?.find(c=>c.field==='level')?.value||2;
   if(currentLv<requiredLevel) return json({error:'level_too_low',requiredLevel,currentLevel:currentLv},403);
+  if(usesCreditLevels(npcDef)){
+   if(rewItem.unlockType==='diamond_gacha')return json({error:'reward_gacha_only'},403);
+   const state={...relRow.results[0],level:currentLv};
+   if(!(rewItem.conditions||[]).every(c=>['level','turns','closeness','trust','romance'].includes(c.field)&&state[c.field]>=c.value))return json({error:'reward_conditions_not_met'},403);
+  }
   await run(env,'INSERT INTO reward_unlocks(user_id,creator_id,reward_key,unlocked_at) VALUES(?,?,?,?)',user.id,creator,mediaKey,now);
   return json({ok:true,unlocked:true,energy:await energy(env,user.id,now)});
  }
@@ -1125,7 +1133,8 @@ async function player(req,env,user,path,now,ctx) {
  if(m){
   const creator=id(m[1]);
   if(method==='POST'&&m[2]==='message'){
-   const b=await body(req), userText=string(b.message, 1000), isFiftyShades=true;
+   const b=await body(req), userText=string(b.message, 1000), requestId=id(b.requestId || crypto.randomUUID());
+   let isFiftyShades=true; // Legacy characters keep their existing policy; Creator credit levels are opt-in below.
    const creatorData = await one(env, 'SELECT * FROM creators WHERE id=?', creator);
    if(!creatorData) return json({error:'not_found'}, 404);
    // Creators that ship a published script open in story mode: free chat unlocks only once the player has walked
@@ -1147,10 +1156,6 @@ async function player(req,env,user,path,now,ctx) {
    }
    let visitId = 'none', energyBucket = null, charged = null;
    try {
-   const charge = await takeEnergy(env, user.id, now);
-   if(!charge) return json({error:'energy_empty', cliffhangerOffer: CLIFFHANGER_OFFER}, 402);
-   energyBucket = charge;
-   charged = energyBucket;
    // These four reads never depend on each other, so they share one D1 round trip. Only reads are
    // batched: D1 batch() is not the transactional guarantee the writes further down rely on.
    const [threadRes, npcDefRes, relRes, unlockRes] = await env.DB.batch([
@@ -1168,6 +1173,25 @@ async function player(req,env,user,path,now,ctx) {
    let npcDef = null;
    if(npcDefRow?.definition_json){try{npcDef=JSON.parse(npcDefRow.definition_json);}catch(e){}}
 
+   const relRow = relRes.results[0] ?? null;
+   const creditBased = usesCreditLevels(npcDef), preview = creator === studioPreviewId(user);
+   let progress = await readCreditProgress(env,user.id,creator,npcDef,levelOf(relationshipConfig(npcDef),relRow?.score||0));
+   const fingerprint = await hash(JSON.stringify({message:userText,adultMode:b.adultMode === true}));
+   if(creditBased){
+    const receipt=await one(env,'SELECT fingerprint,response_json FROM chat_credit_receipts WHERE user_id=? AND creator_id=? AND request_id=?',user.id,creator,requestId);
+    if(receipt){
+     if(receipt.fingerprint!==fingerprint)return json({error:'idempotency_conflict'},409);
+     const messages=await all(env,'SELECT id,role,content,media_key mediaKey,affection_delta affectionDelta,created_at createdAt FROM ai_chat_messages WHERE user_id=? AND creator_id=? ORDER BY created_at ASC LIMIT 100',user.id,creator);
+     return json({...JSON.parse(receipt.response_json),creditProgress:progress,level:progress.level,relationship:levelScore(progress.level),messages,energy:await energy(env,user.id,now)});
+    }
+    isFiftyShades=b.adultMode===true;
+    if(isFiftyShades&&(!user.age_verified_at||!progress.adultAllowed))return json({error:'adult_mode_locked',level:progress.level},403);
+   }
+   const charge = await takeEnergy(env, user.id, now);
+   if(!charge) return json({error:'energy_empty', cliffhangerOffer: CLIFFHANGER_OFFER}, 402);
+   energyBucket = charge;
+   charged = energyBucket;
+
    const sceneMode = narrativeEnabled(npcDef);
    let sceneState = null, narrativeResult = null;
    if (sceneMode) {
@@ -1180,7 +1204,6 @@ async function player(req,env,user,path,now,ctx) {
      sceneState = readNarrativeState(npcDef, saved?.state_json);
    }
 
-   const relRow = relRes.results[0] ?? null;
    let closeness = relRow?.closeness || 0, trust = relRow?.trust || 0, romance = relRow?.romance || 0, turnCount = (relRow?.turns || 0) + 1;
    let events = {}, ruleUses = {};
    try{events=JSON.parse(relRow?.events_json||'{}');}catch(e){}
@@ -1188,8 +1211,8 @@ async function player(req,env,user,path,now,ctx) {
    const before = { closeness, trust, romance };
 
    const relCfg = relationshipConfig(npcDef);
-   let rel = overallScore(relCfg, { closeness, trust, romance }, relRow?.score || 0);
-   let currentLv = levelOf(relCfg, rel);
+   let rel = progress ? levelScore(progress.level) : overallScore(relCfg, { closeness, trust, romance }, relRow?.score || 0);
+   let currentLv = progress?.level || levelOf(relCfg, rel);
 
    const userMessageId = crypto.randomUUID();
    await run(env, 'INSERT INTO ai_chat_messages(id, user_id, creator_id, role, content, created_at) VALUES(?,?,?,?,?,?)', userMessageId, user.id, creator, 'user', userText, now);
@@ -1724,7 +1747,7 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
    // Quota limits are ours and always refunded; other failures only REFUNDS_PER_WINDOW times per window.
    if (!replyText) {
      const recentFailures = sawRateLimit ? 0 : (await one(env, "SELECT COUNT(*) n FROM ai_turn_metrics WHERE user_id=? AND outcome='error' AND created_at>?", user.id, now - FAILED_TURN_WINDOW_MS)).n;
-     const refunded = recentFailures < REFUNDS_PER_WINDOW;
+     const refunded = creditBased || recentFailures < REFUNDS_PER_WINDOW;
      if(refunded) await refundEnergy(env, user.id, energyBucket, now);
      charged = null;
      const outcome = sawRateLimit ? 'rate_limit' : 'error';
@@ -1766,7 +1789,12 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
    }
 
    const finalDetectedRules = Array.from(new Set(detectedRuleIds));
-   if (npcDef?.rules) {
+   if (creditBased) {
+     // A private Studio test may spend energy, but never earns real progression.
+     if(!preview) progress=nextCreditProgress(npcDef,progress);
+     rel=levelScore(progress.level);
+     currentLv=progress.level;
+   } else if (npcDef?.rules) {
      ({ closeness, trust, romance, events, ruleUses } = applyRules(npcDef, finalDetectedRules, { closeness, trust, romance, events, ruleUses, turns:turnCount }));
      rel = overallScore(relCfg, { closeness, trust, romance }, rel);
      currentLv = levelOf(relCfg, rel);
@@ -1779,14 +1807,14 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
 
    // Apply deltas in SQL so a concurrent comment's score change is never overwritten.
    const delta = { closeness: closeness - before.closeness, trust: trust - before.trust, romance: romance - before.romance };
-   const scoreFromDimensions = !!npcDef?.rules;
+   const scoreFromDimensions = creditBased || !!npcDef?.rules;
    // Create-then-increment-then-read-back rides one round trip, in this order.
    const relationshipStatements = [
      env.DB.prepare('INSERT OR IGNORE INTO relationships(user_id, creator_id) VALUES(?,?)').bind(user.id, creator),
      env.DB.prepare('UPDATE relationships SET closeness=MIN(100, MAX(0, COALESCE(closeness,0)+?)), trust=MIN(100, MAX(0, COALESCE(trust,0)+?)), romance=MIN(100, MAX(0, COALESCE(romance,0)+?)), turns=COALESCE(turns,0)+1, events_json=?, rule_uses_json=?, score=CASE WHEN ? THEN ? ELSE MIN(100, MAX(0, score+?)) END WHERE user_id=? AND creator_id=?').bind(delta.closeness, delta.trust, delta.romance, JSON.stringify(events), JSON.stringify(ruleUses), scoreFromDimensions ? 1 : 0, rel, scoreDelta, user.id, creator),
      env.DB.prepare('SELECT score FROM relationships WHERE user_id=? AND creator_id=?').bind(user.id, creator)
    ];
-   if (!narrativeResult) {
+   if (!narrativeResult && !creditBased) {
      const [, , scoreRes] = await env.DB.batch(relationshipStatements);
      if(!scoreFromDimensions) rel = scoreRes.results[0]?.score ?? rel;
    }
@@ -1807,11 +1835,20 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
         ...(innerThought ? [`[thought:${innerThought}]`] : []), serializeNarrative(narrativeResult.beats)].join('\n')
      : serializeSceneBubble({ at: sceneMetadata.at, time: sceneMetadata.time, location: sceneMetadata.location, mood: moodToast,
         thought: innerThought, beats: inlineBeats.length ? inlineBeats : [{ kind: 'dialogue', text: replyText }] });
-   const replyStatement = env.DB.prepare('INSERT INTO ai_chat_messages(id, user_id, creator_id, role, content, media_key, affection_delta, created_at) VALUES(?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(), user.id, creator, 'assistant', storedContent, null, scoreDelta, now + 1);
+   const replyId=crypto.randomUUID();
+   const replyStatement = env.DB.prepare('INSERT INTO ai_chat_messages(id, user_id, creator_id, role, content, media_key, affection_delta, created_at) VALUES(?,?,?,?,?,?,?,?)').bind(replyId, user.id, creator, 'assistant', storedContent, null, creditBased?0:scoreDelta, now + 1);
+   const receiptPayload={ok:true,reply:replyText,innerThought,action:actionText,suggestedReplies,moodToast,mediaKey:null,
+     relationship:rel,closeness,trust,romance,level:currentLv,creditProgress:progress,
+     ...(narrativeResult?{beats:narrativeResult.beats,scene:sceneMetadata}:inlineBeats.length?{beats:inlineBeats,scene:sceneMetadata}:{})};
+   const creditStatements=creditBased?[
+     ...(!preview?[creditProgressStatement(env,user.id,creator,progress,now)]:[]),
+     env.DB.prepare('INSERT INTO chat_credit_receipts(user_id,creator_id,request_id,fingerprint,reply_id,response_json,created_at) VALUES(?,?,?,?,?,?,?)').bind(user.id,creator,requestId,fingerprint,replyId,JSON.stringify(receiptPayload),now)
+   ]:[];
    if (narrativeResult) {
      // The reply and its continuity state commit together under the existing per-thread lease.
-     await env.DB.batch([...relationshipStatements, replyStatement, env.DB.prepare('INSERT INTO npc_scene_states(user_id,creator_id,state_json,updated_at) VALUES(?,?,?,?) ON CONFLICT(user_id,creator_id) DO UPDATE SET state_json=excluded.state_json,updated_at=excluded.updated_at').bind(user.id, creator, JSON.stringify(narrativeResult.nextState), now)]);
-   } else await replyStatement.run();
+     await env.DB.batch([...creditStatements, ...relationshipStatements, replyStatement, env.DB.prepare('INSERT INTO npc_scene_states(user_id,creator_id,state_json,updated_at) VALUES(?,?,?,?) ON CONFLICT(user_id,creator_id) DO UPDATE SET state_json=excluded.state_json,updated_at=excluded.updated_at').bind(user.id, creator, JSON.stringify(narrativeResult.nextState), now)]);
+   } else if(creditBased) await env.DB.batch([...creditStatements,...relationshipStatements,replyStatement]);
+   else await replyStatement.run();
    charged = null; // the reply is stored: the energy has been spent
    await recordTurn(env, {userId:user.id, creatorId:creator, visitId, now, outcome:'ok', model:usedModel, latencyMs:Date.now() - aiStartedAt, tokensIn, tokensOut, fallbackCount, energyBucket, delta, levelAfter:currentLv, matchedRuleIds:finalDetectedRules});
    await bumpThread(env, ctx, user.id, creator, npcDef?.name || creatorData.name, 2);
@@ -1845,6 +1882,7 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
      trust,
      romance,
      level: currentLv,
+     creditProgress: progress,
      energy: await energy(env, user.id, now)
    });
    } catch(e) {
@@ -1873,6 +1911,7 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
 
   const episodes=await all(env,`SELECT e.*,s.current_node_id,s.revision_id,u.unlocked_at FROM episodes e LEFT JOIN chat_states s ON s.episode_id=e.id AND s.user_id=? LEFT JOIN episode_unlocks u ON u.episode_id=e.id AND u.user_id=? WHERE e.creator_id=? AND EXISTS(SELECT 1 FROM revisions r WHERE r.episode_id=e.id AND r.status='published') ORDER BY e.position,e.id`,user.id,user.id,creator);
   const score = relRow?.score || 0;
+  const chatProgress = await readCreditProgress(env,user.id,creator,npcDef);
   const isEpUnlocked = (e, index) => index === 0 || !!e.unlocked_at || !!e.current_node_id;
 
   if(!episodes || episodes.length === 0){
@@ -1895,6 +1934,8 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
         closeness: relRow?.closeness || 0,
         trust: relRow?.trust || 0,
         romance: relRow?.romance || 0,
+        level: chatProgress?.level || levelOf(relationshipConfig(npcDef),score),
+        creditProgress: chatProgress,
         score
       }
     });
@@ -1957,7 +1998,7 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
     completed
    });
   }
-  return json({chat:{episodeId:episode.id,revisionId:rev.id,currentNodeId:node.id,nodes:[node],history,episodes:episodeList,aiMessages:allAiMessages,memories:memList,unlockedRewards,closeness:relRow?.closeness||0,trust:relRow?.trust||0,romance:relRow?.romance||0,score}});
+  return json({chat:{episodeId:episode.id,revisionId:rev.id,currentNodeId:node.id,nodes:[node],history,episodes:episodeList,aiMessages:allAiMessages,memories:memList,unlockedRewards,closeness:relRow?.closeness||0,trust:relRow?.trust||0,romance:relRow?.romance||0,score,level:chatProgress?.level||levelOf(relationshipConfig(npcDef),score),creditProgress:chatProgress}});
  }
  if(path==='/api/notifications'&&method==='GET'){
   const posts=await all(env,`SELECT p.id,p.published_at created_at,c.name FROM posts p JOIN creators c ON c.id=p.creator_id LEFT JOIN relationships r ON r.creator_id=p.creator_id AND r.user_id=? WHERE p.status='published' AND p.published_at<=? AND COALESCE(r.score,0)>=p.relationship_required ORDER BY p.published_at DESC LIMIT 50`,user.id,now);
@@ -1997,7 +2038,7 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
    // The test room runs the real DM pipeline (prompt, provider order, leak filter, energy) on a private twin of
    // the draft at the chosen level, so what the creator sees is what players will get.
    const b=await body(req), draft=cleanDraft(b.draft&&typeof b.draft==='object'?b.draft:{}), pid=studioPreviewId(user);
-   const unsafe=launchProblems(draft).filter(p=>p.startsWith('unsafe:'));
+   const unsafe=launchProblems(draft).filter(p=>p.startsWith('unsafe:')||p==='levelCosts'||p==='adultLevels');
    if(unsafe.length)return json({error:'draft_incomplete',problems:unsafe},400);
    if(!draft.name)return json({error:'draft_incomplete',problems:['name']},400);
    const chatPath=`/api/chats/${pid}/${b.reset===true?'reset-chat':'message'}`;
@@ -2011,7 +2052,7 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
      env.DB.prepare('INSERT INTO relationships(user_id,creator_id,score,closeness,trust,romance) VALUES(?,?,?,?,?,?) ON CONFLICT(user_id,creator_id) DO UPDATE SET score=excluded.score,closeness=excluded.closeness,trust=excluded.trust,romance=excluded.romance').bind(user.id,pid,score,score,score,score)
     ]);
    }else if(!await one(env,'SELECT 1 x FROM creators WHERE id=?',pid))return json({ok:true});
-   return player(new Request(new URL(chatPath,req.url),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({message:typeof b.message==='string'?b.message:''})}),env,user,chatPath,now,ctx);
+   return player(new Request(new URL(chatPath,req.url),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({message:typeof b.message==='string'?b.message:'',adultMode:b.adultMode===true,requestId:b.requestId})}),env,user,chatPath,now,ctx);
   }
   if(path==='/api/studio/launch'&&method==='POST'){
    const draft=cleanDraft(await body(req));

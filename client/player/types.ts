@@ -1,4 +1,6 @@
 export type Energy = { free: number; purchased: number; diamonds?: number; nextRefillAt: number | null };
+export type CreditProgress = { mode: 'credits'; creditsSpent: number; costs: number[]; version: string; level: number;
+  nextLevelAt: number | null; creditsRemaining: number; adultAllowed: boolean };
 export type User = {
   id: string;
   email: string;
@@ -83,6 +85,8 @@ export type EpisodeInfo = {
 };
 
 export type Chat = {
+  creditProgress?: CreditProgress | null;
+  level?: number;
   experiment?: { mode: 'character-only'; provider: 'deepseek'; model: string; sourceHash: string; runId: string; presentation?: 'scene-v1'; activeMode?: 'normal' | 'master-template' };
   revisionId: string;
   episodeId: string;
@@ -119,6 +123,7 @@ export type ProfileData = {
     trust?: number;
     romance?: number;
     level?: number;
+    creditProgress?: CreditProgress | null;
   };
   posts: Post[];
   vault: ProfileVaultItem[];

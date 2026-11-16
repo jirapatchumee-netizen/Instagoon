@@ -21,6 +21,7 @@ import { ExploreTab } from './tabs/ExploreTab';
 import { ReelsTab } from './tabs/ReelsTab';
 import { InboxTab } from './tabs/InboxTab';
 import { CosplayCreatorTab } from './tabs/CosplayCreatorTab';
+import { CreditProgressCard } from './components/CreditProgressCard';
 import { StagingAnalyticsModal } from './components/StagingAnalyticsModal';
 import { PlayerProfileTab } from './tabs/PlayerProfileTab';
 import { ActivityOverlay } from './overlays/ActivityOverlay';
@@ -94,6 +95,8 @@ export function FrostStoryApp() {
   const [selectedStory, setSelectedStory] = useState<Story | null>(null);
   const [selectedCreator, setSelectedCreator] = useState<Creator | null>(null);
   const [chat, setChat] = useState<Chat | null>(null);
+  const [adultChatMode, setAdultChatMode] = useState(false);
+  useEffect(() => { if (!chat?.creditProgress?.adultAllowed) setAdultChatMode(false); }, [chat?.creditProgress?.adultAllowed]);
   const [comments, setComments] = useState<Record<string, string>>({});
   const [likedPostIds, setLikedPostIds] = useState<Record<string, boolean>>({});
   const [savedPostIds, setSavedPostIds] = useState<Record<string, boolean>>({});
@@ -222,7 +225,7 @@ export function FrostStoryApp() {
   const [aiSending, setAiSending] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
-  const [pending, setPending] = useState<{ id: string; content: string; failed?: string; rawError?: string; retryCount?: number }[]>([]);
+  const [pending, setPending] = useState<{ id: string; content: string; adultMode?: boolean; failed?: string; rawError?: string; retryCount?: number }[]>([]);
   const [bugReportOpen, setBugReportOpen] = useState(false);
   const [bugReportConfig, setBugReportConfig] = useState<{
     category: 'chat' | 'payment' | 'audio' | 'visual' | 'other';
@@ -344,10 +347,11 @@ export function FrostStoryApp() {
   async function sendAiMessage(text: string, retryId?: string) {
     if (!selectedCreator || !chat || aiSending) return;
     const id = retryId ?? crypto.randomUUID();
+    const requestedAdultMode = retryId ? pending.find(item => item.id === retryId)?.adultMode === true : adultChatMode;
     setPending((prev) =>
       retryId
         ? prev.map((item) => (item.id === id ? { ...item, content: text, failed: undefined } : item))
-        : [...prev, { id, content: text, retryCount: 0 }]
+        : [...prev, { id, content: text, adultMode: requestedAdultMode, retryCount: 0 }]
     );
     stickToBottomRef.current = true;
     setAiSending(true);
@@ -361,11 +365,13 @@ export function FrostStoryApp() {
         messages: AiChatMessage[];
         unlockedRewards?: string[];
         relationship: number;
+        level?: number;
+        creditProgress?: Chat['creditProgress'];
         energy: Energy;
-      }>(`/api/chats/${encodeURIComponent(selectedCreator.id)}/message`, json({ message: text }));
+      }>(`/api/chats/${encodeURIComponent(selectedCreator.id)}/message`, json({ message: text, requestId: id, adultMode: requestedAdultMode }));
 
       setPending((prev) => prev.filter((item) => item.id !== id));
-      if (res.messages) setChat((prev) => (prev ? { ...prev, aiMessages: res.messages } : prev));
+      if (res.messages) setChat((prev) => (prev ? { ...prev, aiMessages: res.messages, score: res.relationship, level: res.level, creditProgress: res.creditProgress } : prev));
       if (res.energy) setEnergy(res.energy);
       if (typeof res.relationship === 'number') {
         const prevRel = selectedCreator.relationship || 0;
@@ -690,6 +696,7 @@ export function FrostStoryApp() {
     setChat(null);
     setPending([]);
     setDmMenuOpen(false);
+    setAdultChatMode(false);
     setAiDmTab('ai'); // a DM always opens on the chat, not on whichever tab was used last
     setSelectedCreator(creator);
     chatOpenedAtRef.current = Date.now();
@@ -1437,7 +1444,7 @@ export function FrostStoryApp() {
                     )}
 
                     {/* Relationship 3D Dimension Box & Top Fan Status */}
-                    <div className="fs-profile-rel-card">
+                    {profileData.creator.creditProgress ? <CreditProgressCard progress={profileData.creator.creditProgress}/> : <div className="fs-profile-rel-card">
                       <div className="fs-profile-rel-top">
                         {(profileData.creator.relationship ?? 0) >= 100 ? (
                           <span className="fs-profile-topfan-badge" title={t.topFanTitle}>
@@ -1493,7 +1500,7 @@ export function FrostStoryApp() {
                       <p className="fs-profile-rel-formula">
                         {t.relationshipFormula}
                       </p>
-                    </div>
+                    </div>}
 
                     <div className="fs-profile-actions-bar">
                       <button
@@ -1820,6 +1827,8 @@ export function FrostStoryApp() {
               </div>
             </header>
 
+            {aiDmTab === 'ai' && chat?.creditProgress && <CreditProgressCard progress={chat.creditProgress}
+              adultMode={adultChatMode} onAdultMode={setAdultChatMode} disabled={aiSending || !user?.ageVerifiedAt}/>}
             <div className="fs-dm-mode-toggle" role="tablist" data-active={aiDmTab}>
               <span className="fs-dm-mode-thumb" aria-hidden="true" />
               <button

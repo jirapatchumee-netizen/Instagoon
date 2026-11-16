@@ -46,6 +46,7 @@ export interface RewardDraft {
   turns: number;
   trust: number;
   romance: number;
+  minLevel?: number;
   energyFallback: number;
 }
 
@@ -94,6 +95,10 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
     'ชวนคุยได้เรื่อยๆ เลยนะ เค้ารอฟังตัวเองตลอดเลยแหละ... ตัวเองเป็นคนพิเศษมากๆ สำหรับเค้านะ',
     'งื้อ ห้ามหายไปไหนอีกนะ เค้าคิดถึงตัวเองจะแย่แล้ว มาเป็นกำลังใจให้เค้าทุกวันเลยได้ไหมคะ?',
   ]);
+  const [levelCosts, setLevelCosts] = useState<number[]>([100, 200, 300, 400]);
+  const [adultLevels, setAdultLevels] = useState<boolean[]>([false, false, false, false, false]);
+  const [testAdultMode, setTestAdultMode] = useState(false);
+  const validCosts = levelCosts.length === 4 && levelCosts.every(n => Number.isInteger(n) && n >= 1 && n <= 100000);
 
   // Pillar 3: Safety & Secrets
   const [ruleNoAddress, setRuleNoAddress] = useState(true);
@@ -124,8 +129,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
   const [newRewardUnlockType, setNewRewardUnlockType] = useState<'mission' | 'diamond_gacha'>('mission');
   const [newRewardHint, setNewRewardHint] = useState('ปรับความเข้าใจคืนดีกันไว้ใจกัน');
   const [newRewardTurns, setNewRewardTurns] = useState(40);
-  const [newRewardTrust, setNewRewardTrust] = useState(100);
-  const [newRewardRomance, setNewRewardRomance] = useState(50);
+  const [newRewardLevel, setNewRewardLevel] = useState(2);
   const [newRewardFallback, setNewRewardFallback] = useState(5);
 
   const handleAddReward = () => {
@@ -140,8 +144,9 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
       unlockType: newRewardUnlockType,
       hint: newRewardHint.trim(),
       turns: Number(newRewardTurns) || 0,
-      trust: Number(newRewardTrust) || 0,
-      romance: Number(newRewardRomance) || 0,
+      trust: 0,
+      romance: 0,
+      minLevel: newRewardLevel,
       energyFallback: Number(newRewardFallback) || 5,
     };
     setRewards([...rewards, item]);
@@ -168,6 +173,8 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
     if (data.voiceTone) setVoiceTone(data.voiceTone);
     if (data.sampleQuotes) setSampleQuotes(data.sampleQuotes);
     if (Array.isArray(data.levelStyles) && data.levelStyles.length === 5) setLevelStyles(data.levelStyles);
+    if (Array.isArray(data.levelCosts) && data.levelCosts.length === 4) setLevelCosts(data.levelCosts);
+    if (Array.isArray(data.adultLevels) && data.adultLevels.length === 5) setAdultLevels(data.adultLevels);
     if (typeof data.ruleNoAddress === 'boolean') setRuleNoAddress(data.ruleNoAddress);
     if (typeof data.ruleNoMeet === 'boolean') setRuleNoMeet(data.ruleNoMeet);
     if (typeof data.rulePoliteReject === 'boolean') setRulePoliteReject(data.rulePoliteReject);
@@ -271,6 +278,8 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
     voiceTone,
     sampleQuotes,
     levelStyles,
+    levelCosts,
+    adultLevels,
     ruleNoAddress,
     ruleNoMeet,
     rulePoliteReject,
@@ -290,6 +299,8 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
     avatar: t.studioAvatarLabel,
     voiceTone: t.studioVoiceToneLabel,
     levelStyles: t.studioLevelsLabel,
+    levelCosts: 'เครดิตที่ใช้เลื่อนระดับ (จำนวนเต็ม 1–100,000)',
+    adultLevels: 'การอนุญาตโหมดผู้ใหญ่รายระดับ',
     likes: t.studioLikesLabel,
     dislikes: t.studioDislikesLabel,
     pronouns: t.studioPronounsLabel,
@@ -313,6 +324,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
     ['concept', !!concept.trim()],
     ['voiceTone', !!voiceTone.trim()],
     ['levelStyles', levelStyles.every((x) => !!x.trim())],
+    ['levelCosts', validCosts],
   ];
   const readyCount = checklist.filter(([, ok]) => ok).length;
   const flash = (ok: boolean, text: string) => {
@@ -413,7 +425,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ draft: collectDraft(), level: testLevel, ...payload }),
+      body: JSON.stringify({ draft: collectDraft(), level: testLevel, adultMode: testAdultMode && adultLevels[testLevel - 1], requestId: crypto.randomUUID(), ...payload }),
     });
     return { ok: res.ok, data: await res.json().catch(() => null) };
   };
@@ -871,6 +883,11 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
             />
           </div>
 
+          <div className="p-3 rounded-xl bg-[#0e0e15] border border-pink-400/20 space-y-2">
+            <h2 className="text-sm font-bold text-white">ระดับจากเครดิตแชท</h2>
+            <p className="text-[11px] text-zinc-400 leading-relaxed">สะสมเฉพาะพลังงานที่หักเมื่อ AI ตอบสำเร็จ: 1 พลังงาน = 1 เครดิตแชท แยกต่อแฟนคลับและตัวละคร ไม่หักเพิ่มตอนเลื่อน Lv.</p>
+            <p className="text-[11px] text-zinc-400">เกณฑ์ใหม่ใช้กับผู้เล่นที่เริ่มสะสมหลังอัปเดต ผู้เล่นเดิมใช้เกณฑ์ที่เริ่มไว้และไม่ถูกลดระดับ</p>
+          </div>
           {/* Generate Lv.1-5 Button */}
           <div className="flex justify-end">
             <button
@@ -895,6 +912,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
                   </div>
                   <input
                     type="text"
+                    aria-label={`วิธีพูด Lv.${i + 1}`}
                     value={levelStyles[i] || ''}
                     onChange={(e) => {
                       const copy = [...levelStyles];
@@ -903,6 +921,18 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
                     }}
                     className="studio-input w-full px-3 py-1.5 text-xs"
                   />
+                  {i > 0 ? <div className="pt-2 space-y-1">
+                    <label htmlFor={`level-cost-${i}`} className="block text-[11px] text-zinc-300">เครดิตเพิ่มจาก Lv.{i} → Lv.{i + 1}</label>
+                    <input id={`level-cost-${i}`} type="number" min={1} max={100000} step={1} value={Number.isNaN(levelCosts[i - 1]) ? '' : levelCosts[i - 1]}
+                      onChange={e => setLevelCosts(prev => prev.map((v, j) => j === i - 1 ? e.target.valueAsNumber : v))}
+                      className="studio-input w-full px-3 py-2 text-xs"/>
+                    <p className="text-[10px] text-zinc-400">{validCosts ? `เครดิตสะสมถึงระดับนี้: ${levelCosts.slice(0, i).reduce((a, b) => a + b, 0).toLocaleString()}` : 'กรอกจำนวนเต็มตั้งแต่ 1 ถึง 100,000 เครดิต'}</p>
+                  </div> : <p className="pt-2 text-[10px] text-zinc-400">เริ่มต้นฟรี · เครดิตสะสม 0</p>}
+                  <label className="flex items-center gap-2 pt-2 text-[11px] text-zinc-300 cursor-pointer">
+                    <input type="checkbox" checked={adultLevels[i]} onChange={e => setAdultLevels(prev => prev.map((v, j) => j === i ? e.target.checked : v))}/>
+                    อนุญาตโหมดสนทนาผู้ใหญ่ 18+ ที่ Lv.{i + 1}
+                  </label>
+                  <p className="text-[10px] text-zinc-500">ผู้เล่นต้องผ่านเงื่อนไขอายุและเลือกเปิดเอง</p>
                 </div>
               ),
             )}
@@ -1026,7 +1056,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
                   <button
                     key={lvl}
                     type="button"
-                    onClick={() => setTestLevel(lvl)}
+                    onClick={() => { setTestLevel(lvl); setTestAdultMode(false); }}
                     className={`px-2 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer ${
                       testLevel === lvl
                         ? 'bg-pink-500 text-white shadow'
@@ -1054,6 +1084,11 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
               {t.studioMockNotice || 'ตอบด้วย AI จริงจากร่างปัจจุบัน (ไม่ต้องบันทึกก่อน) • หัก 1 พลังงานต่อข้อความ • ผู้เล่นคนอื่นไม่เห็น'}
             </div>
 
+            <label className="flex items-center gap-2 text-[11px] text-zinc-300">
+              <input type="checkbox" checked={testAdultMode && adultLevels[testLevel - 1]} disabled={!adultLevels[testLevel - 1] || sandboxBusy} onChange={e => setTestAdultMode(e.target.checked)}/>
+              ทดลองโหมดผู้ใหญ่ 18+ {adultLevels[testLevel - 1] ? '' : '(ยังไม่อนุญาตที่ระดับนี้)'}
+            </label>
+            <p className="text-[10px] text-zinc-500">ห้องทดลองไม่สะสมเครดิตหรือเปลี่ยน Lv. ของผู้เล่นจริง</p>
             {/* Chat Log */}
             <div ref={streamRef} className="h-44 overflow-y-auto space-y-2.5 pr-1 text-xs no-scrollbar">
               {testMessages.map((msg, i) => (
@@ -1220,25 +1255,19 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="block text-[10.5px] font-medium text-zinc-300">{t.studioTargetTrust}</label>
+                    <label htmlFor="reward-min-level" className="block text-[10.5px] font-medium text-zinc-300">ระดับที่ปลดล็อกภาพ</label>
                     <input
+                      id="reward-min-level"
                       type="number"
-                      value={newRewardTrust}
-                      onChange={(e) => setNewRewardTrust(Number(e.target.value))}
+                      min={1} max={5} step={1}
+                      value={newRewardLevel}
+                      onChange={(e) => setNewRewardLevel(Math.max(1, Math.min(5, Number(e.target.value) || 1)))}
                       className="studio-input w-full px-3 py-2 text-xs"
                     />
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="block text-[10.5px] font-medium text-zinc-300">{t.studioTargetRomance}</label>
-                  <input
-                    type="number"
-                    value={newRewardRomance}
-                    onChange={(e) => setNewRewardRomance(Number(e.target.value))}
-                    className="studio-input w-full px-3 py-2 text-xs"
-                  />
-                </div>
+                <p className="text-[10px] text-zinc-400">ใช้ Lv. จากเครดิตแชทและจำนวนข้อความที่ตอบสำเร็จเป็นเงื่อนไข ภาพเดิมที่ยังไม่มี Lv. จะเริ่มที่ Lv.2 เมื่ออัปเดตตัวละคร</p>
 
                 <div className="space-y-1">
                   <label className="block text-[10.5px] font-medium text-zinc-300">{t.studioMissionHint}</label>
@@ -1309,7 +1338,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
                       <div className="text-xs font-bold text-white truncate">{r.name}</div>
                       <div className="text-[10px] text-cyan-300 mt-0.5">
                         {r.unlockType === 'mission'
-                          ? `💬 ${r.turns} ข้อความ • ♥ ${r.trust}`
+                          ? `Lv.${r.minLevel || 2} • ${r.turns} ข้อความ`
                           : `💎 ${r.energyFallback} เพชร`}
                       </div>
                     </div>
