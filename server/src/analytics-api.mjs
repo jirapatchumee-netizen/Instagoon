@@ -1,116 +1,133 @@
-import { getCreatorPnL, MODEL_PRICING, EXCHANGE_RATE_THB } from './token-pricing.mjs';
-
-export const ANALYTICS_PATH = '/api/analytics/cosplay';
+import { readBuckets, runHourly, hourBucket, LIFETIME_BUCKET } from './analytics-rollup.mjs';
 
 const BASE_HEADERS = {
   'content-type': 'application/json; charset=utf-8',
   'cache-control': 'no-store',
   'x-robots-tag': 'noindex, nofollow',
   'x-content-type-options': 'nosniff',
-  'referrer-policy': 'no-referrer'
+  'referrer-policy': 'no-referrer',
+  'x-frame-options': 'DENY'
 };
 
-export function analyticsJson(body, status = 200, extra = {}) {
-  return new Response(JSON.stringify(body), { status, headers: { ...BASE_HEADERS, ...extra } });
-}
+export const PATHS = {
+  overview: '/api/analytics/overview',
+  me: '/api/analytics/me',
+  run: '/api/analytics/rollup/run'
+};
 
-// Fail closed: no flag and no ANALYTICS_DB binding means this worker answers 503, not partial data.
+// Metrics the creator tier must never receive. Money per creator is not attributed anywhere yet, so
+// beyond the values being absent, asking for them is refused instead of returning a zero a creator
+// could read as "you earned nothing".
+const CREATOR_ALLOWED = ['creator.turns', 'creator.tokens_in', 'creator.tokens_out', 'creator.cost_satang'];
+
 export function analyticsReady(env) {
   return String(env.ANALYTICS_READ_ENABLED) === 'true' && !!env.ANALYTICS_DB;
 }
 
-export async function analyticsReader(req, env) {
-  const raw = req.headers.get('cookie')?.match(/(?:^|;\s*)frost_session=([^;]+)/)?.[1];
-  const allow = String(env.ANALYTICS_EMAILS || '');
-  if (!raw || !allow) return null;
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
-  const hash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
-  const row = await env.ANALYTICS_DB.prepare('SELECT u.email FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.id=? AND s.expires_at>?').bind(hash, Date.now()).first();
-  const email = String(row?.email || '').toLowerCase();
-  if (!email) return null;
-  return allow.split(',').some(entry => entry.trim().toLowerCase() === email) ? { email } : null;
+export function analyticsJson(body, status = 200) {
+  return new Response(JSON.stringify(body), { status, headers: BASE_HEADERS });
 }
 
-// Only a launched or bound character belongs in a creator PnL report; the git-driven static canon would
-// otherwise show up as rows that look like zero-sales creators.
-const CREATORS_SQL = `SELECT c.id creator_id, c.name, c.avatar_key, ca.user_id, ca.account_status, ca.rev_share_bps,
-  ca.created_at bound_at, u.email user_email
-  FROM creators c
-  LEFT JOIN cosplay_accounts ca ON ca.creator_id=c.id
-  LEFT JOIN users u ON u.id=ca.user_id
-  LEFT JOIN studio_creators sc ON sc.creator_id=c.id
-  WHERE ca.id IS NOT NULL OR sc.status='live'
-  ORDER BY c.id LIMIT ?`;
+// The dashboard shares the login cookie with the game because it is a subdomain of the same site, so
+// the session is looked up in the same database the numbers come from.
+export async function analyticsSession(req, env) {
+  const raw = req.headers.get('cookie')?.match(/(?:^|;\s*)frost_session=([^;]+)/)?.[1];
+  if (!raw) return null;
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
+  const hash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+  const user = await env.ANALYTICS_DB.prepare(
+    "SELECT u.id, u.email, COALESCE(c.role, 'player') role FROM sessions s JOIN users u ON u.id=s.user_id LEFT JOIN user_credentials c ON c.user_id=u.id WHERE s.id=? AND s.expires_at>?"
+  ).bind(hash, Date.now()).first();
+  return user || null;
+}
 
-export async function cosplayAnalytics(env) {
-  const limit = Number(env.ANALYTICS_MAX_CREATORS) > 0 ? Number(env.ANALYTICS_MAX_CREATORS) : 200;
-  const db = { DB: env.ANALYTICS_DB };
-  const { results = [] } = await env.ANALYTICS_DB.prepare(CREATORS_SQL).bind(limit).all();
+export async function tiersFor(env, user) {
+  if (!user) return null;
+  const admins = String(env.ANALYTICS_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+  const admin = user.role === 'admin' || admins.includes(String(user.email || '').toLowerCase());
+  // Ownership, not an email list: whoever brokered or launched a character is a creator of that
+  // character. cosplay_accounts only exists since launch brokered it, so studio_creators is unioned in
+  // to cover characters that are already live.
+  const { results = [] } = await env.ANALYTICS_DB.prepare(
+    "SELECT creator_id FROM cosplay_accounts WHERE user_id=? UNION SELECT creator_id FROM studio_creators WHERE user_id=? AND status='live'"
+  ).bind(user.id, user.id).all();
+  const creatorIds = results.map(r => r.creator_id).filter(Boolean);
+  if (admin || creatorIds.length) return { user, admin, creatorIds };
+  return null;
+}
 
-  const { results: perUser = [] } = await env.ANALYTICS_DB.prepare(
-    'SELECT user_id, COUNT(*) n FROM cosplay_accounts GROUP BY user_id'
-  ).all();
-  const charactersPerAccount = new Map(perUser.map(row => [row.user_id, Number(row.n || 0)]));
+export async function overview(env, { hours = 24 } = {}) {
+  const db = env.ANALYTICS_DB;
+  const now = Date.now();
+  const buckets = [];
+  for (let back = 1; back <= hours; back++) buckets.push(hourBucket(now - back * 3600000));
+  const rows = await readBuckets(db, [...buckets, LIFETIME_BUCKET]);
 
-  const creators = [];
-  for (const row of results) {
-    const pnl = await getCreatorPnL(db, row.creator_id);
-    if (!pnl) continue;
-    creators.push({
-      creatorId: row.creator_id,
-      name: row.name,
-      avatarKey: row.avatar_key || null,
-      cosplayAccount: row.user_id ? {
-        userId: row.user_id,
-        userEmail: row.user_email || null,
-        accountStatus: row.account_status,
-        revShareBps: Number(row.rev_share_bps || 3000),
-        boundAt: Number(row.bound_at || 0),
-        oneAccountOneCharacterEnforced: charactersPerAccount.get(row.user_id) === 1
-      } : null,
-      ...pnl
-    });
+  const byBucket = new Map();
+  for (const row of rows) {
+    if (!byBucket.has(row.bucket)) byBucket.set(row.bucket, {});
+    const key = row.subject ? `${row.metric}:${row.subject}` : row.metric;
+    byBucket.get(row.bucket)[key] = row.value;
   }
 
-  const sum = fn => creators.reduce((total, c) => total + fn(c), 0);
-  const grossRevenueSatang = sum(c => c.revenue.grossRevenueSatang);
-  const creatorPayoutSatang = sum(c => c.revenue.creatorEarningSatang);
-  const platformNetProfitSatang = sum(c => c.pnl.platformNetProfitSatang);
-  const aiCostSatang = sum(c => c.costs.aiCostSatang);
-  const totalTurns = sum(c => c.turns);
-  const promptTokens = sum(c => c.tokens.prompt);
-  const completionTokens = sum(c => c.tokens.completion);
-  const thb = satang => Number((satang / 100).toFixed(2));
+  const lastRun = await db.prepare('SELECT bucket, status, rows_written, finished_at, error FROM analytics_rollup_runs ORDER BY bucket DESC LIMIT 1').first();
 
-  // Nothing writes creator_financial_ledger yet, so a zero here means "not measured", not "no sales".
-  const ledgerRows = Number((await env.ANALYTICS_DB.prepare('SELECT COUNT(*) n FROM creator_financial_ledger').first())?.n || 0);
+  // Per-creator totals come from the same rollup rows already in hand: one extra table scan for a
+  // name list would buy nothing, and admin can resolve names in the UI from its own creator list.
+  const perCreator = new Map();
+  for (const row of rows) {
+    if (!row.subject || !row.metric.startsWith('creator.')) continue;
+    if (!perCreator.has(row.subject)) perCreator.set(row.subject, { creatorId: row.subject, turns: 0, tokensIn: 0, tokensOut: 0, costSatangEstimate: 0 });
+    const entry = perCreator.get(row.subject);
+    if (row.metric === 'creator.turns') entry.turns += row.value;
+    if (row.metric === 'creator.tokens_in') entry.tokensIn += row.value;
+    if (row.metric === 'creator.tokens_out') entry.tokensOut += row.value;
+    if (row.metric === 'creator.cost_satang') entry.costSatangEstimate += row.value;
+  }
+
+  const lifetime = byBucket.get(LIFETIME_BUCKET) || {};
+  return {
+    scope: 'admin',
+    source: String(env.ANALYTICS_SOURCE || 'production'),
+    generatedAt: now,
+    meta: {
+      costBasis: 'estimated (ai_turn_metrics has no cached-token column; 50% cache hit assumed)',
+      revenuePerCreator: 'not_instrumented: creator_financial_ledger has no writer, so no per-creator money is shown anywhere',
+      traffic: 'not_connected: Cloudflare Insights/GA is a separate adapter and is not part of these numbers',
+      freshness: 'last completed hour, recomputed once by cron',
+      lastRun: lastRun || null
+    },
+    hours: buckets.map(bucket => ({ bucket, metrics: byBucket.get(bucket) || {} })),
+    lifetime,
+    creators: [...perCreator.values()].sort((a, b) => b.turns - a.turns)
+  };
+}
+
+export async function creatorView(env, tier, { hours = 24 } = {}) {
+  const db = env.ANALYTICS_DB;
+  const now = Date.now();
+  const buckets = [];
+  for (let back = 1; back <= hours; back++) buckets.push(hourBucket(now - back * 3600000));
+  const rows = await readBuckets(db, buckets);
+  const mine = rows.filter(row => row.subject && tier.creatorIds.includes(row.subject) && CREATOR_ALLOWED.includes(row.metric));
+
+  const byBucket = new Map();
+  for (const row of mine) {
+    const key = `${row.metric}:${row.subject}`;
+    byBucket.set(row.bucket, { ...(byBucket.get(row.bucket) || {}), [key]: row.value });
+  }
 
   return {
-    mode: String(env.ANALYTICS_MODE || 'staging'),
-    source: String(env.ANALYTICS_SOURCE || 'unlabelled'),
-    generatedAt: Date.now(),
-    revenueInstrumented: ledgerRows > 0,
-    modelPricing: { activeModel: 'deepseek-flash', exchangeRateThb: EXCHANGE_RATE_THB, rates: MODEL_PRICING['deepseek-flash'] },
-    overview: {
-      totalCreators: creators.length,
-      boundCosplayAccounts: creators.filter(c => c.cosplayAccount).length,
-      totalTurns,
-      tokens: { prompt: promptTokens, completion: completionTokens, total: promptTokens + completionTokens },
-      costs: {
-        aiCostSatang,
-        aiCostThb: thb(aiCostSatang),
-        avgCostPerTurnThb: totalTurns > 0 ? Number(((aiCostSatang / totalTurns) / 100).toFixed(4)) : 0
-      },
-      revenue: {
-        grossRevenueSatang,
-        grossRevenueThb: thb(grossRevenueSatang),
-        creatorPayoutSatang,
-        creatorPayoutThb: thb(creatorPayoutSatang),
-        platformNetProfitSatang,
-        platformNetProfitThb: thb(platformNetProfitSatang),
-        netMarginPercent: grossRevenueSatang > 0 ? Number(((platformNetProfitSatang / grossRevenueSatang) * 100).toFixed(2)) : 0
-      }
-    },
-    creators
+    scope: 'creator',
+    source: String(env.ANALYTICS_SOURCE || 'production'),
+    generatedAt: now,
+    creators: tier.creatorIds,
+    meta: { money: 'hidden_until_attributed', costBasis: 'estimated (50% cache hit assumed)' },
+    hours: buckets.map(bucket => ({ bucket, metrics: byBucket.get(bucket) || {} }))
   };
+}
+
+export async function rollupNow(env, { force = false } = {}) {
+  const bucket = hourBucket(Date.now() - 3600000);
+  return runHourly(env.ANALYTICS_DB, bucket, { force });
 }

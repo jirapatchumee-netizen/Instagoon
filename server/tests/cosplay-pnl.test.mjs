@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { readFileSync, readdirSync } from 'node:fs';
 import { calculateTokenCost, recordTokenUsage, getCreatorPnL, MODEL_PRICING, EXCHANGE_RATE_THB } from '../src/token-pricing.mjs';
-import analyticsWorker from '../src/analytics.mjs';
 
 function createTestDb() {
   const db = new DatabaseSync(':memory:');
@@ -173,48 +172,4 @@ test('Token usage ledger records sub-turn calls and calculates creator PnL', asy
   assert.ok(pnl.costs.aiCostThb > 0);
   // Platform Net Profit = Platform Fee (350 THB) - AI Cost (~0.10 THB)
   assert.ok(pnl.pnl.platformNetProfitThb > 349);
-});
-
-// The read plane is its own Worker bound to the staging database, and it answers in the shape the
-// dashboard renders. analytics-plane-isolation.test.mjs holds both directions of the split.
-test('Analytics read plane returns DeepSeek-Flash PnL for an allowlisted staging session', async () => {
-  const d1 = createTestDb();
-  const creatorId = 'crt_test';
-  const token = 'valid_test_token';
-  const sessionId = Array.from(
-    new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token))),
-    n => n.toString(16).padStart(2, '0')
-  ).join('');
-
-  d1.raw.prepare('INSERT INTO users(id, email, google_id, created_at) VALUES (?, ?, ?, 1000)').run('usr_test', 'admin@instagoon.com', 'g_test');
-  d1.raw.prepare("INSERT INTO creators(id, name, bio) VALUES (?, 'Test Creator', 'Bio')").run(creatorId);
-  d1.raw.prepare('INSERT INTO cosplay_accounts(id, user_id, creator_id, account_status, rev_share_bps, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-    .run('acc_test', 'usr_test', creatorId, 'active', 3000, 1000, 1000);
-  d1.raw.prepare('INSERT INTO studio_creators(user_id, creator_id, draft_json, status, launched_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)')
-    .run('usr_test', creatorId, '{}', 'live', 1000, 1000);
-  d1.raw.prepare('INSERT INTO sessions(id, user_id, expires_at) VALUES (?, ?, ?)').run(sessionId, 'usr_test', Date.now() + 60000);
-
-  const env = {
-    ANALYTICS_DB: d1,
-    ANALYTICS_READ_ENABLED: 'true',
-    ANALYTICS_EMAILS: 'admin@instagoon.com',
-    ANALYTICS_MODE: 'staging',
-    ANALYTICS_SOURCE: 'instagoon-staging'
-  };
-
-  const req = new Request('https://analytics-staging.instagoon.app/api/analytics/cosplay', {
-    headers: { cookie: `frost_session=${token}` }
-  });
-
-  const res = await analyticsWorker.fetch(req, env, {});
-  assert.equal(res.status, 200);
-  const data = await res.json();
-
-  assert.equal(data.mode, 'staging');
-  assert.equal(data.source, 'instagoon-staging');
-  assert.equal(data.modelPricing.activeModel, 'deepseek-flash');
-  assert.equal(data.modelPricing.exchangeRateThb, 34.50);
-  assert.ok(Array.isArray(data.creators));
-  assert.equal(data.creators.length, 1);
-  assert.equal(data.creators[0].creatorId, creatorId);
 });

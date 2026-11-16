@@ -24,24 +24,48 @@
 | `/studio` และ assets ของ `dist-studio` | **404** | เปิดให้ allowlist |
 | `/api/studio/*` | **404** | เปิดให้ allowlist |
 | `/api/admin/*`, `/api/dev/*` | **404** (ย้ายไป CI job/สคริปต์) | เปิดให้ allowlist เฉพาะสิ่งที่เฟส 1 ต้องการ |
-| PnL / data analytics ของ Cosplay Creator | **ไม่มี binding ให้อ่านได้เลย** (`ANALYTICS_DB` ไม่อยู่ใน `wrangler.toml`) | worker แยก `instagoon-analytics` อ่าน D1 staging เท่านั้น + `ANALYTICS_EMAILS` |
+| dashboard analytics (ข้อมูลจริงของเว็บที่ผู้เล่นใช้งาน) | worker แยก `analytics.instagoon.app` อ่าน prod D1 ผ่าน `ANALYTICS_DB` + cron rollup | **ไม่มี dashboard**: staging ไม่มี `COSPLAY_ANALYTICS_ORIGIN` เพราะ staging เป็นสนามทดลองระบบ ไม่ใช่แหล่งตัวเลข |
 | `POST /auth/login` (passcode), `/auth/demo`, `/auth/register` | **404** | **404** (ใช้ Gmail login) |
 
-## Read plane ของ Cosplay analytics (เพิ่ม 16 พ.ย. 2026)
+## Analytics plane: อ่าน prod เท่านั้น และอ่านผ่าน rollup เท่านั้น (อัปเดต 16 พ.ย. 2026)
 
-การทดลองให้ Cosplay Creator เติมข้อมูลจริงอยู่คนละส่วนกับการวิเคราะห์ตัวเลขนั้น แยกกันด้วย **binding** ไม่ใช่ด้วย `if`
+staging คือสนามทดลอง*ระบบ* ไม่ใช่แหล่งตัวเลข dashboard จึงแสดงเฉพาะข้อมูลที่ผู้เล่นจริงผลิต บน production
 
-- `server/wrangler.analytics.toml` → worker `instagoon-analytics`, มี `ANALYTICS_DB` ผูกกับ D1 `instagoon-staging` เท่านั้น และไม่มี `[assets]`/cron
-- `server/src/analytics.mjs` → มี path เดียว `GET /api/analytics/cosplay`; ไม่มี flag หรือไม่มี binding = 503, session email ไม่อยู่ใน Secret `ANALYTICS_EMAILS` = 401, CORS เปิดเฉพาะ `ANALYTICS_ALLOWED_ORIGIN`
-- `.github/workflows/deploy-instagoon.yml` ต้องเพิ่ม 2 step ใน job staging (deploy `wrangler.analytics.toml`
-  ที่ผูกโดเมน `analytics-staging.instagoon.app` + ตั้ง Secret `ANALYTICS_EMAILS` จาก `STAGING_EMAILS`)
-  ส่วน job production ไม่มีสองขั้นนี้ **ขั้นนี้ยังไม่ได้ merge** เพราะ `scripts/guard-commit.mjs` กันการแก้
-  workflow ไว้ตาม ADR-0013 (owner review) → diff พร้อมใช้อยู่ที่ `outputs/analytics-ci-deploy.patch`
-- `froststory-api` (prod) ไม่เคยผูก `ANALYTICS_DB` จึงอ่านฐาน staging ไม่ได้ทางกายภาพ — ไม่ใช่เรื่องที่ว่าลืมใส่ gate; `analytics-plane-isolation.test.mjs` ตรวจทั้งสองทิศและตรวจไฟล์ config ด้วย
-- ฝั่ง UI ไม่ได้ตัดสินจาก hostname: `/api/me` ส่ง `uiFlags.cosplayAnalyticsOrigin` มาให้ (prod ไม่มี var `COSPLAY_ANALYTICS_ORIGIN` ⇒ ค่าว่าง ⇒ ไม่มีปุ่ม)
-- **ยังไม่มีผู้เขียน `creator_financial_ledger`**: ตัวเลขรายได้จึงเป็น 0 แบบ "ยังไม่ได้วัด" payload มี `revenueInstrumented: false` กำกับไว้ ห้ามตีความเป็นยอดขายศูนย์ และห้ามเชื่อม analytics กับ prod D1 เพื่อหาตัวเลขมาเติม
+- `server/wrangler.analytics.toml` → worker `instagoon-analytics` ผูก `ANALYTICS_DB` กับ D1 `froststory` (prod)
+  เท่านั้น มี `[triggers] crons` และ custom domain `analytics.instagoon.app` ทั้ง worker เกม (`froststory-api`)
+  และ worker staging ไม่มี binding นี้เลย จึงไม่มี path ใดของสอง host นั้นตอบ dashboard ได้ — เป็นการแยกด้วย
+  binding ไม่ใช่ด้วย gate ที่ลืมได้
+- `server/src/analytics-rollup.mjs` → cron หนึ่งครั้งต่อ**ชั่วโมงที่ปิดแล้ว** รวมตัวเลขลง `analytics_rollup`
+  (PK `bucket, metric, subject`) และบันทึกลง `analytics_rollup_runs` การรันซ้ำ hour เดิมคือการเขียนทับ ไม่ใช่บวกซ้ำ
+  hour ที่สถานะ `ok` แล้วจะถูกข้าม และ hour ที่ล้มเหลวถูกบันทึกพร้อม error ไม่ปล่อยให้เป็นเลขครึ่ง ๆ กลาง ๆ
+- endpoint ทั้งหมดอ่านจาก `analytics_rollup` เท่านั้น ไม่มี `SUM`/`COUNT` บนตารางที่ผู้เล่นเขียน
+  การเปิด dashboard ถี่ ๆ จึงไม่ไปเพิ่มโหลดให้ระบบจริง
+- tier มาจากข้อมูล ไม่ใช่รายชื่ออีเมล: admin = `user_credentials.role='admin'` (หรือ Secret break-glass
+  `ANALYTICS_ADMIN_EMAILS`), creator = ความเป็นเจ้าของตัวละครใน `cosplay_accounts`/`studio_creators`
+  การเพิ่ม creator จึงเป็น data row ไม่ใช่การ deploy
+
+| endpoint | ใคร | เห็นอะไร |
+| --- | --- | --- |
+| `GET /api/analytics/overview` | admin เท่านั้น | ทุก metric รวมถึงเงินที่ไหลเข้าระบบ และตัวตนของ creator |
+| `GET /api/analytics/me` | เจ้าของตัวละครเท่านั้น | เฉพาะ `creator.*` ของตัวเอง — ไม่มี metric เงิน ไม่มีตัวละครอื่น ไม่มีอีเมลคนอื่น |
+| `POST /api/analytics/rollup/run` | admin เท่านั้น | recompute ชั่วโมงล่าสุด (force) |
+| path อื่น | — | 404; ไม่มี flag/binding = 503; session ไม่ผ่าน = 401 |
+
+สามข้อจำกัดที่ payload พูดออกมาตรง ๆ ห้ามตีความผิด:
+
+- `meta.traffic = not_connected` — Cloudflare Insights/GA ยังไม่ถูกต่อเข้าระบบนี้ อย่าเรียกกราฟนี้ว่า traffic
+- `meta.revenuePerCreator = not_instrumented` — `creator_financial_ledger` ยังไม่มีผู้เขียน
+  ตัวเลข 0 ต่อ creator ไม่ใช่ "ไม่มีใครใช้"
+- `meta.costBasis = estimated` — token cost ประเมิน cache hit 50% เพราะ `ai_turn_metrics` ไม่เก็บ cached tokens
+
+เมตริกที่ตารางไม่มีคอลัมน์เวลา (`likes`, `relationships`) อยู่เฉพาะ bucket `lifetime` เท่านั้น
+การยัดมันลงกราฟรายชั่วโมงคือการสร้างตัวเลขที่ไม่มีอยู่จริง
+
+**ยังไม่ทำ**: หน้า dashboard ของ `analytics.instagoon.app` (worker ตอบ JSON อย่างเดียว), adapter traffic,
+การ instrument รายได้ต่อ creator, dashboard variant บน staging (ตั้งใจไม่ให้มี)
 
 
+## OpenAPI skeleton (เฟส 1)
 
 ```yaml
 openapi: 3.1.0

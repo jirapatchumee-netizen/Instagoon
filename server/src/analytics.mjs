@@ -1,30 +1,48 @@
-import { ANALYTICS_PATH, analyticsJson, analyticsReady, analyticsReader, cosplayAnalytics } from './analytics-api.mjs';
+import { PATHS, analyticsJson, analyticsReady, analyticsSession, creatorView, overview, rollupNow, tiersFor } from './analytics-api.mjs';
+import { runHourly, hourBucket } from './analytics-rollup.mjs';
 
-// The staging UI lives on another origin, so a browser can only read this plane when the owner
-// names that origin. Anything else gets no CORS headers and the browser blocks the response body.
-function corsHeaders(req, env) {
-  const origin = req.headers.get('origin');
-  const allowed = String(env.ANALYTICS_ALLOWED_ORIGIN || '');
-  if (!origin || !allowed || origin !== allowed) return {};
-  return { 'access-control-allow-origin': allowed, 'access-control-allow-credentials': 'true', vary: 'Origin' };
+// One Worker, one database binding, prod only. It reads rollups written by its own cron and answers
+// three paths; anything else is 404 so the surface cannot grow by accident.
+async function handle(req, env) {
+  const { pathname } = new URL(req.url);
+  if (!Object.values(PATHS).includes(pathname)) return analyticsJson({ error: 'not_found' }, 404);
+  if (!analyticsReady(env)) return analyticsJson({ error: 'analytics_disabled' }, 503);
+
+  const user = await analyticsSession(req, env);
+  if (!user) return analyticsJson({ error: 'unauthorized' }, 401);
+  const tier = await tiersFor(env, user);
+  if (!tier) return analyticsJson({ error: 'forbidden' }, 403);
+
+  const hours = Math.min(Math.max(Number(new URL(req.url).searchParams.get('hours')) || 24, 1), 168);
+
+  if (pathname === PATHS.me) {
+    if (req.method !== 'GET') return analyticsJson({ error: 'method_not_allowed' }, 405);
+    if (!tier.creatorIds.length) return analyticsJson({ error: 'not_a_creator' }, 403);
+    return analyticsJson(await creatorView(env, tier, { hours }));
+  }
+
+  if (!tier.admin) return analyticsJson({ error: 'forbidden' }, 403);
+
+  if (pathname === PATHS.run) {
+    if (req.method !== 'POST') return analyticsJson({ error: 'method_not_allowed' }, 405);
+    return analyticsJson(await rollupNow(env, { force: true }));
+  }
+  return analyticsJson(await overview(env, { hours }));
 }
 
 export default {
-  async fetch(req, env) {
-    const { pathname } = new URL(req.url);
-    const cors = corsHeaders(req, env);
-    if (req.method === 'OPTIONS') {
-      return new Response(null, { status: 204, headers: { ...cors, 'access-control-allow-methods': 'GET, OPTIONS', 'access-control-allow-headers': 'cookie' } });
-    }
-    if (req.method !== 'GET') return analyticsJson({ error: 'method_not_allowed' }, 405, cors);
-    if (pathname !== ANALYTICS_PATH) return analyticsJson({ error: 'not_found' }, 404, cors);
-    if (!analyticsReady(env)) return analyticsJson({ error: 'analytics_disabled' }, 503, cors);
-    if (!await analyticsReader(req, env)) return analyticsJson({ error: 'unauthorized' }, 401, cors);
+  fetch: (req, env) => handle(req, env).catch(error => {
+    console.error('analytics request failed', error?.name);
+    return analyticsJson({ error: 'analytics_failed' }, 500);
+  }),
+
+  // Hourly: the previous hour only, so a partially filled bucket is never published.
+  async scheduled(event, env) {
+    const bucket = hourBucket(Date.now() - 3600000);
     try {
-      return analyticsJson(await cosplayAnalytics(env), 200, cors);
-    } catch (e) {
-      console.error('analytics read failed', e?.name);
-      return analyticsJson({ error: 'analytics_failed' }, 500, cors);
+      await runHourly(env.ANALYTICS_DB, bucket);
+    } catch (error) {
+      console.error(`analytics rollup failed for ${bucket}`, error?.message);
     }
   }
 };

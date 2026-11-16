@@ -1,33 +1,38 @@
-# Read plane for the Cosplay Creator experiment. It is its OWN Worker with its OWN D1 binding name
-# (ANALYTICS_DB), so froststory-api can never reach this data even if someone adds a route to it:
-# a Worker cannot read a database it has no binding for. analytics-plane-isolation.test.mjs guards
-# that this file points at the staging database and at nothing else.
+# Instagoon analytics dashboard. Production data only: staging is where the *system* is tested, not a
+# source of numbers, so this Worker reads the database real players write to.
+#
+# It is a separate Worker with a separate binding name (ANALYTICS_DB). The game Workers never hold that
+# binding, so no game route can serve these numbers even if a gate is forgotten.
 name = "instagoon-analytics"
 main = "src/analytics.mjs"
 compatibility_date = "2026-10-01"
 workers_dev = false
 preview_urls = false
 
+# [[routes]] must stay its own table: a top-level `routes = [...]` written after [[d1_databases]] is
+# parsed into the D1 entry and wrangler only warns, deploying the Worker with "No targets deployed".
+[[routes]]
+pattern = "analytics.instagoon.app"
+custom_domain = true
+
+# One hour late every hour: rollups cover the last *completed* hour, so a half-filled bucket is never
+# published as if it were a whole one.
+[triggers]
+crons = ["12 * * * *"]
+
 [[d1_databases]]
 binding = "ANALYTICS_DB"
-database_name = "instagoon-staging"
-database_id = "386f836c-5bb7-4eb2-a1b0-87dfd85fa5e6"
-
-# No [assets] and no [triggers]: this Worker serves one JSON path and nothing else.
-# The staging UI reads it from its own origin. It is deliberately NOT deployed by the production
-# job in .github/workflows/deploy-instagoon.yml, so no production build can point at this plane.
-routes = [{ pattern = "analytics-staging.instagoon.app", custom_domain = true }]
+database_name = "froststory"
+database_id = "6a48d2df-a32b-4b13-9148-7ed2abfc0789"
 
 [vars]
-# Absent or any other value = 503, so an unconfigured deploy cannot leak numbers.
+# Absent or any other value = 503, so an unconfigured deploy cannot answer with partial numbers.
 ANALYTICS_READ_ENABLED = "true"
-# Printed in every payload so a chart always says which database it came from.
-ANALYTICS_SOURCE = "instagoon-staging"
-# ANALYTICS_ALLOWED_ORIGIN must equal the staging origin exactly, or the browser blocks the response.
-# Keep it in step with COSPLAY_ANALYTICS_ORIGIN in wrangler.staging.toml.
-ANALYTICS_ALLOWED_ORIGIN = "https://staging.instagoon.app"
+# Printed in every payload: a chart always says which database it came from.
+ANALYTICS_SOURCE = "production"
 
-# ANALYTICS_EMAILS (who may read) is a Secret, not a var, and the staging CI job sets it on every
-# deploy from STAGING_EMAILS in wrangler.staging.toml, so the two allowlists cannot drift apart.
-# To do it by hand instead:
-#   printf '%s' 'someone@example.com' | npx wrangler secret put ANALYTICS_EMAILS --config wrangler.analytics.toml
+# Admin tier is users.role='admin' (user_credentials). This Secret exists only as break-glass for the
+# first admins before roles are assigned, and as any Secret it is not kept in git (ADR-0018 D1):
+#   printf '%s' 'someone@example.com' | npx wrangler secret put ANALYTICS_ADMIN_EMAILS --config wrangler.analytics.toml
+# Creator tier is never a list: it is derived from owning a character (cosplay_accounts /
+# studio_creators), so onboarding a creator is a data row, not a deploy.
