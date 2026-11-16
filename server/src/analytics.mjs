@@ -6,6 +6,16 @@ import { runHourly, hourBucket } from './analytics-rollup.mjs';
 async function handle(req, env) {
   const { pathname } = new URL(req.url);
 
+  if (pathname === '/auth/google') {
+    return new Response(null, {
+      status: 302,
+      headers: {
+        location: 'https://instagoon.app/auth/google?redirect=https://analytics.instagoon.app/',
+        'cache-control': 'no-store'
+      }
+    });
+  }
+
   if (pathname === '/auth/session') {
     const raw = new URL(req.url).searchParams.get('token');
     if (raw && /^[a-zA-Z0-9_-]{16,128}$/.test(raw)) {

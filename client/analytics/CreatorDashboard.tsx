@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bot, Zap, RefreshCw, ShieldCheck, Heart, MessageSquare } from 'lucide-react';
+import { Bot, Zap, RefreshCw, ShieldCheck, Heart, MessageSquare, LogOut } from 'lucide-react';
 import type { CreatorViewPayload } from './types';
 
 interface Props {
@@ -102,6 +102,15 @@ export function CreatorDashboard({ data, hours, onHoursChange, onRefresh }: Prop
           >
             <RefreshCw className="w-4 h-4" />
           </button>
+
+          <a
+            href="/auth/logout"
+            title="ออกจากระบบ"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-red-400 hover:border-red-500/30 text-xs transition"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>ออก</span>
+          </a>
         </div>
       </div>
 

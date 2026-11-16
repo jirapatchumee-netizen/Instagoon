@@ -258,7 +258,11 @@ async function chatMetrics(env, from, to) {
   outcomes
  };
 }
-const secureCookie = (name, value, age) => `${name}=${value}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${age}`;
+const secureCookie = (name, value, age, req) => {
+  const host = (req?.headers?.get('host') || req?.headers?.get('x-forwarded-host') || '').toLowerCase();
+  const domainPart = host.endsWith('instagoon.app') ? '; Domain=.instagoon.app' : '';
+  return `${name}=${value}${domainPart}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${age}`;
+};
 async function session(req, env) {
  const raw=cookie(req,'frost_session'); if(!raw)return null;
  const user=await one(env,`SELECT u.*, c.role FROM sessions s JOIN users u ON u.id=s.user_id LEFT JOIN user_credentials c ON c.user_id=u.id LEFT JOIN invites i ON i.email=u.email WHERE s.id=? AND s.expires_at>? AND (COALESCE(i.status,'active')='active' OR lower(u.email)=lower(?))`,await hash(raw),Date.now(),env.ADMIN_EMAIL||'');
@@ -315,12 +319,13 @@ async function auth(req,env,url) {
  if(url.pathname==='/auth/google') {
   const state=token(), verifier=token(), challenge=base64url(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(verifier))));
   const target = url.searchParams.get('redirect') || '';
-  const safeTarget = target.startsWith('/') && !target.startsWith('//') ? target : '';
+  const isAnalytics = target === 'https://analytics.instagoon.app' || target.startsWith('https://analytics.instagoon.app/') || target.startsWith('https://analytics.instagoon.app?');
+  const safeTarget = (target.startsWith('/') && !target.startsWith('//')) || isAnalytics ? target : '';
   await run(env,'INSERT INTO oauth_states(id,verifier,expires_at) VALUES(?,?,?)',await hash(state),verifier,Date.now()+600000);
   const q=new URLSearchParams({client_id:env.GOOGLE_CLIENT_ID,redirect_uri:redirect,response_type:'code',scope:'openid email',state,code_challenge:challenge,code_challenge_method:'S256'});
   const headers = new Headers({location:'https://accounts.google.com/o/oauth2/v2/auth?'+q,'cache-control':'no-store'});
-  headers.append('set-cookie', secureCookie('frost_oauth',state,600));
-  if (safeTarget) headers.append('set-cookie', secureCookie('frost_redirect', safeTarget, 600));
+  headers.append('set-cookie', secureCookie('frost_oauth',state,600,req));
+  if (safeTarget) headers.append('set-cookie', secureCookie('frost_redirect', safeTarget, 600, req));
   return new Response(null,{status:302,headers});
  }
  if(url.searchParams.get('error')==='access_denied')return authError('login_cancelled');
@@ -344,10 +349,17 @@ async function auth(req,env,url) {
  if(!user){const uid=crypto.randomUUID(); await env.DB.batch([env.DB.prepare('INSERT INTO users(id,email,google_id,created_at) VALUES(?,?,?,?)').bind(uid,email,profile.sub,now),env.DB.prepare('INSERT OR IGNORE INTO energy(user_id,free) VALUES(?,?)').bind(uid,freeEnergyGrant(env))]); user={id:uid};}
  const raw=token(); await run(env,'INSERT INTO sessions(id,user_id,expires_at) VALUES(?,?,?)',await hash(raw),user.id,now+604800000);
  const redirectTarget = cookie(req, 'frost_redirect');
- const safeTarget = redirectTarget && redirectTarget.startsWith('/') && !redirectTarget.startsWith('//') ? redirectTarget : '/';
+ let safeTarget = '/';
+ if (redirectTarget) {
+  if (redirectTarget.startsWith('/') && !redirectTarget.startsWith('//')) {
+   safeTarget = redirectTarget;
+  } else if (redirectTarget.startsWith('https://analytics.instagoon.app')) {
+   safeTarget = `https://analytics.instagoon.app/auth/session?token=${raw}`;
+  }
+ }
  const headers = new Headers({location: safeTarget, 'cache-control':'no-store'});
- headers.append('set-cookie', secureCookie('frost_session',raw,604800));
- if (redirectTarget) headers.append('set-cookie', secureCookie('frost_redirect', '', 0));
+ headers.append('set-cookie', secureCookie('frost_session',raw,604800,req));
+ if (redirectTarget) headers.append('set-cookie', secureCookie('frost_redirect', '', 0, req));
  return new Response(null,{status:302,headers});
 }
 // Choice outcomes of a scripted episode (ADR 0008). Score is recomputed from the three axes with the character's
