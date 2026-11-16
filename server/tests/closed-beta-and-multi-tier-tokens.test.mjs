@@ -171,19 +171,18 @@ test('multi-tier tokens: redeeming admin token (iga_...) grants admin credential
   assert.equal(creds.role, 'admin');
 });
 
-test('default diamonds: migration updates existing accounts to have 1,000,000 diamonds', async () => {
+test('default diamonds: migration updates existing accounts to have 1,000 diamonds', async () => {
   const { f } = await setup();
 
-  // Simulate applying migration 0035 diamond update
-  f.sql.exec("UPDATE energy SET diamonds = MAX(COALESCE(diamonds, 0), 1000000);");
+  f.sql.exec("UPDATE energy SET diamonds = 1000;");
 
   const row1 = f.sql.prepare("SELECT diamonds FROM energy WHERE user_id='player_1'").get();
   const row2 = f.sql.prepare("SELECT diamonds FROM energy WHERE user_id='player_2'").get();
   const rowAdmin = f.sql.prepare("SELECT diamonds FROM energy WHERE user_id='admin_user'").get();
 
-  assert.ok(row1.diamonds >= 1000000);
-  assert.ok(row2.diamonds >= 1000000);
-  assert.ok(rowAdmin.diamonds >= 1000000);
+  assert.equal(row1.diamonds, 1000);
+  assert.equal(row2.diamonds, 1000);
+  assert.equal(rowAdmin.diamonds, 1000);
 });
 
 test('public check token: allows unauthenticated verification of valid and invalid tokens', async () => {

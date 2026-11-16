@@ -148,8 +148,8 @@ async function getGoogleTtsToken(serviceAccountJson) {
 }
 // One-time free energy per new account: 30 by default, FREE_ENERGY_GRANT overrides it (staging uses 100).
 const freeEnergyGrant = env => Number.parseInt(env.FREE_ENERGY_GRANT, 10) || 30;
-// Default diamonds per account: 1,000,000 diamonds given to every account for closed beta & launch.
-const initialDiamondsGrant = env => Number.parseInt(env.INITIAL_DIAMONDS_GRANT, 10) || 1000000;
+// Default diamonds per account: 1,000 diamonds given to every account for closed beta & launch.
+const initialDiamondsGrant = env => Number.parseInt(env.INITIAL_DIAMONDS_GRANT, 10) || 1000;
 const MEMORY_KEY = /^player\.[\w.-]{1,60}$/;
 // Words that only appear when a reply talks about the AI behind the character or quotes its
 // instructions. Such a reply is discarded like an empty one and the next model is tried.
@@ -311,7 +311,7 @@ async function auth(req,env,url) {
    await env.DB.batch([
     env.DB.prepare("INSERT INTO users(id,email,google_id,age_verified_at,consent_version,created_at) VALUES(?,?,'demo_google_id',?,?,?)").bind(uid,demoEmail,now,'1.0',now),
     env.DB.prepare("INSERT INTO invites(email,status) VALUES(?,'active') ON CONFLICT(email) DO UPDATE SET status='active'").bind(demoEmail),
-    env.DB.prepare("INSERT INTO energy(user_id,free,purchased,diamonds) VALUES(?,30,0,1000000) ON CONFLICT(user_id) DO UPDATE SET free=30,diamonds=MAX(energy.diamonds,1000000)").bind(uid),
+    env.DB.prepare("INSERT INTO energy(user_id,free,purchased,diamonds) VALUES(?,30,0,1000) ON CONFLICT(user_id) DO UPDATE SET free=30,diamonds=MAX(energy.diamonds,1000)").bind(uid),
     env.DB.prepare("INSERT OR REPLACE INTO user_credentials(user_id,password_hash,salt,role,updated_at) VALUES(?,'DEMO','DEMO','admin',?)").bind(uid,now)
    ]);
    user={id:uid,email:demoEmail};
