@@ -7,6 +7,7 @@ export type User = {
   ageVerifiedAt: number | null;
   consentVersion: string | null;
   isAdmin?: boolean;
+  betaAccess?: boolean;
   nickname?: string | null;
   avatarId?: string | null;
 };
