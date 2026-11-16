@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { IgVerified } from '../InstagramIcons';
 import { api } from '../api';
+import { CosplayCreatorAccess } from '../components/CosplayCreatorAccess';
 import './profile-tcg.css';
 
 interface UnlockedCard {
@@ -87,6 +88,7 @@ interface PlayerProfileTabProps {
   onReportIssue?: () => void;
   onOpenShop?: () => void;
   onOpenChat?: (creator: Creator) => void;
+  studio?: React.ComponentProps<typeof CosplayCreatorAccess> | null;
 }
 
 function getRarityBadgeClass(rarity: 'R' | 'SR' | 'SSR' | 'UR') {
@@ -118,6 +120,7 @@ export function PlayerProfileTab({
   onReportIssue,
   onOpenShop,
   onOpenChat,
+  studio,
 }: PlayerProfileTabProps) {
   const t = TRANSLATIONS[lang];
   const [activeSubTab, setActiveSubTab] = useState<'saved' | 'collection' | 'following'>('saved');
@@ -861,6 +864,8 @@ export function PlayerProfileTab({
             </button>
           </div>
         </div>
+
+        {studio && <CosplayCreatorAccess {...studio} />}
 
         {/* Support & Logout Buttons */}
         <div className="space-y-2 pt-1">

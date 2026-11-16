@@ -29,6 +29,7 @@ async function setup(extraEnv = {}) {
     sql.prepare('INSERT INTO energy(user_id) VALUES(?)').run(id);
     sql.prepare('INSERT INTO sessions(id,user_id,expires_at) VALUES(?,?,?)').run(await sessionHash(raw), id, now + 100000);
   }
+  sql.prepare('INSERT INTO studio_tokens(id,creator_uid,token_hash,issued_email,created_at,user_id,redeemed_at) VALUES(?,?,?,?,?,?,?)').run('tok_u', 'ccu_u', 'hash_u', 'u@example.com', now, 'u', now);
   return { sql, objects, env: { DB, MEDIA, PUBLIC_ORIGIN: 'https://frost.test', ADMIN_EMAIL: 'admin@example.com', ...extraEnv } };
 }
 
@@ -38,21 +39,21 @@ const call = (env, path, { raw = RAW_U, method = 'GET', body } = {}) => worker.f
 const upload = (env, opts = {}) => call(env, '/api/media/upload', { method: 'POST', body: WEBP, ...opts });
 
 test('studio is hidden and upload refused while COSPLAY_STUDIO_V1 is off', async () => {
-  const { env } = await setup({ STAGING_EMAILS: 'u@example.com' });
+  const { env } = await setup();
   const me = await (await call(env, '/api/me')).json();
   assert.equal(me.uiFlags.cosplayStudioV1, false);
   assert.equal((await upload(env)).status, 403);
 });
 
-test('flag on still refuses players outside STAGING_EMAILS/admin', async () => {
-  const { env } = await setup({ COSPLAY_STUDIO_V1: 'true', STAGING_EMAILS: 'u@example.com' });
+test('flag on still refuses players without a token', async () => {
+  const { env } = await setup({ COSPLAY_STUDIO_V1: 'true' });
   const me = await (await call(env, '/api/me', { raw: RAW_U2 })).json();
   assert.equal(me.uiFlags.cosplayStudioV1, false);
   assert.equal((await upload(env, { raw: RAW_U2 })).status, 403);
 });
 
 test('allowed upload lands in a private studio-drafts/<uid>/ key readable only by its owner', async () => {
-  const { env } = await setup({ COSPLAY_STUDIO_V1: 'true', STAGING_EMAILS: 'u@example.com' });
+  const { env } = await setup({ COSPLAY_STUDIO_V1: 'true' });
   assert.equal((await (await call(env, '/api/me')).json()).uiFlags.cosplayStudioV1, true);
   const res = await upload(env);
   assert.equal(res.status, 200);
@@ -63,7 +64,7 @@ test('allowed upload lands in a private studio-drafts/<uid>/ key readable only b
 });
 
 test('upload rejects non-WebP, oversize and over-quota requests', async () => {
-  const { env, sql } = await setup({ COSPLAY_STUDIO_V1: 'true', STAGING_EMAILS: 'u@example.com' });
+  const { env, sql } = await setup({ COSPLAY_STUDIO_V1: 'true' });
   assert.equal((await upload(env, { body: new Uint8Array(16) })).status, 400);
   const big = new Uint8Array(2000001); big.set(WEBP);
   assert.equal((await upload(env, { body: big })).status, 400);

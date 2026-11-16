@@ -33,8 +33,10 @@ const key = x => /^[a-zA-Z0-9_./-]{1,200}$/.test(x || '') && !x.includes('..') ?
 const integer = (v, fallback=0) => v == null ? fallback : Number.isSafeInteger(v) && v>=0 ? v : fail('invalid_number');
 const body = async req => { try {const x=await req.json(); if(!x||typeof x!=='object'||Array.isArray(x)) throw 0; return x;} catch {return fail('invalid_json');} };
 const isAdminUser = (env,user) => !!user && (user.role === 'admin' || (!!env.ADMIN_EMAIL && user.email.toLowerCase() === env.ADMIN_EMAIL.toLowerCase()));
-// Cosplay Creator Studio is still a prototype: only behind COSPLAY_STUDIO_V1 and only for admins or STAGING_EMAILS.
-const studioAllowed = (env,user) => String(env.COSPLAY_STUDIO_V1)==='true' && !!user && (isAdminUser(env,user) || String(env.STAGING_EMAILS||'').split(',').some(e=>e.trim().toLowerCase()===String(user.email||'').toLowerCase()));
+// Cosplay Creator Studio is behind COSPLAY_STUDIO_V1 and opens only for admins or a player who redeemed an admin-issued token.
+const studioToken = (env,user) => user ? one(env,'SELECT id,creator_uid FROM studio_tokens WHERE user_id=?',user.id) : null;
+const studioAllowed = async (env,user) => String(env.COSPLAY_STUDIO_V1)==='true' && !!user && (isAdminUser(env,user) || !!await studioToken(env,user));
+const recordTokenEmail = (env,tokenId,email,now) => run(env,'INSERT INTO studio_token_emails(token_id,email,first_seen_at,last_seen_at) VALUES(?,?,?,?) ON CONFLICT(token_id,email) DO UPDATE SET last_seen_at=excluded.last_seen_at',tokenId,String(email).toLowerCase(),now,now);
 const STUDIO_UPLOAD_MAX_BYTES = 2000000; // D1 BLOB cap is 2,000,000 bytes
 const STUDIO_UPLOADS_PER_DAY = 30;
 const STUDIO_LAUNCHES_PER_DAY = 20;
@@ -439,7 +441,8 @@ async function player(req,env,user,path,now,ctx) {
   await ensureUserProfileColumns(env);
   const uRow = await one(env, 'SELECT nickname, avatar_id FROM users WHERE id=?', user.id);
   const isAdmin = isAdminUser(env,user);
-  return json({user:{id:user.id,email:user.email,role:user.role||(isAdmin?'admin':'player'),isAdmin,ageVerifiedAt:user.age_verified_at,consentVersion:user.consent_version,nickname:uRow?.nickname||null,avatarId:uRow?.avatar_id||null},energy:await energy(env,user.id,now),uiFlags:{homeHubV1:String(env.HOME_HUB_V1)==='true',cosplayStudioV1:studioAllowed(env,user),cosplayAnalyticsOrigin:studioAllowed(env,user)?String(env.COSPLAY_ANALYTICS_ORIGIN||''):''}});
+  const studioTok = await studioToken(env,user), studioOk = await studioAllowed(env,user);
+  return json({user:{id:user.id,email:user.email,role:user.role||(isAdmin?'admin':'player'),isAdmin,ageVerifiedAt:user.age_verified_at,consentVersion:user.consent_version,nickname:uRow?.nickname||null,avatarId:uRow?.avatar_id||null},energy:await energy(env,user.id,now),uiFlags:{homeHubV1:String(env.HOME_HUB_V1)==='true',cosplayStudioV1:studioOk,cosplayStudioGate:String(env.COSPLAY_STUDIO_V1)==='true',cosplayCreatorUid:studioTok?.creator_uid||null,cosplayAnalyticsOrigin:studioOk?String(env.COSPLAY_ANALYTICS_ORIGIN||''):''}});
  }
  if(path==='/api/me/profile' && method==='POST'){
   await ensureUserProfileColumns(env);
@@ -547,7 +550,7 @@ async function player(req,env,user,path,now,ctx) {
  // A Studio character (cos_ id) is live only while it has a definition: taken down, or its owner deleted the account.
  if (creatorRoute && creatorRoute[1].startsWith('cos_') && !await one(env, 'SELECT 1 x FROM npc_definitions WHERE creator_id=?', creatorRoute[1])) return json({error:'not_found'},404);
  // The Studio test twin (cosp_) belongs to one owner and only while the Studio is open to them.
- if (creatorRoute && creatorRoute[1].startsWith('cosp_') && (creatorRoute[1] !== studioPreviewId(user) || !studioAllowed(env,user))) return json({error:'not_found'},404);
+ if (creatorRoute && creatorRoute[1].startsWith('cosp_') && (creatorRoute[1] !== studioPreviewId(user) || !await studioAllowed(env,user))) return json({error:'not_found'},404);
  const experimentRoute = path.match(/^\/api\/chats\/([\w-]+)(?:\/(message|edit-message|reset-chat|memories))?$/);
  if (experimentRoute) {
   const row = await one(env, 'SELECT definition_json FROM npc_definitions WHERE creator_id=?', experimentRoute[1]);
@@ -2028,7 +2031,20 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
  }
  // ---- Cosplay Creator Studio: one character per account, saved in D1, launched straight to staging players ----
  if(path.startsWith('/api/studio/')){
-  if(!studioAllowed(env,user))return json({error:'forbidden'},403);
+  if(path==='/api/studio/redeem'&&method==='POST'){
+   if(String(env.COSPLAY_STUDIO_V1)!=='true')return json({error:'forbidden'},403);
+   const misses=await one(env,"SELECT COUNT(*) n FROM activity WHERE user_id=? AND kind='studio_token_miss' AND created_at>?",user.id,now-3600000);
+   if((misses?.n||0)>=10)return json({error:'too_many_attempts'},429);
+   const tok=await one(env,'SELECT id,creator_uid,user_id FROM studio_tokens WHERE token_hash=?',await hash(string((await body(req)).token,200)));
+   if(!tok||(tok.user_id&&tok.user_id!==user.id)){await run(env,'INSERT INTO activity(user_id,kind,created_at) VALUES(?,?,?)',user.id,'studio_token_miss',now);return json({error:'invalid_token'},400);}
+   const held=await studioToken(env,user);
+   if(held&&held.id!==tok.id)return json({error:'already_has_token'},409);
+   await run(env,'UPDATE studio_tokens SET user_id=?,redeemed_at=COALESCE(redeemed_at,?) WHERE id=?',user.id,now,tok.id);
+   await recordTokenEmail(env,tok.id,user.email,now);
+   return json({ok:true,creatorUid:tok.creator_uid});
+  }
+  if(!await studioAllowed(env,user))return json({error:'forbidden'},403);
+  if(method!=='GET'){const held=await studioToken(env,user);if(held)await recordTokenEmail(env,held.id,user.email,now);}
   const row=await one(env,'SELECT creator_id,draft_json,status,launched_at,updated_at FROM studio_creators WHERE user_id=?',user.id);
   const view=r=>({draft:r?cleanDraft(JSON.parse(r.draft_json||'{}')):null,creatorId:r?.creator_id||null,status:r?.status||'none',launchedAt:r?.launched_at||null,updatedAt:r?.updated_at||null});
   if(path==='/api/studio/draft'&&method==='GET')return json(view(row));
@@ -2111,6 +2127,7 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
     // Launched characters need a brokered cosplay_accounts row, otherwise the PnL plane has nothing to
     // read as "this creator was made by a person" even though the AI and payment data exist.
     env.DB.prepare('INSERT INTO cosplay_accounts(id,user_id,creator_id,account_status,rev_share_bps,created_at,updated_at) VALUES(?,?,?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET creator_id=excluded.creator_id,updated_at=excluded.updated_at').bind(crypto.randomUUID(),user.id,creatorId,'active',3000,now,now),
+    env.DB.prepare('UPDATE studio_tokens SET creator_id=COALESCE(creator_id,?) WHERE user_id=?').bind(creatorId,user.id),
     env.DB.prepare("INSERT INTO studio_creators(user_id,creator_id,draft_json,status,launched_at,updated_at) VALUES(?,?,?,'live',?,?) ON CONFLICT(user_id) DO UPDATE SET creator_id=excluded.creator_id,draft_json=excluded.draft_json,status='live',launched_at=COALESCE(studio_creators.launched_at,excluded.launched_at),updated_at=excluded.updated_at").bind(user.id,creatorId,JSON.stringify(draft),now,now),
     // after the creators row, which posts reference
     env.DB.prepare("UPDATE posts SET status='suspended' WHERE creator_id=? AND id NOT IN (SELECT value FROM json_each(?))").bind(creatorId,JSON.stringify(postIds)),
@@ -2121,7 +2138,7 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
   return json({error:'not_found'},404);
  }
  if(path==='/api/media/upload'&&method==='POST'){
-  if(!studioAllowed(env,user))return json({error:'forbidden'},403);
+  if(!await studioAllowed(env,user))return json({error:'forbidden'},403);
   const recent=await one(env,"SELECT COUNT(*) n FROM activity WHERE user_id=? AND kind='studio_upload' AND created_at>?",user.id,now-86400000);
   if((recent?.n||0)>=STUDIO_UPLOADS_PER_DAY)return json({error:'upload_quota_exceeded'},429);
   let uploadBytes;
@@ -2161,7 +2178,7 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
  if(path==='/api/account'&&method==='DELETE'){await run(env,'DELETE FROM users WHERE id=?',user.id);return json({ok:true},200,{'set-cookie':secureCookie('frost_session','',0)});}
  return json({error:'not_found'},404);
 }
-async function admin(req,env,path,now){
+async function admin(req,env,path,now,user){
  const method=req.method;
  if(path.startsWith('/api/admin/orders')||path.startsWith('/api/admin/shop/')){const r=await shopAdmin(req,env,path,now);if(r)return r;}
  if(path==='/api/admin/metrics'&&method==='GET'){
@@ -2189,6 +2206,14 @@ async function admin(req,env,path,now){
    all(env,'SELECT id,email,age_verified_at ageVerifiedAt,created_at createdAt FROM users ORDER BY created_at DESC'),
    all(env,'SELECT id,post_id postId,user_id userId,content,hidden,created_at createdAt FROM comments ORDER BY created_at DESC LIMIT 200'), mediaStore(env).list({limit:1000})]);
   return json({creators,posts,stories,episodes,revisions:revisions.map(r=>({...r,nodes:JSON.parse(r.nodes)})),invites,reports,users,comments,media:(media?.objects||[]).map(o=>({key:o.key,size:o.size,uploaded:o.uploaded}))});
+ }
+ if(path==='/api/admin/studio-tokens'&&method==='POST'){
+  const email=string((await body(req)).email,254).toLowerCase();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return fail('invalid_email');
+  const raw='igs_'+token(), tokenId=crypto.randomUUID(), creatorUid='ccu_'+crypto.randomUUID().replaceAll('-','');
+  await run(env,'INSERT INTO studio_tokens(id,creator_uid,token_hash,issued_email,created_by,created_at) VALUES(?,?,?,?,?,?)',tokenId,creatorUid,await hash(raw),email,user?.id||null,now);
+  await recordTokenEmail(env,tokenId,email,now);
+  return json({token:raw,creatorUid,email});
  }
  if(path==='/api/admin/invites'&&method==='POST'){const b=await body(req),email=string(b.email,254).toLowerCase();if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return fail('invalid_email');await run(env,"INSERT INTO invites(email,status) VALUES(?,'active') ON CONFLICT(email) DO UPDATE SET status='active'",email);return json({ok:true});}
  let m=path.match(/^\/api\/admin\/invites\/(.+)$/);
@@ -2219,7 +2244,7 @@ async fetch(req,env,ctx){
   if(path.startsWith('/api/admin/')){
    if(!user)return json({error:'unauthorized'},401);
    if(!isAdminUser(env,user) && !await access(req,env,user))return json({error:'forbidden'},403);
-   return await admin(req,env,path,now);
+   return await admin(req,env,path,now,user);
   }
   if(path.startsWith('/api/agent/')){
    return await handleAgentDevRoute(req, env, path, now, user);
