@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useState, useRef, type FormEve
 import { formatFastForwardAction } from './message-format';
 import { useOverlayHistory } from './overlay-history';
 import { ArrowLeft, Loader2, Lock, MessageSquareX, Palette, Pencil, RotateCcw, Send, Settings, Sparkles, User as UserIcon, Volume2, VolumeX, X, Zap } from 'lucide-react';
-import { IgShare, IgHome, IgSearch, IgReels, IgVerified } from './InstagramIcons';
+import { IgHome, IgSearch, IgReels, IgVerified } from './InstagramIcons';
 import { EnergyShop } from './EnergyShop';
 import { type Lang, LANGS, TRANSLATIONS } from './i18n';
 import { LangSelect } from './LangSelect';
@@ -20,6 +20,7 @@ import { createRouter } from './routes';
 import { ExploreTab } from './tabs/ExploreTab';
 import { ReelsTab } from './tabs/ReelsTab';
 import { InboxTab } from './tabs/InboxTab';
+import { CardWishTab } from './tabs/CardWishTab';
 import { CosplayCreatorTab } from './tabs/CosplayCreatorTab';
 import { CreditProgressCard } from './components/CreditProgressCard';
 import { PlayerProfileTab } from './tabs/PlayerProfileTab';
@@ -986,21 +987,6 @@ export function FrostStoryApp() {
                 {energy ? `${energy.free} + ${energy.purchased}` : '–'}
                 {Boolean(energy?.diamonds) && <span style={{ marginLeft: 3, color: '#38bdf8' }}>💎{energy?.diamonds}</span>}
               </button>
-
-              {/* แชทล่าสุด (Recent Chats) Button */}
-              <button
-                type="button"
-                className={`fs-header-chat-btn ${screen === 'inbox' ? 'is-active' : ''}`}
-                onClick={() => handleSelectTab('inbox')}
-                title={t.recentChats}
-                aria-label={t.recentChats}
-              >
-                <IgShare size={21} active={screen === 'inbox'} />
-                {(() => {
-                  const unread = creators.filter((creator) => creator.unread).length;
-                  return unread ? <span className="fs-nav-badge">{unread > 99 ? '99+' : unread}</span> : null;
-                })()}
-              </button>
             </div>
           </div>
         </header>
@@ -1117,6 +1103,14 @@ export function FrostStoryApp() {
           />
         )}
 
+        {screen === "cards" && (
+          <CardWishTab
+            lang={lang}
+            onOpenShop={() => setShopOpen(true)}
+            onEnergyUpdate={(next) => setEnergy(next)}
+          />
+        )}
+
         {screen === "account" && (
           <PlayerProfileTab
             user={user}
@@ -1190,6 +1184,16 @@ export function FrostStoryApp() {
               const unread = creators.filter((creator) => creator.unread).length;
               return unread ? <span className="fs-nav-badge">{unread > 99 ? '99+' : unread}</span> : null;
             })() : null}
+          </button>
+
+          <button
+            type="button"
+            className={`fs-nav-tab ${screen === 'cards' ? 'is-active' : ''}`}
+            onClick={() => handleSelectTab('cards')}
+            title={t.cardWishTab}
+            aria-label={t.cardWishTab}
+          >
+            <Sparkles size={25} className={screen === 'cards' ? 'text-amber-300' : ''} />
           </button>
 
           <button

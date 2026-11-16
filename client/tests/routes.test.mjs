@@ -31,12 +31,14 @@ test('every tab has a stable path and unknown paths are rejected', () => {
   assert.deepEqual(pathToRoute('/creators'), { screen: 'creators' });
   assert.deepEqual(pathToRoute('/studio'), { screen: 'studio' });
   assert.deepEqual(pathToRoute('/inbox'), { screen: 'inbox' });
+  assert.deepEqual(pathToRoute('/cards'), { screen: 'cards' });
   assert.deepEqual(pathToRoute('/profile'), { screen: 'account' });
   assert.deepEqual(pathToRoute('/creators/milin'), { screen: 'creators', creatorId: 'milin' });
   assert.deepEqual(pathToRoute('/reels/'), { screen: 'reels' }, 'trailing slash is the same tab');
   assert.deepEqual(pathToRoute('/inbox?from=push'), { screen: 'inbox' }, 'query does not break routing');
   assert.equal(pathToRoute('/unknown'), null);
   assert.equal(pathToRoute('/api/feed'), null, 'API paths are never a screen');
+  assert.equal(routeToPath({ screen: 'cards' }), '/cards');
   assert.equal(routeToPath({ screen: 'account' }), '/profile');
   assert.equal(routeToPath({ screen: 'studio' }), '/studio');
   assert.equal(routeToPath({ screen: 'creators', creatorId: 'a b' }), '/creators/a%20b');

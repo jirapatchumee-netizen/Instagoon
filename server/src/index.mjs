@@ -8,6 +8,7 @@ import { narrativeEnabled, ensureNarrativeStorage, readNarrativeState, narrative
 import { SCENE_STANDARD_INSTRUCTION, readStoredScene, resolveFictionClock, formatFictionClock, parseFictionTime, advanceFictionClock, inferSceneLocation, compactProse, orderBeats, resolveSceneHeader, serializeSceneHeader, serializeSceneBubble, MAX_VIEWPORT_BEATS, MAX_VIEWPORT_BEAT_CHARS, MAX_VIEWPORT_THOUGHT_CHARS } from './scene-standard.mjs';
 import { narrativeTurnContext, restoreLegacyInteraction } from './narrative-interaction.mjs';
 import { characterOnlyEnabled, characterOnlyChat } from './character-only-chat.mjs';
+import { wishView, wishPull } from './gacha.mjs';
 import { shopPlayer, shopAdmin, shopReportsApi, writeDailyReports } from './shop/index.mjs';
 import { handleAgentDevRoute } from './agent-dev-api.mjs';
 import { cleanDraft, launchProblems, studioCreatorId, studioPreviewId, scoreForLevel, buildDefinition, suggestLevels } from './studio.mjs';
@@ -735,6 +736,12 @@ async function player(req,env,user,path,now,ctx) {
     diamonds: energyRow?.diamonds||0,
     energy: (energyRow?.free||0) + (energyRow?.purchased||0)
   });
+ }
+ if(path==='/api/wish'&&method==='GET')return json(await wishView(env,user.id,now));
+ if(path==='/api/wish/pull'&&method==='POST'){
+  const b=await body(req);
+  const r=await wishPull(env,user.id,{bannerId:string(b.banner,40),count:b.count},now);
+  return json(r.body,r.status);
  }
  m=path.match(/^\/api\/creators\/([\w-]+)\/gacha\/pull$/);
  if(m&&method==='POST'){

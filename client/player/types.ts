@@ -103,7 +103,7 @@ export type Chat = {
   score?: number;
   definition?: Record<string, unknown>;
 };
-export type Screen = 'home' | 'feed' | 'creators' | 'reels' | 'studio' | 'inbox' | 'account' | 'notifications';
+export type Screen = 'home' | 'feed' | 'creators' | 'reels' | 'studio' | 'inbox' | 'cards' | 'account' | 'notifications';
 
 export type ProfileVaultItem = {
   id: string;
