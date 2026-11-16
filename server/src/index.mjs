@@ -650,7 +650,8 @@ async function player(req,env,user,path,now,ctx) {
    creator:{
     id:creator.id,
     name:creator.name,
-    bio:npcDef?.studioCreated ? npcDef.biography || creator.bio : creator.bio,
+    // Older Studio definitions only had biography (public then). New ones carry an explicit public field.
+    bio:npcDef?.studioCreated ? npcDef.profileDescription ?? npcDef.biography ?? creator.bio : creator.bio,
     tagline:npcDef?.tagline||'',
     avatarKey:creator.avatar_key,
     tags:npcDef?.tags||[],
