@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { readdirSync, readFileSync } from 'node:fs';
 import worker from '../src/index.mjs';
+import { fiveStarRate, poolFromDefinitions, rollOnce } from '../src/gacha.mjs';
 
 const now = Date.now(), raw = 'c'.repeat(64);
 const sid = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw))), n => n.toString(16).padStart(2, '0')).join('');
@@ -190,4 +191,112 @@ test('collection API: returns player unlocked cards with creator details', async
   assert.equal(data.cards[0].name, 'เรื่องที่เป็นไปไม่ได้');
   assert.equal(data.cards[0].rarity, 'SSR');
   assert.equal(data.cards[0].creatorName, 'Yuki Cosplay');
+});
+
+test('wish pity math: soft pity ramp, hard pity at 90, 4-star pity at 10, and 50/50 guarantee', () => {
+  assert.equal(fiveStarRate(0), 0.006);
+  assert.equal(fiveStarRate(72), 0.006);
+  assert.ok(fiveStarRate(73) > 0.06);
+  assert.equal(fiveStarRate(89), 1);
+
+  const pool = [
+    { creatorId: 'c1', creatorName: 'A', asset: 'assets/5_feat.webp', name: 'Featured 5', caption: '', rarity: 'UR', stars: 5, weight: 1, energyFallback: 8 },
+    { creatorId: 'c2', creatorName: 'B', asset: 'assets/5_std.webp', name: 'Standard 5', caption: '', rarity: 'SSR', stars: 5, weight: 1, energyFallback: 8 },
+    { creatorId: 'c1', creatorName: 'A', asset: 'assets/4.webp', name: 'Card 4', caption: '', rarity: 'SR', stars: 4, weight: 1, energyFallback: 5 },
+    { creatorId: 'c1', creatorName: 'A', asset: 'assets/3.webp', name: 'Card 3', caption: '', rarity: 'R', stars: 3, weight: 1, energyFallback: 3 }
+  ];
+  const banner = { id: 'featured', featured: pool[0] };
+
+  const fourPity = rollOnce({ pity5: 0, pity4: 9, guaranteed: false }, banner, pool, () => 0.99);
+  assert.equal(fourPity.card.stars, 4);
+  assert.equal(fourPity.state.pity4, 0);
+  assert.equal(fourPity.state.pity5, 1);
+
+  const lossSeq = [0.001, 0.99, 0.99];
+  const lost5050 = rollOnce({ pity5: 89, pity4: 0, guaranteed: false }, banner, pool, () => lossSeq.shift() ?? 0);
+  assert.equal(lost5050.card.asset, 'assets/5_std.webp');
+  assert.equal(lost5050.pityAt, 90);
+  assert.equal(lost5050.state.pity5, 0);
+  assert.equal(lost5050.state.guaranteed, true);
+
+  const guaranteedWin = rollOnce(lost5050.state, banner, pool, () => 0);
+  assert.equal(guaranteedWin.card.asset, 'assets/5_feat.webp');
+  assert.equal(guaranteedWin.state.guaranteed, false);
+});
+
+test('poolFromDefinitions: prefers explicit diamond_gacha rewards and falls back with level-inferred rarity', () => {
+  const mixed = poolFromDefinitions([{
+    creator_id: 'yuki',
+    creator_name: 'Yuki',
+    definition_json: JSON.stringify({
+      rewards: [
+        { asset: 'assets/m.webp', name: 'Mission', unlockType: 'mission', rarity: 'SSR' },
+        { asset: 'assets/g.webp', name: 'Gacha', unlockType: 'diamond_gacha', rarity: 'UR' }
+      ]
+    })
+  }]);
+  assert.deepEqual(mixed.map(c => c.asset), ['assets/g.webp']);
+
+  const fallback = poolFromDefinitions([{
+    creator_id: 'milin',
+    creator_name: 'Milin',
+    definition_json: JSON.stringify({
+      rewards: [
+        { asset: 'assets/r.webp', name: 'Lv1', conditions: [{ field: 'level', value: 1 }] },
+        { asset: 'assets/sr.webp', name: 'Lv3', conditions: [{ field: 'level', value: 3 }] },
+        { asset: 'assets/ssr.webp', name: 'Lv4', conditions: [{ field: 'level', value: 4 }] },
+        { asset: 'assets/ur.webp', name: 'Lv5', conditions: [{ field: 'level', value: 5 }] }
+      ]
+    })
+  }]);
+  assert.deepEqual(fallback.map(c => [c.rarity, c.stars]), [['R', 3], ['SR', 4], ['SSR', 5], ['UR', 5]]);
+});
+
+test('wish API: masks unowned assets, deducts diamonds, guarantees 4-star in 10-pull, tracks pity and history', async () => {
+  const sql = dbOf();
+  sql.prepare('UPDATE npc_definitions SET definition_json=? WHERE creator_id=?').run(JSON.stringify({
+    rewards: [
+      { id: 'c3', name: 'Three', asset: 'assets/c3.webp', caption: '3*', unlockType: 'diamond_gacha', rarity: 'R', energyFallback: 3, gachaWeight: 100 },
+      { id: 'c4', name: 'Four', asset: 'assets/c4.webp', caption: '4*', unlockType: 'diamond_gacha', rarity: 'SR', energyFallback: 5, gachaWeight: 100 },
+      { id: 'c5', name: 'Five', asset: 'assets/c5.webp', caption: '5*', unlockType: 'diamond_gacha', rarity: 'UR', energyFallback: 10, gachaWeight: 100 }
+    ]
+  }), 'yuki');
+  sql.prepare('UPDATE energy SET diamonds=120 WHERE user_id=?').run('u');
+
+  const viewBefore = await (await call(sql, 'GET', '/api/wish')).json();
+  assert.equal(viewBefore.diamonds, 120);
+  assert.equal(viewBefore.collection.total, 3);
+  assert.equal(viewBefore.collection.owned, 0);
+  assert.equal(viewBefore.cards.every(c => !('asset' in c)), true, 'unowned cards hide asset keys');
+  const featBanner = viewBefore.banners.find(b => b.id === 'featured');
+  assert.ok(featBanner?.featured);
+  assert.equal('asset' in featBanner.featured, false, 'unowned featured card hides asset key');
+
+  const badPull = await call(sql, 'POST', '/api/wish/pull', { banner: 'featured', count: 5 });
+  assert.equal(badPull.status, 400);
+
+  const pull1 = await call(sql, 'POST', '/api/wish/pull', { banner: 'featured', count: 1 });
+  assert.equal(pull1.status, 200);
+  const d1 = await pull1.json();
+  assert.equal(d1.results.length, 1);
+  assert.equal(d1.energy.diamonds, 110);
+
+  const pull10 = await call(sql, 'POST', '/api/wish/pull', { banner: 'featured', count: 10 });
+  assert.equal(pull10.status, 200);
+  const d10 = await pull10.json();
+  assert.equal(d10.results.length, 10);
+  assert.equal(d10.energy.diamonds, 10);
+  assert.ok(d10.results.some(r => r.stars >= 4), '10-pull guarantees at least one 4-star or higher card');
+  assert.ok(d10.results.some(r => r.isDuplicate && r.energyAwarded > 0), 'duplicate pulls award fallback energy');
+
+  const noDiamonds = await call(sql, 'POST', '/api/wish/pull', { banner: 'featured', count: 10 });
+  assert.equal(noDiamonds.status, 400);
+  assert.equal((await noDiamonds.json()).error, 'insufficient_diamonds');
+
+  const viewAfter = await (await call(sql, 'GET', '/api/wish')).json();
+  assert.equal(viewAfter.history.length, 11);
+  assert.ok(viewAfter.collection.owned >= 1);
+  assert.ok(viewAfter.cards.some(c => c.owned && typeof c.asset === 'string'));
+  const bannerState = sql.prepare('SELECT pity5, pity4 FROM gacha_banner_state WHERE user_id=? AND banner_id=?').get('u', 'featured');
+  assert.ok(bannerState && bannerState.pity5 >= 0 && bannerState.pity4 >= 0);
 });

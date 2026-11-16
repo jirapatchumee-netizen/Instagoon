@@ -1,0 +1,154 @@
+/* Genshin-inspired Celestial Card Wish System */
+.cw-stage {
+  position: relative;
+  min-height: calc(100dvh - 110px);
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(79, 70, 229, 0.28), transparent 65%),
+    radial-gradient(ellipse 70% 45% at 85% 90%, rgba(236, 72, 153, 0.16), transparent 60%),
+    linear-gradient(180deg, #060816 0%, #0b1026 52%, #090b1a 100%);
+  overflow: hidden;
+}
+
+.cw-starfield {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(1.5px 1.5px at 14% 18%, rgba(255, 255, 255, 0.8), transparent),
+    radial-gradient(1px 1px at 38% 12%, rgba(253, 224, 71, 0.7), transparent),
+    radial-gradient(1.5px 1.5px at 66% 24%, rgba(196, 181, 253, 0.8), transparent),
+    radial-gradient(1px 1px at 84% 15%, rgba(255, 255, 255, 0.75), transparent),
+    radial-gradient(1.5px 1.5px at 22% 58%, rgba(125, 211, 252, 0.65), transparent),
+    radial-gradient(1px 1px at 78% 64%, rgba(253, 224, 71, 0.6), transparent),
+    radial-gradient(1.5px 1.5px at 49% 82%, rgba(255, 255, 255, 0.55), transparent);
+  animation: cwTwinkle 5s ease-in-out infinite alternate;
+}
+
+@keyframes cwTwinkle {
+  0% { opacity: 0.45; }
+  100% { opacity: 0.95; }
+}
+
+@keyframes cwSpinSlow {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@keyframes cwSpinReverse {
+  from { transform: translate(-50%, -50%) rotate(360deg); }
+  to { transform: translate(-50%, -50%) rotate(0deg); }
+}
+
+.cw-astrolabe-outer {
+  position: absolute;
+  top: 46%;
+  left: 50%;
+  width: 340px;
+  height: 340px;
+  border-radius: 9999px;
+  border: 1px dashed rgba(251, 191, 36, 0.22);
+  box-shadow: 0 0 60px rgba(99, 102, 241, 0.14);
+  animation: cwSpinSlow 48s linear infinite;
+  pointer-events: none;
+}
+
+.cw-astrolabe-inner {
+  position: absolute;
+  top: 46%;
+  left: 50%;
+  width: 248px;
+  height: 248px;
+  border-radius: 9999px;
+  border: 1px solid rgba(167, 139, 250, 0.25);
+  animation: cwSpinReverse 32s linear infinite;
+  pointer-events: none;
+}
+
+.cw-wish-btn-gold {
+  background: linear-gradient(135deg, #fde68a 0%, #f59e0b 45%, #d97706 100%);
+  color: #1f1403;
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.6);
+}
+
+.cw-wish-btn-gold:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+.cw-wish-btn-silver {
+  background: linear-gradient(135deg, rgba(226, 232, 240, 0.18) 0%, rgba(148, 163, 184, 0.14) 100%);
+  border: 1px solid rgba(226, 232, 240, 0.28);
+  color: #f8fafc;
+}
+
+/* Meteor Cutscene Overlay */
+@keyframes cwMeteorFall {
+  0% {
+    transform: translate(-35vw, -38vh) rotate(32deg) scale(0.7);
+    opacity: 0;
+  }
+  18% {
+    opacity: 1;
+  }
+  75% {
+    transform: translate(10vw, 8vh) rotate(32deg) scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(22vw, 18vh) rotate(32deg) scale(1.6);
+    opacity: 0;
+  }
+}
+
+@keyframes cwStarFlash {
+  0%, 60% { opacity: 0; transform: scale(0.4); }
+  80% { opacity: 1; transform: scale(1.25); }
+  100% { opacity: 0; transform: scale(2.1); }
+}
+
+@keyframes cwCardEnter {
+  0% {
+    opacity: 0;
+    transform: scale(0.76) translateY(18px);
+    filter: brightness(2.2) blur(4px);
+  }
+  55% {
+    opacity: 1;
+    transform: scale(1.03) translateY(0);
+    filter: brightness(1.25) blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: brightness(1) blur(0);
+  }
+}
+
+.cw-meteor-streak {
+  width: 280px;
+  height: 6px;
+  border-radius: 9999px;
+  animation: cwMeteorFall 1.65s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.cw-meteor-streak.is-5 {
+  background: linear-gradient(90deg, transparent, #fef08a 45%, #fbbf24 85%, #ffffff 100%);
+  box-shadow: 0 0 32px 10px rgba(251, 191, 36, 0.8);
+}
+
+.cw-meteor-streak.is-4 {
+  background: linear-gradient(90deg, transparent, #e9d5ff 45%, #a855f7 85%, #ffffff 100%);
+  box-shadow: 0 0 28px 9px rgba(168, 85, 247, 0.8);
+}
+
+.cw-meteor-streak.is-3 {
+  background: linear-gradient(90deg, transparent, #bae6fd 45%, #38bdf8 85%, #ffffff 100%);
+  box-shadow: 0 0 24px 8px rgba(56, 189, 248, 0.75);
+}
+
+.cw-flash-burst {
+  animation: cwStarFlash 1.7s ease-out forwards;
+}
+
+.cw-card-reveal-anim {
+  animation: cwCardEnter 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
