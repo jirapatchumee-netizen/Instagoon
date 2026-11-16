@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { LockKeyhole, Sparkles } from 'lucide-react';
+import { LockKeyhole, Sparkles, Ticket, CheckCircle2 } from 'lucide-react';
 import { GoogleG } from './InstagramIcons';
 import { type Lang, TRANSLATIONS } from './i18n';
 import { LangSelect } from './LangSelect';
+import { api } from './api';
 import './froststory.css';
 
 interface CreatorPreviewMeta {
@@ -40,6 +41,48 @@ export function LoginScreen({
     return creatorPreviews[initialPathCreator] ? initialPathCreator : null;
   });
 
+  const [inviteToken, setInviteToken] = useState(() => {
+    if (typeof window === 'undefined') return '';
+    const params = new URLSearchParams(window.location.search);
+    const fromUrl = params.get('token') || params.get('code') || params.get('invite');
+    if (fromUrl) {
+      const clean = fromUrl.trim();
+      sessionStorage.setItem('instagoon_pending_token', clean);
+      return clean;
+    }
+    return sessionStorage.getItem('instagoon_pending_token') || '';
+  });
+
+  const [tokenStatus, setTokenStatus] = useState<'idle' | 'checking' | 'valid' | 'invalid'>('idle');
+  const [tokenRole, setTokenRole] = useState<'player' | 'creator' | 'admin' | null>(null);
+
+  const checkToken = async (tok: string) => {
+    const clean = tok.trim();
+    if (!clean) return;
+    setTokenStatus('checking');
+    try {
+      const res = await api<{ ok: boolean; role?: 'player' | 'creator' | 'admin' }>('/api/access/check', {
+        method: 'POST',
+        body: JSON.stringify({ token: clean }),
+      });
+      if (res.ok) {
+        setTokenStatus('valid');
+        setTokenRole(res.role || 'player');
+        sessionStorage.setItem('instagoon_pending_token', clean);
+      } else {
+        setTokenStatus('invalid');
+      }
+    } catch {
+      setTokenStatus('invalid');
+    }
+  };
+
+  useEffect(() => {
+    if (inviteToken) {
+      void checkToken(inviteToken);
+    }
+  }, []);
+
   useEffect(() => {
     if (authError) window.history.replaceState(null, '', window.location.pathname);
   }, [authError]);
@@ -55,6 +98,9 @@ export function LoginScreen({
   }, [selectedCreatorId]);
 
   const handleLoginClick = () => {
+    if (inviteToken.trim()) {
+      sessionStorage.setItem('instagoon_pending_token', inviteToken.trim());
+    }
     if (typeof (window as unknown as { gtag?: (...args: unknown[]) => void }).gtag === 'function') {
       (window as unknown as { gtag: (...args: unknown[]) => void }).gtag('event', 'click_login_cta', {
         creator_id: selectedCreatorId || 'general',
@@ -125,6 +171,59 @@ export function LoginScreen({
               {message}
             </p>
           )}
+
+          <div className="fs-login-invite">
+            <div className="fs-login-invite-header">
+              <Ticket size={14} className="fs-login-invite-icon" />
+              <span>{t.loginInviteCodeLabel}</span>
+            </div>
+            <div className="fs-login-invite-row">
+              <input
+                type="text"
+                className="fs-login-invite-input"
+                value={inviteToken}
+                onChange={(e) => {
+                  setInviteToken(e.target.value);
+                  setTokenStatus('idle');
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    void checkToken(inviteToken);
+                  }
+                }}
+                placeholder={t.loginInviteCodePlaceholder}
+                autoComplete="off"
+                spellCheck={false}
+              />
+              <button
+                type="button"
+                className="fs-login-invite-btn"
+                disabled={tokenStatus === 'checking' || !inviteToken.trim()}
+                onClick={() => void checkToken(inviteToken)}
+              >
+                {tokenStatus === 'checking' ? t.loginInviteCodeChecking : t.loginInviteCodeApply}
+              </button>
+            </div>
+            {tokenStatus === 'valid' && (
+              <p className="fs-login-invite-msg is-valid">
+                <CheckCircle2 size={13} />
+                <span>
+                  {tokenRole === 'creator'
+                    ? t.loginInviteCodeValidCreator
+                    : tokenRole === 'admin'
+                    ? t.loginInviteCodeValidAdmin
+                    : t.loginInviteCodeValidPlayer}
+                </span>
+              </p>
+            )}
+            {tokenStatus === 'invalid' && (
+              <p className="fs-login-invite-msg is-invalid">
+                <span>{t.loginInviteCodeInvalid}</span>
+              </p>
+            )}
+          </div>
+
           <a
             className="fs-login-google"
             href={loginTargetUrl}

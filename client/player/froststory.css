@@ -2488,6 +2488,117 @@ dialog.fs-overlay::backdrop {
   line-height: 1.5;
 }
 
+.fs-login-invite {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: rgba(30, 15, 45, 0.65);
+  border: 1px solid rgba(255, 120, 180, 0.2);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.fs-login-invite:focus-within {
+  border-color: rgba(255, 79, 154, 0.5);
+  box-shadow: 0 6px 20px rgba(255, 79, 154, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.fs-login-invite-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--login-pearl);
+  letter-spacing: 0.02em;
+}
+
+.fs-login-invite-icon {
+  color: var(--login-fuchsia);
+}
+
+.fs-login-invite-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.fs-login-invite-input {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(14, 8, 22, 0.7);
+  color: #fff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.8rem;
+  outline: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.fs-login-invite-input::placeholder {
+  color: rgba(208, 184, 220, 0.45);
+  font-family: inherit;
+  font-size: 0.75rem;
+}
+
+.fs-login-invite-input:focus {
+  border-color: var(--login-fuchsia);
+  background: rgba(14, 8, 22, 0.9);
+}
+
+.fs-login-invite-btn {
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, #ff4f9a, #8c4bf5);
+  box-shadow: 0 4px 12px rgba(255, 79, 154, 0.35);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  white-space: nowrap;
+}
+
+.fs-login-invite-btn:hover:not(:disabled) {
+  opacity: 0.95;
+  transform: translateY(-1px);
+}
+
+.fs-login-invite-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.fs-login-invite-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.fs-login-invite-msg {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 0.73rem;
+  line-height: 1.4;
+}
+
+.fs-login-invite-msg.is-valid {
+  color: #6ee7b7;
+}
+
+.fs-login-invite-msg.is-invalid {
+  color: #fda4af;
+}
+
 .fs-login-google {
   display: flex;
   align-items: center;

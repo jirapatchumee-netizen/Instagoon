@@ -2370,6 +2370,16 @@ async fetch(req,env,ctx){
   if(!path.startsWith('/api/'))return json({error:'not_found'},404);
   try{await ensureContent(env);}catch(e){console.error('content sync failed',String(e?.message||e));if(e?.contentResetFailed)return json({error:'content_reset_pending'},503);}
   if(path.startsWith('/api/reports/'))return await shopReportsApi(req,env,path);
+  if(path==='/api/access/check'&&req.method==='POST'){
+   const b=await body(req);
+   const rawToken=string(b?.token,200).trim();
+   if(!rawToken)return json({error:'invalid_token'},400);
+   const tok=await one(env,"SELECT id,role,revoked_at,expires_at,redeemed_at FROM studio_tokens WHERE token_hash=?",await hash(rawToken));
+   if(!tok||tok.revoked_at||tok.redeemed_at||(tok.expires_at!=null&&tok.expires_at<=now)){
+    return json({error:'invalid_token'},400);
+   }
+   return json({ok:true,role:tok.role||'creator'});
+  }
   const user=await session(req,env);
   if(path==='/api/logout'&&req.method==='POST'){if(user)await run(env,'DELETE FROM sessions WHERE id=?',await hash(cookie(req,'frost_session')));return json({ok:true},200,{'set-cookie':secureCookie('frost_session','',0)});}
   if(path==='/api/account'&&req.method==='DELETE'){if(!user)return json({error:'unauthorized'},401);await env.DB.batch([env.DB.prepare('DELETE FROM invites WHERE email=?').bind(user.email),env.DB.prepare('DELETE FROM npc_definitions WHERE creator_id IN (SELECT creator_id FROM studio_creators WHERE user_id=?)').bind(user.id),env.DB.prepare("UPDATE posts SET status='suspended' WHERE creator_id IN (SELECT creator_id FROM studio_creators WHERE user_id=?)").bind(user.id),env.DB.prepare('DELETE FROM users WHERE id=?').bind(user.id)]);return json({ok:true},200,{'set-cookie':secureCookie('frost_session','',0)});}

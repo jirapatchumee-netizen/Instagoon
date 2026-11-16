@@ -185,3 +185,49 @@ test('default diamonds: migration updates existing accounts to have 1,000,000 di
   assert.ok(row2.diamonds >= 1000000);
   assert.ok(rowAdmin.diamonds >= 1000000);
 });
+
+test('public check token: allows unauthenticated verification of valid and invalid tokens', async () => {
+  const { call } = await setup();
+
+  const minted = (
+    await call('/api/admin/studio-tokens', {
+      uid: 'admin_user',
+      method: 'POST',
+      json: { role: 'player' },
+    })
+  ).body;
+
+  // 1. Unauthenticated check on valid token
+  const checkValid = await call('/api/access/check', {
+    uid: null,
+    method: 'POST',
+    json: { token: minted.token },
+  });
+  assert.equal(checkValid.status, 200);
+  assert.equal(checkValid.body.ok, true);
+  assert.equal(checkValid.body.role, 'player');
+
+  // 2. Unauthenticated check on invalid token
+  const checkInvalid = await call('/api/access/check', {
+    uid: null,
+    method: 'POST',
+    json: { token: 'igb_invalid1234567890' },
+  });
+  assert.equal(checkInvalid.status, 400);
+  assert.equal(checkInvalid.body.error, 'invalid_token');
+
+  // 3. Redeeming the token makes it no longer available for new checks
+  await call('/api/access/redeem', {
+    uid: 'player_1',
+    method: 'POST',
+    json: { token: minted.token },
+  });
+
+  const checkAfterRedeem = await call('/api/access/check', {
+    uid: null,
+    method: 'POST',
+    json: { token: minted.token },
+  });
+  assert.equal(checkAfterRedeem.status, 400);
+  assert.equal(checkAfterRedeem.body.error, 'invalid_token');
+});
