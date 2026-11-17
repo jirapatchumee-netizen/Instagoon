@@ -38,6 +38,7 @@ export function cleanDraft(b) {
     adultContent: b.adultContent === undefined
       ? (b.adultLevels === undefined || validAdultLevels(b.adultLevels) ? adultContentAllowed(b) : null)
       : (typeof b.adultContent === 'boolean' ? b.adultContent : null),
+    adultPreferences: str(b.adultPreferences, 2000),
     ruleNoAddress: b.ruleNoAddress !== false, ruleNoMeet: b.ruleNoMeet !== false, rulePoliteReject: b.rulePoliteReject !== false,
     secret: str(b.secret, 1000), immutableFacts: str(b.immutableFacts, 2000),
     openingLocation: str(b.openingLocation, 100), openingGreeting: str(b.openingGreeting, 600), rewards,
@@ -50,7 +51,7 @@ export const MIN_CHARACTER_AGE = 20;
 // Creator text becomes part of the character prompt, so instructions aimed at the model, code/JSON and
 // AI/vendor names are refused (the last would also trip the reply leak filter and silence the character).
 const UNSAFE = /ignore\s+(all|any|the|previous|above)|system\s*prompt|developer\s*mode|jailbreak|\bDAN\b|you\s+are\s+(now\s+)?(an?\s+)?(ai|assistant|chatbot|language model)|```|<\/?script|\{\s*"[^"]+"\s*:|ละเว้น(คำสั่ง|กฎ)|ไม่ต้อง(ทำตาม|สน)(คำสั่ง|กฎ)|คำสั่งก่อนหน้า|ลืมคำสั่ง|gemini|chat\s*gpt|openai|anthropic|deepseek|\bllm\b|โมเดลภาษา/i;
-const TEXT_FIELDS = ['name', 'handle', 'concept', 'tagline', 'profileDescription', 'aiIdentity', 'tags', 'likes', 'dislikes', 'pronouns', 'voiceTone', 'sampleQuotes', 'openingLocation', 'openingGreeting'];
+const TEXT_FIELDS = ['name', 'handle', 'concept', 'tagline', 'profileDescription', 'aiIdentity', 'adultPreferences', 'tags', 'likes', 'dislikes', 'pronouns', 'voiceTone', 'sampleQuotes', 'openingLocation', 'openingGreeting'];
 export function unsafeFields(d) {
   const bad = TEXT_FIELDS.filter(k => UNSAFE.test(d[k] || ''));
   if (d.rewards.some(r => UNSAFE.test(`${r.name} ${r.caption} ${r.message} ${r.hint}`)) || d.posts.some(x => UNSAFE.test(x.caption))) bad.push('rewards');
@@ -89,6 +90,8 @@ export function buildDefinition(d, creatorId, assetMap) {
     color: '#ec4899', tags: ['cosplay', ...list(d.tags, 10, /,/)], creatorType: 'cosplay', isVerified: false, studioCreated: true,
     // The runtime already consumes biography in both prompt lanes. Keep public copy explicit so references never become profile text.
     profileDescription: d.profileDescription,
+    // Keep this out of the central persona: only opted-in adult turns receive these private settings.
+    ...(d.adultContent && d.adultPreferences ? { adultPreferences: d.adultPreferences } : {}),
     age: String(d.age), biography: d.profileDescription, personality: [d.voiceTone, d.aiIdentity].filter(Boolean).join('\n\n'), world: d.openingLocation || 'ชีวิตประจำวันและบทสนทนาในโลกปัจจุบัน',
     openingGreeting: d.openingGreeting || undefined,
     occupation: 'คอสเพลเยอร์', likes: d.likes, dislikes: d.dislikes, goals: '',

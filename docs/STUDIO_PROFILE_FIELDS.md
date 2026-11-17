@@ -1,12 +1,13 @@
 # Public profile and private AI identity
 
-Studio separates public presentation from one private AI authoring field:
+Studio separates public presentation from one central AI identity field and optional private adult-mode settings:
 
 | Draft field | Limit | Destination |
 | --- | --- | --- |
 | `tagline` | 200 characters | Public card/profile introduction |
 | `profileDescription` | 4,000 characters | Public About me section |
 | `aiIdentity` | 16,000 characters | Central server-side personality, history, references and background |
+| `adultPreferences` | 2,000 characters | Optional private preferences, dislikes and boundaries for adult-mode turns |
 | `openingGreeting` | 600 characters | First greeting in chat |
 
 The creator edits one “ตัวตนและข้อมูลสำหรับ AI” field. The separate personality brief, reference biography,
@@ -64,6 +65,21 @@ wins. For an old draft or live Studio definition without the new field, any true
 `adultLevels` flags becomes permission for the whole character; all-false/missing flags stay off.
 The creator can revoke permission by updating the character. Player age checks and explicit per-chat
 opt-in still apply before energy is charged. Reward level neither unlocks nor enables adult mode.
+
+When adult permission is checked, Studio shows an optional preferences textarea below it, with a
+three-topic placeholder and character counter. Turning permission off hides the field but keeps the
+text in the owner's draft; an explicitly cleared field stays empty. Missing values in older drafts
+normalize to an empty string. The same length cap and existing unsafe-text checks apply server-side.
+
+Published definitions include `adultPreferences` only when creator permission is enabled and the
+value is nonempty. It stays separate from the central personality and public biography. Only an
+eligible, explicitly opted-in Studio adult turn attaches it as `creatorAdultPreferences` in the turn
+data, with instructions to respect dislikes, consent and boundaries. Ordinary turns do not attach
+these settings. Player-supplied fields cannot replace the saved creator preferences. Sandbox and
+live DM share this behavior. This does not remove statements already present in past chat history.
+Public discovery, profile, mission and chat responses do not serialize the raw preference setting.
+Draft changes reach live DM when the creator updates the published character. No schema migration,
+new endpoint, AI provider or protected AI configuration change is needed.
 With adult mode off, the shared inline prompt requests non-explicit conversation and excludes its legacy
 adult tone-scaling block. With it on, the existing adult-mode integration receives the explicit switch.
 
