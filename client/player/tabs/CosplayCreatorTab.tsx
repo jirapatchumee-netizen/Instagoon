@@ -893,7 +893,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
             <p className="text-[11px] text-zinc-400 leading-relaxed">{t.studioAdultContentHint}</p>
             {adultContent && <div className="space-y-2 pt-2">
               <label htmlFor="studio-adult-preferences" className="block text-[11px] font-semibold text-pink-300">{t.studioAdultPreferencesLabel}</label>
-              <textarea id="studio-adult-preferences" rows={5} maxLength={2000}
+              <textarea id="studio-adult-preferences" rows={10} maxLength={2000}
                 aria-describedby="studio-adult-preferences-hint studio-adult-preferences-count"
                 value={adultPreferences} onChange={e => setAdultPreferences(e.target.value)}
                 placeholder={t.studioAdultPreferencesPlaceholder}

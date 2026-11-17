@@ -67,7 +67,8 @@ The creator can revoke permission by updating the character. Player age checks a
 opt-in still apply before energy is charged. Reward level neither unlocks nor enables adult mode.
 
 When adult permission is checked, Studio shows an optional preferences textarea below it, with a
-three-topic placeholder and character counter. Turning permission off hides the field but keeps the
+four-question placeholder (atmosphere, pace, initiative and reactions to praise/teasing) and character
+counter. These are hints, not prefilled character preferences. Turning permission off hides the field but keeps the
 text in the owner's draft; an explicitly cleared field stays empty. Missing values in older drafts
 normalize to an empty string. The same length cap and existing unsafe-text checks apply server-side.
 
