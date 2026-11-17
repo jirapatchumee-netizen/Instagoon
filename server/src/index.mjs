@@ -13,6 +13,7 @@ import { shopPlayer, shopAdmin, shopReportsApi, writeDailyReports } from './shop
 import { handleAgentDevRoute } from './agent-dev-api.mjs';
 import { cleanDraft, launchProblems, studioCreatorId, studioPreviewId, buildDefinition } from './studio.mjs';
 import { usesCreditLevels, rewardOnlyLevels, readCreditProgress, nextCreditProgress, creditProgressStatement, levelScore } from './credit-levels.mjs';
+import { shouldRecallMemory, generateEmbedding, rankMemories, formatMemoriesForPrompt, consolidateEpisodicMemory } from './ai/episodic-memory.mjs';
 
 const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), {status, headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store',...headers}});
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), {status}); };
@@ -205,7 +206,10 @@ async function bumpThread(env, ctx, uid, creator, name, messages) {
   env.DB.prepare('SELECT messages_since_summary n FROM dm_threads WHERE user_id=? AND creator_id=?').bind(uid, creator)
  ]);
  const thread = countRes.results[0] ?? null;
- if(thread?.n >= SUMMARY_EVERY && !ALLOWED_GEMINI_MODELS.includes(env.EVAL_MODEL)) defer(ctx, summarizeThread(env, uid, creator, name));
+ if(thread?.n >= SUMMARY_EVERY && !ALLOWED_GEMINI_MODELS.includes(env.EVAL_MODEL)) {
+  defer(ctx, summarizeThread(env, uid, creator, name));
+  defer(ctx, consolidateEpisodicMemory(env, uid, creator, name));
+ }
 }
 // Folds messages newer than summarized_through into the Thread Summary; a failure keeps the previous summary.
 async function summarizeThread(env, uid, creator, name) {
@@ -619,6 +623,7 @@ async function player(req,env,user,path,now,ctx) {
   await env.DB.batch([
     env.DB.prepare('DELETE FROM ai_chat_messages WHERE user_id=? AND creator_id=?').bind(user.id, creatorId),
     env.DB.prepare('DELETE FROM player_memories WHERE user_id=? AND creator_id=?').bind(user.id, creatorId),
+    env.DB.prepare('DELETE FROM episodic_memories WHERE user_id=? AND creator_id=?').bind(user.id, creatorId),
     env.DB.prepare('DELETE FROM dm_threads WHERE user_id=? AND creator_id=?').bind(user.id, creatorId),
     env.DB.prepare('DELETE FROM npc_scene_states WHERE user_id=? AND creator_id=?').bind(user.id, creatorId),
     env.DB.prepare('DELETE FROM reward_unlocks WHERE user_id=? AND creator_id=?').bind(user.id, creatorId),
@@ -1066,6 +1071,7 @@ async function player(req,env,user,path,now,ctx) {
    await env.DB.batch([
     env.DB.prepare('DELETE FROM ai_chat_messages WHERE user_id=? AND creator_id=?').bind(user.id,creator),
     env.DB.prepare('DELETE FROM player_memories WHERE user_id=? AND creator_id=?').bind(user.id,creator),
+    env.DB.prepare('DELETE FROM episodic_memories WHERE user_id=? AND creator_id=?').bind(user.id,creator),
     env.DB.prepare('DELETE FROM dm_threads WHERE user_id=? AND creator_id=?').bind(user.id,creator),
     env.DB.prepare('DELETE FROM npc_scene_states WHERE user_id=? AND creator_id=?').bind(user.id,creator)
    ]);
@@ -1397,6 +1403,13 @@ async function player(req,env,user,path,now,ctx) {
          'ส่งตัวอักษรอะไรประหลาดๆ มาคะเนี่ย ตั้งใจพิมพ์หรือแมวเดินผ่านคีย์บอร์ดกันแน่คะ? 555'
        ];
        deflectionReply = replies[Math.floor(Math.random() * replies.length)];
+     } else if (creator === 'taycho') {
+       const replies = [
+         'โค้ดอะไรเนี่ยครับ ไม่ใช่ทางผมหรอก เอาเวลาไปคิดงานดีกว่า คุยเรื่องอื่นไหม',
+         'คุณส่งอะไรมา หน้าตาแบบนี้ฝ่ายไอทีผมควรได้เงินเดือนเพิ่มแล้ว ถ้ามีเรื่องงานจริงค่อยว่ากัน',
+         'ผมไม่เล่นมุกพิมพ์มั่ว ๆ นะครับ ว่างเมื่อไหร่ค่อยคุยกันเป็นเรื่องเป็นราว 🙃'
+       ];
+       deflectionReply = replies[Math.floor(Math.random() * replies.length)];
      } else {
        deflectionReply = isEn
          ? `Huh? What kind of computer code is this? ${npcDef?.name || creatorData.name} has no idea what this means haha... Let's talk about something more fun! 😊`
@@ -1439,6 +1452,23 @@ async function player(req,env,user,path,now,ctx) {
      recentRes.results.some(r => r.id.startsWith('opening_')) || (recentRes.results.length < 121 && !(thread?.summarized_through > 0)));
    const historyContext = sceneMode ? narrativeHistory(recentRes.results, thread?.summarized_through || 0, userMessageId, npcDef.name) : null;
    const recentHistory = historyContext?.recentHistory ?? recentRows.map(r => `${r.role === 'user' ? 'Player' : (npcDef?.name || creatorData.name)}: ${r.content}`).join('\n');
+
+   let recalledEpisodicMemories = [];
+   if (shouldRecallMemory({ userText, messagesSinceLastRecall: thread?.messages_since_summary })) {
+     try {
+       const queryEmb = await generateEmbedding({ text: userText, env });
+       if (queryEmb) {
+         const candidates = await all(env, 'SELECT id, kind, fact_text, importance, created_at, last_recalled_at, embedding FROM episodic_memories WHERE user_id=? AND creator_id=? ORDER BY created_at DESC LIMIT 30', user.id, creator);
+         if (candidates.length > 0) {
+           const ranked = rankMemories(candidates, queryEmb, now, 3);
+           recalledEpisodicMemories = formatMemoriesForPrompt(ranked);
+           if (ranked.length > 0 && ranked[0].memory?.id) {
+             defer(ctx, run(env, 'UPDATE episodic_memories SET last_recalled_at=? WHERE id=?', now, ranked[0].memory.id));
+           }
+         }
+       }
+     } catch (_) {}
+   }
 
    const matchedRuleIds = matchKeywordRules(npcDef, userText);
 
@@ -1603,6 +1633,7 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
      knownFactsAboutPlayer: memText,
      storySoFar: threadSummary || (isEn ? 'none yet' : 'ยังไม่มี'),
      recentHistory,
+     ...(recalledEpisodicMemories.length > 0 ? { relevantPastMemories: recalledEpisodicMemories } : {}),
      ...(sceneMode ? {} : { sceneClock: { currentTime: storyTime, currentLocation: storyLocation } }),
      ...(sceneMode ? { scene: sceneState, playerTurnContext: narrativeTurnContext(sceneState, userText), replyTime: { at: now, timeZone: 'Asia/Bangkok' }, relevantMemories: selectNarrativeMemories(sceneState, userText), contextTruncated: historyContext.truncatedUnsummarized,
        relationship: { closeness, trust, romance, level: currentLv } } : {})
