@@ -1,0 +1,38 @@
+[
+  {
+    "id": "post_taycho_01",
+    "caption": "ถ่ายให้ดูคนเดียว อย่าเอาไปพูดต่อนะ... ไม่ได้เขิน แค่ไม่อยากให้รูปมันไปอยู่ในที่ที่ไม่ควรอยู่ 🖤",
+    "media": "posts/post_taycho_01.png",
+    "publishedAt": "2026-11-12T01:20:00+07:00",
+    "relationshipRequired": 0,
+    "simulatedLikes": 612,
+    "status": "published"
+  },
+  {
+    "id": "post_taycho_02",
+    "caption": "ปิดดีลสุดท้ายของไตรมาส จบแบบไม่ต้องเลี้ยงใครแล้วกลับบ้านตัวเองเงียบ ๆ ก็ดีเหมือนกันครับ",
+    "media": "posts/post_taycho_02.png",
+    "publishedAt": "2026-11-12T21:40:00+07:00",
+    "relationshipRequired": 0,
+    "simulatedLikes": 1348,
+    "status": "published"
+  },
+  {
+    "id": "post_taycho_03",
+    "caption": "ตีสองบนระเบียง ลมดีกว่าที่คิด... คนที่เคยนัดเจอผมตอนดึกคงไม่รู้หรอกว่าผมยืนอยู่ตรงนี้คนเดียวบ่อยแค่ไหน",
+    "media": "posts/post_taycho_03.png",
+    "publishedAt": "2026-11-13T02:05:00+07:00",
+    "relationshipRequired": 20,
+    "simulatedLikes": 431,
+    "status": "published"
+  },
+  {
+    "id": "post_taycho_04",
+    "caption": "เลิกงานตอนโพล้เพล้ครั้งแรกในรอบปี ไม่มีปาร์ตี้ต่อ ไม่มีใครรอถ่ายรูปด้วย มีแต่แล็ปท็อปกับไฟสำนักงาน 🙃",
+    "media": "posts/post_taycho_04.png",
+    "publishedAt": "2026-11-13T18:50:00+07:00",
+    "relationshipRequired": 35,
+    "simulatedLikes": 977,
+    "status": "published"
+  }
+]
