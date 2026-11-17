@@ -21,7 +21,8 @@ import { media } from '../ui';
 import { resizeImageToStandard } from '../lib/image-resizer';
 import { api } from '../api';
 import './cosplay-studio.css';
-import { AiReferenceField } from '../components/AiReferenceField';
+import { AiIdentityField } from '../components/AiIdentityField';
+import { mergeAiIdentity } from '../../../packages/contracts/npc/ai-identity';
 
 interface CosplayCreatorTabProps {
   lang: Lang;
@@ -77,8 +78,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
   const [handle, setHandle] = useState('yuki.cosplay');
   const [tagline, setTagline] = useState('มาแบ่งปันโลกคอสเพลย์ไปด้วยกันนะ');
   const [profileDescription, setProfileDescription] = useState('คอสเพลเยอร์ที่ชอบทำชุดด้วยตัวเอง ยินดีแบ่งปันเบื้องหลังการทำงานและพูดคุยเรื่องคอสเพลย์กับทุกคน');
-  const [characterBrief, setCharacterBrief] = useState('');
-  const [referenceBiography, setReferenceBiography] = useState('');
+  const [aiIdentity, setAiIdentity] = useState('');
   const [age, setAge] = useState('24');
   const [studio, setStudio] = useState<StudioState>({ draft: null, creatorId: null, status: 'none' });
   const [busyAction, setBusyAction] = useState<'' | 'save' | 'launch' | 'unpublish'>('');
@@ -103,8 +103,6 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
   const [ruleNoAddress, setRuleNoAddress] = useState(true);
   const [ruleNoMeet, setRuleNoMeet] = useState(true);
   const [rulePoliteReject, setRulePoliteReject] = useState(true);
-  const [secret, setSecret] = useState('จริงๆ แล้วชุดคอสชุดนี้เย็บเองทั้งชุด ซิปข้างหลังเกือบแตกหลังเวที ดีนะที่เอาเข็มกลัดไปด้วย!');
-  const [immutableFacts, setImmutableFacts] = useState('เลี้ยงแมวส้มชื่อป๊อกกี้ 1 ตัว / ทำชุดคอสเพลย์เองเกือบทุกชุด');
 
   // Pillar 4: First Meeting & Live Simulation
   const [openingLocation, setOpeningLocation] = useState('หลังเวทีงานคอสเพลย์');
@@ -163,8 +161,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
     const legacyConcept = typeof data.concept === 'string' ? data.concept : '';
     setTagline(typeof data.tagline === 'string' ? data.tagline : legacyConcept.slice(0, 200));
     setProfileDescription(typeof data.profileDescription === 'string' ? data.profileDescription : legacyConcept);
-    setCharacterBrief(typeof data.characterBrief === 'string' ? data.characterBrief : '');
-    setReferenceBiography(typeof data.referenceBiography === 'string' ? data.referenceBiography : '');
+    setAiIdentity(mergeAiIdentity(data));
     if (data.age) setAge(String(data.age));
     if (data.avatar) setAvatar(data.avatar);
     if (data.tags) setTags(data.tags);
@@ -180,8 +177,6 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
     if (typeof data.ruleNoAddress === 'boolean') setRuleNoAddress(data.ruleNoAddress);
     if (typeof data.ruleNoMeet === 'boolean') setRuleNoMeet(data.ruleNoMeet);
     if (typeof data.rulePoliteReject === 'boolean') setRulePoliteReject(data.rulePoliteReject);
-    if (data.secret) setSecret(data.secret);
-    if (data.immutableFacts) setImmutableFacts(data.immutableFacts);
     if (data.openingLocation) setOpeningLocation(data.openingLocation);
     if (typeof data.openingGreeting === 'string') setOpeningGreeting(data.openingGreeting);
     if (Array.isArray(data.rewards)) setRewards(data.rewards);
@@ -272,8 +267,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
     handle,
     tagline,
     profileDescription,
-    characterBrief,
-    referenceBiography,
+    aiIdentity,
     age: Number(age) || 0,
     avatar,
     tags,
@@ -288,8 +282,6 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
     ruleNoAddress,
     ruleNoMeet,
     rulePoliteReject,
-    secret,
-    immutableFacts,
     openingLocation,
     openingGreeting,
     rewards,
@@ -302,8 +294,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
     concept: t.studioConceptLabel,
     tagline: t.studioTaglineLabel,
     profileDescription: t.studioProfileDescriptionLabel,
-    characterBrief: t.studioCharacterBriefLabel,
-    referenceBiography: t.studioReferenceBiographyLabel,
+    aiIdentity: t.studioReferenceBiographyLabel,
     age: `${t.studioAgeLabel} (${t.studioAgeHint})`,
     avatar: t.studioAvatarLabel,
     voiceTone: t.studioVoiceToneLabel,
@@ -313,8 +304,6 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
     dislikes: t.studioDislikesLabel,
     pronouns: t.studioPronounsLabel,
     sampleQuotes: t.studioSampleQuotesLabel,
-    secret: t.studioSecretLabel,
-    immutableFacts: t.studioImmutableFactsLabel,
     tags: 'Tags',
     openingLocation: t.studioOpeningSceneLabel,
     openingGreeting: t.studioGreetingLabel,
@@ -586,7 +575,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
           }`}
         >
           <ShieldCheck className="w-4 h-4 mb-1" />
-          <span className="text-[9.5px] leading-[1.2] font-medium">ความลับ &<br />ขอบเขต</span>
+          <span className="text-[9.5px] leading-[1.2] font-medium">เนื้อหา &<br />ขอบเขต</span>
         </button>
         <button
           type="button"
@@ -836,14 +825,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
            ========================================== */}
       {activeTab === 'voice' && (
         <section className="studio-panel relative z-10 p-4 space-y-4">
-          <AiReferenceField lang={lang} value={referenceBiography} onChange={setReferenceBiography}/>
-          <div className="space-y-1.5">
-            <label htmlFor="studio-character-brief" className="block text-[11px] font-semibold text-pink-300">{t.studioCharacterBriefLabel}</label>
-            <textarea id="studio-character-brief" maxLength={6000} aria-describedby="studio-character-brief-hint" rows={7}
-              value={characterBrief} onChange={e => setCharacterBrief(e.target.value)}
-              className="studio-input w-full px-3.5 py-2.5 text-xs leading-relaxed"/>
-            <p id="studio-character-brief-hint" className="text-[10px] text-zinc-400">{t.studioCharacterBriefHint} ({characterBrief.length}/6000)</p>
-          </div>
+          <AiIdentityField lang={lang} value={aiIdentity} onChange={setAiIdentity}/>
           {/* Pronouns Selector */}
           <div className="space-y-2">
             <label className="block text-[11px] font-medium text-zinc-300">{t.studioPronounsLabel}</label>
@@ -942,35 +924,6 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
             </label>
           </div>
 
-          {/* Immutable Facts */}
-          <div className="space-y-1.5">
-            <label className="block text-[11px] font-medium text-zinc-300">{t.studioImmutableFactsLabel}</label>
-            <textarea
-              rows={2}
-              value={immutableFacts}
-              onChange={(e) => setImmutableFacts(e.target.value)}
-              placeholder="เลี้ยงแมวส้มชื่อป๊อกกี้ / ทำชุดคอสเอง"
-              className="studio-input w-full px-3.5 py-2.5 text-xs leading-relaxed"
-            />
-          </div>
-
-          {/* Background shared naturally, independent of reward levels. */}
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label className="text-[11px] font-medium text-zinc-300">{t.studioSecretLabel}</label>
-              <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-amber-400/15 text-amber-300 border border-amber-400/30">
-                AI CONTEXT
-              </span>
-            </div>
-            <textarea
-              rows={2}
-              value={secret}
-              onChange={(e) => setSecret(e.target.value)}
-              aria-label={t.studioSecretLabel}
-              placeholder="จริงๆ แล้วชุดคอสชุดนี้เย็บเองทั้งชุด"
-              className="studio-input w-full px-3.5 py-2.5 text-xs leading-relaxed"
-            />
-          </div>
         </section>
       )}
 

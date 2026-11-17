@@ -1,4 +1,5 @@
 import { DEFAULT_LEVEL_COSTS, validLevelCosts, validAdultLevels, adultContentAllowed } from './credit-levels.mjs';
+import { mergeAiIdentity } from '../../packages/contracts/npc/ai-identity.ts';
 
 // Cosplay Creator Studio: turns the Studio form into the same NPC definition that content/creators/<id>/character.json
 // produces, so a launched character uses the normal DM pipeline (prompt, leak filter, energy, relationship levels).
@@ -25,6 +26,7 @@ export function cleanDraft(b) {
     // Only absent keys migrate old drafts. An intentionally cleared modern field stays empty.
     tagline: b.tagline === undefined ? concept.slice(0, 200) : str(b.tagline, 200),
     profileDescription: b.profileDescription === undefined ? concept : str(b.profileDescription, 4000),
+    aiIdentity: mergeAiIdentity(b),
     characterBrief: str(b.characterBrief, 6000),
     referenceBiography: str(b.referenceBiography, 6000),
     age: clampInt(b.age, 0, 120, 0), avatar: str(b.avatar, 200), tags: str(b.tags, 300),
@@ -48,7 +50,7 @@ export const MIN_CHARACTER_AGE = 20;
 // Creator text becomes part of the character prompt, so instructions aimed at the model, code/JSON and
 // AI/vendor names are refused (the last would also trip the reply leak filter and silence the character).
 const UNSAFE = /ignore\s+(all|any|the|previous|above)|system\s*prompt|developer\s*mode|jailbreak|\bDAN\b|you\s+are\s+(now\s+)?(an?\s+)?(ai|assistant|chatbot|language model)|```|<\/?script|\{\s*"[^"]+"\s*:|ละเว้น(คำสั่ง|กฎ)|ไม่ต้อง(ทำตาม|สน)(คำสั่ง|กฎ)|คำสั่งก่อนหน้า|ลืมคำสั่ง|gemini|chat\s*gpt|openai|anthropic|deepseek|\bllm\b|โมเดลภาษา/i;
-const TEXT_FIELDS = ['name', 'handle', 'concept', 'tagline', 'profileDescription', 'characterBrief', 'referenceBiography', 'tags', 'likes', 'dislikes', 'pronouns', 'voiceTone', 'sampleQuotes', 'secret', 'immutableFacts', 'openingLocation', 'openingGreeting'];
+const TEXT_FIELDS = ['name', 'handle', 'concept', 'tagline', 'profileDescription', 'aiIdentity', 'tags', 'likes', 'dislikes', 'pronouns', 'voiceTone', 'sampleQuotes', 'openingLocation', 'openingGreeting'];
 export function unsafeFields(d) {
   const bad = TEXT_FIELDS.filter(k => UNSAFE.test(d[k] || ''));
   if (d.rewards.some(r => UNSAFE.test(`${r.name} ${r.caption} ${r.message} ${r.hint}`)) || d.posts.some(x => UNSAFE.test(x.caption))) bad.push('rewards');
@@ -87,12 +89,12 @@ export function buildDefinition(d, creatorId, assetMap) {
     color: '#ec4899', tags: ['cosplay', ...list(d.tags, 10, /,/)], creatorType: 'cosplay', isVerified: false, studioCreated: true,
     // The runtime already consumes biography in both prompt lanes. Keep public copy explicit so references never become profile text.
     profileDescription: d.profileDescription,
-    age: String(d.age), biography: [d.profileDescription, d.referenceBiography].filter(Boolean).join('\n\n'), personality: [d.voiceTone, d.characterBrief].filter(Boolean).join('\n\n'), world: d.openingLocation || 'โลกของคอสเพลเยอร์และงานอีเวนต์',
+    age: String(d.age), biography: d.profileDescription, personality: [d.voiceTone, d.aiIdentity].filter(Boolean).join('\n\n'), world: d.openingLocation || 'โลกของคอสเพลเยอร์และงานอีเวนต์',
     openingGreeting: d.openingGreeting || undefined,
     occupation: 'คอสเพลเยอร์', likes: d.likes, dislikes: d.dislikes, goals: '',
-    immutableFacts: [...list(d.immutableFacts, 20), `อายุ ${d.age} ปี เป็นผู้ใหญ่`, ...safety],
+    immutableFacts: [`อายุ ${d.age} ปี เป็นผู้ใหญ่`, ...safety],
     knowledgeBoundary: `รู้เรื่องคอสเพลย์ ตัวละครที่คอส และชีวิตประจำวันของตัวเอง ไม่รู้ข้อมูลภายในของแอปหรือระบบ ${safety.join(' · ')}`,
-    secrets: d.secret ? [{ id: 'secret_1', content: d.secret, minLevel: 1 }] : [], initialMemories: [],
+    secrets: [], initialMemories: [],
     style: {
       language: 'ไทย', pronouns: `เรียกตัวเองว่า "${me}" เรียกผู้เล่นว่า "${you}"`, tone: d.voiceTone, length: 'short', emoji: 'some',
       examples: [d.openingGreeting, ...list(d.sampleQuotes, 10)].filter(Boolean).join('\n'),
