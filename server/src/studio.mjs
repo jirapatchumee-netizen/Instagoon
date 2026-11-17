@@ -80,7 +80,7 @@ export const studioCreatorId = handle => 'cos_' + handle.toLowerCase().replace(/
 export function buildDefinition(d, creatorId, assetMap) {
   const [me = 'เค้า', you = 'ตัวเอง'] = d.pronouns.split('/').map(s => s.trim());
   const safety = [
-    d.ruleNoAddress && 'ไม่บอกที่อยู่ เบอร์โทร หรือข้อมูลส่วนตัวจริงของคอสเพลเยอร์',
+    d.ruleNoAddress && 'ไม่บอกที่อยู่ เบอร์โทร หรือข้อมูลส่วนตัวจริงของครีเอเตอร์',
     d.ruleNoMeet && 'ไม่นัดเจอตัวจริงนอกแอป',
     d.rulePoliteReject && 'ถ้าถูกถามเรื่องที่ไม่สะดวก ปฏิเสธอย่างสุภาพแล้วเปลี่ยนเรื่อง'
   ].filter(Boolean);
@@ -89,11 +89,11 @@ export function buildDefinition(d, creatorId, assetMap) {
     color: '#ec4899', tags: ['cosplay', ...list(d.tags, 10, /,/)], creatorType: 'cosplay', isVerified: false, studioCreated: true,
     // The runtime already consumes biography in both prompt lanes. Keep public copy explicit so references never become profile text.
     profileDescription: d.profileDescription,
-    age: String(d.age), biography: d.profileDescription, personality: [d.voiceTone, d.aiIdentity].filter(Boolean).join('\n\n'), world: d.openingLocation || 'โลกของคอสเพลเยอร์และงานอีเวนต์',
+    age: String(d.age), biography: d.profileDescription, personality: [d.voiceTone, d.aiIdentity].filter(Boolean).join('\n\n'), world: d.openingLocation || 'ชีวิตประจำวันและบทสนทนาในโลกปัจจุบัน',
     openingGreeting: d.openingGreeting || undefined,
     occupation: 'คอสเพลเยอร์', likes: d.likes, dislikes: d.dislikes, goals: '',
     immutableFacts: [`อายุ ${d.age} ปี เป็นผู้ใหญ่`, ...safety],
-    knowledgeBoundary: `รู้เรื่องคอสเพลย์ ตัวละครที่คอส และชีวิตประจำวันของตัวเอง ไม่รู้ข้อมูลภายในของแอปหรือระบบ ${safety.join(' · ')}`,
+    knowledgeBoundary: `ถ่ายทอดชื่อ เพศ บุคลิก รสนิยม เหตุผล มุมคิด ประสบการณ์ และวิธีพูดตามข้อมูลตัวตนที่ครีเอเตอร์ให้ไว้ สนทนาได้หลากหลายหัวข้อตามความสนใจและบริบท ไม่จำกัดเฉพาะงานหรืออาชีพ แยกความรู้ทั่วไปออกจากเรื่องส่วนตัว ถ้าไม่ได้ระบุความชอบ เพศ หรือประสบการณ์ ให้ยอมรับอย่างเป็นธรรมชาติว่าไม่มีข้อมูล ห้ามเดาหรือแต่งว่าเจ้าตัวชอบสิ่งนั้นหรือเคยทำสิ่งนั้น ไม่แต่งข้อมูลของผู้เล่นที่ผู้เล่นไม่เคยบอก ไม่รู้ข้อมูลภายในของแอปหรือระบบ ${safety.join(' · ')}`,
     secrets: [], initialMemories: [],
     style: {
       language: 'ไทย', pronouns: `เรียกตัวเองว่า "${me}" เรียกผู้เล่นว่า "${you}"`, tone: d.voiceTone, length: 'short', emoji: 'some',

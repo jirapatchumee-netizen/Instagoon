@@ -315,19 +315,29 @@ test('one AI identity migrates all four legacy fields without truncation, duplic
 
 test('one private AI identity survives save/launch, reaches live chat and sandbox, and never becomes public profile copy',async()=>{
   const {f,call,draft}=await studio();grant(f,'two');
-  const aiIdentity='UNIFIED_AI_IDENTITY_SENTINEL: อบอุ่นแต่ขี้อาย เริ่มคอสตอนเรียน ชอบทำพร็อพ เลี้ยงแมวชื่อชาเย็น และปฏิเสธการนัดเจออย่างสุภาพ';
+  const interests=['ชื่อ: นัท','เพศ: ไม่ระบุ','บุคลิก: อบอุ่นแต่ขี้อาย เวลาโดนชมชอบเปลี่ยนเรื่อง',
+    'สิ่งที่ชอบ: เกมแก้ปริศนาเพราะชอบค่อย ๆ หาคำตอบ','สิ่งที่ไม่ชอบ: ถูกเร่งให้ตอบเพราะอยากคิดให้รอบคอบ',
+    'ชอบมังงะแนวผจญภัยเพราะชอบมิตรภาพของตัวละคร','ชอบหนังสืบสวนเพราะชอบเดาแรงจูงใจ',
+    'วันว่างเดินร้านหนังสือแบบไม่มีแผน และปฏิเสธการนัดเจออย่างสุภาพ'];
+  const aiIdentity='UNIFIED_AI_IDENTITY_SENTINEL: '+interests.join(' / ');
   const modern={...draft,aiIdentity,characterBrief:'STALE_BRIEF',referenceBiography:'STALE_BIO',immutableFacts:'STALE_FACT',secret:'STALE_STORY'};
   assert.equal((await call('/api/studio/draft',{method:'PUT',json:modern})).body.draft.aiIdentity,aiIdentity);
   assert.equal((await call('/api/studio/launch',{method:'POST',json:modern})).status,200);
   const def=JSON.parse(f.sql.prepare("SELECT definition_json FROM npc_definitions WHERE creator_id='cos_yuki_cosplay'").get().definition_json);
   assert.ok(def.personality.includes(aiIdentity));assert.equal(def.biography,draft.concept);
+  assert.match(def.knowledgeBoundary,/ห้ามเดาหรือแต่ง/);
+  assert.ok(def.immutableFacts.some(f=>f.includes('ไม่บอกที่อยู่')),'privacy rules still apply to a creator with diverse interests');
   assert.ok(!JSON.stringify(def).includes('STALE_'));
   for(const path of ['/api/creators','/api/creators/cos_yuki_cosplay/profile','/api/chats/cos_yuki_cosplay']){
     const response=await call(path,{uid:'two'});assert.equal(response.status,200);assert.ok(!JSON.stringify(response.body).includes(aiIdentity));
   }
   let input='';f.env.AI.run=async(...args)=>{input=JSON.stringify(args);return {response:JSON.stringify({reply:'กำลังทำพร็อพอยู่ค่ะ'})};};
-  assert.equal((await call('/api/studio/sandbox',{method:'POST',json:{draft:modern,message:'วันนี้ทำอะไร'}})).status,200);assert.ok(input.includes(aiIdentity));
+  assert.equal((await call('/api/studio/sandbox',{method:'POST',json:{draft:modern,message:'วันนี้ทำอะไร'}})).status,200);
+  for(const fact of interests)assert.ok(input.includes(fact),'sandbox receives '+fact);
+  assert.ok(input.includes(def.knowledgeBoundary),'sandbox receives the broader knowledge boundary');
   input='';
   assert.equal((await call('/api/chats/cos_yuki_cosplay/message',{uid:'two',method:'POST',json:{message:'วันนี้ทำอะไร',requestId:'unified-persona'}})).status,200);
   assert.ok(input.includes(aiIdentity));assert.ok(!input.includes('STALE_'));
+  for(const fact of interests)assert.ok(input.includes(fact),'live DM receives '+fact);
+  assert.ok(input.includes(def.knowledgeBoundary),'live DM receives the same knowledge boundary');
 });

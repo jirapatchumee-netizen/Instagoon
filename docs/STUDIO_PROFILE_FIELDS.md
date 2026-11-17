@@ -13,8 +13,12 @@ The creator edits one “ตัวตนและข้อมูลสำหร�
 immutable-facts editor and background-story editor are removed. Tone, pronouns and sample dialogue remain
 short style controls. The “เนื้อหา & ขอบเขต” tab holds the adult checkbox and the three existing safety rules.
 
-The AI editor has concise guidance and an optional collapsed disclosure covering personality, reactions,
-history, consistent facts and boundaries, with a fact → reason/feeling → example pattern. It inserts no
+The AI editor shows a neutral placeholder starting with name, optional gender, personality, likes and
+dislikes. It continues with games, anime/manga, films/series/music, daily activities, voice, experiences,
+dreams, personal details and boundaries. The optional collapsed guide follows the same order and uses
+an interest → reason/feeling → personal example pattern. Its fictional example spans several interests
+rather than assuming cosplay is the creator's defining topic. All three languages carry the same scope.
+The placeholder is a hint, never prefilled identity data; existing creator text is unchanged. It inserts no
 invented facts and does not require every topic. The raw text is private authoring data, but the bot may
 discuss it naturally: include only information the creator permits it to share.
 
@@ -34,6 +38,13 @@ Public profile copy remains explicit and cannot fall back to this private identi
 Profile/persona edits take effect in live chat when the creator updates the published character; existing
 live definitions continue working until then. No database migration or protected AI configuration changes
 are needed. The NPC contract accepts the combined personality length plus the existing 300-character tone.
+
+The Studio definition's knowledge boundary allows conversation about the creator's stated interests,
+reasons, perspective and experiences across topics. General knowledge is separate from personal facts:
+the model must not invent an unstated preference, gender or life experience for the creator, or personal
+facts about the player. Existing privacy and safety rules continue to apply. Name/gender in the free text
+do not automatically change the public profile or add structured API fields. Creator category and career
+metadata remain unchanged; an explicitly configured opening scene is preserved.
 
 ## Reward levels and adult permission
 
