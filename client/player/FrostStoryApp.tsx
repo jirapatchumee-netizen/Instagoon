@@ -398,7 +398,9 @@ export function FrostStoryApp() {
         });
       }
       const isExperimentOrNetwork = msg.startsWith('deepseek_') || msg.startsWith('experiment_') || msg.includes('network') || msg.includes('Failed to fetch');
-      const baseReason = msg.includes('thread_busy')
+      const baseReason = msg.includes('adult_mode_locked')
+        ? t.chatAdultModeUnavailable
+        : msg.includes('thread_busy')
         ? t.chatBusyPrev(selectedCreator.name)
         : msg.includes('energy_empty')
           ? t.chatEnergyEmpty
