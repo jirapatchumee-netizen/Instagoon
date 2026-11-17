@@ -553,7 +553,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
           }`}
         >
           <User className="w-4 h-4 mb-1" />
-          <span className="text-[9.5px] leading-[1.2] font-medium">ตัวตน &<br />ภาพลักษณ์</span>
+          <span className="text-[9.5px] leading-[1.2] font-medium">โปรไฟล์ &<br />รูปภาพ</span>
         </button>
         <button
           type="button"
@@ -566,7 +566,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
           }`}
         >
           <MessageCircle className="w-4 h-4 mb-1" />
-          <span className="text-[9.5px] leading-[1.2] font-medium">น้ำเสียง &<br />สไตล์พูด</span>
+          <span className="text-[9.5px] leading-[1.2] font-medium">ตัวตน &<br />การสนทนา</span>
         </button>
         <button
           type="button"
@@ -652,6 +652,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
            ========================================== */}
       {activeTab === 'identity' && (
         <section className="studio-panel relative z-10 p-4 space-y-4">
+          <p className="text-xs text-zinc-400">สิ่งที่แฟนคลับเห็นบนโปรไฟล์</p>
           {/* Avatar Upload Row */}
           <div className="space-y-2">
             <label className="block text-[11px] font-medium text-zinc-300">{t.studioAvatarLabel}</label>
@@ -829,6 +830,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
            ========================================== */}
       {activeTab === 'voice' && (
         <section className="studio-panel relative z-10 p-4 space-y-4">
+          <p className="text-xs text-zinc-400">ข้อมูลที่ AI ใช้ถ่ายทอดความเป็นคุณ</p>
           <AiIdentityField lang={lang} value={aiIdentity} onChange={setAiIdentity}/>
           {/* Pronouns Selector */}
           <div className="space-y-2">
