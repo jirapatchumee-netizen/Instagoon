@@ -59,7 +59,8 @@ export const NpcObjectSchema = z.object({
   style: z.object({ language: text, pronouns: text, tone: text, length: z.enum(['short', 'medium', 'long']), emoji: z.enum(['none', 'some', 'often']), examples: text, fallback: text.min(1), levelStyles: z.array(text).length(5) }).strict(),
   relationship: z.object({ weights: ScoresSchema, thresholds: z.array(z.number().min(0).max(100)).length(5), romanceEnabled: z.boolean(),
     creditProgression: z.object({ mode: z.literal('credits'), costs: z.array(z.number().int().min(1).max(100000)).length(4),
-      adultLevels: z.array(z.boolean()).length(5) }).strict().optional()
+      purpose: z.literal('rewards').optional(), adultContent: z.boolean().optional(),
+      adultLevels: z.array(z.boolean()).length(5).optional() }).strict().optional()
   }).strict(), rules: z.array(RuleSchema).max(100), rewards: z.array(RewardSchema).max(100),
   cameos: z.array(z.string().max(300)).max(15).optional(),
 }).strict();

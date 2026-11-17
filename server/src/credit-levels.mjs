@@ -4,10 +4,15 @@ export const DEFAULT_ADULT_LEVELS = [false, false, false, false, false];
 export const validLevelCosts = v => Array.isArray(v) && v.length === 4 && v.every(n => Number.isSafeInteger(n) && n >= 1 && n <= 100000);
 export const validAdultLevels = v => Array.isArray(v) && v.length === 5 && v.every(n => typeof n === 'boolean');
 export const usesCreditLevels = def => def?.relationship?.creditProgression?.mode === 'credits';
+// Studio credit levels are a reward track. Older live Studio cards opt in too, without a relaunch.
+export const rewardOnlyLevels = def => usesCreditLevels(def) && (def.studioCreated === true || def.relationship.creditProgression.purpose === 'rewards');
+export const adultContentAllowed = config => config?.adultContent !== undefined ? config.adultContent === true
+  : validAdultLevels(config?.adultLevels) && config.adultLevels.some(Boolean);
 export function creditConfig(def) {
   const c = def?.relationship?.creditProgression;
   const costs = validLevelCosts(c?.costs) ? [...c.costs] : [...DEFAULT_LEVEL_COSTS];
-  return { costs, version: 'credits-v1:' + costs.join(','), adultLevels: validAdultLevels(c?.adultLevels) ? c.adultLevels : DEFAULT_ADULT_LEVELS };
+  return { costs, version: 'credits-v1:' + costs.join(','), adultContent: adultContentAllowed(c),
+    adultLevels: validAdultLevels(c?.adultLevels) ? c.adultLevels : DEFAULT_ADULT_LEVELS };
 }
 export function creditLevel(spent, costs) {
   let threshold = 0, level = 1;
@@ -25,7 +30,7 @@ export function creditProgress(def, row, legacyLevel = 1) {
   const nextAt = level < 5 ? costs.slice(0, level).reduce((a, b) => a + b, 0) : null;
   return { mode: 'credits', creditsSpent: spent, costs, version: row?.config_version || current.version, level,
     nextLevelAt: nextAt, creditsRemaining: nextAt === null ? 0 : Math.max(0, nextAt - spent),
-    adultAllowed: current.adultLevels[level - 1] === true };
+    adultAllowed: rewardOnlyLevels(def) ? current.adultContent : current.adultLevels[level - 1] === true };
 }
 export async function readCreditProgress(env, userId, creatorId, def, legacyLevel = 1) {
   if (!usesCreditLevels(def)) return null;

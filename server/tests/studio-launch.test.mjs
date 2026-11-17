@@ -62,7 +62,7 @@ test('launch makes the character visible and chattable for another player, and u
   assert.equal(dm.status, 200, JSON.stringify(dm.body));
   assert.match(JSON.stringify(dm.body), /ยินดีที่ได้รู้จักนะคะ/, 'reply comes from the model through the DM pipeline');
   const def = JSON.parse(f.sql.prepare('SELECT definition_json d FROM npc_definitions WHERE creator_id=?').get('cos_yuki_cosplay').d);
-  assert.deepEqual(def.style.levelStyles, LEVELS);
+  assert.deepEqual(def.style.levelStyles, Array(5).fill(draft.voiceTone));
   assert.ok(def.immutableFacts.includes('อายุ 24 ปี เป็นผู้ใหญ่'));
 
   assert.equal((await call('/api/studio/unpublish', { method: 'POST' })).status, 200);
@@ -83,13 +83,13 @@ test('launch cannot take an existing creator id or publish another account\'s me
   assert.equal(f.sql.prepare("SELECT name FROM creators WHERE id='cos_milin'").get().name, 'Milin');
 });
 
-test('sandbox runs the real DM pipeline on a private twin at the chosen level', async () => {
+test('sandbox runs the real DM pipeline on a private twin without a conversation level', async () => {
   const { f, call, draft } = await studio();
   grant(f, 'two');
   const r = await call('/api/studio/sandbox', { method: 'POST', json: { draft, level: 4, message: 'สวัสดีครับ' } });
   assert.equal(r.status, 200, JSON.stringify(r.body));
   assert.match(r.body.reply, /ยินดีที่ได้รู้จักนะคะ/);
-  assert.equal(r.body.level, 4);
+  assert.equal(r.body.level, 1, 'legacy level input cannot change the conversation');
   assert.equal(r.body.creditProgress.creditsSpent, 0, 'a paid test is not real-player progression');
   assert.equal(f.sql.prepare("SELECT COUNT(*) n FROM chat_credit_progress WHERE creator_id='cosp_one'").get().n, 0);
   assert.ok(!(await call('/api/creators', { uid: 'two' })).body.creators.some(c => c.id.startsWith('cosp_')), 'twin never listed');
@@ -158,37 +158,33 @@ test('legacy concepts migrate only into public fields, and explicitly cleared mo
   }
 });
 
-test('reference facts reach the private sandbox and AI level-style assistant without changing public copy',async()=>{
+test('reference facts reach the private sandbox without changing public copy',async()=>{
   const { f,call,draft }=await studio();
   const full={...draft,referenceBiography:'REFERENCE_FACTS_CHECK: งานอดิเรกคือการทำพร็อพและวาดแบบชุดเอง'};
   let input='';f.env.AI.run=async(...args)=>{input=JSON.stringify(args);return {response:JSON.stringify({reply:'กำลังทำพร็อพชิ้นใหม่อยู่เลยค่ะ'})};};
   const preview=await call('/api/studio/sandbox',{method:'POST',json:{draft:full,message:'ชอบทำอะไร'}});
   assert.equal(preview.status,200);assert.ok(input.includes(full.referenceBiography));
   assert.ok(!JSON.stringify(preview.body).includes(full.referenceBiography));
-  // The existing Gemini integration receives the reference field in its untrusted authoring JSON.
-  const originalFetch=globalThis.fetch;let generatedInput='';
-  globalThis.fetch=async(_url,options)=>{generatedInput=options.body;return Response.json({candidates:[{content:{parts:[{text:JSON.stringify({levels:LEVELS})}]}}]});};
-  try{assert.equal((await call('/api/studio/suggest-levels',{method:'POST',json:full})).status,200);}finally{globalThis.fetch=originalFetch;}
-  assert.ok(generatedInput.includes('REFERENCE_FACTS_CHECK'));
+
 });
 
 test('creator credit costs and adult permission survive save/launch; invalid settings cannot launch or enter the sandbox', async () => {
   const { f, call, draft } = await studio();
-  const custom = { ...draft, levelCosts:[100,200,300,400], adultLevels:[false,false,false,true,true],
+  const custom = { ...draft, levelCosts:[100,200,300,400], adultContent:true,
     rewards:[{id:'reward',name:'ภาพเบื้องหลัง',asset:draft.avatar,minLevel:3,turns:5}] };
   const saved=await call('/api/studio/draft',{method:'PUT',json:custom});
   assert.deepEqual(saved.body.draft.levelCosts,custom.levelCosts);
-  assert.deepEqual((await call('/api/studio/draft')).body.draft.adultLevels,custom.adultLevels);
+  assert.equal((await call('/api/studio/draft')).body.draft.adultContent,true);
   assert.equal((await call('/api/studio/launch',{method:'POST',json:custom})).status,200);
   const def=JSON.parse(f.sql.prepare("SELECT definition_json FROM npc_definitions WHERE creator_id='cos_yuki_cosplay'").get().definition_json);
-  assert.deepEqual(def.relationship.creditProgression,{mode:'credits',costs:custom.levelCosts,adultLevels:custom.adultLevels});
+  assert.deepEqual(def.relationship.creditProgression,{mode:'credits',purpose:'rewards',costs:custom.levelCosts,adultContent:true});
   assert.deepEqual(def.rewards[0].conditions.map(c=>[c.field,c.value]),[['level',3],['turns',5]]);
   for(const levelCosts of [[0,200,300,400],[1.5,2,3,4],['100',200,300,400],[100,200]]){
     const invalid={...custom,levelCosts};
     assert.equal((await call('/api/studio/launch',{method:'POST',json:invalid})).status,400);
     assert.equal((await call('/api/studio/sandbox',{method:'POST',json:{draft:invalid,message:'สวัสดี'}})).status,400);
   }
-  assert.equal((await call('/api/studio/sandbox',{method:'POST',json:{draft:custom,level:3,adultMode:true,message:'สวัสดี'}})).status,403);
+  assert.equal((await call('/api/studio/sandbox',{method:'POST',json:{draft:custom,level:1,adultMode:true,message:'สวัสดี'}})).status,200);
   assert.equal((await call('/api/studio/sandbox',{method:'POST',json:{draft:custom,level:4,adultMode:true,message:'สวัสดี'}})).status,200);
 });
 
@@ -207,23 +203,32 @@ test('launch publishes launch posts and taking down suspends them; launches are 
   assert.equal((await call('/api/studio/launch', { method: 'POST', json: draft })).status, 429);
 });
 
-test('Lv.1-5 suggestions come from the model, and energy is refunded when no model answers', async () => {
-  const { f, call, draft } = await studio();
-  const before = f.sql.prepare("SELECT free FROM energy WHERE user_id='one'").get().free;
-  const realFetch = globalThis.fetch;
-  globalThis.fetch = async () => new Response('busy', { status: 503 });
-  try { assert.equal((await call('/api/studio/suggest-levels', { method: 'POST', json: draft })).status, 503); } finally { globalThis.fetch = realFetch; }
-  assert.equal(f.sql.prepare("SELECT free FROM energy WHERE user_id='one'").get().free, before, 'refunded');
-  f.env.DEEPSEEK_API_KEY = 'test';
-  // DeepSeek out of balance (402) falls through to Gemini.
-  globalThis.fetch = async url => String(url).includes('deepseek')
-    ? new Response('{"error":"Insufficient Balance"}', { status: 402 })
-    : Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify({ levels: ['a', 'b', 'c', 'd', 'e'] }) }] } }] });
-  try {
-    const r = await call('/api/studio/suggest-levels', { method: 'POST', json: draft });
-    assert.equal(r.status, 200);
-    assert.deepEqual(r.body.levels, ['a', 'b', 'c', 'd', 'e']);
-  } finally { globalThis.fetch = realFetch; }
+test('removed level-style assistant does not call AI or spend energy', async () => {
+  const {f,call,draft}=await studio();
+  const before=f.sql.prepare("SELECT free+purchased n FROM energy WHERE user_id='one'").get().n;
+  f.env.AI.run=async()=>{throw new Error('must not call AI');};
+  const response=await call('/api/studio/suggest-levels',{method:'POST',json:draft});
+  assert.equal(response.status,410);assert.equal(response.body.error,'feature_removed');
+  assert.equal(f.sql.prepare("SELECT free+purchased n FROM energy WHERE user_id='one'").get().n,before);
+});
+
+test('a creator can publish without per-level dialogue; legacy text is retained only in their draft',async()=>{
+  const {f,call,draft}=await studio();
+  const modern={...draft,levelStyles:[],adultContent:false};
+  const saved=await call('/api/studio/draft',{method:'PUT',json:modern});
+  assert.deepEqual(saved.body.problems,[]);
+  assert.equal((await call('/api/studio/launch',{method:'POST',json:modern})).status,200);
+  const legacy={...draft,adultLevels:[false,false,false,true,true]};
+  const migrated=await call('/api/studio/draft',{method:'PUT',json:legacy});
+  assert.equal(migrated.body.draft.adultContent,true);assert.deepEqual(migrated.body.draft.levelStyles,LEVELS);
+  const off={...legacy,adultContent:false};
+  assert.equal((await call('/api/studio/draft',{method:'PUT',json:off})).body.draft.adultContent,false);
+  assert.equal((await call('/api/studio/sandbox',{method:'POST',json:{draft:off,level:5,adultMode:true,message:'สวัสดี'}})).status,403);
+  for(const adultContent of ['true',1,null]){
+    assert.equal((await call('/api/studio/launch',{method:'POST',json:{...modern,adultContent}})).status,400);
+    assert.equal((await call('/api/studio/sandbox',{method:'POST',json:{draft:{...modern,adultContent},message:'สวัสดี'}})).status,400);
+  }
+  assert.equal(f.sql.prepare("SELECT COUNT(*) n FROM chat_credit_progress WHERE creator_id='cosp_one'").get().n,0);
 });
 
 test('launch brokers the 1:1 cosplay account and staging hands the UI the analytics origin', async () => {

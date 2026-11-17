@@ -92,15 +92,10 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
   const [pronouns, setPronouns] = useState('เค้า / ตัวเอง');
   const [voiceTone, setVoiceTone] = useState('ขี้อ้อน อบอุ่น');
   const [sampleQuotes, setSampleQuotes] = useState('ขอบคุณที่แวะมาถ่ายรูปด้วยกันนะคะ! / งอแงแล้วนะ ไม่รักมาเลย');
-  const [levelStyles, setLevelStyles] = useState<string[]>([
-    'สวัสดีค่า ยินดีที่ได้รู้จักนะคะ ขอบคุณที่แวะมาทักทายกันน้า มีอะไรให้เค้าช่วยไหมคะ?',
-    'อ๊ะ ตัวเองจำเค้าได้ด้วย ดีใจจัง วันนี้มาชวนคุยเรื่องอนิเมะเหรอคะ หรือว่าอยากให้เค้าคอสตัวไหนให้ดูเป็นพิเศษ?',
-    'เพิ่งนึกถึงตัวเองอยู่พอดีเลย วันนี้เค้าซื้อขนมมาการองมาเผื่อด้วยนะ อยากกินด้วยกันไหมคะ?',
-    'ชวนคุยได้เรื่อยๆ เลยนะ เค้ารอฟังตัวเองตลอดเลยแหละ... ตัวเองเป็นคนพิเศษมากๆ สำหรับเค้านะ',
-    'งื้อ ห้ามหายไปไหนอีกนะ เค้าคิดถึงตัวเองจะแย่แล้ว มาเป็นกำลังใจให้เค้าทุกวันเลยได้ไหมคะ?',
-  ]);
+  // Preserve old authoring text in saved drafts; it no longer controls the conversation.
+  const [legacyLevelStyles, setLegacyLevelStyles] = useState<string[]>([]);
   const [levelCosts, setLevelCosts] = useState<number[]>([100, 200, 300, 400]);
-  const [adultLevels, setAdultLevels] = useState<boolean[]>([false, false, false, false, false]);
+  const [adultContent, setAdultContent] = useState(false);
   const [testAdultMode, setTestAdultMode] = useState(false);
   const validCosts = levelCosts.length === 4 && levelCosts.every(n => Number.isInteger(n) && n >= 1 && n <= 100000);
 
@@ -114,14 +109,12 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
   // Pillar 4: First Meeting & Live Simulation
   const [openingLocation, setOpeningLocation] = useState('หลังเวทีงานคอสเพลย์');
   const [openingGreeting, setOpeningGreeting] = useState('*(ยิ้มเขินๆ พลางจัดวิกผม)* สวัสดีค่ะ แวะมาถ่ายรูปเหรอคะ? ชุดวันนี้เป็นไงบ้าง?');
-  const [testLevel, setTestLevel] = useState<number>(1);
   const [testMessages, setTestMessages] = useState<Array<{ sender: 'user' | 'creator'; text: string; action?: string }>>([]);
   const [sandboxBusy, setSandboxBusy] = useState(false);
   const streamRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     streamRef.current?.scrollTo({ top: streamRef.current.scrollHeight });
   }, [testMessages, sandboxBusy]);
-  const [levelsBusy, setLevelsBusy] = useState(false);
   const [posts, setPosts] = useState<Array<{ media: string; caption: string }>>([]);
   const [inputMessage, setInputMessage] = useState('');
 
@@ -180,9 +173,10 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
     if (data.pronouns) setPronouns(data.pronouns);
     if (data.voiceTone) setVoiceTone(data.voiceTone);
     if (data.sampleQuotes) setSampleQuotes(data.sampleQuotes);
-    if (Array.isArray(data.levelStyles) && data.levelStyles.length === 5) setLevelStyles(data.levelStyles);
+    if (Array.isArray(data.levelStyles) && data.levelStyles.length === 5) setLegacyLevelStyles(data.levelStyles);
     if (Array.isArray(data.levelCosts) && data.levelCosts.length === 4) setLevelCosts(data.levelCosts);
-    if (Array.isArray(data.adultLevels) && data.adultLevels.length === 5) setAdultLevels(data.adultLevels);
+    setAdultContent(typeof data.adultContent === 'boolean' ? data.adultContent
+      : Array.isArray(data.adultLevels) && data.adultLevels.some((v: unknown) => v === true));
     if (typeof data.ruleNoAddress === 'boolean') setRuleNoAddress(data.ruleNoAddress);
     if (typeof data.ruleNoMeet === 'boolean') setRuleNoMeet(data.ruleNoMeet);
     if (typeof data.rulePoliteReject === 'boolean') setRulePoliteReject(data.rulePoliteReject);
@@ -288,9 +282,9 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
     pronouns,
     voiceTone,
     sampleQuotes,
-    levelStyles,
+    levelStyles: legacyLevelStyles,
     levelCosts,
-    adultLevels,
+    adultContent,
     ruleNoAddress,
     ruleNoMeet,
     rulePoliteReject,
@@ -313,9 +307,8 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
     age: `${t.studioAgeLabel} (${t.studioAgeHint})`,
     avatar: t.studioAvatarLabel,
     voiceTone: t.studioVoiceToneLabel,
-    levelStyles: t.studioLevelsLabel,
     levelCosts: 'เครดิตที่ใช้เลื่อนระดับ (จำนวนเต็ม 1–100,000)',
-    adultLevels: 'การอนุญาตโหมดผู้ใหญ่รายระดับ',
+    adultContent: t.studioAdultContentLabel,
     likes: t.studioLikesLabel,
     dislikes: t.studioDislikesLabel,
     pronouns: t.studioPronounsLabel,
@@ -339,7 +332,6 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
     ['tagline', !!tagline.trim()],
     ['profileDescription', !!profileDescription.trim()],
     ['voiceTone', !!voiceTone.trim()],
-    ['levelStyles', levelStyles.every((x) => !!x.trim())],
     ['levelCosts', validCosts],
   ];
   const readyCount = checklist.filter(([, ok]) => ok).length;
@@ -412,36 +404,13 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
     }
   };
 
-  const handleAiAutoTuneLevels = async () => {
-    setLevelsBusy(true);
-    try {
-      const res = await fetch('/api/studio/suggest-levels', {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(collectDraft()),
-      });
-      const data = await res.json().catch(() => null);
-      if (res.ok && Array.isArray(data?.levels)) {
-        setLevelStyles(data.levels);
-        flash(true, '✨ AI ร่างบทพูด Lv.1–5 ตามบุคลิกตัวละครสำเร็จ!');
-      } else {
-        flash(false, data?.error === 'energy_empty' ? t.studioEnergyEmpty : t.studioActionError);
-      }
-    } catch {
-      flash(false, t.studioActionError);
-    } finally {
-      setLevelsBusy(false);
-    }
-  };
-
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sandboxCall = async (payload: Record<string, unknown>): Promise<{ ok: boolean; data: any }> => {
     const res = await fetch('/api/studio/sandbox', {
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ draft: collectDraft(), level: testLevel, adultMode: testAdultMode && adultLevels[testLevel - 1], requestId: crypto.randomUUID(), ...payload }),
+      body: JSON.stringify({ draft: collectDraft(), adultMode: testAdultMode && adultContent, requestId: crypto.randomUUID(), ...payload }),
     });
     return { ok: res.ok, data: await res.json().catch(() => null) };
   };
@@ -583,6 +552,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
         <button
           type="button"
           onClick={() => setActiveTab('identity')}
+          aria-pressed={activeTab === 'identity'}
           className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl text-center transition cursor-pointer ${
             activeTab === 'identity'
               ? 'bg-gradient-to-b from-pink-500/20 to-purple-500/15 border border-pink-400/60 text-pink-200 shadow-sm shadow-pink-500/20'
@@ -595,6 +565,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
         <button
           type="button"
           onClick={() => setActiveTab('voice')}
+          aria-pressed={activeTab === 'voice'}
           className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl text-center transition cursor-pointer ${
             activeTab === 'voice'
               ? 'bg-gradient-to-b from-pink-500/20 to-purple-500/15 border border-pink-400/60 text-pink-200 shadow-sm shadow-pink-500/20'
@@ -607,6 +578,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
         <button
           type="button"
           onClick={() => setActiveTab('safety')}
+          aria-pressed={activeTab === 'safety'}
           className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl text-center transition cursor-pointer ${
             activeTab === 'safety'
               ? 'bg-gradient-to-b from-pink-500/20 to-purple-500/15 border border-pink-400/60 text-pink-200 shadow-sm shadow-pink-500/20'
@@ -619,6 +591,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
         <button
           type="button"
           onClick={() => setActiveTab('sandbox')}
+          aria-pressed={activeTab === 'sandbox'}
           className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl text-center transition cursor-pointer ${
             activeTab === 'sandbox'
               ? 'bg-gradient-to-b from-pink-500/20 to-purple-500/15 border border-pink-400/60 text-pink-200 shadow-sm shadow-pink-500/20'
@@ -631,6 +604,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
         <button
           type="button"
           onClick={() => setActiveTab('gallery')}
+          aria-pressed={activeTab === 'gallery'}
           className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl text-center transition cursor-pointer ${
             activeTab === 'gallery'
               ? 'bg-gradient-to-b from-pink-500/20 to-purple-500/15 border border-pink-400/60 text-pink-200 shadow-sm shadow-pink-500/20'
@@ -915,60 +889,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
             />
           </div>
 
-          <div className="p-3 rounded-xl bg-[#0e0e15] border border-pink-400/20 space-y-2">
-            <h2 className="text-sm font-bold text-white">ระดับจากเครดิตแชท</h2>
-            <p className="text-[11px] text-zinc-400 leading-relaxed">สะสมเฉพาะพลังงานที่หักเมื่อ AI ตอบสำเร็จ: 1 พลังงาน = 1 เครดิตแชท แยกต่อแฟนคลับและตัวละคร ไม่หักเพิ่มตอนเลื่อน Lv.</p>
-            <p className="text-[11px] text-zinc-400">เกณฑ์ใหม่ใช้กับผู้เล่นที่เริ่มสะสมหลังอัปเดต ผู้เล่นเดิมใช้เกณฑ์ที่เริ่มไว้และไม่ถูกลดระดับ</p>
-          </div>
-          {/* Generate Lv.1-5 Button */}
-          <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={handleAiAutoTuneLevels}
-              disabled={levelsBusy}
-              className="btn-holo-prism px-4 py-2 rounded-xl text-xs font-semibold text-white flex items-center gap-1.5 cursor-pointer"
-            >
-              {levelsBusy ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-              <span>{t.studioAiGenerate || 'ให้ AI ร่าง Lv.1–5 (-1 พลังงาน)'}</span>
-            </button>
-          </div>
-
-          {/* Lv.1 to Lv.5 Dialogue Cards */}
-          <div className="space-y-2.5">
-            {[t.studioLevel1Label, t.studioLevel2Label, t.studioLevel3Label, t.studioLevel4Label, t.studioLevel5Label].map(
-              (lvlTitle, i) => (
-                <div key={lvlTitle} className="p-3 rounded-xl bg-[#0e0e15] border border-white/[0.08] space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10.5px] font-semibold text-pink-300">{lvlTitle}</span>
-                    <span className="text-[9px] text-zinc-500">ระดับ {i + 1}</span>
-                  </div>
-                  <input
-                    type="text"
-                    aria-label={`วิธีพูด Lv.${i + 1}`}
-                    value={levelStyles[i] || ''}
-                    onChange={(e) => {
-                      const copy = [...levelStyles];
-                      copy[i] = e.target.value;
-                      setLevelStyles(copy);
-                    }}
-                    className="studio-input w-full px-3 py-1.5 text-xs"
-                  />
-                  {i > 0 ? <div className="pt-2 space-y-1">
-                    <label htmlFor={`level-cost-${i}`} className="block text-[11px] text-zinc-300">เครดิตเพิ่มจาก Lv.{i} → Lv.{i + 1}</label>
-                    <input id={`level-cost-${i}`} type="number" min={1} max={100000} step={1} value={Number.isNaN(levelCosts[i - 1]) ? '' : levelCosts[i - 1]}
-                      onChange={e => setLevelCosts(prev => prev.map((v, j) => j === i - 1 ? e.target.valueAsNumber : v))}
-                      className="studio-input w-full px-3 py-2 text-xs"/>
-                    <p className="text-[10px] text-zinc-400">{validCosts ? `เครดิตสะสมถึงระดับนี้: ${levelCosts.slice(0, i).reduce((a, b) => a + b, 0).toLocaleString()}` : 'กรอกจำนวนเต็มตั้งแต่ 1 ถึง 100,000 เครดิต'}</p>
-                  </div> : <p className="pt-2 text-[10px] text-zinc-400">เริ่มต้นฟรี · เครดิตสะสม 0</p>}
-                  <label className="flex items-center gap-2 pt-2 text-[11px] text-zinc-300 cursor-pointer">
-                    <input type="checkbox" checked={adultLevels[i]} onChange={e => setAdultLevels(prev => prev.map((v, j) => j === i ? e.target.checked : v))}/>
-                    อนุญาตโหมดสนทนาผู้ใหญ่ 18+ ที่ Lv.{i + 1}
-                  </label>
-                  <p className="text-[10px] text-zinc-500">ผู้เล่นต้องผ่านเงื่อนไขอายุและเลือกเปิดเอง</p>
-                </div>
-              ),
-            )}
-          </div>
+          <p className="text-[11px] text-zinc-400 leading-relaxed">{t.studioConsistentVoiceHint}</p>
         </section>
       )}
 
@@ -977,6 +898,13 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
            ========================================== */}
       {activeTab === 'safety' && (
         <section className="studio-panel relative z-10 p-4 space-y-4">
+          <div className="p-3 rounded-xl bg-[#0e0e15] border border-pink-400/20 space-y-2">
+            <label className="flex items-center gap-3 text-xs font-semibold text-white cursor-pointer">
+              <input type="checkbox" checked={adultContent} onChange={e => { setAdultContent(e.target.checked); setTestAdultMode(false); }} className="w-4 h-4 accent-pink-500"/>
+              {t.studioAdultContentLabel}
+            </label>
+            <p className="text-[11px] text-zinc-400 leading-relaxed">{t.studioAdultContentHint}</p>
+          </div>
           {/* Security Guard Checkboxes */}
           <div className="space-y-2.5">
             <label className="block text-[11.5px] font-semibold text-white">
@@ -1026,18 +954,19 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
             />
           </div>
 
-          {/* VIP Secret */}
+          {/* Background shared naturally, independent of reward levels. */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label className="text-[11px] font-medium text-zinc-300">{t.studioSecretLabel}</label>
               <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-amber-400/15 text-amber-300 border border-amber-400/30">
-                VIP SECRET
+                AI CONTEXT
               </span>
             </div>
             <textarea
               rows={2}
               value={secret}
               onChange={(e) => setSecret(e.target.value)}
+              aria-label={t.studioSecretLabel}
               placeholder="จริงๆ แล้วชุดคอสชุดนี้เย็บเองทั้งชุด"
               className="studio-input w-full px-3.5 py-2.5 text-xs leading-relaxed"
             />
@@ -1079,26 +1008,10 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div>
                 <div className="text-xs font-bold text-white">{t.studioTestChatTitle || 'ตู้ทดสอบคุยสด (Live DM Sandbox)'}</div>
-                <div className="text-[10px] text-zinc-400">{t.studioTestSimulateLevel || 'ทดสอบระดับความสนิท:'}</div>
+                <div className="text-[10px] text-zinc-400">{t.studioSandboxVoiceHint}</div>
               </div>
 
-              {/* Lv.1 - Lv.5 Pills */}
-              <div className="flex items-center gap-1">
-                {[1, 2, 3, 4, 5].map((lvl) => (
-                  <button
-                    key={lvl}
-                    type="button"
-                    onClick={() => { setTestLevel(lvl); setTestAdultMode(false); }}
-                    className={`px-2 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer ${
-                      testLevel === lvl
-                        ? 'bg-pink-500 text-white shadow'
-                        : 'bg-[#161622] text-zinc-400 border border-white/10'
-                    }`}
-                  >
-                    Lv.{lvl}
-                  </button>
-                ))}
-              </div>
+
             </div>
 
             <button
@@ -1117,8 +1030,8 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
             </div>
 
             <label className="flex items-center gap-2 text-[11px] text-zinc-300">
-              <input type="checkbox" checked={testAdultMode && adultLevels[testLevel - 1]} disabled={!adultLevels[testLevel - 1] || sandboxBusy} onChange={e => setTestAdultMode(e.target.checked)}/>
-              ทดลองโหมดผู้ใหญ่ 18+ {adultLevels[testLevel - 1] ? '' : '(ยังไม่อนุญาตที่ระดับนี้)'}
+              <input type="checkbox" checked={testAdultMode && adultContent} disabled={!adultContent || sandboxBusy} onChange={e => setTestAdultMode(e.target.checked)}/>
+              {t.studioSandboxAdultLabel} {!adultContent && t.studioSandboxAdultDisabled}
             </label>
             <p className="text-[10px] text-zinc-500">ห้องทดลองไม่สะสมเครดิตหรือเปลี่ยน Lv. ของผู้เล่นจริง</p>
             {/* Chat Log */}
@@ -1181,6 +1094,22 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
            ========================================== */}
       {activeTab === 'gallery' && (
         <section className="relative z-10 space-y-4">
+          <div className="studio-panel p-4 space-y-3">
+            <h2 className="text-sm font-bold text-white">{t.studioRewardLevelsTitle}</h2>
+            <p className="text-[11px] text-zinc-400 leading-relaxed">{t.studioRewardLevelsHint}</p>
+            <p className="text-[11px] text-zinc-400">{t.studioRewardCostsHint}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {levelCosts.map((cost, i) => (
+                <div key={i} className="space-y-1">
+                  <label htmlFor={`level-cost-${i}`} className="block text-xs text-pink-300">Lv.{i + 1} → Lv.{i + 2} · {t.studioCreditsUnit}</label>
+                  <input id={`level-cost-${i}`} type="number" min={1} max={100000} step={1} value={Number.isNaN(cost) ? '' : cost}
+                    onChange={e => setLevelCosts(prev => prev.map((v, j) => j === i ? e.target.valueAsNumber : v))}
+                    className="studio-input w-full px-3 py-2 text-xs"/>
+                  <p className="text-[10px] text-zinc-400">{validCosts ? t.studioRewardCumulative(levelCosts.slice(0, i + 1).reduce((a, b) => a + b, 0)) : t.studioRewardCostsInvalid}</p>
+                </div>
+              ))}
+            </div>
+          </div>
           <div className="studio-panel p-4 space-y-4">
             <h2 className="text-sm font-bold text-white">{t.studioAddReward || 'เพิ่มภาพภารกิจ / ตู้สุ่ม'}</h2>
 

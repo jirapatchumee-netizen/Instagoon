@@ -4,12 +4,12 @@ import { DatabaseSync } from 'node:sqlite';
 import { readFileSync, readdirSync } from 'node:fs';
 import { narrativeFixture } from './helpers/narrative-fixture.mjs';
 import { cleanDraft, buildDefinition, launchProblems } from '../src/studio.mjs';
-import { creditLevel } from '../src/credit-levels.mjs';
+import { creditLevel, creditProgress } from '../src/credit-levels.mjs';
 
-async function fixture({ costs = [2, 3, 4, 5], adultLevels = [false, true, false, true, true] } = {}) {
+async function fixture({ costs = [2, 3, 4, 5], adultContent = false } = {}) {
   const f = await narrativeFixture();
   const draft = cleanDraft({name:'Yuki',handle:'yuki.cosplay',concept:'คอสเพลเยอร์ใจดี',age:24,avatar:'studio-drafts/one/a.webp',voiceTone:'เป็นกันเอง',
-    levelStyles:['สวัสดีค่ะ','ยินดีต้อนรับกลับ','เพื่อนคนสนิท','เล่าให้ฟังนะ','คิดถึงนะ'],levelCosts:costs,adultLevels});
+    levelStyles:['สวัสดีค่ะ','ยินดีต้อนรับกลับ','เพื่อนคนสนิท','เล่าให้ฟังนะ','คิดถึงนะ'],levelCosts:costs,adultContent});
   const definition = buildDefinition(draft, f.npc.id, {});
   f.sql.prepare('UPDATE npc_definitions SET definition_json=? WHERE creator_id=?').run(JSON.stringify(definition),f.npc.id);
   let calls = 0;
@@ -24,9 +24,9 @@ test('costs are incremental, boundaries are exact, and malformed creator setting
   const costs=[100,200,300,400];
   assert.deepEqual([0,99,100,299,300,599,600,999,1000,4000].map(n=>creditLevel(n,costs)),[1,1,2,2,3,3,4,4,5,5]);
   const d=cleanDraft({levelCosts:[0,2,3,4],adultLevels:['true',false,false,false,false]});
-  assert.ok(launchProblems(d).includes('levelCosts'));assert.ok(launchProblems(d).includes('adultLevels'));
+  assert.ok(launchProblems(d).includes('levelCosts'));assert.ok(launchProblems(d).includes('adultContent'));
   assert.deepEqual(cleanDraft({}).levelCosts,costs);
-  assert.deepEqual(cleanDraft({}).adultLevels,[false,false,false,false,false]);
+  assert.equal(cleanDraft({}).adultContent,false);
 });
 
 test('the additive migration preserves an existing Studio player level without inventing historical credits',()=>{
@@ -55,18 +55,56 @@ test('successful charged turns advance once, a response retry is free, and each 
   assert.equal(f.progress().level,3);assert.equal(f.energy(),before-5);
 });
 
-test('adult mode checks creator permission at the current level before charging and never auto-enables',async()=>{
+test('adult mode uses one creator permission at every reward level, requires age verification and never auto-enables',async()=>{
   const f=await fixture();const before=f.energy();
   assert.equal((await f.send('locked',{adultMode:true})).status,403);assert.equal(f.energy(),before);assert.equal(f.calls(),0);
-  await f.send('one');await f.send('two'); // Lv.2 allows it.
-  assert.equal((await f.send('adult',{adultMode:true})).status,200);
-  // The creator can revoke a level immediately, even when the player's cost schedule is pinned.
-  f.definition.relationship.creditProgression.adultLevels=[false,false,false,false,false];
+  const config=f.definition.relationship.creditProgression;config.adultContent=true;
+  f.sql.prepare('UPDATE npc_definitions SET definition_json=? WHERE creator_id=?').run(JSON.stringify(f.definition),f.npc.id);
+  for(let level=1;level<=5;level++)assert.equal(creditProgress(f.definition,{level,credits_spent:0}).adultAllowed,true);
+  const adult=await f.send('adult',{adultMode:true});assert.equal(adult.status,200);assert.equal(adult.payload.level,1);
+  // Revocation is immediate, even though paid cost schedules are pinned.
+  config.adultContent=false;
   f.sql.prepare('UPDATE npc_definitions SET definition_json=? WHERE creator_id=?').run(JSON.stringify(f.definition),f.npc.id);
   const remaining=f.energy();assert.equal((await f.send('revoked',{adultMode:true})).status,403);assert.equal(f.energy(),remaining);
   assert.equal((await f.send('normal')).status,200);
+  config.adultContent=true;
+  f.sql.prepare('UPDATE npc_definitions SET definition_json=? WHERE creator_id=?').run(JSON.stringify(f.definition),f.npc.id);
   f.sql.prepare("UPDATE users SET age_verified_at=NULL WHERE id='one'").run();
-  assert.equal((await f.send('unverified',{adultMode:true})).status,403);
+  const unverifiedEnergy=f.energy();
+  assert.equal((await f.send('unverified',{adultMode:true})).status,403);assert.equal(f.energy(),unverifiedEnergy);
+  assert.equal((await f.send('unverified-normal')).status,403, 'the site-wide age gate still applies');
+});
+
+test('live legacy Studio cards use one adult permission and explicit false overrides their old level flags',()=>{
+  const legacy={studioCreated:true,relationship:{creditProgression:{mode:'credits',adultLevels:[false,false,false,true,true]}}};
+  for(let level=1;level<=5;level++)assert.equal(creditProgress(legacy,{level}).adultAllowed,true);
+  legacy.relationship.creditProgression.adultContent=false;
+  assert.equal(creditProgress(legacy,{level:5}).adultAllowed,false);
+  legacy.relationship.creditProgression.adultContent='true';
+  assert.equal(creditProgress(legacy,{level:5}).adultAllowed,false, 'malformed flags cannot enable adult mode');
+  assert.equal(cleanDraft({adultLevels:[false,false,false,false,false]}).adultContent,false);
+});
+
+test('reward level cannot select a voice, gate background or reach the model through the romance ladder',async()=>{
+  const f=await fixture();const inputs=[];
+  // Simulate an already-published legacy Studio definition without republishing it.
+  delete f.definition.relationship.creditProgression.purpose;
+  f.definition.style.levelStyles=['LEGACY_STYLE_1','LEGACY_STYLE_2','LEGACY_STYLE_3','LEGACY_STYLE_4','LEGACY_STYLE_5'];
+  f.definition.secrets=[{id:'backstory',content:'BACKGROUND_CONTEXT_SENTINEL',minLevel:4}];
+  f.sql.prepare('UPDATE npc_definitions SET definition_json=? WHERE creator_id=?').run(JSON.stringify(f.definition),f.npc.id);
+  // A complete legacy template must not restore its automatic relationship ladder for Studio cards.
+  Object.assign(f.env,{ROMANCE_PROMPT_V1_T1:'LEGACY_ROMANCE_LADDER ',ROMANCE_PROMPT_V1_T2:'Level {{LEVEL}} ',ROMANCE_PROMPT_V1_T3:'{{STYLE_L5}}'});
+  f.env.AI.run=async(...args)=>{inputs.push(JSON.stringify(args));return {response:JSON.stringify({reply:'เล่าเรื่องงานคอสให้ฟังนะ'})};};
+  const first=await f.send('voice-1');assert.equal(first.payload.level,1);
+  await f.send('voice-2');const third=await f.send('voice-3');assert.equal(third.payload.level,2);
+  for(const input of inputs){
+    assert.ok(input.includes('BACKGROUND_CONTEXT_SENTINEL'));
+    assert.ok(input.includes(f.definition.style.tone));
+    assert.ok(input.includes('Infer familiarity, trust and feelings from the actual conversation history'));
+    assert.ok(!input.includes('LEGACY_STYLE_'));assert.ok(!input.includes('LEGACY_ROMANCE_LADDER'));
+    assert.ok(!input.includes('Current Style for Level'));assert.ok(!input.includes('Overall Score:'));
+    assert.match(input,/fiftyShadesMode\\?":false/);
+  }
 });
 
 test('AI failure and a rolled-back reply do not accrue credit; retries can then succeed',async()=>{
