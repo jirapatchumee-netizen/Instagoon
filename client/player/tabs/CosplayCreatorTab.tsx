@@ -96,6 +96,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
   const [legacyLevelStyles, setLegacyLevelStyles] = useState<string[]>([]);
   const [levelCosts, setLevelCosts] = useState<number[]>([100, 200, 300, 400]);
   const [adultContent, setAdultContent] = useState(false);
+  const [adultPreferences, setAdultPreferences] = useState('');
   const [testAdultMode, setTestAdultMode] = useState(false);
   const validCosts = levelCosts.length === 4 && levelCosts.every(n => Number.isInteger(n) && n >= 1 && n <= 100000);
 
@@ -174,6 +175,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
     if (Array.isArray(data.levelCosts) && data.levelCosts.length === 4) setLevelCosts(data.levelCosts);
     setAdultContent(typeof data.adultContent === 'boolean' ? data.adultContent
       : Array.isArray(data.adultLevels) && data.adultLevels.some((v: unknown) => v === true));
+    setAdultPreferences(typeof data.adultPreferences === 'string' ? data.adultPreferences : '');
     if (typeof data.ruleNoAddress === 'boolean') setRuleNoAddress(data.ruleNoAddress);
     if (typeof data.ruleNoMeet === 'boolean') setRuleNoMeet(data.ruleNoMeet);
     if (typeof data.rulePoliteReject === 'boolean') setRulePoliteReject(data.rulePoliteReject);
@@ -279,6 +281,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
     levelStyles: legacyLevelStyles,
     levelCosts,
     adultContent,
+    adultPreferences,
     ruleNoAddress,
     ruleNoMeet,
     rulePoliteReject,
@@ -300,6 +303,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
     voiceTone: t.studioVoiceToneLabel,
     levelCosts: 'เครดิตที่ใช้เลื่อนระดับ (จำนวนเต็ม 1–100,000)',
     adultContent: t.studioAdultContentLabel,
+    adultPreferences: t.studioAdultPreferencesLabel,
     likes: t.studioLikesLabel,
     dislikes: t.studioDislikesLabel,
     pronouns: t.studioPronounsLabel,
@@ -887,6 +891,18 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
               {t.studioAdultContentLabel}
             </label>
             <p className="text-[11px] text-zinc-400 leading-relaxed">{t.studioAdultContentHint}</p>
+            {adultContent && <div className="space-y-2 pt-2">
+              <label htmlFor="studio-adult-preferences" className="block text-[11px] font-semibold text-pink-300">{t.studioAdultPreferencesLabel}</label>
+              <textarea id="studio-adult-preferences" rows={5} maxLength={2000}
+                aria-describedby="studio-adult-preferences-hint studio-adult-preferences-count"
+                value={adultPreferences} onChange={e => setAdultPreferences(e.target.value)}
+                placeholder={t.studioAdultPreferencesPlaceholder}
+                className="studio-input w-full px-3.5 py-2.5 text-xs leading-relaxed resize-y"/>
+              <div className="flex items-start justify-between gap-3 text-[10px] text-zinc-400">
+                <p id="studio-adult-preferences-hint" className="leading-relaxed">{t.studioAdultPreferencesHint}</p>
+                <span id="studio-adult-preferences-count" className="shrink-0 tabular-nums">{adultPreferences.length.toLocaleString()}/2,000</span>
+              </div>
+            </div>}
           </div>
           {/* Security Guard Checkboxes */}
           <div className="space-y-2.5">
