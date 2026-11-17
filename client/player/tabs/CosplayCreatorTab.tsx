@@ -74,23 +74,25 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
   const [panY, setPanY] = useState(0);
 
   // Pillar 1: Identity & Visual
-  const [name, setName] = useState('Yuki');
-  const [handle, setHandle] = useState('yuki.cosplay');
-  const [tagline, setTagline] = useState('มาแบ่งปันโลกคอสเพลย์ไปด้วยกันนะ');
-  const [profileDescription, setProfileDescription] = useState('คอสเพลเยอร์ที่ชอบทำชุดด้วยตัวเอง ยินดีแบ่งปันเบื้องหลังการทำงานและพูดคุยเรื่องคอสเพลย์กับทุกคน');
+  const [name, setName] = useState('');
+  const [handle, setHandle] = useState('');
+  const [tagline, setTagline] = useState('');
+  const [profileDescription, setProfileDescription] = useState('');
   const [aiIdentity, setAiIdentity] = useState('');
-  const [age, setAge] = useState('24');
+  const [age, setAge] = useState('');
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
+  const [showAge, setShowAge] = useState(false);
   const [studio, setStudio] = useState<StudioState>({ draft: null, creatorId: null, status: 'none' });
   const [busyAction, setBusyAction] = useState<'' | 'save' | 'launch' | 'unpublish'>('');
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
   const [avatar, setAvatar] = useState('');
-  const [tags, setTags] = useState('cosplay, anime, assassin, cute');
-  const [likes, setLikes] = useState('มาการอง, ถ่ายรูป, อนิเมะน่ารัก');
-  const [dislikes, setDislikes] = useState('ข้อความหยาบคาย, แมลง');
+  const [tags, setTags] = useState('');
+  const [likes, setLikes] = useState('');
+  const [dislikes, setDislikes] = useState('');
 
   // Pillar 2: Voice & Tone
   const [pronouns, setPronouns] = useState('เค้า / ตัวเอง');
-  const [voiceTone, setVoiceTone] = useState('ขี้อ้อน อบอุ่น');
+  const [voiceTone, setVoiceTone] = useState('');
   const [sampleQuotes, setSampleQuotes] = useState('');
   // Preserve old authoring text in saved drafts; it no longer controls the conversation.
   const [legacyLevelStyles, setLegacyLevelStyles] = useState<string[]>([]);
@@ -106,8 +108,8 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
   const [rulePoliteReject, setRulePoliteReject] = useState(true);
 
   // Pillar 4: First Meeting & Live Simulation
-  const [openingLocation, setOpeningLocation] = useState('หลังเวทีงานคอสเพลย์');
-  const [openingGreeting, setOpeningGreeting] = useState('*(ยิ้มเขินๆ พลางจัดวิกผม)* สวัสดีค่ะ แวะมาถ่ายรูปเหรอคะ? ชุดวันนี้เป็นไงบ้าง?');
+  const [openingLocation, setOpeningLocation] = useState('');
+  const [openingGreeting, setOpeningGreeting] = useState('');
   const [testMessages, setTestMessages] = useState<Array<{ sender: 'user' | 'creator'; text: string; action?: string }>>([]);
   const [sandboxBusy, setSandboxBusy] = useState(false);
   const streamRef = useRef<HTMLDivElement>(null);
@@ -162,12 +164,20 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
     const legacyConcept = typeof data.concept === 'string' ? data.concept : '';
     setTagline(typeof data.tagline === 'string' ? data.tagline : legacyConcept.slice(0, 200));
     setProfileDescription(typeof data.profileDescription === 'string' ? data.profileDescription : legacyConcept);
-    setAiIdentity(mergeAiIdentity(data));
+    const identity = mergeAiIdentity(data);
+    const olderLikes = typeof data.likes === 'string' ? data.likes.trim() : '';
+    const olderDislikes = typeof data.dislikes === 'string' ? data.dislikes.trim() : '';
+    const extra = [olderLikes && 'สิ่งที่ชอบ: ' + olderLikes, olderDislikes && 'สิ่งที่ไม่ชอบ: ' + olderDislikes].filter(Boolean).join('\n');
+    const combined = [identity, extra].filter(Boolean).join('\n\n');
+    const canMerge = combined.length <= 16000;
+    setAiIdentity(canMerge ? combined : identity);
+    setLikes(canMerge ? '' : olderLikes);
+    setDislikes(canMerge ? '' : olderDislikes);
     if (data.age) setAge(String(data.age));
+    setAgeConfirmed(data.ageConfirmed === true);
+    setShowAge(data.showAge === true);
     if (data.avatar) setAvatar(data.avatar);
     if (data.tags) setTags(data.tags);
-    if (data.likes) setLikes(data.likes);
-    if (data.dislikes) setDislikes(data.dislikes);
     if (data.pronouns) setPronouns(data.pronouns);
     if (data.voiceTone) setVoiceTone(data.voiceTone);
     setSampleQuotes(typeof data.sampleQuotes === 'string' ? data.sampleQuotes : '');
@@ -270,7 +280,8 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
     tagline,
     profileDescription,
     aiIdentity,
-    age: Number(age) || 0,
+    age: showAge ? Number(age) || 0 : 0,
+    ageConfirmed, showAge,
     avatar,
     tags,
     likes,
@@ -321,7 +332,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
     ['avatar', !!avatar],
     ['name', !!name.trim()],
     ['handle', /^@?[a-zA-Z0-9._]{3,30}$/.test(handle.trim())],
-    ['age', Number(age) >= 20],
+    ['age', ageConfirmed && (!showAge || Number(age) >= 20)],
     ['tagline', !!tagline.trim()],
     ['profileDescription', !!profileDescription.trim()],
     ['voiceTone', !!voiceTone.trim()],
@@ -520,12 +531,12 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
                 UR • FOIL
               </span>
               <span className="text-[10.5px] text-cyan-300 font-medium truncate">
-                @{handle.replace(/^@/, '') || 'yuki.cosplay'}
+                @{handle.replace(/^@/, '') || 'ชื่อผู้ใช้'}
               </span>
             </div>
             <div className="flex items-center gap-1.5 mt-0.5">
-              <h2 className="text-sm font-bold text-white truncate">{name || 'Yuki'}</h2>
-              <span className="text-[10px] text-zinc-400">• {age || '24'} ปี</span>
+              <h2 className="text-sm font-bold text-white truncate">{name || 'ชื่อครีเอเตอร์'}</h2>
+              {showAge && age && <span className="text-[10px] text-zinc-400">• {age} ปี</span>}
             </div>
             <p className="text-[10.5px] text-zinc-300 truncate mt-0.5 font-light">
               {tagline}
@@ -553,7 +564,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
           }`}
         >
           <User className="w-4 h-4 mb-1" />
-          <span className="text-[9.5px] leading-[1.2] font-medium">ตัวตน &<br />ภาพลักษณ์</span>
+          <span className="text-[9.5px] leading-[1.2] font-medium">โปรไฟล์ &<br />รูปภาพ</span>
         </button>
         <button
           type="button"
@@ -566,7 +577,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
           }`}
         >
           <MessageCircle className="w-4 h-4 mb-1" />
-          <span className="text-[9.5px] leading-[1.2] font-medium">น้ำเสียง &<br />สไตล์พูด</span>
+          <span className="text-[9.5px] leading-[1.2] font-medium">ตัวตน &<br />การสนทนา</span>
         </button>
         <button
           type="button"
@@ -652,6 +663,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
            ========================================== */}
       {activeTab === 'identity' && (
         <section className="studio-panel relative z-10 p-4 space-y-4">
+          <p className="text-xs text-zinc-400">ตั้งค่ารูปภาพและข้อมูลโปรไฟล์</p>
           {/* Avatar Upload Row */}
           <div className="space-y-2">
             <label className="block text-[11px] font-medium text-zinc-300">{t.studioAvatarLabel}</label>
@@ -762,20 +774,11 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
             />
           </div>
 
-          {/* Age */}
-          <div className="space-y-1.5">
-            <label className="block text-[11px] font-medium text-zinc-300">
-              {t.studioAgeLabel} <span className="text-zinc-500">({t.studioAgeHint})</span>
-            </label>
-            <input
-              type="number"
-              min={20}
-              max={99}
-              value={age}
-              onChange={(e) => setAge(e.target.value)}
-              placeholder="20+"
-              className="studio-input w-full px-3.5 py-2.5 text-xs"
-            />
+          <div className="space-y-3 rounded-xl border border-white/10 p-3">
+            <label className="flex gap-2 text-xs"><input type="checkbox" checked={ageConfirmed} onChange={e => setAgeConfirmed(e.target.checked)} /> ข้าพเจ้ายืนยันด้วยตนเองว่ามีอายุ 20 ปีขึ้นไป</label>
+            <label className="flex gap-2 text-xs"><input type="checkbox" checked={showAge} onChange={e => setShowAge(e.target.checked)} /> เปิดเผยอายุบนโปรไฟล์และให้ AI ใช้ในการสนทนา</label>
+            {showAge && <label className="block text-xs">อายุ <input type="number" min={20} max={120} value={age} onChange={e => setAge(e.target.value)} className="studio-input w-full px-3.5 py-2.5 text-xs" /></label>}
+            <p className="text-[10px] text-zinc-400">หากไม่เปิดเผย ระบบจะไม่ส่งอายุจากช่องนี้ให้ AI โปรดตรวจข้อมูลช่องอื่นด้วย ข้อความอายุในแชทเก่ายังคงอยู่</p>
           </div>
 
           {/* Public introduction: never derive either field from the private character brief. */}
@@ -798,8 +801,19 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
             <p id="studio-profile-description-hint" className="text-[10px] text-zinc-400">{t.studioProfileDescriptionHint} ({profileDescription.length}/4000)</p>
           </div>
 
-          {/* Likes & Dislikes (2-Column Grid) */}
-          <div className="grid grid-cols-2 gap-2.5">
+        </section>
+      )}
+
+      {/* ==========================================
+           TAB 2: น้ำเสียง & สไตล์พูด (VOICE & SPEAKING STYLE)
+           ========================================== */}
+      {activeTab === 'voice' && (
+        <section className="studio-panel relative z-10 p-4 space-y-4">
+          <p className="text-xs text-zinc-400">ข้อมูลที่ AI ใช้ถ่ายทอดความเป็นคุณ</p>
+          <AiIdentityField lang={lang} value={aiIdentity} onChange={setAiIdentity}/>
+          {/* Preserve legacy values when the combined text would exceed the limit. */}
+          {(likes || dislikes) && <p className="text-xs text-amber-300">ข้อมูลเดิมยังอยู่ด้านล่าง เพราะช่องตัวตนเต็ม โปรดย้ายข้อมูลตามที่ต้องการ</p>}
+          {(likes || dislikes) && <div className="grid grid-cols-2 gap-2.5">
             <div className="space-y-1.5">
               <label className="block text-[11px] font-medium text-zinc-300">{t.studioLikesLabel}</label>
               <input
@@ -820,16 +834,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
                 className="studio-input w-full px-3 py-2.5 text-[11.5px]"
               />
             </div>
-          </div>
-        </section>
-      )}
-
-      {/* ==========================================
-           TAB 2: น้ำเสียง & สไตล์พูด (VOICE & SPEAKING STYLE)
-           ========================================== */}
-      {activeTab === 'voice' && (
-        <section className="studio-panel relative z-10 p-4 space-y-4">
-          <AiIdentityField lang={lang} value={aiIdentity} onChange={setAiIdentity}/>
+          </div>}
           {/* Pronouns Selector */}
           <div className="space-y-2">
             <label className="block text-[11px] font-medium text-zinc-300">{t.studioPronounsLabel}</label>
@@ -849,6 +854,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
                 </button>
               ))}
             </div>
+            <input aria-label="สรรพนามที่กำหนดเอง" value={pronouns} onChange={e => setPronouns(e.target.value)} placeholder="กำหนดเอง เช่น เรา / คุณ" className="studio-input w-full px-3.5 py-2.5 text-xs" />
           </div>
 
           {/* Tone Input */}
@@ -872,6 +878,18 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
               value={sampleQuotes}
               onChange={(e) => setSampleQuotes(e.target.value)}
               placeholder={t.studioSampleQuotesPlaceholder}
+              className="studio-input w-full px-3.5 py-2.5 text-xs leading-relaxed"
+            />
+          </div>
+
+          {/* First Greeting */}
+          <div className="space-y-1.5">
+            <label className="block text-[11px] font-medium text-zinc-300">{t.studioGreetingLabel}</label>
+            <textarea
+              rows={2}
+              value={openingGreeting}
+              onChange={(e) => setOpeningGreeting(e.target.value)}
+              placeholder="*(ยิ้มเขินๆ พลางจัดวิกผม)* สวัสดีค่ะ แวะมาถ่ายรูปเหรอคะ?"
               className="studio-input w-full px-3.5 py-2.5 text-xs leading-relaxed"
             />
           </div>
@@ -958,18 +976,6 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
               onChange={(e) => setOpeningLocation(e.target.value)}
               placeholder="หลังเวทีงานคอสเพลย์"
               className="studio-input w-full px-3.5 py-2.5 text-xs"
-            />
-          </div>
-
-          {/* First Greeting */}
-          <div className="space-y-1.5">
-            <label className="block text-[11px] font-medium text-zinc-300">{t.studioGreetingLabel}</label>
-            <textarea
-              rows={2}
-              value={openingGreeting}
-              onChange={(e) => setOpeningGreeting(e.target.value)}
-              placeholder="*(ยิ้มเขินๆ พลางจัดวิกผม)* สวัสดีค่ะ แวะมาถ่ายรูปเหรอคะ?"
-              className="studio-input w-full px-3.5 py-2.5 text-xs leading-relaxed"
             />
           </div>
 

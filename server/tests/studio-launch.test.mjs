@@ -31,21 +31,44 @@ async function studio() {
     return { status: res.status, body: res.headers.get('content-type')?.includes('json') ? await res.json() : null };
   };
   const avatar = (await call('/api/media/upload', { method: 'POST', raw: WEBP })).body.mediaKey;
-  const draft = { name: 'Yuki', handle: 'yuki.cosplay', concept: 'คอสเพลเยอร์สายน่ารัก', age: 24, avatar, voiceTone: 'ขี้อ้อน', pronouns: 'เค้า / ตัวเอง', levelStyles: LEVELS };
+  const draft = { name: 'Yuki', handle: 'yuki.cosplay', concept: 'คอสเพลเยอร์สายน่ารัก', age: 24, ageConfirmed: true, avatar, voiceTone: 'ขี้อ้อน', pronouns: 'เค้า / ตัวเอง', levelStyles: LEVELS };
   return { f, call, draft };
 }
 
 test('draft is stored per account and launch refuses an incomplete or under-age character', async () => {
   const { call, draft } = await studio();
-  const saved = await call('/api/studio/draft', { method: 'PUT', json: { ...draft, age: 17 } });
+  const saved = await call('/api/studio/draft', { method: 'PUT', json: { ...draft, age: 17, showAge: true } });
   assert.equal(saved.status, 200);
   assert.deepEqual(saved.body.problems, ['age']);
   assert.equal(saved.body.status, 'draft');
   assert.equal((await call('/api/studio/draft')).body.draft.age, 17);
   assert.equal((await call('/api/studio/draft', { uid: 'two' })).status, 403, 'no token');
-  const r = await call('/api/studio/launch', { method: 'POST', json: { ...draft, age: 17 } });
+  const r = await call('/api/studio/launch', { method: 'POST', json: { ...draft, age: 17, showAge: true } });
   assert.equal(r.status, 400);
   assert.deepEqual(r.body.problems, ['age']);
+});
+
+test('age confirmation and disclosure are independently enforced', async () => {
+  const { f, call, draft } = await studio();
+  const unconfirmed = await call('/api/studio/launch', { method: 'POST', json: { ...draft, age: 0, ageConfirmed: false, showAge: false } });
+  assert.equal(unconfirmed.status, 400);
+  assert.ok(unconfirmed.body.problems.includes('age'));
+  const hidden = { ...draft, age: 0, ageConfirmed: true, showAge: false };
+  assert.equal((await call('/api/studio/launch', { method: 'POST', json: hidden })).status, 200);
+  let def = JSON.parse(f.sql.prepare('SELECT definition_json d FROM npc_definitions WHERE creator_id=?').get('cos_yuki_cosplay').d);
+  assert.equal(def.age, '');
+  assert.ok(def.immutableFacts.includes('เป็นผู้ใหญ่ ไม่เปิดเผยอายุ ห้ามเดาหรือระบุอายุ'));
+  assert.equal((await call('/api/creators/cos_yuki_cosplay/profile', { uid: 'two' })).body.creator.age, null);
+  const oldDefinition = { ...def, age: '24' };
+  delete oldDefinition.agePublic;
+  f.sql.prepare('UPDATE npc_definitions SET definition_json=? WHERE creator_id=?').run(JSON.stringify(oldDefinition), 'cos_yuki_cosplay');
+  assert.equal((await call('/api/creators/cos_yuki_cosplay/profile', { uid: 'two' })).body.creator.age, null);
+  const shown = { ...hidden, age: 24, showAge: true };
+  assert.equal((await call('/api/studio/launch', { method: 'POST', json: shown })).status, 200);
+  def = JSON.parse(f.sql.prepare('SELECT definition_json d FROM npc_definitions WHERE creator_id=?').get('cos_yuki_cosplay').d);
+  assert.equal(def.age, '24');
+  assert.ok(def.immutableFacts.includes('อายุ 24 ปี เป็นผู้ใหญ่'));
+  assert.equal((await call('/api/creators/cos_yuki_cosplay/profile', { uid: 'two' })).body.creator.age, '24');
 });
 
 test('launch makes the character visible and chattable for another player, and unpublish hides it again', async () => {
@@ -66,7 +89,8 @@ test('launch makes the character visible and chattable for another player, and u
   assert.match(JSON.stringify(dm.body), /ยินดีที่ได้รู้จักนะคะ/, 'reply comes from the model through the DM pipeline');
   const def = JSON.parse(f.sql.prepare('SELECT definition_json d FROM npc_definitions WHERE creator_id=?').get('cos_yuki_cosplay').d);
   assert.deepEqual(def.style.levelStyles, Array(5).fill(draft.voiceTone));
-  assert.ok(def.immutableFacts.includes('อายุ 24 ปี เป็นผู้ใหญ่'));
+  assert.ok(def.immutableFacts.includes('เป็นผู้ใหญ่ ไม่เปิดเผยอายุ ห้ามเดาหรือระบุอายุ'));
+  assert.equal(def.age, '');
 
   assert.equal((await call('/api/studio/unpublish', { method: 'POST' })).status, 200);
   assert.ok(!(await call('/api/creators', { uid: 'two' })).body.creators.some(c => c.id === 'cos_yuki_cosplay'));

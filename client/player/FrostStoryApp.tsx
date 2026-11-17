@@ -1431,6 +1431,7 @@ export function FrostStoryApp() {
                       <h1>{profileData.creator.name}</h1>
                       {showVerified(profileCreator) && <IgVerified size={18} />}
                     </div>
+                    {profileData.creator.age && <span className="fs-profile-handle">{profileData.creator.age} ปี</span>}
                     <span className="fs-profile-handle">
                       @{profileData.creator.id === 'milin' ? 'milin.zip' : profileData.creator.id}
                     </span>
