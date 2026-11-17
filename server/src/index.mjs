@@ -782,6 +782,7 @@ async function player(req,env,user,path,now,ctx) {
     // Older Studio definitions only had biography (public then). New ones carry an explicit public field.
     bio:npcDef?.studioCreated ? npcDef.profileDescription ?? npcDef.biography ?? creator.bio : creator.bio,
     tagline:npcDef?.tagline||'',
+    age:npcDef?.studioCreated && npcDef?.agePublic === true && /^\d+$/.test(npcDef?.age || '') ? npcDef.age : null,
     avatarKey:creator.avatar_key,
     tags:npcDef?.tags||[],
     relationship:score,

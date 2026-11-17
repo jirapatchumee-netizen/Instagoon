@@ -30,6 +30,7 @@ export const NpcObjectSchema = z.object({
   schemaVersion: z.literal('1.0'), id, name: text.min(1).max(120), handle: z.string().min(1).max(100), tagline: text, avatar: asset, color: z.string().regex(/^#[a-fA-F0-9]{6}$/), tags: z.array(z.string().max(80)).max(30), age: text, biography: text, personality: z.string().max(16400), world: text, occupation: text, likes: text, dislikes: text, goals: text, immutableFacts: z.array(text).max(100), knowledgeBoundary: text,
   // Public profile copy may differ from the fuller, server-side biography used by the chat model.
   profileDescription: text.max(4000).optional(),
+  agePublic: z.boolean().optional(),
   // Private creator-authored conversation preferences, attached only to eligible adult turns.
   adultPreferences: z.string().max(2000).optional(),
   // First DM bubble shown before the player writes (Studio-launched and migrated characters).

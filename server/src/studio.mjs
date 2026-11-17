@@ -29,7 +29,7 @@ export function cleanDraft(b) {
     aiIdentity: mergeAiIdentity(b),
     characterBrief: str(b.characterBrief, 6000),
     referenceBiography: str(b.referenceBiography, 6000),
-    age: clampInt(b.age, 0, 120, 0), avatar: str(b.avatar, 200), tags: str(b.tags, 300),
+    age: clampInt(b.age, 0, 120, 0), ageConfirmed: b.ageConfirmed === true, showAge: b.showAge === true, avatar: str(b.avatar, 200), tags: str(b.tags, 300),
     likes: str(b.likes, 500), dislikes: str(b.dislikes, 500), pronouns: str(b.pronouns, 60),
     voiceTone: str(b.voiceTone, 300), sampleQuotes: str(b.sampleQuotes, 1500), levelStyles,
     // Missing keys migrate old drafts; malformed supplied keys remain invalid and cannot be launched.
@@ -65,7 +65,7 @@ export function launchProblems(d) {
   if (!/^[a-zA-Z0-9._]{3,30}$/.test(d.handle)) p.push('handle');
   if (!d.tagline) p.push('tagline');
   if (!d.profileDescription) p.push('profileDescription');
-  if (d.age < MIN_CHARACTER_AGE) p.push('age');
+  if (!d.ageConfirmed || (d.showAge && d.age < MIN_CHARACTER_AGE)) p.push('age');
   if (!d.avatar) p.push('avatar');
   if (!d.voiceTone) p.push('voiceTone');
   if (!validLevelCosts(d.levelCosts)) p.push('levelCosts');
@@ -92,10 +92,10 @@ export function buildDefinition(d, creatorId, assetMap) {
     profileDescription: d.profileDescription,
     // Keep this out of the central persona: only opted-in adult turns receive these private settings.
     ...(d.adultContent && d.adultPreferences ? { adultPreferences: d.adultPreferences } : {}),
-    age: String(d.age), biography: d.profileDescription, personality: [d.voiceTone, d.aiIdentity].filter(Boolean).join('\n\n'), world: d.openingLocation || 'ชีวิตประจำวันและบทสนทนาในโลกปัจจุบัน',
+    age: d.showAge ? String(d.age) : '', agePublic: d.showAge === true, biography: d.profileDescription, personality: [d.voiceTone, d.aiIdentity].filter(Boolean).join('\n\n'), world: d.openingLocation || 'ชีวิตประจำวันและบทสนทนาในโลกปัจจุบัน',
     openingGreeting: d.openingGreeting || undefined,
     occupation: 'คอสเพลเยอร์', likes: d.likes, dislikes: d.dislikes, goals: '',
-    immutableFacts: [`อายุ ${d.age} ปี เป็นผู้ใหญ่`, ...safety],
+    immutableFacts: [d.showAge ? `อายุ ${d.age} ปี เป็นผู้ใหญ่` : 'เป็นผู้ใหญ่ ไม่เปิดเผยอายุ ห้ามเดาหรือระบุอายุ', ...safety],
     knowledgeBoundary: `ถ่ายทอดชื่อ เพศ บุคลิก รสนิยม เหตุผล มุมคิด ประสบการณ์ และวิธีพูดตามข้อมูลตัวตนที่ครีเอเตอร์ให้ไว้ สนทนาได้หลากหลายหัวข้อตามความสนใจและบริบท ไม่จำกัดเฉพาะงานหรืออาชีพ แยกความรู้ทั่วไปออกจากเรื่องส่วนตัว ถ้าไม่ได้ระบุความชอบ เพศ หรือประสบการณ์ ให้ยอมรับอย่างเป็นธรรมชาติว่าไม่มีข้อมูล ห้ามเดาหรือแต่งว่าเจ้าตัวชอบสิ่งนั้นหรือเคยทำสิ่งนั้น ไม่แต่งข้อมูลของผู้เล่นที่ผู้เล่นไม่เคยบอก ไม่รู้ข้อมูลภายในของแอปหรือระบบ ${safety.join(' · ')}`,
     secrets: [], initialMemories: [],
     style: {

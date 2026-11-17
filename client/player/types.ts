@@ -118,6 +118,7 @@ export type ProfileVaultItem = {
 
 export type ProfileData = {
   creator: Creator & {
+    age?: string | null;
     tagline?: string;
     tags?: string[];
     closeness?: number;
