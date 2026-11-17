@@ -1,38 +1,39 @@
-# Public profile and private AI brief
+# Public profile and private AI identity
 
-Studio has five separate authoring fields:
+Studio separates public presentation from one private AI authoring field:
 
 | Draft field | Limit | Destination |
 | --- | --- | --- |
-| `tagline` | 200 characters | Public card/profile introduction (`definition.tagline`, `creators.bio`) |
-| `profileDescription` | 4,000 characters | Public About me section (`definition.profileDescription`, profile API `creator.bio`) |
-| `characterBrief` | 6,000 characters | Server-side persona (`definition.personality`, alongside `voiceTone`) |
-| `referenceBiography` | 6,000 characters | Reference history/facts combined with public copy in server-side `definition.biography` |
-| `openingGreeting` | 600 characters | First greeting displayed in chat, separate from profile copy |
+| `tagline` | 200 characters | Public card/profile introduction |
+| `profileDescription` | 4,000 characters | Public About me section |
+| `aiIdentity` | 16,000 characters | Central server-side personality, history, references and background |
+| `openingGreeting` | 600 characters | First greeting in chat |
 
-The private brief informs generated replies. Reference facts give the model real experiences and context
-to draw on; their raw authoring text is not displayed as a block on the profile, but the AI may discuss
-them in chat. The creator should include only facts they permit it to share. Neither raw field is serialized into Player discovery, profile,
-mission or chat API responses. It is editable/readable through the owner's existing authenticated Studio
-draft endpoints. The background/story field can be shared naturally in conversation at any reward level;
-it is not a vault for confidential personal data. The character brief is personality guidance, not a
-promise that the AI can never mention its contents.
+The creator edits one “ตัวตนและข้อมูลสำหรับ AI” field. The separate personality brief, reference biography,
+immutable-facts editor and background-story editor are removed. Tone, pronouns and sample dialogue remain
+short style controls. The “เนื้อหา & ขอบเขต” tab holds the adult checkbox and the three existing safety rules.
 
-Old drafts remain compatible: an absent tagline defaults to the first 200 characters of legacy `concept`,
-an absent profile description defaults to that concept, and absent brief/reference fields stay empty. Explicit empty
-modern fields remain empty on save/reload and missing public fields block launch. Public fields never
-fall back to a private brief. Profile and persona field edits go live only when the creator republishes.
+The AI editor has concise guidance and an optional collapsed disclosure covering personality, reactions,
+history, consistent facts and boundaries, with a fact → reason/feeling → example pattern. It inserts no
+invented facts and does not require every topic. The raw text is private authoring data, but the bot may
+discuss it naturally: include only information the creator permits it to share.
 
-No database migration or protected AI configuration change is needed: drafts and definitions use existing JSON
-columns. The NPC contract adds an optional public `profileDescription` so the fuller AI biography cannot be
-mistaken for public profile copy. Old Studio definitions without it retain their existing public biography.
-The normal DM and sandbox pipelines receive the persona and reference biography. Per-level speaking-style
-authoring and its paid AI assistant have been removed; old clients receive HTTP 410 without an energy charge.
+On read, missing `aiIdentity` merges legacy `characterBrief` (6,000), `referenceBiography` (6,000),
+`immutableFacts` (2,000) and `secret` (1,000), preserving all four texts under descriptive headings.
+The 16,000-character limit accommodates those previous maximum lengths plus headings. The same pure helper
+handles server drafts and older browser-local drafts. Repeated clean/save/reload does not append duplicates.
+An explicit modern value, including an empty string, overrides legacy data so clearing it never resurrects
+old content. Legacy input keys remain accepted for compatibility, but are not separate runtime sources.
 
-The reference editor has concise always-visible guidance and an optional, collapsed native disclosure with
-six topic prompts, a fact → reason/feeling → example writing pattern, and a clearly fictional example.
-It never inserts invented facts or overwrites the creator's text. It remains optional and has a 6,000-character
-limit; there is no word-count quality score or requirement to fill every topic.
+On launch, `definition.personality` contains the central identity plus voice tone, while `biography`
+contains public profile copy only. Immutable facts retain automatic age/safety facts; secrets are empty.
+Stale legacy authoring text never overrides an explicit new identity. The normal chat and sandbox use this
+same definition. Player discovery/profile/mission/chat responses never serialize the private authoring text.
+Public profile copy remains explicit and cannot fall back to this private identity.
+
+Profile/persona edits take effect in live chat when the creator updates the published character; existing
+live definitions continue working until then. No database migration or protected AI configuration changes
+are needed. The NPC contract accepts the combined personality length plus the existing 300-character tone.
 
 ## Reward levels and adult permission
 
