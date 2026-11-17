@@ -61,7 +61,11 @@ test('adult mode uses one creator permission at every reward level, requires age
   const config=f.definition.relationship.creditProgression;config.adultContent=true;
   f.sql.prepare('UPDATE npc_definitions SET definition_json=? WHERE creator_id=?').run(JSON.stringify(f.definition),f.npc.id);
   for(let level=1;level<=5;level++)assert.equal(creditProgress(f.definition,{level,credits_spent:0}).adultAllowed,true);
+  let adultInput='';
+  f.env.AI.run=async(...args)=>{adultInput=JSON.stringify(args);return {response:JSON.stringify({reply:'คุยกันได้เลยค่ะ'})};};
   const adult=await f.send('adult',{adultMode:true});assert.equal(adult.status,200);assert.equal(adult.payload.level,1);
+  assert.ok(adultInput.includes('Adult mode is explicitly enabled for this turn'));
+  assert.ok(!adultInput.includes('At lower intimacy levels'));
   // Revocation is immediate, even though paid cost schedules are pinned.
   config.adultContent=false;
   f.sql.prepare('UPDATE npc_definitions SET definition_json=? WHERE creator_id=?').run(JSON.stringify(f.definition),f.npc.id);
@@ -103,6 +107,8 @@ test('reward level cannot select a voice, gate background or reach the model thr
     assert.ok(input.includes('Infer familiarity, trust and feelings from the actual conversation history'));
     assert.ok(!input.includes('LEGACY_STYLE_'));assert.ok(!input.includes('LEGACY_ROMANCE_LADDER'));
     assert.ok(!input.includes('Current Style for Level'));assert.ok(!input.includes('Overall Score:'));
+    assert.ok(input.includes('Adult mode is OFF. Keep the conversation non-explicit.'));
+    assert.ok(!input.includes('Seductive Response Mandate'));
     assert.match(input,/fiftyShadesMode\\?":false/);
   }
 });

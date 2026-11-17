@@ -52,6 +52,8 @@ wins. For an old draft or live Studio definition without the new field, any true
 `adultLevels` flags becomes permission for the whole character; all-false/missing flags stay off.
 The creator can revoke permission by updating the character. Player age checks and explicit per-chat
 opt-in still apply before energy is charged. Reward level neither unlocks nor enables adult mode.
+With adult mode off, the shared inline prompt requests non-explicit conversation and excludes its legacy
+adult tone-scaling block. With it on, the existing adult-mode integration receives the explicit switch.
 
 No D1 schema migration is needed: legacy JSON is interpreted on read, and modern saves write the new
 boolean. The shared NPC contract retains optional legacy flags so older content bundles remain valid.
