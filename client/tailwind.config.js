@@ -6,8 +6,10 @@ export default {
   content: [
     './index.html',
     './studio.html',
+    './analytics.html',
     './src/**/*.{js,ts,jsx,tsx}',
     './player/**/*.{js,ts,jsx,tsx}',
+    './analytics/**/*.{js,ts,jsx,tsx}',
     '../../src/**/*.{js,ts,jsx,tsx}',
   ],
   theme: {

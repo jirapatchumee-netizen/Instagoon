@@ -164,7 +164,8 @@ test('admin reads the site-wide dashboard, creator reads only their own characte
   const creatorData = await me.json();
   assert.equal(creatorData.scope, 'creator');
   assert.deepEqual(creatorData.creators, ['crt_yuki']);
-  const json = JSON.stringify(creatorData);
+  const { generatedAt: _ignored, ...payloadWithoutTimestamp } = creatorData;
+  const json = JSON.stringify(payloadWithoutTimestamp);
   const everyKey = creatorData.hours.flatMap(h => Object.keys(h.metrics));
   assert.ok(!everyKey.some(k => k.includes('money') || k.includes('orders') || k.includes('deposit')));
   assert.ok(!json.includes('2937'), 'no revenue figure appears anywhere in the creator payload');
@@ -202,6 +203,17 @@ test('it fails closed: no session, no flag, no binding, unknown path, non-admin 
   assert.equal((await analyticsWorker.fetch(request(OVERVIEW, tokens.usr_yuki), env, {})).status, 403);
   assert.equal((await analyticsWorker.fetch(request(RUN, tokens.usr_yuki, 'POST'), env, {})).status, 403);
   assert.equal((await analyticsWorker.fetch(request(RUN, tokens.usr_ops, 'POST'), env, {})).status, 200);
+
+  // SPA assets delegation: non-api path routes to env.ASSETS when bound, fails closed otherwise
+  const withAssets = await analyticsWorker.fetch(
+    new Request(HOST + '/'),
+    envFor(db, { ASSETS: { fetch: req => new Response('<!doctype html>SPA', { status: 200 }) } }),
+    {}
+  );
+  assert.equal(withAssets.status, 200);
+  assert.equal(await withAssets.text(), '<!doctype html>SPA');
+  const withoutAssets = await analyticsWorker.fetch(new Request(HOST + '/'), env, {});
+  assert.equal(withoutAssets.status, 404);
 });
 
 test('the game worker never serves the dashboard, even for the admin session', async () => {
@@ -224,6 +236,8 @@ test('wrangler config keeps production data reachable only from the analytics wo
   assert.ok(analytics.includes(PROD_ID), 'the dashboard must read the database players actually use');
   assert.ok(!analytics.includes(STAGING_ID), 'the dashboard must not read the test field');
   assert.match(analytics, /\[\[routes\]\][\s\S]*analytics\.instagoon\.app/, 'routes must be their own table');
+  assert.match(analytics, /\[assets\][\s\S]*directory\s*=\s*"\.\.\/client\/dist-analytics"/, 'analytics assets directory must point to client/dist-analytics');
+  assert.match(analytics, /not_found_handling\s*=\s*"single-page-application"/, 'SPA fallback must be enabled');
   assert.match(analytics, /crons\s*=\s*\[/, 'rollups need a schedule');
 
   for (const name of ['wrangler.toml', 'wrangler.staging.toml', 'wrangler.local-staging.toml']) {
@@ -236,4 +250,56 @@ test('wrangler config keeps production data reachable only from the analytics wo
   for (const name of ['wrangler.staging.toml', 'wrangler.local-staging.toml']) {
     assert.ok(!(/^\s*COSPLAY_ANALYTICS_ORIGIN\s*=/m).test(read(name)), `${name} must not link staging to real production numbers`);
   }
+});
+
+test('dual-checkpoint /auth/verify requires matching gmail and valid token with creator/admin tier', async () => {
+  const { db, tokens } = await seedProdDb();
+  const env = envFor(db);
+
+  const postVerify = (body) => analyticsWorker.fetch(
+    new Request(HOST + '/auth/verify', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body)
+    }),
+    env,
+    {}
+  );
+
+  // 1. Missing or invalid input
+  const empty = await postVerify({});
+  assert.equal(empty.status, 400);
+
+  // 2. Token invalid / nonexistent
+  const badToken = await postVerify({ email: 'ops@instagoon.app', token: 'token-not-exist-123456' });
+  assert.equal(badToken.status, 401);
+  const badTokenBody = await badToken.json();
+  assert.equal(badTokenBody.error, 'invalid_token');
+
+  // 3. Email mismatch: valid token of usr_ops (ops@instagoon.app) submitted with wrong email
+  const mismatch = await postVerify({ email: 'wrong@example.com', token: tokens.usr_ops });
+  assert.equal(mismatch.status, 403);
+  const mismatchBody = await mismatch.json();
+  assert.equal(mismatchBody.error, 'email_mismatch');
+
+  // 4. Token belongs to plain player: player has no creator and no admin role
+  const player = await postVerify({ email: 'player@example.com', token: tokens.usr_player });
+  assert.equal(player.status, 403);
+  const playerBody = await player.json();
+  assert.equal(playerBody.error, 'forbidden');
+
+  // 5. Valid Admin: ops@instagoon.app + tokens.usr_ops
+  const adminRes = await postVerify({ email: 'ops@instagoon.app', token: tokens.usr_ops });
+  assert.equal(adminRes.status, 200);
+  const adminBody = await adminRes.json();
+  assert.equal(adminBody.ok, true);
+  assert.equal(adminBody.admin, true);
+  assert.ok(adminRes.headers.get('set-cookie')?.includes('frost_session=' + tokens.usr_ops));
+
+  // 6. Valid Creator: yuki@instagoon.app + tokens.usr_yuki
+  const creatorRes = await postVerify({ email: 'yuki@instagoon.app', token: tokens.usr_yuki });
+  assert.equal(creatorRes.status, 200);
+  const creatorBody = await creatorRes.json();
+  assert.equal(creatorBody.ok, true);
+  assert.ok(creatorRes.headers.get('set-cookie')?.includes('frost_session=' + tokens.usr_yuki));
 });

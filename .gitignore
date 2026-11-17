@@ -1,5 +1,7 @@
 node_modules/
 dist/
+dist-analytics/
+client/dist-analytics/
 .wrangler/
 *.local
 .DS_Store
