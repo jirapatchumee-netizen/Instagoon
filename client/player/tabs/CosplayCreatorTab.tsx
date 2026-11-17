@@ -91,7 +91,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
   // Pillar 2: Voice & Tone
   const [pronouns, setPronouns] = useState('เค้า / ตัวเอง');
   const [voiceTone, setVoiceTone] = useState('ขี้อ้อน อบอุ่น');
-  const [sampleQuotes, setSampleQuotes] = useState('ขอบคุณที่แวะมาถ่ายรูปด้วยกันนะคะ! / งอแงแล้วนะ ไม่รักมาเลย');
+  const [sampleQuotes, setSampleQuotes] = useState('');
   // Preserve old authoring text in saved drafts; it no longer controls the conversation.
   const [legacyLevelStyles, setLegacyLevelStyles] = useState<string[]>([]);
   const [levelCosts, setLevelCosts] = useState<number[]>([100, 200, 300, 400]);
@@ -169,7 +169,7 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
     if (data.dislikes) setDislikes(data.dislikes);
     if (data.pronouns) setPronouns(data.pronouns);
     if (data.voiceTone) setVoiceTone(data.voiceTone);
-    if (data.sampleQuotes) setSampleQuotes(data.sampleQuotes);
+    setSampleQuotes(typeof data.sampleQuotes === 'string' ? data.sampleQuotes : '');
     if (Array.isArray(data.levelStyles) && data.levelStyles.length === 5) setLegacyLevelStyles(data.levelStyles);
     if (Array.isArray(data.levelCosts) && data.levelCosts.length === 4) setLevelCosts(data.levelCosts);
     setAdultContent(typeof data.adultContent === 'boolean' ? data.adultContent
@@ -861,12 +861,13 @@ export function CosplayCreatorTab({ lang, onOpenLiveChat }: CosplayCreatorTabPro
 
           {/* Catchphrases */}
           <div className="space-y-1.5">
-            <label className="block text-[11px] font-medium text-zinc-300">{t.studioSampleQuotesLabel}</label>
+            <label htmlFor="studio-sample-quotes" className="block text-[11px] font-medium text-zinc-300">{t.studioSampleQuotesLabel}</label>
             <textarea
-              rows={2}
+              id="studio-sample-quotes"
+              rows={8}
               value={sampleQuotes}
               onChange={(e) => setSampleQuotes(e.target.value)}
-              placeholder="ขอบคุณที่แวะมาถ่ายรูปด้วยกันนะคะ! / งอแงแล้วนะ ไม่รักมาเลย"
+              placeholder={t.studioSampleQuotesPlaceholder}
               className="studio-input w-full px-3.5 py-2.5 text-xs leading-relaxed"
             />
           </div>
