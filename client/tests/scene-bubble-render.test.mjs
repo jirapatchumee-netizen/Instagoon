@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readSceneHeader, sceneHeaderLabels, hasNarrativeActions, splitNarrativeBody, quoteDialogue, DEFAULT_SCENE_LOCATION } from '../player/message-format.ts';
+import { readSceneHeader, sceneHeaderLabels, hasNarrativeActions, splitNarrativeBody, quoteDialogue, parseRealityBubbleTags, DEFAULT_SCENE_LOCATION } from '../player/message-format.ts';
 import { serializeSceneBubble } from '../../server/src/scene-standard.mjs';
 
 // The server owns the stored string, the client owns the visible bubble. This pins the contract
@@ -60,4 +60,31 @@ test('quoteDialogue formats both single-speaker lines and multi-speaker emoji ta
   assert.equal(quoteDialogue('ไอริน 🔥: พี่ขาา วันนี้อยู่กับหนูก่อนนะคะ'), 'ไอริน 🔥: “พี่ขาา วันนี้อยู่กับหนูก่อนนะคะ”');
   assert.equal(quoteDialogue('[มินนี่ 💋]: เซอร์ไพรส์จ้ายัยแฝด!'), 'มินนี่ 💋: “เซอร์ไพรส์จ้ายัยแฝด!”');
   assert.equal(quoteDialogue('มินนี่ 💋 & ข้าวหอม 🌿: อื้อออ! พร้อมกันเลย!'), 'มินนี่ 💋 & ข้าวหอม 🌿: “อื้อออ! พร้อมกันเลย!”');
+});
+
+test('parseRealityBubbleTags extracts episode banner, ghost draft, catalyst and locked media cleanly', () => {
+  const realityStored = serializeSceneBubble({
+    at: Date.UTC(2026, 10, 18, 15, 0),
+    time: '23:10 น.',
+    location: 'ห้องพักส่วนตัว',
+    thought: 'ไม่กล้าส่งข้อความแรกเลยแฮะ',
+    episodeBanner: { number: 2, title: 'Midnight Cracks', subtitle: 'รอยร้าวยามเที่ยงคืน' },
+    draft: 'จริงๆ วันนี้เหนื่อยจนอยากกอดใครสักคน...',
+    beats: [
+      { kind: 'action', text: 'วางแก้วกาแฟลงข้างหมอน' },
+      { kind: 'dialogue', text: 'อ้าว ยังไม่นอนเหรอ?' }
+    ],
+    catalyst: { kind: 'truth_game', title: 'REALITY CATALYST', prompt: 'ผลัดกันถามความจริงคนละข้อ' },
+    lockedMedia: { title: 'ความลับหลังเวที.jpg', hint: 'ปลดล็อกที่ความผูกพัน 40%', unlocked: false }
+  });
+
+  const { body } = readSceneHeader(realityStored);
+  const parsed = parseRealityBubbleTags(body);
+  assert.deepEqual(parsed.episodeBanner, { number: 2, title: 'Midnight Cracks', subtitle: 'รอยร้าวยามเที่ยงคืน' });
+  assert.equal(parsed.draft, 'จริงๆ วันนี้เหนื่อยจนอยากกอดใครสักคน...');
+  assert.deepEqual(parsed.catalyst, { kind: 'truth_game', title: 'REALITY CATALYST', prompt: 'ผลัดกันถามความจริงคนละข้อ' });
+  assert.deepEqual(parsed.lockedMedia, { title: 'ความลับหลังเวที.jpg', hint: 'ปลดล็อกที่ความผูกพัน 40%', unlocked: false });
+  assert.match(parsed.cleanBody, /\[thought:ไม่กล้าส่งข้อความแรกเลยแฮะ\]/);
+  assert.match(parsed.cleanBody, /อ้าว ยังไม่นอนเหรอ\?/);
+  assert.doesNotMatch(parsed.cleanBody, /\[episode:|\[draft:|\[catalyst:|\[locked-media:/);
 });

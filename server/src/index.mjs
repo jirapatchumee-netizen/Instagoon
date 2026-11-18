@@ -14,6 +14,7 @@ import { handleAgentDevRoute } from './agent-dev-api.mjs';
 import { cleanDraft, launchProblems, studioCreatorId, studioPreviewId, buildDefinition } from './studio.mjs';
 import { usesCreditLevels, rewardOnlyLevels, readCreditProgress, nextCreditProgress, creditProgressStatement, levelScore } from './credit-levels.mjs';
 import { shouldRecallMemory, generateEmbedding, rankMemories, formatMemoriesForPrompt, consolidateEpisodicMemory } from './ai/episodic-memory.mjs';
+import { computeRealityState, sniffCrossCharacterJealousy, getActiveWorldSeasonContext, recordRippleWorldEvent, buildLivingRealityPromptBlock, buildContextualQuickPills, generateCrossCreatorFeedReactions } from './ai/living-reality-engine.mjs';
 
 const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), {status, headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store',...headers}});
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), {status}); };
@@ -64,6 +65,7 @@ const extractSpokenDialogue = text => {
   if (!text || typeof text !== 'string') return '';
   return text
     .replace(/\[scene:[^\]]*\]\n?/gi, '')
+    .replace(/\[(?:episode|draft|catalyst|locked-media):[^\]]*\]\n?/gi, '')
     .replace(/^\[(?:mood|reaction|toast):\s*[\s\S]*?\]\n?/gi, '')
     .replace(/^\[thought:\s*[\s\S]*?\]\n?/gi, '')
     .replace(/\[thought:\s*[\s\S]*?\]/gi, '')
@@ -462,7 +464,7 @@ async function energy(env,uid,now) {
  return {free:row.free,purchased:row.purchased,diamonds:row.diamonds??0,nextRefillAt:null};
 }
 const postShape = p=>({id:p.id,creatorId:p.creator_id,creatorName:p.creator_name,caption:p.caption,mediaKey:p.media_key,publishedAt:p.published_at,relationshipRequired:p.relationship_required,simulatedLikes:p.simulated_likes,likes:p.likes,liked:!!p.liked,saved:!!p.saved,firstCommentUsed:!!p.claimed});
-const storyShape = s=>({id:s.id,creatorId:s.creator_id,type:s.type,mediaKey:s.media_key,publishedAt:s.published_at,expiresAt:s.first_viewed_at==null?null:s.first_viewed_at+86400000,firstViewedAt:s.first_viewed_at});
+const storyShape = s=>({id:s.id,creatorId:s.creator_id,type:s.type,mediaKey:s.media_key,publishedAt:s.published_at,expiresAt:s.first_viewed_at==null?null:s.first_viewed_at+86400000,firstViewedAt:s.first_viewed_at,isCloseFriend:s.type==='unlockable'||(Number(s.relationship_required)||0)>0});
 async function visiblePost(env,user,pid,now){return one(env,`SELECT p.* FROM posts p LEFT JOIN relationships r ON r.creator_id=p.creator_id AND r.user_id=? WHERE p.id=? AND p.status='published' AND p.published_at<=? AND COALESCE(r.score,0)>=p.relationship_required`,user.id,pid,now);}
 // A scripted episode node can show a picture with [img:<key>]. The picture is the player's once they have
 // reached that node, the same rule the chat uses to show it, so it is not visible ahead of the story.
@@ -473,7 +475,7 @@ async function episodeMediaReached(env,uid,mediaKey){
  return false;
 }
 // One plain line for the inbox: no stage directions, inner thoughts or picture tags.
-const inboxPreview=text=>{const t=String(text||'').replace(/\[img:[^\]]+\]/g,'📷').replace(/\[(?:thought|visual|action)[^\]]*\]/gi,'').replace(/\*[^*]*\*/g,'').replace(/\s+/g,' ').trim();const chars=Array.from(t);return chars.length>80?chars.slice(0,80).join('')+'…':t;};
+const inboxPreview=text=>{const t=String(text||'').replace(/\[img:[^\]]+\]/g,'📷').replace(/\[(?:scene|episode|draft|catalyst|locked-media|mood|reaction|toast|thought|visual|action)[^\]]*\]/gi,'').replace(/\*[^*]*\*/g,'').replace(/\s+/g,' ').trim();const chars=Array.from(t);return chars.length>80?chars.slice(0,80).join('')+'…':t;};
 // In Instagoon, stories remain accessible per-player for 24h once first opened, or 24h from publish.
 // To ensure new and returning players can always explore published creator stories, stories with published status are active.
 const storyLive=(s,now)=>!!s&&s.status==='published'&&(s.first_viewed_at==null||now<s.first_viewed_at+86400000);
@@ -976,20 +978,29 @@ async function player(req,env,user,path,now,ctx) {
   const byPost=new Map(posts.map(p=>[p.id,[]]));
   for(const c of commentRows)byPost.get(c.post_id)?.push({id:c.id,content:c.content,createdAt:c.created_at,own:c.user_id===user.id});
   for(const p of posts)p.comments=byPost.get(p.id);
+  const [worldEvents, rivalCreators] = await Promise.all([
+    getActiveWorldSeasonContext(env, now),
+    all(env, 'SELECT r.creator_id AS id, c.name, r.score FROM relationships r JOIN creators c ON c.id = r.creator_id WHERE r.user_id=? AND r.score>=15 ORDER BY r.score DESC LIMIT 5', user.id)
+  ]);
   const logged=run(env,'INSERT INTO activity(user_id,kind,created_at) VALUES(?,?,?)',user.id,'feed',now);
   if(ctx?.waitUntil)ctx.waitUntil(logged);else await logged;
-  return json({posts:posts.map(p=>({...postShape(p),comments:p.comments}))});
+  return json({posts:posts.map(p=>({...postShape(p),comments:p.comments,crossComments:generateCrossCreatorFeedReactions({post:{id:p.id,creatorId:p.creator_id,creatorName:p.creator_name},rivalCreators})})),worldEvents});
  }
  m=path.match(/^\/api\/posts\/([\w-]+)\/comments$/);
  if(m&&method==='POST'){
   const b=await body(req), pid=id(m[1]), requestId=id(b.requestId), content=string(b.content,1000);
   const previous=await one(env,'SELECT * FROM comments WHERE user_id=? AND request_id=?',user.id,requestId);
   if(previous){if(previous.post_id!==pid||previous.content!==content)return json({error:'idempotency_conflict'},409);return json({comment:{id:previous.id,content:previous.content,createdAt:previous.created_at,own:true},energy:await energy(env,user.id,now)});}
-  if(!await visiblePost(env,user,pid,now))return json({error:'not_found'},404);
+  const postRow = await visiblePost(env,user,pid,now);
+  if(!postRow)return json({error:'not_found'},404);
   if((await one(env,'SELECT COUNT(*) n FROM comments WHERE user_id=? AND created_at>?',user.id,now-60000)).n>=10)return json({error:'too_many_requests'},429);
   const commentId=crypto.randomUUID(); await run(env,'INSERT INTO comments(id,request_id,user_id,post_id,content,created_at) VALUES(?,?,?,?,?,?)',commentId,requestId,user.id,pid,content,now);
-  const rel=await one(env,'SELECT score FROM relationships WHERE user_id=? AND creator_id=(SELECT creator_id FROM posts WHERE id=?)',user.id,pid);
-  return json({comment:{id:commentId,content,createdAt:now,own:true},energy:await energy(env,user.id,now),relationship:rel?.score??0});
+  const [rel, rival] = await Promise.all([
+    one(env,'SELECT score FROM relationships WHERE user_id=? AND creator_id=?',user.id,postRow.creator_id),
+    one(env,'SELECT r.creator_id AS id, c.name, r.score FROM relationships r JOIN creators c ON c.id = r.creator_id WHERE r.user_id=? AND r.creator_id!=? AND r.score>=15 ORDER BY r.score DESC LIMIT 1',user.id,postRow.creator_id)
+  ]);
+  const rivalReaction = rival ? { creatorId: rival.id, creatorName: rival.name, content: `แหม... เห็นไปคอมเมนต์ให้โพสต์คนอื่นเชียวนะ ทีแชทกับ${rival.name}ล่ะ! 👀` } : null;
+  return json({comment:{id:commentId,content,createdAt:now,own:true},energy:await energy(env,user.id,now),relationship:rel?.score??0,...(rivalReaction?{rivalReaction}:{})});
  }
  m=path.match(/^\/api\/comments\/([\w-]+)$/);
  if(m&&method==='DELETE'){await run(env,'DELETE FROM comments WHERE id=? AND user_id=?',id(m[1]),user.id);return json({ok:true});}
@@ -1300,7 +1311,7 @@ async function player(req,env,user,path,now,ctx) {
    const [threadRes, npcDefRes, relRes, unlockRes] = await env.DB.batch([
      env.DB.prepare('SELECT last_message_at, current_visit_id, summary, summarized_through FROM dm_threads WHERE user_id=? AND creator_id=?').bind(user.id, creator),
      env.DB.prepare('SELECT definition_json FROM npc_definitions WHERE creator_id=?').bind(creator),
-     env.DB.prepare('SELECT score, closeness, trust, romance, turns, events_json, rule_uses_json FROM relationships WHERE user_id=? AND creator_id=?').bind(user.id, creator),
+     env.DB.prepare('SELECT score, closeness, trust, romance, turns, events_json, rule_uses_json, current_episode, emotional_milestones, stress_level, affection_level, clout_level, is_close_friend FROM relationships WHERE user_id=? AND creator_id=?').bind(user.id, creator),
      env.DB.prepare('SELECT reward_key FROM reward_unlocks WHERE user_id=? AND creator_id=?').bind(user.id, creator)
    ]);
    const thread = threadRes.results[0] ?? null;
@@ -1486,6 +1497,7 @@ async function player(req,env,user,path,now,ctx) {
    let replyText = '';
    let innerThought = null;
    let actionText = null;
+   let ghostDraft = null;
    let scoreDelta = 0;
    let newMem = null;
    let detectedRuleIds = [...matchedRuleIds];
@@ -1537,6 +1549,16 @@ async function player(req,env,user,path,now,ctx) {
      CLOCK_STATE: `Level ${currentLv}/5 so far${npcDef?.plotClock ? ` — ${npcDef.plotClock}` : ''}`,
      OPEN_LOOPS: threadSummary || 'no open loops recorded yet', CANARY: canary, fiftyShadesPrompt
    }});
+   const [jealousy, worldEvents] = await Promise.all([
+     sniffCrossCharacterJealousy(env, user.id, creator, userText, now),
+     getActiveWorldSeasonContext(env, now)
+   ]);
+   const preRealityState = computeRealityState({
+     relRow, score: rel, closeness, trust, romance, turns: turnCount, userText, npcName, npcDef
+   });
+   const realityPromptBlock = buildLivingRealityPromptBlock({
+     npcName, realityState: preRealityState, jealousy, worldEvents, isEn
+   });
    const systemPrompt = sceneMode ? narrativePrompt(npcDef, currentStyle, secretsPrompt, rulesPrompt, canary) : v1Prompt || `You are roleplaying as "${npcName}", an authentic idol/creator chatting on instagoon private DM.
 Tagline: "${npcDef?.tagline || ''}".
 Bio: "${npcDef?.biography || creatorData.bio}".
@@ -1625,7 +1647,7 @@ Natural Conversation Flow & Pacing:
 ${cameosPrompt}- Narration Standard: In "action" narration, describe physical interactions directly or use the player's known name / "คุณ", NEVER use technical terms like "ผู้เล่น" or "player".
 ${isEn ? `- Emotional Reaction (moodToast): If the interaction meaningfully impacts your emotions, provide a short 1-line reaction in English with an emoji in moodToast (e.g. "${npcName} secretly smiles at your message 💕", "${npcName} feels closer to you ✨", "${npcName} is playfully pouting at you 🙈"). Otherwise null.
 Reply in English naturally and fluently as "${npcName}" according to the character's designated voice, flirty persona, and tone.` : `- Emotional Reaction (moodToast): If the interaction meaningfully impacts your emotions, provide a short 1-line reaction in Thai with an emoji in moodToast (e.g. "${npcName}แอบยิ้มกับข้อความของคุณ 💕", "${npcName}รู้สึกไว้ใจคุณมากขึ้น ✨", "${npcName}กำลังแกล้งงอนคุณอยู่นะ 🙈"). Otherwise null.
-Reply in Thai naturally as "${npcName}" according to the character's designated voice, pronouns and tone.`}`;
+Reply in Thai naturally as "${npcName}" according to the character's designated voice, pronouns and tone.`}${realityPromptBlock ? `\n${realityPromptBlock}` : ''}`;
    const playerTurn = JSON.stringify({
      playerMessage: userText,
      language: isEn ? 'en' : 'th',
@@ -1654,7 +1676,8 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
        affectionDelta: { type: 'INTEGER', description: 'Affection delta (-3 to +3). Positive for charm/empathy/intimacy, 0 for neutral or shock, negative for offense/harassment.' },
        learnedMemory: { type: 'OBJECT', nullable: true, properties: { key: { type: 'STRING' }, value: { type: 'STRING' } } },
        suggestedReplies: { type: 'ARRAY', items: { type: 'STRING' } },
-       moodToast: { type: 'STRING', nullable: true }
+       moodToast: { type: 'STRING', nullable: true },
+       ghostDraft: { type: 'STRING', nullable: true, description: isEn ? 'Optional short unsent draft sentence (<= 80 chars) that the character typed and deleted before sending her reply, or null.' : 'ประโยคสั้นๆ (<= 70 ตัวอักษร) ที่ตัวละครพิมพ์ค้างไว้แล้วลบทิ้งก่อนส่งข้อความจริงเมื่อต้องการซ่อนความรู้สึก หรือ null' }
      },
      required: ['reply', 'sceneTime', 'sceneLocation']
    };
@@ -1704,7 +1727,7 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
        }
      }
      if (typeof parsed?.reply === 'string' && parsed.reply.trim()) {
-       const visible = [parsed.reply, parsed.innerThought, parsed.action, parsed.sceneTime, parsed.sceneLocation, ...(Array.isArray(parsed.beats) ? parsed.beats.map(b => b?.text) : []), parsed.moodToast, ...(decodedScene ? [...decodedScene.beats.map(b => b.text), JSON.stringify(decodedScene.sceneUpdate)] : []), ...(Array.isArray(parsed.suggestedReplies) ? parsed.suggestedReplies : [])].filter(s => typeof s === 'string').join('\n');
+       const visible = [parsed.reply, parsed.innerThought, parsed.action, parsed.ghostDraft, parsed.sceneTime, parsed.sceneLocation, ...(Array.isArray(parsed.beats) ? parsed.beats.map(b => b?.text) : []), parsed.moodToast, ...(decodedScene ? [...decodedScene.beats.map(b => b.text), JSON.stringify(decodedScene.sceneUpdate)] : []), ...(Array.isArray(parsed.suggestedReplies) ? parsed.suggestedReplies : [])].filter(s => typeof s === 'string').join('\n');
        if (!leaksInternals(visible, canary)) {
          replyText = cleanTrailingSlang(parsed.reply.trim());
          narrativeResult = decodedScene;
@@ -1713,6 +1736,9 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
          }
          if (typeof parsed?.action === 'string' && parsed.action.trim()) {
            actionText = cleanTrailingSlang(parsed.action.trim());
+         }
+         if (typeof parsed?.ghostDraft === 'string' && parsed.ghostDraft.trim()) {
+           ghostDraft = cleanTrailingSlang(parsed.ghostDraft.trim()).slice(0, 120);
          }
          applySceneStandard(parsed);
          if (Array.isArray(parsed.matchedRuleIds)) detectedRuleIds.push(...parsed.matchedRuleIds.filter(rid => semanticRules.some(r => r.id === rid)));
@@ -1878,7 +1904,7 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
              if(data.promptFeedback?.blockReason || SAFETY_FINISH.has(blockReason)) break;
              continue;
            }
-           const visible = [parsed.reply, parsed.innerThought, parsed.action, parsed.sceneTime, parsed.sceneLocation, ...(Array.isArray(parsed.beats) ? parsed.beats.map(b => b?.text) : []), parsed.moodToast, ...(decodedScene ? [...decodedScene.beats.map(b => b.text), JSON.stringify(decodedScene.sceneUpdate)] : []), ...(Array.isArray(parsed.suggestedReplies) ? parsed.suggestedReplies : [])].filter(s => typeof s === 'string').join('\n');
+           const visible = [parsed.reply, parsed.innerThought, parsed.action, parsed.ghostDraft, parsed.sceneTime, parsed.sceneLocation, ...(Array.isArray(parsed.beats) ? parsed.beats.map(b => b?.text) : []), parsed.moodToast, ...(decodedScene ? [...decodedScene.beats.map(b => b.text), JSON.stringify(decodedScene.sceneUpdate)] : []), ...(Array.isArray(parsed.suggestedReplies) ? parsed.suggestedReplies : [])].filter(s => typeof s === 'string').join('\n');
            if(leaksInternals(visible, canary)) {
              console.error('Gemini reply leaked internals on', geminiModel);
              fallbackCount++;
@@ -1891,6 +1917,9 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
            }
            if(typeof parsed?.action === 'string' && parsed.action.trim()) {
              actionText = cleanTrailingSlang(parsed.action.trim());
+           }
+           if(typeof parsed?.ghostDraft === 'string' && parsed.ghostDraft.trim()) {
+             ghostDraft = cleanTrailingSlang(parsed.ghostDraft.trim()).slice(0, 120);
            }
            applySceneStandard(parsed);
            // The model may only report semantic rules; keyword rules are matched in code above.
@@ -1994,13 +2023,21 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
    const unlockedSet = new Set((unlockRes.results || []).map(r => r.reward_key));
    // DM lane carries no media: reward art lives in the Story lane and the Close Friends Vault.
 
+   const realityUpdate = computeRealityState({
+     relRow, score: rel, closeness, trust, romance, turns: turnCount,
+     affectionDelta: scoreDelta, userText, npcName, npcDef
+   });
+   if (realityUpdate.rippleEvent) {
+     await recordRippleWorldEvent(env, creator, realityUpdate.rippleEvent, now);
+   }
+
    // Apply deltas in SQL so a concurrent comment's score change is never overwritten.
    const delta = { closeness: closeness - before.closeness, trust: trust - before.trust, romance: romance - before.romance };
    const scoreFromDimensions = creditBased || !!npcDef?.rules;
    // Create-then-increment-then-read-back rides one round trip, in this order.
    const relationshipStatements = [
      env.DB.prepare('INSERT OR IGNORE INTO relationships(user_id, creator_id) VALUES(?,?)').bind(user.id, creator),
-     env.DB.prepare('UPDATE relationships SET closeness=MIN(100, MAX(0, COALESCE(closeness,0)+?)), trust=MIN(100, MAX(0, COALESCE(trust,0)+?)), romance=MIN(100, MAX(0, COALESCE(romance,0)+?)), turns=COALESCE(turns,0)+1, events_json=?, rule_uses_json=?, score=CASE WHEN ? THEN ? ELSE MIN(100, MAX(0, score+?)) END WHERE user_id=? AND creator_id=?').bind(delta.closeness, delta.trust, delta.romance, JSON.stringify(events), JSON.stringify(ruleUses), scoreFromDimensions ? 1 : 0, rel, scoreDelta, user.id, creator),
+     env.DB.prepare('UPDATE relationships SET closeness=MIN(100, MAX(0, COALESCE(closeness,0)+?)), trust=MIN(100, MAX(0, COALESCE(trust,0)+?)), romance=MIN(100, MAX(0, COALESCE(romance,0)+?)), turns=COALESCE(turns,0)+1, events_json=?, rule_uses_json=?, score=CASE WHEN ? THEN ? ELSE MIN(100, MAX(0, score+?)) END, current_episode=?, emotional_milestones=?, stress_level=?, affection_level=?, clout_level=?, is_close_friend=? WHERE user_id=? AND creator_id=?').bind(delta.closeness, delta.trust, delta.romance, JSON.stringify(events), JSON.stringify(ruleUses), scoreFromDimensions ? 1 : 0, rel, scoreDelta, realityUpdate.currentEpisode, JSON.stringify(realityUpdate.emotionalMilestones), realityUpdate.stressLevel, realityUpdate.affectionLevel, realityUpdate.cloutLevel, realityUpdate.isCloseFriend, user.id, creator),
      env.DB.prepare('SELECT score FROM relationships WHERE user_id=? AND creator_id=?').bind(user.id, creator)
    ];
    if (!narrativeResult && !creditBased) {
@@ -2023,11 +2060,30 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
      ? [serializeSceneHeader(sceneMetadata), ...(moodToast ? [`[mood:${moodToast}]`] : []),
         ...(innerThought ? [`[thought:${innerThought}]`] : []), serializeNarrative(narrativeResult.beats)].join('\n')
      : serializeSceneBubble({ at: sceneMetadata.at, time: sceneMetadata.time, location: sceneMetadata.location, mood: moodToast,
-        thought: innerThought, beats: inlineBeats.length ? inlineBeats : [{ kind: 'dialogue', text: replyText }] });
+        thought: innerThought, beats: inlineBeats.length ? inlineBeats : [{ kind: 'dialogue', text: replyText }],
+        episodeBanner: realityUpdate.episodeChanged ? realityUpdate.episodeBanner : null,
+        draft: ghostDraft, catalyst: realityUpdate.catalyst });
+   const realityStatePayload = {
+     currentEpisode: realityUpdate.currentEpisode,
+     episodeTitle: realityUpdate.episodeMeta.title,
+     episodeSubtitle: realityUpdate.episodeMeta.subtitle,
+     episodeChanged: realityUpdate.episodeChanged,
+     affectionLevel: realityUpdate.affectionLevel,
+     stressLevel: realityUpdate.stressLevel,
+     cloutLevel: realityUpdate.cloutLevel,
+     isCloseFriend: realityUpdate.isCloseFriend === 1,
+     milestones: realityUpdate.emotionalMilestones,
+     jealousy: jealousy?.active ? jealousy : null,
+     catalyst: realityUpdate.catalyst,
+     rippleTriggered: Boolean(realityUpdate.rippleEvent)
+   };
+   if(!suggestedReplies.length) {
+     suggestedReplies = buildContextualQuickPills({ npcName, realityState: realityUpdate, jealousy, isEn });
+   }
    const replyId=crypto.randomUUID();
    const replyStatement = env.DB.prepare('INSERT INTO ai_chat_messages(id, user_id, creator_id, role, content, media_key, affection_delta, created_at) VALUES(?,?,?,?,?,?,?,?)').bind(replyId, user.id, creator, 'assistant', storedContent, null, creditBased?0:scoreDelta, now + 1);
    const receiptPayload={ok:true,reply:replyText,innerThought,action:actionText,suggestedReplies,moodToast,mediaKey:null,
-     relationship:rel,closeness,trust,romance,level:currentLv,creditProgress:progress,
+     relationship:rel,closeness,trust,romance,level:currentLv,creditProgress:progress,realityState:realityStatePayload,
      ...(narrativeResult?{beats:narrativeResult.beats,scene:sceneMetadata}:inlineBeats.length?{beats:inlineBeats,scene:sceneMetadata}:{})};
    const creditStatements=creditBased?[
      ...(!preview?[creditProgressStatement(env,user.id,creator,progress,now)]:[]),
@@ -2045,14 +2101,6 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
 
    const allAiMessages = await all(env, 'SELECT id, role, content, media_key mediaKey, affection_delta affectionDelta, created_at createdAt FROM ai_chat_messages WHERE user_id=? AND creator_id=? ORDER BY created_at ASC LIMIT 100', user.id, creator);
 
-   if(!suggestedReplies.length) {
-     suggestedReplies = [
-       `แอบคิดถึง${npcName}อยู่เหมือนกันนะ ✨`,
-       `พูดแบบนี้เดี๋ยวก็หลงคารมเข้าหรอก 😏`,
-       `วันนี้ทำงานเหนื่อยไหม เป็นไงบ้าง 🤍`
-     ];
-   }
-
 
    return json({
      ok: true,
@@ -2062,6 +2110,7 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
      ...(narrativeResult ? { beats: narrativeResult.beats, scene: sceneMetadata } : (inlineBeats.length ? { beats: inlineBeats, scene: sceneMetadata } : {})),
      suggestedReplies,
      moodToast,
+     realityState: realityStatePayload,
      knowledgeResult:{entries:entries.map(({title,source,checkedAt})=>({title,source,checkedAt})),applied:knowledgeApplied,search:{status:search.status,sources:search.sources,queries:search.queries,usage:search.usage}},
      mediaKey: null,
      messages: allAiMessages,
@@ -2086,7 +2135,7 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
   const [messagesRes, memRes, relRes, npcRes, unlocksRes] = await env.DB.batch([
     env.DB.prepare('SELECT id, role, content, media_key mediaKey, affection_delta affectionDelta, created_at createdAt FROM ai_chat_messages WHERE user_id=? AND creator_id=? ORDER BY created_at ASC LIMIT 100').bind(user.id, creator),
     env.DB.prepare('SELECT key, value, created_at createdAt FROM player_memories WHERE user_id=? AND creator_id=? ORDER BY created_at DESC').bind(user.id, creator),
-    env.DB.prepare('SELECT score, closeness, trust, romance, turns FROM relationships WHERE user_id=? AND creator_id=?').bind(user.id, creator),
+    env.DB.prepare('SELECT score, closeness, trust, romance, turns, current_episode, emotional_milestones, stress_level, affection_level, clout_level, is_close_friend FROM relationships WHERE user_id=? AND creator_id=?').bind(user.id, creator),
     env.DB.prepare('SELECT definition_json FROM npc_definitions WHERE creator_id=?').bind(creator),
     env.DB.prepare('SELECT reward_key FROM reward_unlocks WHERE user_id=? AND creator_id=?').bind(user.id, creator)
   ]);
@@ -2102,6 +2151,35 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
   const score = relRow?.score || 0;
   const chatProgress = await readCreditProgress(env,user.id,creator,npcDef);
   const isEpUnlocked = (e, index) => index === 0 || !!e.unlocked_at || !!e.current_node_id;
+  const [chatJealousy, chatWorldEvents] = await Promise.all([
+    sniffCrossCharacterJealousy(env, user.id, creator, '', now),
+    getActiveWorldSeasonContext(env, now)
+  ]);
+  const getReality = computeRealityState({
+    relRow, score, closeness: relRow?.closeness || 0, trust: relRow?.trust || 0,
+    romance: relRow?.romance || 0, turns: relRow?.turns || 0,
+    npcName: npcDef?.name || creator, npcDef
+  });
+  const chatRealityState = {
+    currentEpisode: getReality.currentEpisode,
+    episodeTitle: getReality.episodeMeta.title,
+    episodeSubtitle: getReality.episodeMeta.subtitle,
+    episodeChanged: false,
+    affectionLevel: getReality.affectionLevel,
+    stressLevel: getReality.stressLevel,
+    cloutLevel: getReality.cloutLevel,
+    isCloseFriend: getReality.isCloseFriend === 1,
+    milestones: getReality.emotionalMilestones,
+    jealousy: chatJealousy?.active ? chatJealousy : null,
+    catalyst: null,
+    worldEventsCount: chatWorldEvents.length
+  };
+  const chatSuggestedReplies = buildContextualQuickPills({
+    npcName: npcDef?.name || creator,
+    realityState: getReality,
+    jealousy: chatJealousy,
+    isEn: false
+  });
 
   if(!episodes || episodes.length === 0){
     if (method === 'GET' && !m[2] && allAiMessages.length === 0 && narrativeEnabled(npcDef) && npcDef.narrative.opening) {
@@ -2125,7 +2203,9 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
         romance: relRow?.romance || 0,
         level: chatProgress?.level || levelOf(relationshipConfig(npcDef),score),
         creditProgress: chatProgress,
-        score
+        score,
+        realityState: chatRealityState,
+        suggestedReplies: chatSuggestedReplies
       }
     });
   }
@@ -2187,7 +2267,7 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
     completed
    });
   }
-  return json({chat:{episodeId:episode.id,revisionId:rev.id,currentNodeId:node.id,nodes:[node],history,episodes:episodeList,aiMessages:allAiMessages,memories:memList,unlockedRewards,closeness:relRow?.closeness||0,trust:relRow?.trust||0,romance:relRow?.romance||0,score,level:chatProgress?.level||levelOf(relationshipConfig(npcDef),score),creditProgress:chatProgress}});
+  return json({chat:{episodeId:episode.id,revisionId:rev.id,currentNodeId:node.id,nodes:[node],history,episodes:episodeList,aiMessages:allAiMessages,memories:memList,unlockedRewards,closeness:relRow?.closeness||0,trust:relRow?.trust||0,romance:relRow?.romance||0,score,level:chatProgress?.level||levelOf(relationshipConfig(npcDef),score),creditProgress:chatProgress,realityState:chatRealityState,suggestedReplies:chatSuggestedReplies}});
  }
  if(path==='/api/notifications'&&method==='GET'){
   const posts=await all(env,`SELECT p.id,p.published_at created_at,c.name FROM posts p JOIN creators c ON c.id=p.creator_id LEFT JOIN relationships r ON r.creator_id=p.creator_id AND r.user_id=? WHERE p.status='published' AND p.published_at<=? AND COALESCE(r.score,0)>=p.relationship_required ORDER BY p.published_at DESC LIMIT 50`,user.id,now);

@@ -36,6 +36,38 @@ export type Creator = {
   unread?: boolean;
 };
 export type Comment = { id: string; content: string; createdAt: number; own: boolean };
+export type CrossComment = { id: string; creatorId: string; creatorName: string; content: string };
+export type WorldSeasonEvent = {
+  id: string;
+  seasonId: string;
+  eventKind: 'moderator' | 'spotted' | 'ripple';
+  headline: string;
+  content: string;
+  promptDirective?: string;
+  sourceCreatorId?: string | null;
+};
+export type RealityState = {
+  currentEpisode: number;
+  episodeTitle: string;
+  episodeSubtitle: string;
+  episodeChanged?: boolean;
+  affectionLevel: number;
+  stressLevel: number;
+  cloutLevel: number;
+  isCloseFriend: boolean;
+  milestones: string[];
+  jealousy?: {
+    active: boolean;
+    rivalId?: string;
+    rivalName?: string;
+    rivalScore?: number;
+    recentMinutes?: number | null;
+    groupAmbush?: boolean;
+  } | null;
+  catalyst?: { kind: string; title: string; prompt: string } | null;
+  rippleTriggered?: boolean;
+  worldEventsCount?: number;
+};
 export type Post = {
   id: string;
   creatorId: string;
@@ -49,6 +81,7 @@ export type Post = {
   liked?: boolean;
   saved?: boolean;
   comments: Comment[];
+  crossComments?: CrossComment[];
   firstCommentUsed: boolean;
 };
 export type Story = {
@@ -59,6 +92,7 @@ export type Story = {
   publishedAt: number;
   expiresAt: number | null;
   firstViewedAt: number | null;
+  isCloseFriend?: boolean;
 };
 export type Choice = { id: string; text: string; nextNodeId: string };
 export type AiChatMessage = {
@@ -102,6 +136,8 @@ export type Chat = {
   trust?: number;
   romance?: number;
   score?: number;
+  realityState?: RealityState | null;
+  suggestedReplies?: string[];
   definition?: Record<string, unknown>;
 };
 export type Screen = 'home' | 'feed' | 'creators' | 'reels' | 'studio' | 'inbox' | 'cards' | 'account' | 'notifications';

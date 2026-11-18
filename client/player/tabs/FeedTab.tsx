@@ -1,11 +1,12 @@
 import { useState, type FormEvent } from 'react';
-import { type Post, type Creator, type Story, type User } from '../types';
+import { type Post, type Creator, type Story, type User, type WorldSeasonEvent } from '../types';
 import { TRANSLATIONS, type Lang } from '../i18n';
-import { media, AvatarImg, Media, PRESET_AVATARS, getAvatarSrc } from '../ui';
+import { media, AvatarImg, Media, PRESET_AVATARS, getAvatarSrc, WorldEventsBanner, CrossCommentsList } from '../ui';
 import { IgHeart, IgComment, IgShare, IgBookmark, IgMore, IgVerified, IgAudio } from '../InstagramIcons';
 
 interface FeedTabProps {
   posts: Post[];
+  worldEvents?: WorldSeasonEvent[];
   stories: Story[];
   creators: Creator[];
   user: User;
@@ -48,6 +49,7 @@ function getFanCrowdUsername(seed: string): string {
 
 export function FeedTab({
   posts,
+  worldEvents,
   stories,
   creators,
   user,
@@ -112,7 +114,13 @@ export function FeedTab({
             >
               <span
                 className={`fs-story-ring ${
-                  !next ? 'fs-story-viewed' : next.type === 'unlockable' ? 'fs-story-unlock' : 'fs-story-unviewed'
+                  !next
+                    ? 'fs-story-viewed'
+                    : target.isCloseFriend
+                      ? 'fs-story-close-friends'
+                      : next.type === 'unlockable'
+                        ? 'fs-story-unlock'
+                        : 'fs-story-unviewed'
                 }`}
               >
                 <span className="fs-story-ring-inner">
@@ -222,7 +230,9 @@ export function FeedTab({
 
       {/* Instagram Authentic Post Feed */}
       {!showSuggested && (
-        <div className="fs-posts">
+        <>
+          <WorldEventsBanner events={worldEvents} />
+          <div className="fs-posts">
           {posts.length === 0 ? (
             <div className="fs-empty-feed" style={{ padding: '48px 24px', textAlign: 'center' }}>
               <h3 style={{ fontSize: '1.1rem', marginBottom: 8, color: '#f8fafc' }}>{t.emptyFeedTitle}</h3>
@@ -412,6 +422,8 @@ export function FeedTab({
                   <span>{post.caption}</span>
                 </p>
 
+                <CrossCommentsList comments={post.crossComments} />
+
                 {/* View Comments Link */}
                 {post.comments.length > 0 && (
                   <button
@@ -501,7 +513,8 @@ export function FeedTab({
           </div>
         )}
       </div>
-    )}
+        </>
+      )}
   </div>
 );
 }
