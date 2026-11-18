@@ -97,14 +97,14 @@ export type CatalystMeta = { kind: string; title: string; prompt: string };
 export type LockedMediaMeta = { title: string; hint: string; unlocked?: boolean };
 
 export interface ParsedMessageSegment {
-  type: 'text' | 'ghost_draft' | 'redacted_edict' | 'screaming_parchment';
+  type: 'text' | 'redacted_edict' | 'screaming_parchment';
   content: string;
 }
 
 export function parseMagicAcademyMessage(rawText: string): ParsedMessageSegment[] {
   if (!rawText) return [];
 
-  const tokenRegex = /(\[draft:\s*([^\]]+)\]|\[howler:\s*([^\]]+)\]|\[REDACTED BY EDICT 42\])/gi;
+  const tokenRegex = /(\[howler:\s*([^\]]+)\]|\[REDACTED BY EDICT 42\])/gi;
   const segments: ParsedMessageSegment[] = [];
   let lastIndex = 0;
 
@@ -116,10 +116,8 @@ export function parseMagicAcademyMessage(rawText: string): ParsedMessageSegment[
     }
 
     const fullToken = match[0];
-    if (fullToken.toLowerCase().startsWith('[draft:')) {
-      segments.push({ type: 'ghost_draft', content: (match[2] || '').trim() });
-    } else if (fullToken.toLowerCase().startsWith('[howler:')) {
-      segments.push({ type: 'screaming_parchment', content: (match[3] || '').trim() });
+    if (fullToken.toLowerCase().startsWith('[howler:')) {
+      segments.push({ type: 'screaming_parchment', content: (match[2] || '').trim() });
     } else {
       segments.push({ type: 'redacted_edict', content: '[REDACTED BY EDICT 42]' });
     }

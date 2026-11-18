@@ -284,3 +284,18 @@ test('Magic Academy: Year 7 Endgame Fate and Anti-Cheat Feed Interactions verify
   const rel = f.sql.prepare('SELECT affection_level FROM relationships WHERE user_id=? AND creator_id=?').get('one', 'faye');
   assert.equal(rel.affection_level, 25);
 });
+
+test('retired ghost-draft syntax is gone from every Magic Academy persona prompt', () => {
+  const seasons = ['autumn', 'winter', 'spring', 'summer'];
+  for (const slug of ['evelyn', 'cassian', 'faye', 'rowan']) {
+    for (let year = 1; year <= 7; year++) {
+      for (const season of seasons) {
+        const prompt = selectCharacterStagePrompt(slug, year, season);
+        assert.ok(!prompt.includes('[draft:'), `${slug} Y${year} ${season}`);
+      }
+    }
+  }
+  const block = buildLivingRealityPromptBlock({ npcName: 'Evelyn Vane', realityState: computeRealityState({ npcName: 'Evelyn Vane' }) });
+  assert.ok(!block.includes('[draft:'));
+  assert.ok(!/Ghost Draft/i.test(block));
+});
