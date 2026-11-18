@@ -156,7 +156,7 @@ export function renderBubbleContent(
   let visual: string | null = null;
   const { scene, body } = readSceneHeader(text);
   const sceneLabels = scene ? sceneHeaderLabels(scene) : null;
-  const { episodeBanner, draft, howler, catalyst, lockedMedia, cleanBody } = parseRealityBubbleTags(body);
+  const { episodeBanner, howler, catalyst, lockedMedia, cleanBody } = parseRealityBubbleTags(body);
   let bodyText = cleanBody;
 
   const moodMatch = bodyText.match(/^\[(?:mood|reaction|toast):\s*([\s\S]*?)\]\n?/);
@@ -261,7 +261,7 @@ export function renderBubbleContent(
     );
   }
 
-  if (sceneLabels || mood || thought || visual || episodeBanner || draft || howler || catalyst || lockedMedia) {
+  if (sceneLabels || mood || thought || visual || episodeBanner || howler || catalyst || lockedMedia) {
     return (
       <div className="fs-bubble-with-meta">
         {episodeBanner && (
@@ -285,12 +285,6 @@ export function renderBubbleContent(
           <div className="fs-thought-box" title="ความคิดในใจ">
             <span className="fs-thought-icon">💭</span>
             <span className="fs-thought-text">ความคิดในใจ : {thought}</span>
-          </div>
-        )}
-        {draft && (
-          <div className="fs-ghost-draft-box" title="ข้อความที่พิมพ์แล้วลบ">
-            <span className="fs-ghost-draft-badge">📝 ข้อความที่ถูกลบ</span>
-            <span className="fs-ghost-draft-text">{draft}</span>
           </div>
         )}
         {howler && (

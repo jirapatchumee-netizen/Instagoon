@@ -8263,30 +8263,6 @@ dialog.fs-overlay[open]::backdrop {
   text-align: center;
 }
 
-.fs-ghost-draft-box {
-  margin: 4px 0 6px;
-  padding: 5px 8px;
-  border-left: 2px solid #94a3b8;
-  background: rgba(148, 163, 184, 0.1);
-  border-radius: 0 6px 6px 0;
-  font-size: 0.75rem;
-  color: #94a3b8;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.fs-ghost-draft-badge {
-  font-size: 0.65rem;
-  font-weight: 700;
-  color: #cbd5e1;
-}
-
-.fs-ghost-draft-text {
-  text-decoration: line-through;
-  font-style: italic;
-}
-
 .fs-reality-catalyst-card {
   margin-top: 6px;
   padding: 7px 10px;
