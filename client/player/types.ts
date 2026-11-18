@@ -46,11 +46,23 @@ export type WorldSeasonEvent = {
   promptDirective?: string;
   sourceCreatorId?: string | null;
 };
+export type HousePointStanding = {
+  bastion_name?: string;
+  bastionName?: string;
+  element_domain?: string;
+  colors?: string;
+  points: number;
+  weekly_delta?: number;
+};
+
 export type ProceduralMeme = {
   templateId: string;
+  post_instance_id?: string;
+  postInstanceId?: string;
   authorHandle: string;
   channel: string;
   content: string;
+  selectedReplyId?: string | null;
   npcComments?: { handle: string; text: string }[];
   quickReplies?: {
     reply_id?: string;

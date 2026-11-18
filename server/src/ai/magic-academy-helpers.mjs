@@ -198,19 +198,40 @@ export function applySmartEdict42Filter(
 
 /**
  * 5. Records Feed Quick Reply interaction and handles Affection delta + DM follow-up.
+ * Uses `academy_feed_interactions` to atomically prevent duplicate replies and cheat.
  */
-export async function recordFeedQuickReply(db, { replyId, ownerId = 'player_main', userId, targetNpcSlug, delta = 3, followupTrigger }) {
+export async function recordFeedQuickReply(db, { replyId, postInstanceId, ownerId = 'player_main', userId, targetNpcSlug, delta = 3, followupTrigger }) {
   const npc = String(targetNpcSlug || '').toLowerCase().trim();
   const points = Number(delta) || 3;
   const uid = userId || ownerId;
+  const postId = postInstanceId || `feed_reply_${replyId}`;
+  const interactionUid = `${uid}:${postId}`;
 
-  if (db && npc) {
+  if (db) {
     try {
-      await db.prepare(`
-        UPDATE relationships 
-        SET affection_level = MIN(100, COALESCE(affection_level, 0) + ?)
-        WHERE user_id = ? AND creator_id = ?
-      `).bind(points, uid, npc).run();
+      const insertRes = await db.prepare(`
+        INSERT OR IGNORE INTO academy_feed_interactions
+        (interaction_uid, player_id, post_instance_id, reply_id, affection_target, affection_delta)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).bind(interactionUid, uid, postId, replyId, npc, points).run();
+
+      // If already recorded, reject duplicate
+      if (insertRes?.meta && insertRes.meta.changes === 0) {
+        return {
+          success: false,
+          reason: 'already_interacted',
+          replyId,
+          targetNpcSlug: npc
+        };
+      }
+
+      if (npc) {
+        await db.prepare(`
+          UPDATE relationships 
+          SET affection_level = MIN(100, COALESCE(affection_level, 0) + ?)
+          WHERE user_id = ? AND creator_id = ?
+        `).bind(points, uid, npc).run();
+      }
     } catch (err) {
       console.warn('recordFeedQuickReply db update warning:', err.message);
     }
@@ -223,6 +244,46 @@ export async function recordFeedQuickReply(db, { replyId, ownerId = 'player_main
     delta: points,
     followupTrigger: followupTrigger || null
   };
+}
+
+/**
+ * 6. Cross-Character Jealousy Matrix for Aethelgard Core Quartet.
+ * Checks player interactions with rival NPCs and generates jealous directives.
+ */
+export function sniffCrossCharacterJealousy(activeNpcSlug, recentInteractions = []) {
+  const rivalMap = {
+    evelyn: { rival: 'rowan', reason: 'studying late in Greenhouse 3 with Rowan' },
+    cassian: { rival: 'faye', reason: 'cheering for Faye at Aero-Jousting practice' },
+    faye: { rival: 'cassian', reason: 'praising Nocturn-Coil and flirting with Cassian' },
+    rowan: { rival: 'evelyn', reason: 'spending every evening in the library with Evelyn' }
+  };
+
+  const slug = String(activeNpcSlug || '').toLowerCase().trim();
+  const rule = rivalMap[slug];
+  if (!rule) return null;
+
+  const triggered = Array.isArray(recentInteractions) && recentInteractions.some((item) => {
+    const target = String(item?.affection_target || item?.creator_id || item?.rivalId || '').toLowerCase().trim();
+    return target === rule.rival;
+  });
+  if (!triggered) return null;
+
+  const charProfile = AETHELGARD_CORE_QUARTET_PROMPTS.characters.find((c) => c.npc_slug === slug);
+  return {
+    isJealous: true,
+    rivalSlug: rule.rival,
+    promptDirective: `[JEALOUSY TRIGGER ACTIVE]: You noticed the player ${rule.reason}. ${charProfile?.jealousy_trigger || ''}`
+  };
+}
+
+/**
+ * 7. Evaluates Year 7 Endgame Fate (Golden vs Tragic Ending).
+ */
+export function evaluateYear7EndgameFate({ affectionLevel = 0, stressLevel = 0, keyQuestProtected = false }) {
+  if (Number(affectionLevel) >= 75 && Number(stressLevel) <= 65 && Boolean(keyQuestProtected)) {
+    return 'GOLDEN_ENDING';
+  }
+  return 'TRAGIC_ENDING';
 }
 
 /**

@@ -1,8 +1,9 @@
 import { Fragment, useEffect, useLayoutEffect, useState, useRef, type ReactNode } from 'react';
 import { readSceneHeader, sceneHeaderLabels, hasNarrativeActions, splitNarrativeBody, quoteDialogue, parseRealityBubbleTags } from './message-format';
+export { parseMagicAcademyMessage } from './message-format';
 import { Send, Sparkles } from 'lucide-react';
 import { type Lang, TRANSLATIONS } from './i18n';
-import { type Story, type RealityState, type WorldSeasonEvent, type CrossComment, type ProceduralMeme } from './types';
+import { type Story, type RealityState, type WorldSeasonEvent, type CrossComment, type ProceduralMeme, type HousePointStanding } from './types';
 
 export function ChatComposer({
   placeholder,
@@ -123,6 +124,25 @@ export function hasSpokenDialogue(text: string): boolean {
   return stripped.length > 0;
 }
 
+function renderFormattedLine(line: string): ReactNode {
+  if (!line || !line.includes('[REDACTED BY EDICT 42]')) return line;
+  const parts = line.split('[REDACTED BY EDICT 42]');
+  return (
+    <>
+      {parts.map((p, idx) => (
+        <Fragment key={idx}>
+          {p}
+          {idx < parts.length - 1 && (
+            <span className="fs-edict-redacted" title="เซนเซอร์โดยกฤษฎีกาที่ 42">
+              👁️ [REDACTED BY EDICT 42]
+            </span>
+          )}
+        </Fragment>
+      ))}
+    </>
+  );
+}
+
 export function renderBubbleContent(
   text: string,
   onExpandMedia?: (key: string) => void,
@@ -135,7 +155,7 @@ export function renderBubbleContent(
   let visual: string | null = null;
   const { scene, body } = readSceneHeader(text);
   const sceneLabels = scene ? sceneHeaderLabels(scene) : null;
-  const { episodeBanner, draft, catalyst, lockedMedia, cleanBody } = parseRealityBubbleTags(body);
+  const { episodeBanner, draft, howler, catalyst, lockedMedia, cleanBody } = parseRealityBubbleTags(body);
   let bodyText = cleanBody;
 
   const moodMatch = bodyText.match(/^\[(?:mood|reaction|toast):\s*([\s\S]*?)\]\n?/);
@@ -164,15 +184,15 @@ export function renderBubbleContent(
     // Scene replies retain the order of dialogue and character-owned gestures.
     bodyNodes = <div className="fs-narrative-beats">{splitNarrativeBody(bodyText).map((part, index) => {
       return part.kind === 'action'
-        ? <div key={index} className="fs-visual-box"><span className="fs-visual-text">{part.text}</span></div>
-        : <div key={index} className="fs-bubble-text">{quoteDialogue(part.text)}</div>;
+        ? <div key={index} className="fs-visual-box"><span className="fs-visual-text">{renderFormattedLine(part.text)}</span></div>
+        : <div key={index} className="fs-bubble-text">{renderFormattedLine(quoteDialogue(part.text))}</div>;
     })}</div>;
   } else if (!imgRegex.test(bodyText)) {
     bodyNodes = (
       <span className="fs-bubble-text">
         {(scene ? quoteDialogue(bodyText) : bodyText).split('\n').map((line, lineIdx, arr) => (
           <Fragment key={lineIdx}>
-            {line}
+            {renderFormattedLine(line)}
             {lineIdx < arr.length - 1 && <br />}
           </Fragment>
         ))}
@@ -203,7 +223,7 @@ export function renderBubbleContent(
               <span key={i} className="fs-bubble-text">
                 {part.split('\n').map((line, lineIdx, arr) => (
                   <Fragment key={`${i}-${lineIdx}`}>
-                    {line}
+                    {renderFormattedLine(line)}
                     {lineIdx < arr.length - 1 && <br />}
                   </Fragment>
                 ))}
@@ -240,7 +260,7 @@ export function renderBubbleContent(
     );
   }
 
-  if (sceneLabels || mood || thought || visual || episodeBanner || draft || catalyst || lockedMedia) {
+  if (sceneLabels || mood || thought || visual || episodeBanner || draft || howler || catalyst || lockedMedia) {
     return (
       <div className="fs-bubble-with-meta">
         {episodeBanner && (
@@ -270,6 +290,12 @@ export function renderBubbleContent(
           <div className="fs-ghost-draft-box" title="ข้อความที่พิมพ์แล้วลบ">
             <span className="fs-ghost-draft-badge">📝 ข้อความที่ถูกลบ</span>
             <span className="fs-ghost-draft-text">{draft}</span>
+          </div>
+        )}
+        {howler && (
+          <div className="fs-howler-scroll" title="จดหมายกัมปนาท (Banshee Scroll)">
+            <span className="fs-howler-icon">📜🔥</span>
+            <span className="fs-howler-text">BANSHEE SCROLL: {howler}</span>
           </div>
         )}
         {visual && (
@@ -521,12 +547,44 @@ export function CrossCommentsList({ comments }: { comments?: CrossComment[] }) {
   );
 }
 
+export function BastionHousePointsHeader({
+  standings
+}: {
+  standings?: HousePointStanding[];
+}) {
+  if (!Array.isArray(standings) || standings.length === 0) return null;
+  const iconMap: Record<string, string> = {
+    'Aethel-Pyre': '🦁',
+    'Nocturn-Coil': '🐍',
+    'Zephyr-Crown': '🦅',
+    'Terra-Root': '🦡'
+  };
+
+  return (
+    <div className="fs-bastion-house-points-bar" aria-label="Bastion House Standings">
+      {standings.map((h) => {
+        const name = h.bastion_name || h.bastionName || '';
+        const pts = typeof h.points === 'number'
+          ? (Number.isInteger(h.points) ? h.points.toString() : h.points.toFixed(2))
+          : '500';
+        return (
+          <div key={name} className="fs-bastion-point-pill">
+            <span className="fs-bastion-icon">{iconMap[name] || '✨'}</span>
+            <span className="fs-bastion-pts">{pts}</span>
+            <span className="fs-bastion-name">{name}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function ProceduralMemeCard({
   meme,
   onQuickReply
 }: {
   meme?: ProceduralMeme | null;
-  onQuickReply?: (reply: { reply_id?: string; replyId?: string; label: string; affection_target?: string; affectionTarget?: string; delta?: number; followup_dm_trigger?: string; followupTrigger?: string }) => void;
+  onQuickReply?: (reply: { reply_id?: string; replyId?: string; post_instance_id?: string; postInstanceId?: string; label: string; affection_target?: string; affectionTarget?: string; delta?: number; followup_dm_trigger?: string; followupTrigger?: string }) => void;
 }) {
   if (!meme) return null;
   const channelBadge = meme.channel === 'the_underground_parchment'
@@ -552,16 +610,26 @@ export function ProceduralMemeCard({
       )}
       {Array.isArray(meme.quickReplies) && meme.quickReplies.length > 0 && (
         <div className="fs-campus-meme-actions">
-          {meme.quickReplies.map((qr) => (
-            <button
-              key={qr.reply_id || qr.replyId || qr.label}
-              type="button"
-              className="fs-campus-meme-action-btn"
-              onClick={() => onQuickReply?.(qr)}
-            >
-              💬 {qr.label}
-            </button>
-          ))}
+          {meme.quickReplies.map((qr) => {
+            const replyKey = qr.reply_id || qr.replyId || qr.label;
+            const isSelected = meme.selectedReplyId === replyKey;
+            const isLocked = Boolean(meme.selectedReplyId);
+            return (
+              <button
+                key={replyKey}
+                type="button"
+                disabled={isLocked}
+                className={`fs-campus-meme-action-btn${isSelected ? ' is-selected' : ''}${isLocked && !isSelected ? ' is-disabled' : ''}`}
+                onClick={() => !isLocked && onQuickReply?.({
+                  ...qr,
+                  post_instance_id: meme.post_instance_id || meme.postInstanceId,
+                  postInstanceId: meme.post_instance_id || meme.postInstanceId
+                })}
+              >
+                {isSelected ? '✓ ' : '💬 '}{qr.label}{qr.delta ? ` (+${qr.delta} 💜)` : ''}
+              </button>
+            );
+          })}
         </div>
       )}
     </article>

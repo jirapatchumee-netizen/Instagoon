@@ -978,31 +978,51 @@ async function player(req,env,user,path,now,ctx) {
   const byPost=new Map(posts.map(p=>[p.id,[]]));
   for(const c of commentRows)byPost.get(c.post_id)?.push({id:c.id,content:c.content,createdAt:c.created_at,own:c.user_id===user.id});
   for(const p of posts)p.comments=byPost.get(p.id);
-  const [worldEvents, rivalCreators, userRel] = await Promise.all([
+  const [worldEvents, rivalCreators, userRel, housePoints, userInteractions] = await Promise.all([
     getActiveWorldSeasonContext(env, now),
     all(env, 'SELECT r.creator_id AS id, c.name, r.score FROM relationships r JOIN creators c ON c.id = r.creator_id WHERE r.user_id=? AND r.score>=15 ORDER BY r.score DESC LIMIT 5', user.id),
-    one(env, 'SELECT academic_year, term_season FROM relationships WHERE user_id=? ORDER BY academic_year DESC LIMIT 1', user.id)
+    one(env, 'SELECT academic_year, term_season FROM relationships WHERE user_id=? ORDER BY academic_year DESC LIMIT 1', user.id),
+    all(env, 'SELECT bastion_name, element_domain, colors, points, weekly_delta FROM academy_house_points ORDER BY points DESC').catch(() => []),
+    all(env, 'SELECT post_instance_id, reply_id FROM academy_feed_interactions WHERE player_id=?', user.id).catch(() => [])
   ]);
   const currentYear = userRel?.academic_year || 1;
   const currentSeason = userRel?.term_season || 'autumn';
-  const proceduralMeme = generateProceduralCampusMeme(currentYear, currentSeason);
+  const rawMeme = generateProceduralCampusMeme(currentYear, currentSeason);
+  const interactedMap = Object.fromEntries((userInteractions || []).map((r) => [r.post_instance_id, r.reply_id]));
+  const postInstanceId = rawMeme ? `${rawMeme.templateId}_Y${currentYear}_${currentSeason}` : null;
+  const proceduralMeme = rawMeme ? {
+    ...rawMeme,
+    post_instance_id: postInstanceId,
+    postInstanceId,
+    selectedReplyId: interactedMap[postInstanceId] || null
+  } : null;
   const logged=run(env,'INSERT INTO activity(user_id,kind,created_at) VALUES(?,?,?)',user.id,'feed',now);
   if(ctx?.waitUntil)ctx.waitUntil(logged);else await logged;
-  return json({posts:posts.map(p=>({...postShape(p),comments:p.comments,crossComments:generateCrossCreatorFeedReactions({post:{id:p.id,creatorId:p.creator_id,creatorName:p.creator_name},rivalCreators})})),worldEvents,proceduralMeme});
+  return json({
+    posts:posts.map(p=>({...postShape(p),comments:p.comments,crossComments:generateCrossCreatorFeedReactions({post:{id:p.id,creatorId:p.creator_id,creatorName:p.creator_name},rivalCreators})})),
+    worldEvents,
+    proceduralMeme,
+    housePoints: housePoints || []
+  });
  }
  if(path==='/api/feed/quick-reply' && method==='POST'){
   const b=await body(req);
   const replyId=typeof b.reply_id==='string'?b.reply_id:(typeof b.replyId==='string'?b.replyId:'qr');
+  const postInstanceId=typeof b.post_instance_id==='string'?b.post_instance_id:(typeof b.postInstanceId==='string'?b.postInstanceId:`feed_${replyId}`);
   const targetNpcSlug=typeof b.affection_target==='string'?b.affection_target:(typeof b.affectionTarget==='string'?b.affectionTarget:'');
   const delta=Number(b.delta)||3;
   const followupTrigger=typeof b.followup_dm_trigger==='string'?b.followup_dm_trigger:(typeof b.followupTrigger==='string'?b.followupTrigger:null);
   const res=await recordFeedQuickReply(env.DB, {
     replyId,
+    postInstanceId,
     ownerId: user.id,
     targetNpcSlug,
     delta,
     followupTrigger
   });
+  if (res.reason === 'already_interacted') {
+    return json({ ok: false, error: 'already_interacted', reason: 'already_interacted' }, 409);
+  }
   return json(res);
  }
  m=path.match(/^\/api\/posts\/([\w-]+)\/comments$/);

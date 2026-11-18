@@ -1,13 +1,14 @@
 import { useState, type FormEvent } from 'react';
-import { type Post, type Creator, type Story, type User, type WorldSeasonEvent, type ProceduralMeme } from '../types';
+import { type Post, type Creator, type Story, type User, type WorldSeasonEvent, type ProceduralMeme, type HousePointStanding } from '../types';
 import { TRANSLATIONS, type Lang } from '../i18n';
-import { media, AvatarImg, Media, PRESET_AVATARS, getAvatarSrc, WorldEventsBanner, CrossCommentsList, ProceduralMemeCard } from '../ui';
+import { media, AvatarImg, Media, PRESET_AVATARS, getAvatarSrc, WorldEventsBanner, CrossCommentsList, ProceduralMemeCard, BastionHousePointsHeader } from '../ui';
 import { IgHeart, IgComment, IgShare, IgBookmark, IgMore, IgVerified, IgAudio } from '../InstagramIcons';
 
 interface FeedTabProps {
   posts: Post[];
   worldEvents?: WorldSeasonEvent[];
   proceduralMeme?: ProceduralMeme | null;
+  housePoints?: HousePointStanding[];
   stories: Story[];
   creators: Creator[];
   user: User;
@@ -27,7 +28,7 @@ interface FeedTabProps {
   onCommentSubmit: (post: Post, e: FormEvent<HTMLFormElement>) => void;
   onOpenPostMenu: (post: Post, creator: Creator) => void;
   onGoToExplore: () => void;
-  onMemeQuickReply?: (reply: { reply_id?: string; replyId?: string; label: string; affection_target?: string; affectionTarget?: string; delta?: number; followup_dm_trigger?: string; followupTrigger?: string }) => void;
+  onMemeQuickReply?: (reply: { reply_id?: string; replyId?: string; post_instance_id?: string; postInstanceId?: string; label: string; affection_target?: string; affectionTarget?: string; delta?: number; followup_dm_trigger?: string; followupTrigger?: string }) => void;
 }
 
 const FAN_CROWD_USERNAMES = [
@@ -53,6 +54,7 @@ export function FeedTab({
   posts,
   worldEvents,
   proceduralMeme,
+  housePoints,
   stories,
   creators,
   user,
@@ -236,6 +238,7 @@ export function FeedTab({
       {!showSuggested && (
         <>
           <WorldEventsBanner events={worldEvents} />
+          <BastionHousePointsHeader standings={housePoints} />
           <ProceduralMemeCard meme={proceduralMeme} onQuickReply={onMemeQuickReply} />
           <div className="fs-posts">
           {posts.length === 0 ? (

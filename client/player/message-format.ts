@@ -96,9 +96,49 @@ export type EpisodeBannerMeta = { number: number; title: string; subtitle: strin
 export type CatalystMeta = { kind: string; title: string; prompt: string };
 export type LockedMediaMeta = { title: string; hint: string; unlocked?: boolean };
 
+export interface ParsedMessageSegment {
+  type: 'text' | 'ghost_draft' | 'redacted_edict' | 'screaming_parchment';
+  content: string;
+}
+
+export function parseMagicAcademyMessage(rawText: string): ParsedMessageSegment[] {
+  if (!rawText) return [];
+
+  const tokenRegex = /(\[draft:\s*([^\]]+)\]|\[howler:\s*([^\]]+)\]|\[REDACTED BY EDICT 42\])/gi;
+  const segments: ParsedMessageSegment[] = [];
+  let lastIndex = 0;
+
+  for (const match of rawText.matchAll(tokenRegex)) {
+    const matchIndex = match.index ?? 0;
+    if (matchIndex > lastIndex) {
+      const plain = rawText.slice(lastIndex, matchIndex).trim();
+      if (plain) segments.push({ type: 'text', content: plain });
+    }
+
+    const fullToken = match[0];
+    if (fullToken.toLowerCase().startsWith('[draft:')) {
+      segments.push({ type: 'ghost_draft', content: (match[2] || '').trim() });
+    } else if (fullToken.toLowerCase().startsWith('[howler:')) {
+      segments.push({ type: 'screaming_parchment', content: (match[3] || '').trim() });
+    } else {
+      segments.push({ type: 'redacted_edict', content: '[REDACTED BY EDICT 42]' });
+    }
+
+    lastIndex = matchIndex + fullToken.length;
+  }
+
+  if (lastIndex < rawText.length) {
+    const tail = rawText.slice(lastIndex).trim();
+    if (tail) segments.push({ type: 'text', content: tail });
+  }
+
+  return segments;
+}
+
 export function parseRealityBubbleTags(text: string): {
   episodeBanner: EpisodeBannerMeta | null;
   draft: string | null;
+  howler: string | null;
   catalyst: CatalystMeta | null;
   lockedMedia: LockedMediaMeta | null;
   cleanBody: string;
@@ -106,6 +146,7 @@ export function parseRealityBubbleTags(text: string): {
   let cleanBody = text || '';
   let episodeBanner: EpisodeBannerMeta | null = null;
   let draft: string | null = null;
+  let howler: string | null = null;
   let catalyst: CatalystMeta | null = null;
   let lockedMedia: LockedMediaMeta | null = null;
 
@@ -126,6 +167,12 @@ export function parseRealityBubbleTags(text: string): {
   cleanBody = cleanBody.replace(/^\[draft:([^\]]*)\]\n?/gim, (_, raw) => {
     const val = String(raw || '').trim();
     if (val) draft = val;
+    return '';
+  });
+
+  cleanBody = cleanBody.replace(/^\[howler:([^\]]*)\]\n?/gim, (_, raw) => {
+    const val = String(raw || '').trim();
+    if (val) howler = val;
     return '';
   });
 
@@ -157,7 +204,7 @@ export function parseRealityBubbleTags(text: string): {
     return '';
   });
 
-  return { episodeBanner, draft, catalyst, lockedMedia, cleanBody: cleanBody.trim() };
+  return { episodeBanner, draft, howler, catalyst, lockedMedia, cleanBody: cleanBody.trim() };
 }
 
 export function splitNarrativeBody(text: string): NarrativeSegment[] {
