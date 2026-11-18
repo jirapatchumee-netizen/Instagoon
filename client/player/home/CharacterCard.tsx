@@ -33,14 +33,14 @@ export function CharacterCard({ creator, t, onOpen, badge = 'default' }: Props) 
       foil.style.setProperty('--pointer-x', `${px}%`);
       foil.style.setProperty('--pointer-y', `${py}%`);
       foil.style.setProperty('--holo-angle', `${105 + px * 0.65}deg`);
-      foil.style.opacity = '0.29';
+      foil.style.opacity = '0.35';
     }
   };
 
   const handlePointerLeave = (e: PointerEvent<HTMLButtonElement>) => {
     const foil = e.currentTarget.querySelector('.holo-foil-layer') as HTMLElement | null;
     if (foil) {
-      foil.style.opacity = '0';
+      foil.style.opacity = '0.18';
     }
   };
 
@@ -75,7 +75,7 @@ export function CharacterCard({ creator, t, onOpen, badge = 'default' }: Props) 
         {/* Interactive Holographic Foil + Sparkle Grain */}
         <div
           className="holo-foil-layer absolute inset-0 pointer-events-none"
-          style={{ opacity: 0 }}
+          style={{ opacity: 0.18 }}
         />
         <div className="holo-sparkle-grain absolute inset-0 opacity-15 pointer-events-none" />
 
