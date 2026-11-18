@@ -569,21 +569,31 @@ export function FrostStoryApp() {
 
   const loadFeed = useCallback(async () => {
     const version = followSyncRef.current.beginFeedLoad();
-    const [feed, people, highlights] = await Promise.all([
+    const [feedRes, peopleRes, highlightsRes] = await Promise.allSettled([
       api<{ posts: Post[]; worldEvents?: WorldSeasonEvent[]; proceduralMeme?: ProceduralMeme | null; housePoints?: HousePointStanding[] }>('/api/feed'),
       api<{ creators: Creator[] }>('/api/creators'),
       api<{ stories: Story[] }>('/api/stories'),
     ]);
     if (!followSyncRef.current.isCurrentFeedLoad(version)) return;
-    setPosts(feed.posts);
-    if (Array.isArray(feed.worldEvents)) setWorldEvents(feed.worldEvents);
-    if (feed.proceduralMeme) setProceduralMeme(feed.proceduralMeme);
-    if (Array.isArray(feed.housePoints)) setHousePoints(feed.housePoints);
-    // Likes and saves come from the server so they survive a reload.
-    setLikedPostIds(Object.fromEntries(feed.posts.filter((p) => p.liked).map((p) => [p.id, true])));
-    setSavedPostIds(Object.fromEntries(feed.posts.filter((p) => p.saved).map((p) => [p.id, true])));
-    setCreators(followSyncRef.current.applyPending(people.creators));
-    setStories(highlights.stories);
+    if (feedRes.status === 'fulfilled') {
+      const feed = feedRes.value;
+      setPosts(feed.posts);
+      if (Array.isArray(feed.worldEvents)) setWorldEvents(feed.worldEvents);
+      if (feed.proceduralMeme) setProceduralMeme(feed.proceduralMeme);
+      if (Array.isArray(feed.housePoints)) setHousePoints(feed.housePoints);
+      // Likes and saves come from the server so they survive a reload.
+      setLikedPostIds(Object.fromEntries(feed.posts.filter((p) => p.liked).map((p) => [p.id, true])));
+      setSavedPostIds(Object.fromEntries(feed.posts.filter((p) => p.saved).map((p) => [p.id, true])));
+    }
+    if (peopleRes.status === 'fulfilled') {
+      setCreators(followSyncRef.current.applyPending(peopleRes.value.creators));
+    }
+    if (highlightsRes.status === 'fulfilled') {
+      setStories(highlightsRes.value.stories);
+    }
+    if (feedRes.status === 'rejected' && peopleRes.status === 'rejected') {
+      throw feedRes.reason;
+    }
   }, []);
 
   useEffect(() => {
@@ -606,8 +616,10 @@ export function FrostStoryApp() {
         }
         if (me.ageVerifiedAt) await loadFeed();
       } catch (e) {
-        if (active && !(e instanceof ApiError && e.status === 401))
-          setError(e instanceof Error ? e.message : t.connectionError);
+        if (active && !(e instanceof ApiError && e.status === 401)) {
+          const msg = e instanceof Error ? e.message : t.connectionError;
+          setError(msg === 'internal_error' ? t.genericError : msg);
+        }
       } finally {
         if (active) setLoading(false);
       }

@@ -981,7 +981,7 @@ async function player(req,env,user,path,now,ctx) {
   const [worldEvents, rivalCreators, userRel, housePoints, userInteractions] = await Promise.all([
     getActiveWorldSeasonContext(env, now),
     all(env, 'SELECT r.creator_id AS id, c.name, r.score FROM relationships r JOIN creators c ON c.id = r.creator_id WHERE r.user_id=? AND r.score>=15 ORDER BY r.score DESC LIMIT 5', user.id),
-    one(env, 'SELECT academic_year, term_season FROM relationships WHERE user_id=? ORDER BY academic_year DESC LIMIT 1', user.id),
+    one(env, 'SELECT academic_year, term_season FROM relationships WHERE user_id=? ORDER BY academic_year DESC LIMIT 1', user.id).catch(() => null),
     all(env, 'SELECT bastion_name, element_domain, colors, points, weekly_delta FROM academy_house_points ORDER BY points DESC').catch(() => []),
     all(env, 'SELECT post_instance_id, reply_id FROM academy_feed_interactions WHERE player_id=?', user.id).catch(() => [])
   ]);
