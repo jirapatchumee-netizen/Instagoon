@@ -96,43 +96,6 @@ export type EpisodeBannerMeta = { number: number; title: string; subtitle: strin
 export type CatalystMeta = { kind: string; title: string; prompt: string };
 export type LockedMediaMeta = { title: string; hint: string; unlocked?: boolean };
 
-export interface ParsedMessageSegment {
-  type: 'text' | 'redacted_edict' | 'screaming_parchment';
-  content: string;
-}
-
-export function parseMagicAcademyMessage(rawText: string): ParsedMessageSegment[] {
-  if (!rawText) return [];
-
-  const tokenRegex = /(\[howler:\s*([^\]]+)\]|\[REDACTED BY EDICT 42\])/gi;
-  const segments: ParsedMessageSegment[] = [];
-  let lastIndex = 0;
-
-  for (const match of rawText.matchAll(tokenRegex)) {
-    const matchIndex = match.index ?? 0;
-    if (matchIndex > lastIndex) {
-      const plain = rawText.slice(lastIndex, matchIndex).trim();
-      if (plain) segments.push({ type: 'text', content: plain });
-    }
-
-    const fullToken = match[0];
-    if (fullToken.toLowerCase().startsWith('[howler:')) {
-      segments.push({ type: 'screaming_parchment', content: (match[2] || '').trim() });
-    } else {
-      segments.push({ type: 'redacted_edict', content: '[REDACTED BY EDICT 42]' });
-    }
-
-    lastIndex = matchIndex + fullToken.length;
-  }
-
-  if (lastIndex < rawText.length) {
-    const tail = rawText.slice(lastIndex).trim();
-    if (tail) segments.push({ type: 'text', content: tail });
-  }
-
-  return segments;
-}
-
 export function parseRealityBubbleTags(text: string): {
   episodeBanner: EpisodeBannerMeta | null;
   howler: string | null;

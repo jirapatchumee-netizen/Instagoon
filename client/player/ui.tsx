@@ -1,6 +1,5 @@
 import { Fragment, useEffect, useLayoutEffect, useState, useRef, type ReactNode } from 'react';
 import { readSceneHeader, sceneHeaderLabels, hasNarrativeActions, splitNarrativeBody, quoteDialogue, parseRealityBubbleTags } from './message-format';
-export { parseMagicAcademyMessage } from './message-format';
 import { Send, Sparkles } from 'lucide-react';
 import { IgHeart, IgComment, IgShare, IgMore, IgVerified, IgAudio, IgBookmark } from './InstagramIcons';
 import { type Lang, TRANSLATIONS } from './i18n';
