@@ -6,7 +6,7 @@ import { IgHome, IgSearch, IgReels, IgVerified } from './InstagramIcons';
 import { EnergyShop } from './EnergyShop';
 import { type Lang, LANGS, TRANSLATIONS } from './i18n';
 import { LangSelect } from './LangSelect';
-import { type Energy, type User, type Creator, type Post, type Story, type AiChatMessage, type Chat, type Screen, type ProfileData, type EpisodeInfo, type WorldSeasonEvent, type RealityState, type ProceduralMeme } from './types';
+import { type Energy, type User, type Creator, type Post, type Story, type AiChatMessage, type Chat, type Screen, type ProfileData, type EpisodeInfo, type WorldSeasonEvent, type RealityState, type ProceduralMeme, type HousePointStanding } from './types';
 import { ApiError, api, createFollowSync } from './api';
 import { ChatComposer, media, AvatarImg, hasSpokenDialogue, renderBubbleContent, json, StoryContent, Modal, getAvatarSrc, LivingRealityStatusBar, QuickPillsBar } from './ui';
 import { ProfileSetupModal } from './overlays/ProfileSetupModal';
@@ -96,6 +96,7 @@ export function FrostStoryApp() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [worldEvents, setWorldEvents] = useState<WorldSeasonEvent[]>([]);
   const [proceduralMeme, setProceduralMeme] = useState<ProceduralMeme | null>(null);
+  const [housePoints, setHousePoints] = useState<HousePointStanding[]>([]);
   const [stories, setStories] = useState<Story[]>([]);
   const [selectedStory, setSelectedStory] = useState<Story | null>(null);
   const [selectedCreator, setSelectedCreator] = useState<Creator | null>(null);
@@ -569,7 +570,7 @@ export function FrostStoryApp() {
   const loadFeed = useCallback(async () => {
     const version = followSyncRef.current.beginFeedLoad();
     const [feed, people, highlights] = await Promise.all([
-      api<{ posts: Post[]; worldEvents?: WorldSeasonEvent[]; proceduralMeme?: ProceduralMeme | null }>('/api/feed'),
+      api<{ posts: Post[]; worldEvents?: WorldSeasonEvent[]; proceduralMeme?: ProceduralMeme | null; housePoints?: HousePointStanding[] }>('/api/feed'),
       api<{ creators: Creator[] }>('/api/creators'),
       api<{ stories: Story[] }>('/api/stories'),
     ]);
@@ -577,6 +578,7 @@ export function FrostStoryApp() {
     setPosts(feed.posts);
     if (Array.isArray(feed.worldEvents)) setWorldEvents(feed.worldEvents);
     if (feed.proceduralMeme) setProceduralMeme(feed.proceduralMeme);
+    if (Array.isArray(feed.housePoints)) setHousePoints(feed.housePoints);
     // Likes and saves come from the server so they survive a reload.
     setLikedPostIds(Object.fromEntries(feed.posts.filter((p) => p.liked).map((p) => [p.id, true])));
     setSavedPostIds(Object.fromEntries(feed.posts.filter((p) => p.saved).map((p) => [p.id, true])));
@@ -681,7 +683,9 @@ export function FrostStoryApp() {
     });
   }
 
-  async function handleMemeQuickReply(reply: { reply_id?: string; replyId?: string; label: string; affection_target?: string; affectionTarget?: string; delta?: number; followup_dm_trigger?: string; followupTrigger?: string }) {
+  async function handleMemeQuickReply(reply: { reply_id?: string; replyId?: string; post_instance_id?: string; postInstanceId?: string; label: string; affection_target?: string; affectionTarget?: string; delta?: number; followup_dm_trigger?: string; followupTrigger?: string }) {
+    const replyKey = reply.reply_id || reply.replyId || reply.label;
+    setProceduralMeme((prev) => prev ? { ...prev, selectedReplyId: replyKey } : prev);
     await action(async () => {
       try {
         const res = await api<{ success: boolean; targetNpcSlug?: string; delta?: number; followupTrigger?: string }>('/api/feed/quick-reply', json(reply));
@@ -1072,6 +1076,7 @@ export function FrostStoryApp() {
             posts={posts}
             worldEvents={worldEvents}
             proceduralMeme={proceduralMeme}
+            housePoints={housePoints}
             stories={stories}
             creators={creators}
             user={user}

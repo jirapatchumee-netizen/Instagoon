@@ -7,7 +7,9 @@ import {
   generateProceduralCampusMeme,
   applySmartEdict42Filter,
   recordFeedQuickReply,
-  getAcademicYearContext
+  getAcademicYearContext,
+  sniffCrossCharacterJealousy as sniffAethelgardCrossJealousy,
+  evaluateYear7EndgameFate
 } from './magic-academy-helpers.mjs';
 
 export {
@@ -16,7 +18,9 @@ export {
   generateProceduralCampusMeme,
   applySmartEdict42Filter,
   recordFeedQuickReply,
-  getAcademicYearContext
+  getAcademicYearContext,
+  sniffAethelgardCrossJealousy,
+  evaluateYear7EndgameFate
 };
 
 export const DEFAULT_REALITY_EPISODES = Object.freeze([
@@ -416,6 +420,10 @@ export function buildLivingRealityPromptBlock({
   const stagePrompt = selectCharacterStagePrompt(npcName, st.academicYear, st.termSeason);
   if (stagePrompt) {
     lines.push(`[Academic Persona Directive (Year ${st.academicYear || 1} ${st.termSeason || 'autumn'}): ${stagePrompt}]`);
+  }
+  const aethelgardJealousy = sniffAethelgardCrossJealousy(npcName, jealousy?.rivalId ? [{ affection_target: jealousy.rivalId }] : []);
+  if (aethelgardJealousy?.isJealous) {
+    lines.push(aethelgardJealousy.promptDirective);
   }
   if ((st.censorshipLevel || 0) >= 2) {
     lines.push(`[Censorship Alert: Edict 42 active. Avoid raw forbidden names; use Aethelgard Coded Slang natively in dialogue.]`);

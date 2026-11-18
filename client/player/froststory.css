@@ -8439,7 +8439,118 @@ dialog.fs-overlay[open]::backdrop {
   transition: all 0.15s ease;
 }
 
-.fs-campus-meme-action-btn:hover {
+.fs-campus-meme-action-btn:hover:not(:disabled) {
   background: rgba(139, 92, 246, 0.35);
   color: #ffffff;
+}
+
+.fs-campus-meme-action-btn.is-selected {
+  background: #f59e0b;
+  border-color: #d97706;
+  color: #0f172a;
+  font-weight: 700;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+}
+
+.fs-campus-meme-action-btn.is-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  border-color: rgba(148, 163, 184, 0.2);
+  color: #94a3b8;
+}
+
+/* Aethelgard Bastion House Standings Bar */
+.fs-bastion-house-points-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin: 6px 12px;
+  padding: 8px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(51, 65, 85, 0.7);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.fs-bastion-point-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 6px;
+  background: rgba(30, 41, 59, 0.6);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  text-align: center;
+}
+
+.fs-bastion-icon {
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.fs-bastion-pts {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #e2e8f0;
+  margin-top: 2px;
+}
+
+.fs-bastion-name {
+  font-size: 0.62rem;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* Screaming Banshee Scroll / Howler */
+.fs-howler-scroll {
+  margin: 6px 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(127, 29, 29, 0.9) 0%, rgba(69, 10, 10, 0.95) 100%);
+  border: 1.5px solid #ef4444;
+  color: #fef08a;
+  font-size: 0.78rem;
+  font-weight: 700;
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.45);
+  animation: fs-pulse-glow 1.8s infinite ease-in-out;
+}
+
+.fs-howler-icon {
+  margin-right: 6px;
+}
+
+.fs-howler-text {
+  letter-spacing: 0.02em;
+}
+
+@keyframes fs-pulse-glow {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    transform: scale(1.015);
+    box-shadow: 0 0 18px rgba(239, 68, 68, 0.7);
+  }
+}
+
+/* Edict 42 Censor Redaction */
+.fs-edict-redacted {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  margin: 0 2px;
+  border-radius: 4px;
+  background: rgba(76, 5, 25, 0.9);
+  border: 1px solid rgba(244, 63, 94, 0.6);
+  color: #fda4af;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }

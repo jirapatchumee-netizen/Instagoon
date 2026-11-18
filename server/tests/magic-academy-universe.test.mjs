@@ -216,3 +216,71 @@ test('Magic Academy: Database Migration 0039 tables and seed data populate corre
   const updatedRel = f.sql.prepare('SELECT affection_level FROM relationships WHERE user_id=? AND creator_id=?').get('one', 'evelyn');
   assert.equal(updatedRel.affection_level, 44);
 });
+
+test('Magic Academy: Cross-Character Jealousy Matrix triggers when player interacts with rival NPC', async () => {
+  const { sniffAethelgardCrossJealousy } = await import('../src/ai/living-reality-engine.mjs');
+
+  // Cassian is jealous when player flirts with Faye
+  const cassianJealousy = sniffAethelgardCrossJealousy('cassian', [{ affection_target: 'faye' }]);
+  assert.equal(cassianJealousy?.isJealous, true);
+  assert.equal(cassianJealousy?.rivalSlug, 'faye');
+  assert.ok(cassianJealousy?.promptDirective.includes('cheering for Faye at Aero-Jousting practice'));
+
+  // Evelyn is jealous when player studies late with Rowan
+  const evelynJealousy = sniffAethelgardCrossJealousy('evelyn', [{ affection_target: 'rowan' }]);
+  assert.equal(evelynJealousy?.isJealous, true);
+  assert.equal(evelynJealousy?.rivalSlug, 'rowan');
+
+  // No jealousy when interaction is with non-rival
+  const noJealousy = sniffAethelgardCrossJealousy('cassian', [{ affection_target: 'evelyn' }]);
+  assert.equal(noJealousy, null);
+});
+
+test('Magic Academy: Year 7 Endgame Fate and Anti-Cheat Feed Interactions verify properly', async () => {
+  const { evaluateYear7EndgameFate } = await import('../src/ai/living-reality-engine.mjs');
+  const f = await narrativeFixture();
+  const fs = await import('node:fs');
+
+  // Apply migration 0040
+  const sql40 = fs.readFileSync(new URL('../migrations/0040_academy_feed_interactions.sql', import.meta.url), 'utf8');
+  for (const stmt of sql40.split(';').map((s) => s.trim()).filter((s) => s.length > 0 && !s.startsWith('--'))) {
+    f.sql.prepare(stmt).run();
+  }
+
+  // 1. Year 7 Endgame Fate
+  const golden = evaluateYear7EndgameFate({ affectionLevel: 85, stressLevel: 40, keyQuestProtected: true });
+  assert.equal(golden, 'GOLDEN_ENDING');
+
+  const tragicHighStress = evaluateYear7EndgameFate({ affectionLevel: 85, stressLevel: 70, keyQuestProtected: true });
+  assert.equal(tragicHighStress, 'TRAGIC_ENDING');
+
+  const tragicUnprotected = evaluateYear7EndgameFate({ affectionLevel: 90, stressLevel: 30, keyQuestProtected: false });
+  assert.equal(tragicUnprotected, 'TRAGIC_ENDING');
+
+  // 2. Anti-Cheat: Repeated meme replies rejected
+  f.sql.prepare('INSERT OR IGNORE INTO creators(id,name,bio) VALUES(?,?,?)').run('faye', 'Faye', 'Chaser');
+  f.sql.prepare('INSERT OR IGNORE INTO relationships(user_id, creator_id, affection_level) VALUES(?,?,?)').run('one', 'faye', 20);
+
+  const firstReply = await recordFeedQuickReply(f.env.DB, {
+    replyId: 'OPT_FAYE_CHEER',
+    postInstanceId: 'MEME_001_Y1_autumn',
+    ownerId: 'one',
+    targetNpcSlug: 'faye',
+    delta: 5
+  });
+  assert.equal(firstReply.success, true);
+
+  const duplicateReply = await recordFeedQuickReply(f.env.DB, {
+    replyId: 'OPT_FAYE_CHEER',
+    postInstanceId: 'MEME_001_Y1_autumn',
+    ownerId: 'one',
+    targetNpcSlug: 'faye',
+    delta: 5
+  });
+  assert.equal(duplicateReply.success, false);
+  assert.equal(duplicateReply.reason, 'already_interacted');
+
+  // Affection should only increment once (+5, total 25)
+  const rel = f.sql.prepare('SELECT affection_level FROM relationships WHERE user_id=? AND creator_id=?').get('one', 'faye');
+  assert.equal(rel.affection_level, 25);
+});
