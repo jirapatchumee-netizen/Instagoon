@@ -163,8 +163,7 @@ const SAFETY_FINISH = new Set(['SAFETY', 'PROHIBITED_CONTENT', 'BLOCKLIST', 'SPI
 const FAILED_TURN_WINDOW_MS = 10 * 60000;
 const REFUNDS_PER_WINDOW = 3;
 import { CLIFFHANGER_OFFER, CASCADE_VIP_OFFER, CASCADE_WHALE_OFFER } from './shop/offers.mjs';
-export { CLIFFHANGER_OFFER, CASCADE_VIP_OFFER, CASCADE_WHALE_OFFER };
-export const EPISODE_UNLOCK_ENERGY = 25;
+const EPISODE_UNLOCK_ENERGY = 25;
 const defer = (ctx, promise) => { const guarded = promise.catch(e => console.error('background task failed', e?.name)); if(ctx?.waitUntil) ctx.waitUntil(guarded); return guarded; };
 async function takeEnergy(env, uid, now, reason = 'ai_chat') {
  await energy(env, uid, now);

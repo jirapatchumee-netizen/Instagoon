@@ -1,12 +1,20 @@
-/* Genshin-inspired Celestial Card Wish System */
+/* Genshin-inspired Celestial Card Wish System — Aethelgard Winter Solstice Edition */
 .cw-stage {
   position: relative;
   min-height: calc(100dvh - 110px);
   background:
-    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(79, 70, 229, 0.28), transparent 65%),
-    radial-gradient(ellipse 70% 45% at 85% 90%, rgba(236, 72, 153, 0.16), transparent 60%),
-    linear-gradient(180deg, #060816 0%, #0b1026 52%, #090b1a 100%);
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(56, 189, 248, 0.22), transparent 65%),
+    radial-gradient(ellipse 70% 45% at 85% 90%, rgba(225, 29, 72, 0.16), transparent 60%),
+    radial-gradient(ellipse 60% 40% at 15% 70%, rgba(250, 204, 21, 0.12), transparent 55%),
+    linear-gradient(180deg, #050816 0%, #090e24 52%, #060918 100%);
   overflow: hidden;
+}
+
+.cw-stage button,
+.solstice-card-3d-stage button,
+.card-wish-modal-open button {
+  background-color: transparent;
+  color: inherit;
 }
 
 .cw-starfield {
@@ -14,13 +22,13 @@
   inset: 0;
   pointer-events: none;
   background-image:
-    radial-gradient(1.5px 1.5px at 14% 18%, rgba(255, 255, 255, 0.8), transparent),
-    radial-gradient(1px 1px at 38% 12%, rgba(253, 224, 71, 0.7), transparent),
-    radial-gradient(1.5px 1.5px at 66% 24%, rgba(196, 181, 253, 0.8), transparent),
-    radial-gradient(1px 1px at 84% 15%, rgba(255, 255, 255, 0.75), transparent),
-    radial-gradient(1.5px 1.5px at 22% 58%, rgba(125, 211, 252, 0.65), transparent),
-    radial-gradient(1px 1px at 78% 64%, rgba(253, 224, 71, 0.6), transparent),
-    radial-gradient(1.5px 1.5px at 49% 82%, rgba(255, 255, 255, 0.55), transparent);
+    radial-gradient(1.5px 1.5px at 14% 18%, rgba(255, 255, 255, 0.9), transparent),
+    radial-gradient(2px 2px at 38% 12%, rgba(253, 224, 71, 0.85), transparent),
+    radial-gradient(1.5px 1.5px at 66% 24%, rgba(56, 189, 248, 0.85), transparent),
+    radial-gradient(2.5px 2.5px at 84% 15%, rgba(255, 255, 255, 0.9), transparent),
+    radial-gradient(1.5px 1.5px at 22% 58%, rgba(125, 211, 252, 0.75), transparent),
+    radial-gradient(2px 2px at 78% 64%, rgba(253, 224, 71, 0.75), transparent),
+    radial-gradient(1.5px 1.5px at 49% 82%, rgba(255, 255, 255, 0.8), transparent);
   animation: cwTwinkle 5s ease-in-out infinite alternate;
 }
 
@@ -151,4 +159,433 @@
 
 .cw-card-reveal-anim {
   animation: cwCardEnter 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* =========================================================================
+   Aethelgard Winter Solstice Card Hologram & Stacking Architecture
+   ========================================================================= */
+.cw-solstice-card-stage {
+  position: relative;
+  border-radius: 24px;
+  overflow: hidden;
+  transform-style: preserve-3d;
+  contain: paint;
+}
+
+/* Layer 1: Starry Snow Canvas */
+.cw-solstice-card-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Layer 2: Character 2.5D Art */
+.cw-solstice-card-art {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Layer 3: Interactive Holo Sheen */
+.cw-solstice-holo-sheen {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+/* Layer 4: Solstice Holiday Filigree & SSR Badge (Non-blocking) */
+.cw-solstice-frame {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  border: 1.5px solid rgba(253, 224, 71, 0.35);
+  border-radius: 24px;
+  box-shadow:
+    inset 0 0 20px rgba(56, 189, 248, 0.2),
+    0 0 24px -4px rgba(225, 29, 72, 0.25);
+}
+
+/* Snowflake corner ornaments */
+.cw-solstice-frame::before {
+  content: "❄";
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 13px;
+  color: #bae6fd;
+  filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.8));
+}
+
+.cw-solstice-frame::after {
+  content: "❄";
+  position: absolute;
+  bottom: 8px;
+  left: 10px;
+  font-size: 13px;
+  color: #fef08a;
+  filter: drop-shadow(0 0 6px rgba(253, 224, 71, 0.8));
+}
+
+/* Mobile GPU optimization: Pause background particles when modal is active */
+body:has(.cw-modal-open) .cw-starfield,
+body:has(.cw-modal-open) .cw-astrolabe-outer,
+body:has(.cw-modal-open) .cw-astrolabe-inner {
+  animation-play-state: paused !important;
+}
+/* ============================================================================
+ * File: client/player/styles/card-wish.css
+ * Phase 3: Winter Solstice Holo TCG Architecture (Synergy with existing shader)
+ *
+ * Strict 4-Layer Z-Index Architecture:
+ *   - Outer 3D Wrapper (`.solstice-card-3d-stage`): `preserve-3d`, Gyro/Pointer `--rx`/`--ry`
+ *   - Inner Clip Box (`.gacha-foil-box`): Clips Layers 1-3 cleanly without flattening Safari 3D
+ *       • Layer 1 (Z: 1): `.solstice-card-starry-bg` (Starry Snow Twinkle)
+ *       • Layer 2 (Z: 2): `.solstice-card-art` (Korean 2.5D Character Illustration)
+ *       • Layer 3 (Z: 3): `.holo-foil-sheen` & `.gacha-foil-box::before` (100% Preserved Prism Foil)
+ *   - Floating Crest Layer (Z: 4): `.solstice-holiday-frame` & `.solstice-rarity-badge`
+ *       • Uses `pointer-events: none` + `translateZ(16px~24px)` pop-out depth!
+ * ============================================================================ */
+
+:root {
+  --card-aspect: 9 / 14;
+  --card-radius: 22px;
+  --px: 50%;
+  --py: 50%;
+  --rx: 0deg;
+  --ry: 0deg;
+}
+
+/* ============================================================================
+ * 0. Outer 3D Stage (Keeps true Safari 3D perspective depth)
+ * ============================================================================ */
+.solstice-card-3d-stage {
+  position: relative;
+  width: min(320px, 84vw);
+  aspect-ratio: var(--card-aspect);
+  perspective: 1100px;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.solstice-card-rotator {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transition: transform 0.14s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+/* Inner Clipped Foil Container (Houses Z:1, Z:2, Z:3) */
+.gacha-foil-box {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--card-radius);
+  overflow: hidden;
+  background: #070a18;
+  box-shadow:
+    0 22px 48px -12px rgba(0, 0, 0, 0.82),
+    0 0 28px -6px rgba(56, 189, 248, 0.32),
+    0 0 18px -8px rgba(253, 224, 71, 0.25);
+}
+
+/* ============================================================================
+ * LAYER 1 (Z-Index: 1) — Starry Snow Twinkle Backdrop
+ * ============================================================================ */
+.solstice-card-starry-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    radial-gradient(circle at 20% 25%, rgba(56, 189, 248, 0.28) 0%, transparent 45%),
+    radial-gradient(circle at 80% 18%, rgba(253, 224, 71, 0.20) 0%, transparent 40%),
+    radial-gradient(circle at 50% 85%, rgba(190, 18, 60, 0.26) 0%, transparent 50%),
+    linear-gradient(180deg, #070a18 0%, #0f172a 55%, #13091f 100%);
+}
+
+.solstice-card-starry-bg::after {
+  content: "";
+  position: absolute;
+  inset: -10%;
+  background-image:
+    radial-gradient(1.5px 1.5px at 18% 22%, #ffffff 80%, transparent),
+    radial-gradient(2px 2px at 76% 14%, #fde047 80%, transparent),
+    radial-gradient(1.5px 1.5px at 62% 44%, #bae6fd 80%, transparent),
+    radial-gradient(2px 2px at 30% 68%, #ffffff 80%, transparent),
+    radial-gradient(1.5px 1.5px at 84% 72%, #fde047 80%, transparent),
+    radial-gradient(1px 1px at 46% 88%, #38bdf8 80%, transparent);
+  opacity: 0.75;
+  will-change: transform, opacity;
+  animation: solstice-card-twinkle 4.5s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes solstice-card-twinkle {
+  0% {
+    opacity: 0.45;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  100% {
+    opacity: 0.92;
+    transform: translate3d(0, -4px, 0) scale(1.03);
+  }
+}
+
+/* ============================================================================
+ * LAYER 2 (Z-Index: 2) — Korean 2.5D Character Illustration
+ * ============================================================================ */
+.solstice-card-art {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top; /* Preserves 12-15% headroom for SSR badge & crown */
+  pointer-events: none;
+}
+
+.solstice-card-art-vignette {
+  position: absolute;
+  inset: 55% 0 0 0;
+  z-index: 2;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(7, 10, 24, 0.72) 60%,
+    rgba(7, 10, 24, 0.94) 100%
+  );
+  pointer-events: none;
+}
+
+/* ============================================================================
+ * LAYER 3 (Z-Index: 3) — Preserved Prism Holographic Foil Shader (-50% Soft Balance)
+ * ============================================================================ */
+.gacha-foil-box::before {
+  content: none;
+}
+
+.holo-foil-sheen {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  mix-blend-mode: color-dodge;
+  opacity: 0.29; /* Reduced by 50% (from 0.58) for crystal-clear portrait visibility */
+  background-image:
+    radial-gradient(
+      farthest-corner circle at var(--px, 50%) var(--py, 50%),
+      rgba(255, 255, 255, 0.72) 0%,
+      rgba(56, 189, 248, 0.36) 26%,
+      rgba(253, 224, 71, 0.28) 48%,
+      rgba(190, 18, 60, 0.24) 68%,
+      transparent 90%
+    ),
+    repeating-linear-gradient(
+      118deg,
+      rgba(255, 0, 128, 0.14) 0%,
+      rgba(253, 224, 71, 0.16) 7%,
+      rgba(56, 189, 248, 0.18) 14%,
+      rgba(168, 85, 247, 0.16) 21%,
+      rgba(255, 0, 128, 0.14) 28%
+    );
+  background-size: 160% 160%, 220% 220%;
+  background-position: var(--px, 50%) var(--py, 50%), calc(var(--px, 50%) * 0.8) calc(var(--py, 50%) * 0.8);
+  transition: opacity 0.2s ease;
+}
+
+.solstice-card-3d-stage:hover .holo-foil-sheen,
+.solstice-card-3d-stage:active .holo-foil-sheen {
+  opacity: 0.41; /* Reduced by 50% (from 0.82) */
+}
+
+.holo-text-shimmer {
+  background: linear-gradient(
+    95deg,
+    #fffbeb 0%,
+    #fde047 25%,
+    #7dd3fc 50%,
+    #fda4af 75%,
+    #fffbeb 100%
+  );
+  background-size: 220% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: holo-title-flow 4s linear infinite;
+}
+
+@keyframes holo-title-flow {
+  to {
+    background-position: 220% center;
+  }
+}
+
+/* ============================================================================
+ * LAYER 4 (Z-Index: 4) — Holiday Solstice Frame & 8-Point Star SSR Badge
+ * (`pointer-events: none` strictly enforced so pointer/gyro math never breaks)
+ * ============================================================================ */
+.solstice-holiday-frame {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  border-radius: var(--card-radius);
+  pointer-events: none !important;
+  transform: translateZ(16px);
+}
+
+.solstice-holiday-frame::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--card-radius);
+  padding: 2px;
+  background: linear-gradient(
+    145deg,
+    #fde047 0%,
+    #38bdf8 28%,
+    rgba(255, 255, 255, 0.85) 50%,
+    #be123c 74%,
+    #fde047 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  filter: drop-shadow(0 0 8px rgba(253, 224, 71, 0.45));
+}
+
+.solstice-holiday-frame::after {
+  content: "❄";
+  position: absolute;
+  inset: 8px;
+  border-radius: calc(var(--card-radius) - 6px);
+  border: 1px solid rgba(253, 224, 71, 0.34);
+  box-shadow: inset 0 0 16px rgba(56, 189, 248, 0.18);
+  color: rgba(253, 224, 71, 0.88);
+  font-size: 13px;
+  line-height: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 8px 10px;
+  text-shadow: 0 0 8px rgba(56, 189, 248, 0.85);
+}
+
+.solstice-corner-crest {
+  position: absolute;
+  top: 12px;
+  left: 14px;
+  z-index: 4;
+  pointer-events: none !important;
+  transform: translateZ(20px);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #e0f2fe;
+  font-size: 14px;
+  filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.8));
+}
+
+.solstice-rarity-badge {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  z-index: 4;
+  pointer-events: none !important;
+  transform: translateZ(24px);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 11px;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, rgba(190, 18, 60, 0.92) 0%, rgba(13, 19, 41, 0.95) 100%);
+  border: 1px solid #fde047;
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.6),
+    0 0 14px rgba(253, 224, 71, 0.65);
+  font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  font-weight: 800;
+  font-size: 0.78rem;
+  letter-spacing: 0.1em;
+  color: #fde047;
+}
+
+.solstice-8pt-star {
+  position: relative;
+  width: 12px;
+  height: 12px;
+  display: inline-block;
+  background: #fde047;
+  clip-path: polygon(
+    50% 0%, 61% 35%, 98% 35%, 68% 57%,
+    79% 91%, 50% 70%, 21% 91%, 32% 57%,
+    2% 35%, 39% 35%
+  );
+  filter: drop-shadow(0 0 6px #fde047);
+  animation: solstice-star-pulse 2.4s ease-in-out infinite;
+}
+
+.solstice-rarity-badge.is-sr {
+  background: linear-gradient(135deg, rgba(2, 132, 199, 0.9) 0%, rgba(13, 19, 41, 0.95) 100%);
+  border-color: #bae6fd;
+  color: #e0f2fe;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.55);
+}
+
+.solstice-rarity-badge.is-sr .solstice-8pt-star {
+  background: #e0f2fe;
+  filter: drop-shadow(0 0 6px #38bdf8);
+}
+
+@keyframes solstice-star-pulse {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+  }
+  50% {
+    transform: scale(1.18) rotate(22.5deg);
+  }
+}
+
+.solstice-card-caption {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  z-index: 4;
+  pointer-events: none !important;
+  transform: translateZ(18px);
+}
+
+.solstice-card-subtitle {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #93c5fd;
+  margin-bottom: 2px;
+}
+
+.solstice-card-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .solstice-card-rotator {
+    transform: none !important;
+  }
+  .solstice-card-starry-bg::after,
+  .holo-text-shimmer,
+  .solstice-8pt-star {
+    animation: none !important;
+  }
 }

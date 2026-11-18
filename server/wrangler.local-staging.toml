@@ -21,6 +21,7 @@ run_worker_first = ["/api/*", "/auth/*"]
 [vars]
 HOME_HUB_V1 = "true"
 COSPLAY_STUDIO_V1 = "true"
+PUBLIC_ORIGIN = "http://127.0.0.1:5173"
 # Local only: the email-change code comes back in the API response because this box has no mail transport.
 # Never set it on staging or production (ADR-0019).
 DEV_EMAIL_CODES = "true"

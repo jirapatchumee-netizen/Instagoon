@@ -1,9 +1,29 @@
+/* =========================================================================
+   AETHELGARD WINTER SOLSTICE & CHRISTMAS MAGIC DESIGN SYSTEM (THEME TOKENS)
+   ========================================================================= */
+:root {
+  --solstice-bg-deep: #060914;
+  --solstice-bg-card: rgba(12, 17, 34, 0.75);
+  --solstice-frost-cyan: #38bdf8;
+  --solstice-ice-rim: rgba(56, 189, 248, 0.25);
+  --solstice-crimson: #e11d48;
+  --solstice-crimson-glow: rgba(225, 29, 72, 0.45);
+  --solstice-gold: #fde047;
+  --solstice-gold-glow: rgba(250, 204, 21, 0.45);
+  --solstice-frosted-glass: rgba(8, 12, 26, 0.85);
+  --solstice-glass-border: rgba(255, 255, 255, 0.12);
+}
+
 .fs-app, .fs-gate {
   min-height: 100vh;
   width: 100%;
   max-width: 100vw;
   overflow-x: hidden;
-  background: #000000;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(30, 58, 138, 0.28) 0%, transparent 65%),
+    radial-gradient(circle at 85% 15%, rgba(225, 29, 72, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 15% 70%, rgba(56, 189, 248, 0.1) 0%, transparent 50%),
+    linear-gradient(180deg, #070a16 0%, #050712 45%, #03040a 100%);
   color: #f8fafc;
   font-family: 'Zen Maru Gothic', 'Mitr', -apple-system, 'Hiragino Maru Gothic ProN', sans-serif;
   user-select: none;
@@ -102,10 +122,11 @@
   top: 0;
   z-index: 40;
   width: 100%;
-  background: rgba(0, 0, 0, 0.94);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border-bottom: 1px solid #27272a;
+  background: rgba(8, 12, 26, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(56, 189, 248, 0.18);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4), 0 0 16px rgba(56, 189, 248, 0.05);
 }
 
 .fs-insta-header-inner {
@@ -209,12 +230,12 @@
   line-height: 1;
   letter-spacing: -0.01em;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0) 52%),
-    linear-gradient(100deg, #ff4f9a, #a97cff);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.2) 50%),
+    linear-gradient(110deg, #38bdf8 0%, #fde047 50%, #f43f5e 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  filter: drop-shadow(0 2px 10px rgba(255, 79, 154, 0.45));
+  filter: drop-shadow(0 2px 12px rgba(56, 189, 248, 0.45));
   transition: opacity 0.15s ease;
 }
 
@@ -333,24 +354,26 @@
 }
 
 .fs-energy {
-  color: #fbcfe8;
-  border: 1px solid rgba(236, 72, 153, 0.35);
+  color: #fef08a;
+  border: 1px solid rgba(253, 224, 71, 0.4);
   border-radius: 999px;
-  background: rgba(236, 72, 153, 0.12);
+  background: linear-gradient(135deg, rgba(253, 224, 71, 0.15) 0%, rgba(56, 189, 248, 0.15) 100%);
+  box-shadow: 0 0 12px rgba(253, 224, 71, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.25);
   display: inline-flex;
   gap: 4px;
   align-items: center;
-  padding: 4px 8px;
+  padding: 4px 9px;
   font-size: 0.72rem;
   font-weight: 700;
   flex-shrink: 0;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition: all 0.18s ease;
 }
 
 .fs-energy:hover {
-  background: rgba(236, 72, 153, 0.22);
-  border-color: rgba(236, 72, 153, 0.55);
+  background: linear-gradient(135deg, rgba(253, 224, 71, 0.28) 0%, rgba(56, 189, 248, 0.28) 100%);
+  border-color: rgba(253, 224, 71, 0.7);
+  box-shadow: 0 0 18px rgba(253, 224, 71, 0.45);
 }
 
 .fs-energy-icon {
@@ -1993,10 +2016,11 @@ dialog.fs-overlay::backdrop {
   left: 0;
   right: 0;
   height: 52px;
-  background: rgba(0, 0, 0, 0.95);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-top: 1px solid #262626;
+  background: rgba(7, 10, 22, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(56, 189, 248, 0.18);
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
   display: flex;
   justify-content: space-around;
   align-items: center;
@@ -2011,15 +2035,21 @@ dialog.fs-overlay::backdrop {
 .fs-nav-tab {
   background: none;
   border: 0;
-  color: #f5f5f5;
+  color: rgba(248, 250, 252, 0.65);
   display: flex;
   align-items: center;
   justify-content: center;
   width: 48px;
   height: 48px;
   cursor: pointer;
-  transition: transform 0.12s ease;
+  transition: transform 0.12s ease, color 0.15s ease, filter 0.15s ease;
   padding: 0;
+}
+
+.fs-nav-tab:hover,
+.fs-nav-tab.is-active {
+  color: #fde047;
+  filter: drop-shadow(0 0 8px rgba(253, 224, 71, 0.55));
 }
 
 .fs-nav-tab:active {
@@ -8366,6 +8396,39 @@ dialog.fs-overlay[open]::backdrop {
   color: #e9d5ff;
 }
 
+/* Neon Glow Card Effect for Official Post */
+.official-glow-card {
+  position: relative;
+  background: linear-gradient(145deg, #11131f 0%, #0a0b12 100%);
+  border-radius: 1.25rem;
+  z-index: 1;
+}
+.official-glow-card::before {
+  content: "";
+  position: absolute;
+  inset: -1.5px;
+  border-radius: 1.32rem;
+  padding: 1.5px;
+  background: linear-gradient(135deg, #ec4899, #8b5cf6, #3b82f6);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  z-index: -1;
+  opacity: 0.85;
+}
+.official-glow-shadow {
+  box-shadow: 0 0 25px -5px rgba(139, 92, 246, 0.25), 0 0 15px -3px rgba(236, 72, 153, 0.2);
+}
+
+/* Bottom Sheet Slide Animation */
+@keyframes slideUpSheet {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.animate-slide-up {
+  animation: slideUpSheet 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 .fs-campus-meme-card {
   margin: 8px 12px;
   padding: 10px 12px;
@@ -8383,9 +8446,33 @@ dialog.fs-overlay[open]::backdrop {
 }
 
 .fs-campus-meme-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 0.68rem;
   font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 999px;
+  transition: all 0.2s ease;
+}
+
+.fs-campus-meme-badge.is-spotted {
+  color: #fb7185;
+  background: rgba(244, 63, 94, 0.16);
+  border: 1px solid rgba(244, 63, 94, 0.38);
+  box-shadow: 0 0 10px rgba(244, 63, 94, 0.25);
+}
+
+.fs-campus-meme-badge.is-underground {
   color: #c084fc;
+  background: rgba(192, 132, 252, 0.15);
+  border: 1px solid rgba(192, 132, 252, 0.35);
+}
+
+.fs-campus-meme-badge.is-silver-quill {
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.35);
 }
 
 .fs-campus-meme-author {
@@ -8553,4 +8640,293 @@ dialog.fs-overlay[open]::backdrop {
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.04em;
+}
+/* ============================================================================
+ * File: client/player/styles/froststory.css
+ * Theme: Aethelgard "Enchanted Winter Solstice" (Phase 1 & Phase 2 UI Tokens)
+ * Guardrails Included:
+ *   - Hardware-accelerated GPU particles (`translate3d`, max 20-25 flakes)
+ *   - Automatic background animation pause when Card Wish modal is open
+ *   - Safari `-webkit-backdrop-filter` compatibility
+ *   - `prefers-reduced-motion` accessibility support
+ * ============================================================================ */
+
+:root,
+[data-theme="winter-solstice"] {
+  /* 1. Core Brand Palette */
+  --solstice-bg-midnight: #070a18;
+  --solstice-bg-abyss: #0d1329;
+  --solstice-frost-cyan: #38bdf8;
+  --solstice-ice-glow: rgba(56, 189, 248, 0.35);
+  --solstice-crimson-velvet: #be123c;
+  --solstice-ruby-glow: rgba(244, 63, 94, 0.55);
+  --solstice-champagne-gold: #fde047;
+  --solstice-gold-soft: rgba(253, 224, 71, 0.28);
+  --solstice-moonlight-blue: #93c5fd;
+
+  /* 2. Frosted Glassmorphism Surfaces */
+  --solstice-glass-bg: rgba(13, 19, 41, 0.68);
+  --solstice-glass-elevated: rgba(18, 27, 56, 0.78);
+  --solstice-glass-border: rgba(147, 197, 253, 0.22);
+  --solstice-glass-highlight: inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
+  --solstice-blur-radius: 16px;
+
+  /* 3. Typography & Icon States */
+  --solstice-text-primary: #f8fafc;
+  --solstice-text-secondary: #cbd5e1;
+  --solstice-text-muted: #64748b;
+}
+
+/* ============================================================================
+ * 1. Global Deep Midnight Sapphire Background & Ambient Aurora
+ * ============================================================================ */
+body.solstice-theme,
+.frost-story-app {
+  background-color: var(--solstice-bg-midnight);
+  background-image:
+    radial-gradient(ellipse 80% 45% at 50% -10%, rgba(56, 189, 248, 0.16), transparent 70%),
+    radial-gradient(circle at 85% 20%, rgba(190, 18, 60, 0.10), transparent 50%),
+    radial-gradient(circle at 15% 80%, rgba(253, 224, 71, 0.06), transparent 45%),
+    linear-gradient(180deg, #070a18 0%, #0b1124 55%, #060813 100%);
+  color: var(--solstice-text-primary);
+  min-height: 100dvh;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* ============================================================================
+ * 2. GPU-Safe Magical Snowfall Layer (Cap at 20-25 particles in DOM)
+ * ============================================================================ */
+.solstice-snow-container {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+  contain: strict;
+}
+
+.solstice-snowflake {
+  position: absolute;
+  top: -12px;
+  width: var(--flake-size, 4px);
+  height: var(--flake-size, 4px);
+  border-radius: 9999px;
+  background: radial-gradient(circle, #ffffff 30%, rgba(56, 189, 248, 0.6) 100%);
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.45);
+  opacity: var(--flake-opacity, 0.65);
+  will-change: transform;
+  transform: translate3d(0, -10px, 0);
+  animation: solstice-snow-drift var(--flake-duration, 14s) linear var(--flake-delay, 0s) infinite;
+}
+
+@keyframes solstice-snow-drift {
+  0% {
+    transform: translate3d(0, -2vh, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(var(--flake-sway, 18px), 50vh, 0) scale(0.92);
+  }
+  100% {
+    transform: translate3d(calc(var(--flake-sway, 18px) * -0.5), 105vh, 0) scale(0.85);
+  }
+}
+
+/* GPU Guardrail: Pause ambient animations when Fullscreen Holo Card Modal opens */
+body.card-wish-modal-open .solstice-snowflake,
+body.card-wish-modal-open .solstice-story-ring::before {
+  animation-play-state: paused !important;
+}
+
+/* ============================================================================
+ * 3. Frosted Glass Top Bar, Dynamic Island & Crystalline Borders
+ * ============================================================================ */
+.solstice-frosted-bar,
+.living-reality-status-bar {
+  background: var(--solstice-glass-bg);
+  -webkit-backdrop-filter: blur(var(--solstice-blur-radius)) saturate(140%);
+  backdrop-filter: blur(var(--solstice-blur-radius)) saturate(140%);
+  border-bottom: 1px solid var(--solstice-glass-border);
+  box-shadow:
+    var(--solstice-glass-highlight),
+    0 8px 28px -6px rgba(3, 7, 18, 0.7),
+    0 0 14px -4px var(--solstice-ice-glow);
+}
+
+.solstice-crystalline-card {
+  background: var(--solstice-glass-elevated);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--solstice-glass-border);
+  border-radius: 18px;
+  box-shadow:
+    var(--solstice-glass-highlight),
+    0 10px 30px -10px rgba(0, 0, 0, 0.65);
+  position: relative;
+}
+
+/* Subtle gold & frost corner rune accent */
+.solstice-crystalline-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    rgba(253, 224, 71, 0.35) 0%,
+    rgba(56, 189, 248, 0.12) 45%,
+    transparent 65%,
+    rgba(253, 224, 71, 0.25) 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* ============================================================================
+ * 4. Navigation Icons (Soft Moonlight Blue -> Active Champagne Gold)
+ * ============================================================================ */
+.solstice-nav-item {
+  color: var(--solstice-moonlight-blue);
+  opacity: 0.78;
+  transition: color 0.22s ease, transform 0.22s ease, filter 0.22s ease, opacity 0.22s ease;
+}
+
+.solstice-nav-item:hover {
+  opacity: 1;
+  filter: drop-shadow(0 0 6px rgba(147, 197, 253, 0.45));
+}
+
+.solstice-nav-item.is-active,
+.solstice-nav-item[aria-current="page"] {
+  color: var(--solstice-champagne-gold);
+  opacity: 1;
+  transform: translate3d(0, -2px, 0);
+  filter: drop-shadow(0 0 10px rgba(253, 224, 71, 0.65));
+}
+
+/* ============================================================================
+ * 5. Rotating Solstice Aurora Story Ring & Close Friends Emerald Ring
+ * ============================================================================ */
+.solstice-story-ring {
+  position: relative;
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 9999px;
+  isolation: isolate;
+}
+
+.solstice-story-ring::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: conic-gradient(
+    from 0deg,
+    #38bdf8,
+    #fde047,
+    #be123c,
+    #818cf8,
+    #38bdf8
+  );
+  z-index: -1;
+  will-change: transform;
+  animation: solstice-ring-spin 6s linear infinite;
+}
+
+/* Emerald Rune Ring override for Close Friends (`is_close_friend`) */
+.solstice-story-ring.is-close-friend::before {
+  background: conic-gradient(
+    from 0deg,
+    #10b981,
+    #fde047,
+    #34d399,
+    #059669,
+    #10b981
+  );
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.55);
+}
+
+@keyframes solstice-ring-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ============================================================================
+ * 6. Crystal Ice Ruby Like Button, Currency Badges & Wand Sparkle Send Button
+ * ============================================================================ */
+.solstice-heart-btn {
+  color: var(--solstice-text-secondary);
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s ease, filter 0.2s ease;
+}
+
+.solstice-heart-btn.is-liked {
+  color: #f43f5e;
+  background: radial-gradient(circle, rgba(190, 18, 60, 0.28) 0%, transparent 70%);
+  filter: drop-shadow(0 0 10px var(--solstice-ruby-glow));
+  transform: scale(1.12);
+}
+
+/* Currency Badges: Ice Crystal Energy & Golden Winter Star Diamonds */
+.solstice-badge-energy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  background: rgba(56, 189, 248, 0.14);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  color: #e0f2fe;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.22);
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+.solstice-badge-diamond {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  background: rgba(253, 224, 71, 0.12);
+  border: 1px solid rgba(253, 224, 71, 0.45);
+  color: var(--solstice-champagne-gold);
+  box-shadow: 0 0 12px var(--solstice-gold-soft);
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+/* Wand Sparkle Send Button */
+.solstice-wand-send-btn {
+  position: relative;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #0284c7 0%, #1e40af 50%, #be123c 100%);
+  border: 1px solid rgba(253, 224, 71, 0.5);
+  color: #ffffff;
+  box-shadow:
+    0 4px 14px rgba(56, 189, 248, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transition: transform 0.16s ease, box-shadow 0.2s ease;
+}
+
+.solstice-wand-send-btn:active {
+  transform: scale(0.95);
+  box-shadow:
+    0 0 20px rgba(253, 224, 71, 0.75),
+    0 0 32px rgba(56, 189, 248, 0.55);
+}
+
+/* ============================================================================
+ * 7. Accessibility: Respect Reduced Motion Preferences
+ * ============================================================================ */
+@media (prefers-reduced-motion: reduce) {
+  .solstice-snowflake,
+  .solstice-story-ring::before {
+    animation: none !important;
+    transform: none !important;
+  }
 }

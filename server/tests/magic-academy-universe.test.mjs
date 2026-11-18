@@ -196,7 +196,7 @@ test('Magic Academy: Database Migration 0039 tables and seed data populate corre
 
   // Verify secondary NPCs
   const secondary = f.sql.prepare('SELECT * FROM academy_secondary_npcs').all();
-  assert.equal(secondary.length, 8);
+  assert.equal(secondary.length, 14);
   assert.ok(secondary.some((n) => n.npc_handle === '@cipher_moth'));
   assert.ok(secondary.some((n) => n.npc_handle === '@inquisitor_vespera'));
 

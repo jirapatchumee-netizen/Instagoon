@@ -311,6 +311,39 @@
           "followup_dm_trigger": "evelyn_pen_gift"
         }
       ]
+    },
+    {
+      "template_id": "MEME_07_SPOTTED_CURFEW_CRUSH",
+      "author_handle": "@vivica_velvet",
+      "channel": "spotted_aethelgard",
+      "text_pattern": "SPOTTED: มีคนตาดีเห็นคนโปรดของสถาบันแอบยืนกระซิบกระซาบกับใครบางคนข้างกำแพงหอคอยทิศเหนือหลังเวลาเคอร์ฟิว... พร้อมแก้วโกโก้สองใบและผ้าพันคอผืนเดียวกัน 👀☕🧣 อย่าคิดว่าหมอกเหมายันจะบังสายตาฉันได้นะจ๊ะ!",
+      "variables": {},
+      "npc_comments": [
+        {
+          "handle": "@cassian_crows",
+          "text": "ไร้สาระ... ข่าวโคมลอยของพวกว่างงาน"
+        },
+        {
+          "handle": "@alchememe_evelyn",
+          "text": "ม... ไม่ใช่เอวานะคะ! เมื่อคืนเอวาอยู่ห้องแล็บใต้ดินจริงๆ นะ!"
+        }
+      ],
+      "quick_replies": [
+        {
+          "reply_id": "QR_M07_DEFEND",
+          "label": "แกล้งถาม Vivica ว่าเห็นใครเหรอ",
+          "affection_target": "cassian",
+          "delta": 3,
+          "followup_dm_trigger": "spotted_gossip_tease"
+        },
+        {
+          "reply_id": "QR_M07_TEASE",
+          "label": "ทักไปแซว Evelyn ในแชทส่วนตัว",
+          "affection_target": "evelyn",
+          "delta": 3,
+          "followup_dm_trigger": "spotted_evelyn_fluster"
+        }
+      ]
     }
   ]
 }
