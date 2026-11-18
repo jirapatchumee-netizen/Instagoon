@@ -8,7 +8,7 @@ import { type Lang, LANGS, TRANSLATIONS } from './i18n';
 import { LangSelect } from './LangSelect';
 import { type Energy, type User, type Creator, type Post, type Story, type AiChatMessage, type Chat, type Screen, type ProfileData, type EpisodeInfo, type WorldSeasonEvent, type RealityState, type ProceduralMeme, type HousePointStanding } from './types';
 import { ApiError, api, createFollowSync } from './api';
-import { ChatComposer, media, AvatarImg, hasSpokenDialogue, renderBubbleContent, json, StoryContent, Modal, getAvatarSrc, LivingRealityStatusBar, QuickPillsBar } from './ui';
+import { ChatComposer, media, AvatarImg, hasSpokenDialogue, renderBubbleContent, json, StoryContent, Modal, getAvatarSrc, LivingRealityStatusBar } from './ui';
 import { ProfileSetupModal } from './overlays/ProfileSetupModal';
 import { ClosedBetaGateModal } from './overlays/ClosedBetaGateModal';
 import { BugReportModal } from './overlays/BugReportModal';
@@ -2292,20 +2292,11 @@ export function FrostStoryApp() {
             )}
 
             {aiDmTab === 'ai' ? (
-              <>
-                {chat && !chat.experiment && (
-                  <QuickPillsBar
-                    pills={chat.suggestedReplies}
-                    disabled={!chat || aiSending}
-                    onSelect={(pill) => void sendAiMessage(pill)}
-                  />
-                )}
-                <ChatComposer
-                  placeholder={t.messageTo(selectedCreator.name)}
-                  disabled={!chat || aiSending}
-                  onSend={(text) => void sendAiMessage(text)}
-                />
-              </>
+              <ChatComposer
+                placeholder={t.messageTo(selectedCreator.name)}
+                disabled={!chat || aiSending}
+                onSend={(text) => void sendAiMessage(text)}
+              />
             ) : (
               <footer className="fs-dm-footer">
                 {node ? (

@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { type Post, type Creator, type Story, type User, type WorldSeasonEvent, type ProceduralMeme, type HousePointStanding } from '../types';
 import { TRANSLATIONS, type Lang } from '../i18n';
-import { media, AvatarImg, Media, PRESET_AVATARS, getAvatarSrc, WorldEventsBanner, CrossCommentsList, ProceduralMemeCard, BastionHousePointsHeader } from '../ui';
+import { media, AvatarImg, Media, PRESET_AVATARS, getAvatarSrc, CrossCommentsList } from '../ui';
 import { IgHeart, IgComment, IgShare, IgBookmark, IgMore, IgVerified, IgAudio } from '../InstagramIcons';
 
 interface FeedTabProps {
@@ -52,9 +52,9 @@ function getFanCrowdUsername(seed: string): string {
 
 export function FeedTab({
   posts,
-  worldEvents,
-  proceduralMeme,
-  housePoints,
+  worldEvents: _worldEvents,
+  proceduralMeme: _proceduralMeme,
+  housePoints: _housePoints,
   stories,
   creators,
   user,
@@ -74,7 +74,7 @@ export function FeedTab({
   onCommentSubmit,
   onOpenPostMenu,
   onGoToExplore,
-  onMemeQuickReply,
+  onMemeQuickReply: _onMemeQuickReply,
 }: FeedTabProps) {
   const t = TRANSLATIONS[lang];
 
@@ -237,9 +237,6 @@ export function FeedTab({
       {/* Instagram Authentic Post Feed */}
       {!showSuggested && (
         <>
-          <WorldEventsBanner events={worldEvents} />
-          <BastionHousePointsHeader standings={housePoints} />
-          <ProceduralMemeCard meme={proceduralMeme} onQuickReply={onMemeQuickReply} />
           <div className="fs-posts">
           {posts.length === 0 ? (
             <div className="fs-empty-feed" style={{ padding: '48px 24px', textAlign: 'center' }}>
