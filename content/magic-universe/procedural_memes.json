@@ -1,0 +1,316 @@
+{
+  "schema_version": "2.0.0",
+  "pack_id": "procedural_campus_memes_y1_y4",
+  "allowed_academic_years": [
+    1,
+    2,
+    3,
+    4
+  ],
+  "excluded_seasons_by_year": {
+    "4": [
+      "summer"
+    ]
+  },
+  "bastion_slang_map": {
+    "Aethel-Pyre": [
+      "แก๊งไม้กวาดซิ่ง",
+      "พวกบ้าพลังติดไฟ",
+      "ชมรมกล้ามเนื้อติดปีก"
+    ],
+    "Nocturn-Coil": [
+      "แก๊งงูพิษติดแกลม",
+      "ชมรมลูกท่านหลานเธอ",
+      "หอคอยคนรวยขี้ฟ้อง"
+    ],
+    "Zephyr-Crown": [
+      "หอคอยขอบตาดำ",
+      "พวกต้มตำรากินแทนข้าว",
+      "สมาคมคนกลัวติดเกรด B"
+    ],
+    "Terra-Root": [
+      "แก๊งมุดดินกินเยลลี่",
+      "พ่อค้าตลาดนัดหลังสวน",
+      "ชมรมคนซุกขนม"
+    ]
+  },
+  "meme_templates": [
+    {
+      "template_id": "MEME_01_POINT_BIAS",
+      "author_handle": "@cipher_moth",
+      "channel": "the_underground_parchment",
+      "text_pattern": "สรุปคะแนนบ้านประจำสัปดาห์! ศาสตราจารย์ Malakor Silt เพิ่งสั่งหักแต้ม {{unlucky_bastion}} ไป {{decimal_points}} แต้ม ข้อหา '{{petty_reason}}' แต่บวกให้แก๊งงูพิษติดแกลม Nocturn-Coil รวดเดียว {{bonus_points}} แต้ม เพราะ '{{biased_praise}}'... ยุติธรรมจนน้ำตาไหลเลยครับจารย์ 😭⚖️",
+      "house_point_effect": {
+        "apply_decimal_delta": true
+      },
+      "variables": {
+        "unlucky_bastion": [
+          "หอคอยขอบตาดำ Zephyr-Crown",
+          "แก๊งไม้กวาดซิ่ง Aethel-Pyre",
+          "แก๊งมุดดิน Terra-Root"
+        ],
+        "decimal_points": [
+          "0.25",
+          "1.75",
+          "3.14",
+          "0.05"
+        ],
+        "petty_reason": [
+          "หั่นรากแมนเดรกเสียงดังรบกวนสมาธิหม้อต้ม",
+          "กะพริบตาไม่ตรงจังหวะน้ำยาเดือด",
+          "หายใจแรงจนไอน้ำเอียงซ้าย",
+          "วางทัพพีทำมุมผิดองศา"
+        ],
+        "bonus_points": [
+          "30",
+          "45",
+          "50"
+        ],
+        "biased_praise": [
+          "พับปกเสื้อคลุมได้มุมฉากสมมาตร",
+          "วางขวดแก้วเรียงตามเฉดสีมงคล",
+          "เดินเข้าห้องเรียนด้วยท่วงท่าสง่างาม"
+        ]
+      },
+      "npc_comments": [
+        {
+          "handle": "@faye_skystorm",
+          "text": "เดี๋ยวนะ หักจุดทศนิยมเนี่ยนะ?! ใครเป็นคนคิดสูตรคำนวณแต้มบ้านโรงเรียนนี้เนี่ย!"
+        },
+        {
+          "handle": "@cassian_crows",
+          "text": "ช่วยไม่ได้นะ ก็พวกเธอยืนคนหม้อต้มเหมือนกำลังพายเรือหนีพายุกันเองนี่นา"
+        }
+      ],
+      "quick_replies": [
+        {
+          "reply_id": "QR_M01_FAYE",
+          "label": "เมนต์ประท้วงความลำเอียง",
+          "affection_target": "faye",
+          "delta": 3,
+          "followup_dm_trigger": "faye_point_rant"
+        },
+        {
+          "reply_id": "QR_M01_CASSIAN",
+          "label": "แซวกลับ Cassian เรื่องเด็กเส้น",
+          "affection_target": "cassian",
+          "delta": 3,
+          "followup_dm_trigger": "cassian_smug_tease"
+        }
+      ]
+    },
+    {
+      "template_id": "MEME_02_CANCEL_FINALS",
+      "author_handle": "@pippa_sparkles",
+      "channel": "the_silver_quill",
+      "text_pattern": "เข้าสู่เทศกาลอ่านหนังสือสอบวิชา {{hard_course}} แล้วค่ะทุกคน 🕯️✨ เปิดรับลงชื่อตั้งวงสวดภาวนาขอให้มี {{chaos_event}} โผล่ออกมาป่วนปราสาทก่อนวันศุกร์หน้า เผื่ออาจารย์ใหญ่ Morven จะใจดีประกาศยกเลิกสอบไฟนอลเหมือนโรงเรียนทางเหนือบ้าง!",
+      "variables": {
+        "hard_course": [
+          "ตรรกศาสตร์อักษรรูนของอาจารย์ Lyra Vance",
+          "การแปลงรูปวัตถุไร้ชีวิต",
+          "ศาสตร์หม้อหลอมขั้นสูง"
+        ],
+        "chaos_event": [
+          "เต่ายักษ์พ่นไฟหลุดจากห้องใต้ดิน",
+          "บันไดชั้นสามดูดห้องสอบเข้ามิติครึ่งซีก",
+          "กาน้ำชาประท้วงหยุดงานทั้งปราสาท",
+          "ชุดเกราะอัศวินประท้วงหยุดงาน"
+        ]
+      },
+      "npc_comments": [
+        {
+          "handle": "@alchememe_evelyn",
+          "text": "หยุดเดี๋ยวนี้เลยนะทุกคน!! ฉันสรุปเลกเชอร์สีพาสเทลเตรียมสอบไป 42 ม้วนแล้ว ถ้าประกาศยกเลิกสอบจริงฉันจะร้องไห้กลางห้องโถงจริงๆ ด้วย! 😭📜"
+        },
+        {
+          "handle": "@rowan_roots",
+          "text": "ใครไม่มั่นใจดวงสวดมนต์ แวะมาเหมาชาคาเฟอีนอัดเม็ดของโลก Mundane ที่หลังเรือนกระจก 3 ได้นะ ตาสว่างยันเช้าชัวร์"
+        }
+      ],
+      "quick_replies": [
+        {
+          "reply_id": "QR_M02_EVELYN",
+          "label": "ปลอบใจ Evelyn ที่อ่านหนังสือจบแล้ว",
+          "affection_target": "evelyn",
+          "delta": 4,
+          "followup_dm_trigger": "evelyn_study_notes"
+        },
+        {
+          "reply_id": "QR_M02_ROWAN",
+          "label": "ลงชื่อร่วมวงภาวนา + สั่งชาคาเฟอีน",
+          "affection_target": "rowan",
+          "delta": 3,
+          "followup_dm_trigger": "rowan_exam_stash"
+        }
+      ]
+    },
+    {
+      "template_id": "MEME_03_ZERO_SAFETY",
+      "author_handle": "@argos_keys",
+      "channel": "the_silver_quill",
+      "text_pattern": "ประกาศเตือนภัยเล็กน้อยประจำสัปดาห์! ขณะนี้บริเวณ {{castle_location}} มี {{deadly_hazard}} หลุดออกมาเพ่นพ่าน ขอให้นักเรียนเดินเลี่ยงไปใช้ทางเดินริมหน้าผาไร้ราวกั้นแทนชั่วคราว ย้ำอีกครั้งว่าไม่มีที่ไหนในแผ่นดินนี้ปลอดภัยไปกว่าปราสาท Aethelgard อีกแล้ว เลิกส่งนกฮูกไปฟ้องผู้ปกครองได้!",
+      "variables": {
+        "castle_location": [
+          "โถงทางเดินปีกตะวันตกชั้น 2",
+          "ห้องน้ำรวมชั้นใต้ดิน",
+          "บันไดวนหอดูดาว"
+        ],
+        "deadly_hazard": [
+          "เถาวัลย์กินเนื้อโตเต็มวัยของอาจารย์ Oakhaven",
+          "ฝูงตัวต่อหางระเบิด",
+          "ชุดเกราะอัศวินละเมอเหวี่ยงขวานยักษ์"
+        ]
+      },
+      "npc_comments": [
+        {
+          "handle": "@analog_toby",
+          "text": "โรงเรียนปลอดภัยแน่นะวิ... เมื่อเช้าชุดเกราะเพิ่งจามใส่กระเป๋าผมจนเทปคาสเซ็ตขาดเป็นสองท่อนเลยครับ 💀"
+        },
+        {
+          "handle": "@celeste_quill",
+          "text": "ทางกองบรรณาธิการขอรับบริจาคภาพถ่ายมุมชัดๆ ของผู้รอดชีวิตไปขึ้นปกฉบับพรุ่งนี้ค่ะ!"
+        }
+      ],
+      "quick_replies": [
+        {
+          "reply_id": "QR_M03_EVELYN",
+          "label": "ทักไปเช็กว่า Evelyn เดินผ่านแถวนั้นไหม",
+          "affection_target": "evelyn",
+          "delta": 3,
+          "followup_dm_trigger": "evelyn_corridor_rescue"
+        },
+        {
+          "reply_id": "QR_M03_ROWAN",
+          "label": "ช่วยซ่อมเทปคาสเซ็ตให้น้อง Toby กับ Rowan",
+          "affection_target": "rowan",
+          "delta": 4,
+          "followup_dm_trigger": "rowan_tape_repair"
+        }
+      ]
+    },
+    {
+      "template_id": "MEME_04_LAWYER_THREAT",
+      "author_handle": "@cipher_moth",
+      "channel": "the_underground_parchment",
+      "text_pattern": "อัปเดตสถิติประจำสัปดาห์ 📈 วันนี้คุณพรีเฟ็ค @thorn_crest ลั่นประโยคเด็ด 'ทนายประจำตระกูลฉันจะต้องรู้เรื่องนี้แน่!' ไปแล้วทั้งหมด {{threat_count}} รอบ สาเหตุล่าสุดเกิดจาก {{silly_incident}} ใครแคปทันมารับสติกเกอร์ล้อเลียนคอลเลกชันใหม่ใต้โพสต์นี้ได้เลย!",
+      "variables": {
+        "threat_count": [
+          "4",
+          "7",
+          "12"
+        ],
+        "silly_incident": [
+          "โดนพุดดิ้งในห้องอาหารกระเด็นใส่รองเท้าหนังแก้ว",
+          "เถียงแพ้เด็กปี 1 เรื่องลำดับคิวใช้กระจกเงาพูดได้",
+          "นกฮูกส่งพัสดุหย่อนขนนกใส่ถ้วยชาเอิร์ลเกรย์"
+        ]
+      },
+      "npc_comments": [
+        {
+          "handle": "@thorn_crest",
+          "text": "ลบโพสต์เดี๋ยวนี้! นี่เข้าข่ายหมิ่นประมาทตระกูลขุนนางเก่าแก่ ฉันจะร่างจดหมายด่วนถึงคณะกรรมการโรงเรียนเดี๋ยวนี้แหละ!"
+        },
+        {
+          "handle": "@cassian_crows",
+          "text": "หุบปากน่า Julian นายทำให้คนทั้งโรงเรียนเหมารวมว่าบ้านเราขี้แงกันหมดแล้ว"
+        }
+      ],
+      "quick_replies": [
+        {
+          "reply_id": "QR_M04_CASSIAN",
+          "label": "กดขำกลิ้ง + ชม Cassian ที่ช่วยเบรกเพื่อน",
+          "affection_target": "cassian",
+          "delta": 4,
+          "followup_dm_trigger": "cassian_julian_eye_roll"
+        },
+        {
+          "reply_id": "QR_M04_FAYE",
+          "label": "ขอรับสติกเกอร์ล้อเลียนส่งไปปั่นกับ Faye",
+          "affection_target": "faye",
+          "delta": 3,
+          "followup_dm_trigger": "faye_sticker_spam"
+        }
+      ]
+    },
+    {
+      "template_id": "MEME_05_AERO_RULES",
+      "author_handle": "@gale_skycaptain",
+      "channel": "the_silver_quill",
+      "text_pattern": "ผลซ้อมแข่ง Aero-Jousting เย็นนี้! ทีมบุกบินฝ่าพายุทำแต้มแทบขาดใจนำไปก่อน {{score_gap}} แต่จบเกมแพ้เฉยเลยเพราะตัวซีกเกอร์อีกฝั่งบังเอิญบินไปชน 'แหวนสายฟ้าทองคำ' ที่หลงมาตรงหน้าได้ {{snitch_bonus}} แต้มรวด... วอนกรรมการช่วยแก้กติกากีฬาโบราณนี่สักทีเถอะครับ! 🧹⚡",
+      "variables": {
+        "score_gap": [
+          "140 ต่อ 0",
+          "130 ต่อ 10",
+          "190 ต่อ 50"
+        ],
+        "snitch_bonus": [
+          "150",
+          "200"
+        ]
+      },
+      "npc_comments": [
+        {
+          "handle": "@faye_skystorm",
+          "text": "พูดแล้วขึ้นเลย! ฉันบินหลบลูกเหล็กตั้งสองชั่วโมงมือแทบพอง สรุปคนตัดสินเกมคือนั่งรอลูกแหวนบินเข้าปากเนี่ยนะ?! 😤🔥"
+        }
+      ],
+      "quick_replies": [
+        {
+          "reply_id": "QR_M05_FAYE",
+          "label": "พกยาสมานแผลไปทามือให้ Faye หลังซ้อม",
+          "affection_target": "faye",
+          "delta": 4,
+          "followup_dm_trigger": "faye_locker_salve"
+        },
+        {
+          "reply_id": "QR_M05_CASSIAN",
+          "label": "ฟัง Cassian วิเคราะห์ช่องโหว่กติกาแบบกวนๆ",
+          "affection_target": "cassian",
+          "delta": 3,
+          "followup_dm_trigger": "cassian_sports_critique"
+        }
+      ]
+    },
+    {
+      "template_id": "MEME_06_MUNDANE_PEN",
+      "author_handle": "@rowan_roots",
+      "channel": "the_underground_parchment",
+      "text_pattern": "รีวิวสิ่งประดิษฐ์สุดล้ำจากโลกไร้เวทมนตร์ประจำสัปดาห์: สิ่งนี้เรียกว่า '{{mundane_item}}' ราคาแค่สิบเหรียญ ไม่ต้องร่ายคาถา ไม่ต้องกลัวระเบิดใส่คิ้วตัวเอง แก้ปัญหาเรื่อง {{wizard_problem}} ที่พวกผู้วิเศษทนลำบากกันมาห้าร้อยปีได้ในสามวินาที สนใจทักแชทก่อนของหมดล็อตครับ 😎✨",
+      "variables": {
+        "mundane_item": [
+          "ปากกาลูกลื่นหมึกเจล",
+          "เทปลบคำผิดแบบกด",
+          "กระดาษโพสต์อิทมีกาวในตัว",
+          "ถุงอุ่นมือสำเร็จรูป"
+        ],
+        "wizard_problem": [
+          "ขวดหมึกหกเลอะกระเป๋าหนังสือทุกวันจันทร์",
+          "ขนนกเปื่อยยุ่ยตอนจดเลกเชอร์ไวๆ",
+          "ม้วนกระดาษหนังสัตว์กลิ้งตกโต๊ะยาวสามเมตร"
+        ]
+      },
+      "npc_comments": [
+        {
+          "handle": "@alchememe_evelyn",
+          "text": "สารภาพตามตรงว่าปากกาเจลที่ซื้อจากนายเมื่อเดือนก่อนช่วยชีวิตฉันตอนจดสูตรยาอาจารย์ Silt ไว้ได้เยอะมาก... ขอเหมาไส้รีฟิลเพิ่มสามแท่งค่ะ!"
+        }
+      ],
+      "quick_replies": [
+        {
+          "reply_id": "QR_M06_ROWAN",
+          "label": "ทักไปอุดหนุนของล็อตใหม่หลังเรือนกระจก",
+          "affection_target": "rowan",
+          "delta": 4,
+          "followup_dm_trigger": "rowan_mundane_demo"
+        },
+        {
+          "reply_id": "QR_M06_EVELYN",
+          "label": "เหมาไส้ปากกาเจลไปเซอร์ไพรส์ Evelyn",
+          "affection_target": "evelyn",
+          "delta": 4,
+          "followup_dm_trigger": "evelyn_pen_gift"
+        }
+      ]
+    }
+  ]
+}

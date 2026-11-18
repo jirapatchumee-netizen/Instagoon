@@ -2,7 +2,7 @@ import { Fragment, useEffect, useLayoutEffect, useState, useRef, type ReactNode 
 import { readSceneHeader, sceneHeaderLabels, hasNarrativeActions, splitNarrativeBody, quoteDialogue, parseRealityBubbleTags } from './message-format';
 import { Send, Sparkles } from 'lucide-react';
 import { type Lang, TRANSLATIONS } from './i18n';
-import { type Story, type RealityState, type WorldSeasonEvent, type CrossComment } from './types';
+import { type Story, type RealityState, type WorldSeasonEvent, type CrossComment, type ProceduralMeme } from './types';
 
 export function ChatComposer({
   placeholder,
@@ -435,6 +435,11 @@ export function LivingRealityStatusBar({
   return (
     <div className="fs-reality-status-bar" role="status" aria-label="Reality Episode Status">
       <div className="fs-reality-status-top">
+        {realityState.academicYear ? (
+          <span className="fs-reality-academic-pill">
+            🏰 Y{realityState.academicYear} · {realityState.bastionHouse || 'Aethelgard'}
+          </span>
+        ) : null}
         <span className="fs-reality-ep-pill">🎬 {epLabel}</span>
         {realityState.isCloseFriend && (
           <span className="fs-reality-cf-badge" title="Close Friends Unlocked">
@@ -513,5 +518,52 @@ export function CrossCommentsList({ comments }: { comments?: CrossComment[] }) {
         </div>
       ))}
     </div>
+  );
+}
+
+export function ProceduralMemeCard({
+  meme,
+  onQuickReply
+}: {
+  meme?: ProceduralMeme | null;
+  onQuickReply?: (reply: { reply_id?: string; replyId?: string; label: string; affection_target?: string; affectionTarget?: string; delta?: number; followup_dm_trigger?: string; followupTrigger?: string }) => void;
+}) {
+  if (!meme) return null;
+  const channelBadge = meme.channel === 'the_underground_parchment'
+    ? '🕵️ The Underground Parchment'
+    : '📜 The Silver Quill';
+
+  return (
+    <article className="fs-campus-meme-card" aria-label="Campus Meme">
+      <div className="fs-campus-meme-header">
+        <span className="fs-campus-meme-badge">{channelBadge}</span>
+        <span className="fs-campus-meme-author">{meme.authorHandle}</span>
+      </div>
+      <p className="fs-campus-meme-content">{meme.content}</p>
+      {Array.isArray(meme.npcComments) && meme.npcComments.length > 0 && (
+        <div className="fs-campus-meme-comments">
+          {meme.npcComments.map((c, i) => (
+            <div key={i} className="fs-campus-meme-comment-item">
+              <span className="fs-campus-meme-comment-handle">{c.handle}:</span>{' '}
+              <span className="fs-campus-meme-comment-text">{c.text}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {Array.isArray(meme.quickReplies) && meme.quickReplies.length > 0 && (
+        <div className="fs-campus-meme-actions">
+          {meme.quickReplies.map((qr) => (
+            <button
+              key={qr.reply_id || qr.replyId || qr.label}
+              type="button"
+              className="fs-campus-meme-action-btn"
+              onClick={() => onQuickReply?.(qr)}
+            >
+              💬 {qr.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </article>
   );
 }

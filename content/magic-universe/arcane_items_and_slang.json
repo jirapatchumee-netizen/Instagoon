@@ -1,0 +1,291 @@
+{
+  "schema_version": "1.0.0",
+  "universe_id": "magic-universe",
+  "edict_42_lexicon": {
+    "replacement_banner": "[REDACTED BY EDICT 42]",
+    "warning_toast": "⚠️ HARMONY VIOLATION DETECTED: Your MirrorNet packet has been logged by the Office of the High Inquisitor.",
+    "coded_slang_dictionary": [
+      {
+        "slang_id": "SLANG_01",
+        "forbidden_concept": "The Sovereign of Ash / Dark Lord",
+        "forbidden_triggers": [
+          "sovereign of ash",
+          "dark lord",
+          "tyrant returned",
+          "ash army"
+        ],
+        "coded_phrase_en": "The Northern Frost / Ash-Front",
+        "coded_phrase_th": "พายุเถ้าถ่านทางเหนือ / แนวปะทะอากาศหนาว",
+        "origin_npc": "evelyn",
+        "unlocked_year": 5,
+        "usage_context": "Disguising dark war troop movements as meteorological and astronomy weather reports."
+      },
+      {
+        "slang_id": "SLANG_02",
+        "forbidden_concept": "High Inquisitor Vespera / Ministry Censors",
+        "forbidden_triggers": [
+          "inquisitor abuse",
+          "vespera tyrant",
+          "ministry censor",
+          "dictator"
+        ],
+        "coded_phrase_en": "Auntie Chamomile",
+        "coded_phrase_th": "คุณป้าชุดชาคาโมมายล์",
+        "origin_npc": "faye",
+        "unlocked_year": 5,
+        "usage_context": "Mocking Vespera's sickly sweet demeanor and obsession with herbal tea while issuing brutal detentions."
+      },
+      {
+        "slang_id": "SLANG_03",
+        "forbidden_concept": "Student Resistance / Underground Defense Club",
+        "forbidden_triggers": [
+          "resistance",
+          "underground club",
+          "rebel training",
+          "secret duel",
+          "defend aethelgard"
+        ],
+        "coded_phrase_en": "The Winter Knitting Circle",
+        "coded_phrase_th": "ชมรมถักผ้าพันคอกันหนาว",
+        "origin_npc": "evelyn",
+        "unlocked_year": 5,
+        "usage_context": "'Knitting purl stitches' = practicing shield charms; 'dropped a stitch' = spell backfired."
+      },
+      {
+        "slang_id": "SLANG_04",
+        "forbidden_concept": "Sneaking out post-curfew / Secret romantic rendezvous",
+        "forbidden_triggers": [
+          "break curfew",
+          "sneak out",
+          "illegal meeting"
+        ],
+        "coded_phrase_en": "Checking humidity on the Moon-Spores",
+        "coded_phrase_th": "ไปเช็กความชื้นเห็ดเรืองแสง",
+        "origin_npc": "rowan",
+        "unlocked_year": 2,
+        "usage_context": "Double entendre used both for late-night romantic dates and passing contraband intelligence."
+      },
+      {
+        "slang_id": "SLANG_05",
+        "forbidden_concept": "Prefect informants / Ministry snitches",
+        "forbidden_triggers": [
+          "ministry spy",
+          "snitch",
+          "traitor prefect"
+        ],
+        "coded_phrase_en": "Silver-Beaked Magpies",
+        "coded_phrase_th": "นกกะรางปากเงิน",
+        "origin_npc": "cassian",
+        "unlocked_year": 5,
+        "usage_context": "Refers to Julian Thorne and aristocratic informants trading screenshots for Ministry favor."
+      },
+      {
+        "slang_id": "SLANG_06",
+        "forbidden_concept": "Smuggling persecuted Mundane-born students to safety",
+        "forbidden_triggers": [
+          "escape route",
+          "safe house",
+          "smuggle students",
+          "evade lineage check"
+        ],
+        "coded_phrase_en": "Botanical Field Transfer",
+        "coded_phrase_th": "ทัศนศึกษาเก็บตัวอย่างรากไม้",
+        "origin_npc": "rowan",
+        "unlocked_year": 6,
+        "usage_context": "Coordinates midnight evacuations through the subterranean tunnel behind Greenhouse 3."
+      },
+      {
+        "slang_id": "SLANG_07",
+        "forbidden_concept": "Forced initiation into the Ash Sovereign's inner circle",
+        "forbidden_triggers": [
+          "ash mark",
+          "dark initiation",
+          "bloodline oath"
+        ],
+        "coded_phrase_en": "Fitting the Heirloom Coat",
+        "coded_phrase_th": "กลับไปลองชุดพิธีการของตระกูล",
+        "origin_npc": "cassian",
+        "unlocked_year": 6,
+        "usage_context": "Cassian's coded distress signal when his father summons him home to take the dark oath."
+      }
+    ]
+  },
+  "arcane_gift_catalog": [
+    {
+      "item_id": "ITEM_GIFT_MOOD_BEANS",
+      "item_type": "potion",
+      "item_name": "Mood-Ring Jellybeans",
+      "item_name_th": "เยลลี่เปลี่ยนสีผมตามอารมณ์",
+      "power_level": 1,
+      "min_year": 1,
+      "fp_craft_cost": 15,
+      "preferred_by": [
+        "cassian",
+        "evelyn",
+        "faye",
+        "rowan"
+      ],
+      "affection_delta": 8,
+      "stress_delta": -5,
+      "mechanic_effect": "Temporarily dyes the recipient's hair tips based on hidden emotion (Peach-Pink = Flustered, Crimson = Jealous, Indigo = Melancholy). Forces an honest [draft:...] leak in next DM."
+    },
+    {
+      "item_id": "ITEM_POTION_SOMNO_TRUFFLES",
+      "item_type": "potion",
+      "item_name": "Somno-Truffles",
+      "item_name_th": "ช็อกโกแลตทรัฟเฟิลผงง่วงนอน",
+      "power_level": 2,
+      "min_year": 2,
+      "fp_craft_cost": 25,
+      "preferred_by": [
+        "faye",
+        "rowan"
+      ],
+      "affection_delta": 10,
+      "stress_delta": -5,
+      "mechanic_effect": "Lulls Caretaker Argos's gargoyle sentries to sleep for 15 minutes, bypassing post-curfew penalty during Night Phase."
+    },
+    {
+      "item_id": "ITEM_CHARM_FREUDIAN_QUILL",
+      "item_type": "charm",
+      "item_name": "Freudian Swan-Quill",
+      "item_name_th": "ปากกาขนนกสารภาพในใจ",
+      "power_level": 2,
+      "min_year": 1,
+      "fp_craft_cost": 20,
+      "preferred_by": [
+        "evelyn",
+        "cassian"
+      ],
+      "affection_delta": 12,
+      "stress_delta": -8,
+      "mechanic_effect": "Enchanted quill that subconsciously appends unspoken crushes before erasing them. Increases [draft:...] vulnerability depth."
+    },
+    {
+      "item_id": "ITEM_CHARM_ORIGAMI_CRANE",
+      "item_type": "charm",
+      "item_name": "Whispering Origami Crane",
+      "item_name_th": "นกกระดาษกระซิบเสียง",
+      "power_level": 4,
+      "min_year": 5,
+      "fp_craft_cost": 35,
+      "preferred_by": [
+        "cassian",
+        "evelyn",
+        "faye",
+        "rowan"
+      ],
+      "affection_delta": 18,
+      "stress_delta": -15,
+      "mechanic_effect": "Delivers a self-immolating voice whisper through air vents. Completely immune to Edict 42 censorship scanning for 1 conversation turn."
+    },
+    {
+      "item_id": "ITEM_CONTRABAND_SPLIT_EARBUDS",
+      "item_type": "contraband",
+      "item_name": "Enchanted Split-Jack Earbuds",
+      "item_name_th": "หูฟังคู่ลงอาคมกันคลื่นรบกวน",
+      "power_level": 3,
+      "min_year": 3,
+      "fp_craft_cost": 30,
+      "preferred_by": [
+        "rowan"
+      ],
+      "affection_delta": 25,
+      "stress_delta": -25,
+      "mechanic_effect": "Rune-shielded 90s Mundane earphones that resist castle mana interference. Unlocks Rowan's Greenhouse 3 Indie Rock date."
+    },
+    {
+      "item_id": "ITEM_CHARM_BOTTLED_AURORA",
+      "item_type": "charm",
+      "item_name": "Bottled Highland Aurora",
+      "item_name_th": "ขวดแก้วเก็บแสงเหนือ",
+      "power_level": 3,
+      "min_year": 3,
+      "fp_craft_cost": 30,
+      "preferred_by": [
+        "faye",
+        "evelyn"
+      ],
+      "affection_delta": 22,
+      "stress_delta": -20,
+      "mechanic_effect": "Projects shimmering emerald sky-lights onto dark dorm ceilings. Essential comfort item for Faye during Year 4 grief."
+    }
+  ],
+  "academy_curriculum": [
+    {
+      "course_id": "COURSE_ALCHEMY_01",
+      "course_name": "Volatile Crucibles & Subtleties",
+      "course_name_th": "ศาสตร์หม้อหลอมและการสกัดสารระเหย",
+      "professor": "Prof. Malakor Silt",
+      "quirk": "Speaks in an eerie whisper audible across the dungeon; deducts House Points in decimals (e.g., -3.5 points).",
+      "stat_reward": "alchemy_crafting",
+      "class_partner_npc": "evelyn"
+    },
+    {
+      "course_id": "COURSE_TRANSMUTE_02",
+      "course_name": "Inanimate Ethics & Transmutation",
+      "course_name_th": "การแปลงรูปวัตถุไร้ชีวิต",
+      "professor": "Headmistress Morven",
+      "quirk": "Razor-sharp hawk gaze; texting on a Mirror-Slate mid-lecture risks temporary device confiscation.",
+      "stat_reward": "arcane_mastery",
+      "class_partner_npc": "cassian"
+    },
+    {
+      "course_id": "COURSE_FLORA_03",
+      "course_name": "Carnivorous Flora & Mycology",
+      "course_name_th": "พฤกษศาสตร์กินเนื้อและเห็ดมนตรา",
+      "professor": "Prof. Barnaby Oakhaven",
+      "quirk": "Keeps a family of sugar-gliders in his beard; casually forgets which greenhouse vines bite fingers.",
+      "stat_reward": "alchemy_crafting",
+      "class_partner_npc": "rowan"
+    },
+    {
+      "course_id": "COURSE_RUNES_04",
+      "course_name": "Archaic Rune-Logic & Encryption",
+      "course_name_th": "ตรรกศาสตร์อักษรรูนและการเข้ารหัส",
+      "professor": "Prof. Lyra Vance",
+      "quirk": "Assigns brutal 5-scroll translation essays weekly; inadvertently teaches students how to bypass Ministry filters.",
+      "stat_reward": "arcane_mastery",
+      "class_partner_npc": "cassian"
+    },
+    {
+      "course_id": "COURSE_DEFENSE_05",
+      "course_name": "Counter-Hexes (Y1-4) / Civic Harmony (Y5-7)",
+      "course_name_th": "คาถาต่อต้านคำสาป (ปี 5 เปลี่ยนเป็น วิชาความมั่นคงพลเมือง)",
+      "professor": "Rotating Staff / High Inquisitor Vespera (Y5+)",
+      "quirk": "Exciting dueling drills in Years 1-4; replaced by silent Ministry decree copying under Vespera in Year 5.",
+      "stat_reward": "charisma_clout",
+      "class_partner_npc": "faye"
+    }
+  ],
+  "critical_scenario_seeds": [
+    {
+      "scenario_id": "SEED_Y2_CLOSET_CURFEW",
+      "academic_year": 2,
+      "title": "Trapped in the Herbology Closet",
+      "trigger_condition": "night_phase && hour >= '20:00'",
+      "summary": "Hiding inches apart in a pitch-black cedar closet while Caretaker Argos's lantern swings past the keyhole; communicating strictly via minimum-brightness Mirror-Slate texts."
+    },
+    {
+      "scenario_id": "SEED_Y4_GALA_SHATTER",
+      "academic_year": 4,
+      "title": "Solstice First Kiss & Summer Grief",
+      "trigger_condition": "term_season == 'summer' && world_event == 'Y4_SQ_02'",
+      "summary": "Contrast between romantic Winter Gala euphoria and the devastating summer tournament death; player must read [draft:...] cries for help instead of believing stoic surface replies."
+    },
+    {
+      "scenario_id": "SEED_Y6_CARRIAGE_ULTIMATUM",
+      "academic_year": 6,
+      "title": "Snowfall Ultimatum at the Iron Gates",
+      "trigger_condition": "academic_year == 6 && stress_level >= 70",
+      "summary": "A black family carriage waits in the snow or inquisitors approach the dorm; decisive moral crossroads locking Golden vs Tragic Endgame path."
+    },
+    {
+      "scenario_id": "SEED_Y7_MANA_8_PERCENT",
+      "academic_year": 7,
+      "title": "Final Siege SOS (Mana 8%)",
+      "trigger_condition": "academic_year == 7 && term_season == 'summer'",
+      "summary": "Perimeter wards collapsing over Loch Aethel; unfiltered final confessions transmitted as MirrorNet signal flickers out."
+    }
+  ]
+}

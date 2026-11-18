@@ -1,12 +1,13 @@
 import { useState, type FormEvent } from 'react';
-import { type Post, type Creator, type Story, type User, type WorldSeasonEvent } from '../types';
+import { type Post, type Creator, type Story, type User, type WorldSeasonEvent, type ProceduralMeme } from '../types';
 import { TRANSLATIONS, type Lang } from '../i18n';
-import { media, AvatarImg, Media, PRESET_AVATARS, getAvatarSrc, WorldEventsBanner, CrossCommentsList } from '../ui';
+import { media, AvatarImg, Media, PRESET_AVATARS, getAvatarSrc, WorldEventsBanner, CrossCommentsList, ProceduralMemeCard } from '../ui';
 import { IgHeart, IgComment, IgShare, IgBookmark, IgMore, IgVerified, IgAudio } from '../InstagramIcons';
 
 interface FeedTabProps {
   posts: Post[];
   worldEvents?: WorldSeasonEvent[];
+  proceduralMeme?: ProceduralMeme | null;
   stories: Story[];
   creators: Creator[];
   user: User;
@@ -26,6 +27,7 @@ interface FeedTabProps {
   onCommentSubmit: (post: Post, e: FormEvent<HTMLFormElement>) => void;
   onOpenPostMenu: (post: Post, creator: Creator) => void;
   onGoToExplore: () => void;
+  onMemeQuickReply?: (reply: { reply_id?: string; replyId?: string; label: string; affection_target?: string; affectionTarget?: string; delta?: number; followup_dm_trigger?: string; followupTrigger?: string }) => void;
 }
 
 const FAN_CROWD_USERNAMES = [
@@ -50,6 +52,7 @@ function getFanCrowdUsername(seed: string): string {
 export function FeedTab({
   posts,
   worldEvents,
+  proceduralMeme,
   stories,
   creators,
   user,
@@ -69,6 +72,7 @@ export function FeedTab({
   onCommentSubmit,
   onOpenPostMenu,
   onGoToExplore,
+  onMemeQuickReply,
 }: FeedTabProps) {
   const t = TRANSLATIONS[lang];
 
@@ -232,6 +236,7 @@ export function FeedTab({
       {!showSuggested && (
         <>
           <WorldEventsBanner events={worldEvents} />
+          <ProceduralMemeCard meme={proceduralMeme} onQuickReply={onMemeQuickReply} />
           <div className="fs-posts">
           {posts.length === 0 ? (
             <div className="fs-empty-feed" style={{ padding: '48px 24px', textAlign: 'center' }}>

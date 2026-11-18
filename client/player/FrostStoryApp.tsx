@@ -6,7 +6,7 @@ import { IgHome, IgSearch, IgReels, IgVerified } from './InstagramIcons';
 import { EnergyShop } from './EnergyShop';
 import { type Lang, LANGS, TRANSLATIONS } from './i18n';
 import { LangSelect } from './LangSelect';
-import { type Energy, type User, type Creator, type Post, type Story, type AiChatMessage, type Chat, type Screen, type ProfileData, type EpisodeInfo, type WorldSeasonEvent, type RealityState } from './types';
+import { type Energy, type User, type Creator, type Post, type Story, type AiChatMessage, type Chat, type Screen, type ProfileData, type EpisodeInfo, type WorldSeasonEvent, type RealityState, type ProceduralMeme } from './types';
 import { ApiError, api, createFollowSync } from './api';
 import { ChatComposer, media, AvatarImg, hasSpokenDialogue, renderBubbleContent, json, StoryContent, Modal, getAvatarSrc, LivingRealityStatusBar, QuickPillsBar } from './ui';
 import { ProfileSetupModal } from './overlays/ProfileSetupModal';
@@ -95,6 +95,7 @@ export function FrostStoryApp() {
   const [creators, setCreators] = useState<Creator[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
   const [worldEvents, setWorldEvents] = useState<WorldSeasonEvent[]>([]);
+  const [proceduralMeme, setProceduralMeme] = useState<ProceduralMeme | null>(null);
   const [stories, setStories] = useState<Story[]>([]);
   const [selectedStory, setSelectedStory] = useState<Story | null>(null);
   const [selectedCreator, setSelectedCreator] = useState<Creator | null>(null);
@@ -568,13 +569,14 @@ export function FrostStoryApp() {
   const loadFeed = useCallback(async () => {
     const version = followSyncRef.current.beginFeedLoad();
     const [feed, people, highlights] = await Promise.all([
-      api<{ posts: Post[]; worldEvents?: WorldSeasonEvent[] }>('/api/feed'),
+      api<{ posts: Post[]; worldEvents?: WorldSeasonEvent[]; proceduralMeme?: ProceduralMeme | null }>('/api/feed'),
       api<{ creators: Creator[] }>('/api/creators'),
       api<{ stories: Story[] }>('/api/stories'),
     ]);
     if (!followSyncRef.current.isCurrentFeedLoad(version)) return;
     setPosts(feed.posts);
     if (Array.isArray(feed.worldEvents)) setWorldEvents(feed.worldEvents);
+    if (feed.proceduralMeme) setProceduralMeme(feed.proceduralMeme);
     // Likes and saves come from the server so they survive a reload.
     setLikedPostIds(Object.fromEntries(feed.posts.filter((p) => p.liked).map((p) => [p.id, true])));
     setSavedPostIds(Object.fromEntries(feed.posts.filter((p) => p.saved).map((p) => [p.id, true])));
@@ -676,6 +678,24 @@ export function FrostStoryApp() {
       );
       setComments((previous) => ({ ...previous, [post.id]: '' }));
       await Promise.all([loadMe(), loadFeed()]);
+    });
+  }
+
+  async function handleMemeQuickReply(reply: { reply_id?: string; replyId?: string; label: string; affection_target?: string; affectionTarget?: string; delta?: number; followup_dm_trigger?: string; followupTrigger?: string }) {
+    await action(async () => {
+      try {
+        const res = await api<{ success: boolean; targetNpcSlug?: string; delta?: number; followupTrigger?: string }>('/api/feed/quick-reply', json(reply));
+        if (res?.targetNpcSlug) {
+          const target = res.targetNpcSlug.toLowerCase();
+          const match = creators.find((c) => c.id.toLowerCase() === target || c.name.toLowerCase().includes(target));
+          if (match) {
+            void openChat(match);
+          }
+        }
+        await loadFeed();
+      } catch (err) {
+        console.warn('Meme quick reply error:', err);
+      }
     });
   }
 
@@ -1051,6 +1071,7 @@ export function FrostStoryApp() {
           <FeedTab
             posts={posts}
             worldEvents={worldEvents}
+            proceduralMeme={proceduralMeme}
             stories={stories}
             creators={creators}
             user={user}
@@ -1073,6 +1094,7 @@ export function FrostStoryApp() {
               setComments((prev) => ({ ...prev, [postId]: val }))
             }
             onCommentSubmit={(post, e) => void submitComment(e, post)}
+            onMemeQuickReply={(reply) => void handleMemeQuickReply(reply)}
             onOpenPostMenu={(post, creator) => {
               setPostMenuPost(post);
               setPostMenuCreator(creator);
