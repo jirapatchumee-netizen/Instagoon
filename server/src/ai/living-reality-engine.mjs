@@ -1,6 +1,24 @@
 // Living Reality World & Narrative Roleplay Engine
 // Smart, Fast, and Minimum Space: compact D1 micro-state + cross-character jealousy sniffer + shared world stage.
 
+import {
+  selectCharacterStagePrompt,
+  evaluateCurfewState,
+  generateProceduralCampusMeme,
+  applySmartEdict42Filter,
+  recordFeedQuickReply,
+  getAcademicYearContext
+} from './magic-academy-helpers.mjs';
+
+export {
+  selectCharacterStagePrompt,
+  evaluateCurfewState,
+  generateProceduralCampusMeme,
+  applySmartEdict42Filter,
+  recordFeedQuickReply,
+  getAcademicYearContext
+};
+
 export const DEFAULT_REALITY_EPISODES = Object.freeze([
   {
     number: 1,
@@ -122,6 +140,16 @@ export function computeRealityState({
   let affectionLevel = relRow?.affection_level != null ? Number(relRow.affection_level) : 10;
   let cloutLevel = relRow?.clout_level != null ? Number(relRow.clout_level) : 50;
 
+  const academicYear = relRow?.academic_year != null ? Number(relRow.academic_year) : 1;
+  const termSeason = relRow?.term_season || 'autumn';
+  const bastionHouse = relRow?.bastion_house || 'Zephyr-Crown';
+  const censorshipLevel = relRow?.censorship_level != null ? Number(relRow.censorship_level) : 0;
+  const focusPoints = relRow?.focus_points != null ? Number(relRow.focus_points) : 3;
+  const statArcane = relRow?.stat_arcane != null ? Number(relRow.stat_arcane) : 10;
+  const statCharisma = relRow?.stat_charisma != null ? Number(relRow.stat_charisma) : 10;
+  const statAlchemy = relRow?.stat_alchemy != null ? Number(relRow.stat_alchemy) : 10;
+  const endgameRouteFlag = relRow?.endgame_route_flag || 'undetermined';
+
   const text = typeof userText === 'string' ? userText : '';
 
   if (/(พักผ่อน|เป็นห่วง|อยู่ข้างๆ|ไม่ต้องฝืน|กอด|ปลอบ|ใจเย็น|สู้ๆ|เหนื่อยไหม|ดูแลตัวเอง)/i.test(text)) {
@@ -207,6 +235,15 @@ export function computeRealityState({
     stressLevel,
     cloutLevel,
     isCloseFriend,
+    academicYear,
+    termSeason,
+    bastionHouse,
+    censorshipLevel,
+    focusPoints,
+    statArcane,
+    statCharisma,
+    statAlchemy,
+    endgameRouteFlag,
     emotionalMilestones: milestones.slice(-20),
     catalyst,
     rippleEvent
@@ -373,6 +410,15 @@ export function buildLivingRealityPromptBlock({
 
   if (st.catalyst) {
     lines.push(`[Active Reality Catalyst: ${st.catalyst.title} — ${st.catalyst.prompt}]`);
+  }
+
+  // Magic Academy Quad-Stage Stage Prompt injection if available
+  const stagePrompt = selectCharacterStagePrompt(npcName, st.academicYear, st.termSeason);
+  if (stagePrompt) {
+    lines.push(`[Academic Persona Directive (Year ${st.academicYear || 1} ${st.termSeason || 'autumn'}): ${stagePrompt}]`);
+  }
+  if ((st.censorshipLevel || 0) >= 2) {
+    lines.push(`[Censorship Alert: Edict 42 active. Avoid raw forbidden names; use Aethelgard Coded Slang natively in dialogue.]`);
   }
 
   return lines.join('\n');

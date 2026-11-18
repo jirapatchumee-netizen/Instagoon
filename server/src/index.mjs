@@ -14,7 +14,7 @@ import { handleAgentDevRoute } from './agent-dev-api.mjs';
 import { cleanDraft, launchProblems, studioCreatorId, studioPreviewId, buildDefinition } from './studio.mjs';
 import { usesCreditLevels, rewardOnlyLevels, readCreditProgress, nextCreditProgress, creditProgressStatement, levelScore } from './credit-levels.mjs';
 import { shouldRecallMemory, generateEmbedding, rankMemories, formatMemoriesForPrompt, consolidateEpisodicMemory } from './ai/episodic-memory.mjs';
-import { computeRealityState, sniffCrossCharacterJealousy, getActiveWorldSeasonContext, recordRippleWorldEvent, buildLivingRealityPromptBlock, buildContextualQuickPills, generateCrossCreatorFeedReactions } from './ai/living-reality-engine.mjs';
+import { computeRealityState, sniffCrossCharacterJealousy, getActiveWorldSeasonContext, recordRippleWorldEvent, buildLivingRealityPromptBlock, buildContextualQuickPills, generateCrossCreatorFeedReactions, generateProceduralCampusMeme, recordFeedQuickReply } from './ai/living-reality-engine.mjs';
 
 const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), {status, headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store',...headers}});
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), {status}); };
@@ -978,13 +978,32 @@ async function player(req,env,user,path,now,ctx) {
   const byPost=new Map(posts.map(p=>[p.id,[]]));
   for(const c of commentRows)byPost.get(c.post_id)?.push({id:c.id,content:c.content,createdAt:c.created_at,own:c.user_id===user.id});
   for(const p of posts)p.comments=byPost.get(p.id);
-  const [worldEvents, rivalCreators] = await Promise.all([
+  const [worldEvents, rivalCreators, userRel] = await Promise.all([
     getActiveWorldSeasonContext(env, now),
-    all(env, 'SELECT r.creator_id AS id, c.name, r.score FROM relationships r JOIN creators c ON c.id = r.creator_id WHERE r.user_id=? AND r.score>=15 ORDER BY r.score DESC LIMIT 5', user.id)
+    all(env, 'SELECT r.creator_id AS id, c.name, r.score FROM relationships r JOIN creators c ON c.id = r.creator_id WHERE r.user_id=? AND r.score>=15 ORDER BY r.score DESC LIMIT 5', user.id),
+    one(env, 'SELECT academic_year, term_season FROM relationships WHERE user_id=? ORDER BY academic_year DESC LIMIT 1', user.id)
   ]);
+  const currentYear = userRel?.academic_year || 1;
+  const currentSeason = userRel?.term_season || 'autumn';
+  const proceduralMeme = generateProceduralCampusMeme(currentYear, currentSeason);
   const logged=run(env,'INSERT INTO activity(user_id,kind,created_at) VALUES(?,?,?)',user.id,'feed',now);
   if(ctx?.waitUntil)ctx.waitUntil(logged);else await logged;
-  return json({posts:posts.map(p=>({...postShape(p),comments:p.comments,crossComments:generateCrossCreatorFeedReactions({post:{id:p.id,creatorId:p.creator_id,creatorName:p.creator_name},rivalCreators})})),worldEvents});
+  return json({posts:posts.map(p=>({...postShape(p),comments:p.comments,crossComments:generateCrossCreatorFeedReactions({post:{id:p.id,creatorId:p.creator_id,creatorName:p.creator_name},rivalCreators})})),worldEvents,proceduralMeme});
+ }
+ if(path==='/api/feed/quick-reply' && method==='POST'){
+  const b=await body(req);
+  const replyId=typeof b.reply_id==='string'?b.reply_id:(typeof b.replyId==='string'?b.replyId:'qr');
+  const targetNpcSlug=typeof b.affection_target==='string'?b.affection_target:(typeof b.affectionTarget==='string'?b.affectionTarget:'');
+  const delta=Number(b.delta)||3;
+  const followupTrigger=typeof b.followup_dm_trigger==='string'?b.followup_dm_trigger:(typeof b.followupTrigger==='string'?b.followupTrigger:null);
+  const res=await recordFeedQuickReply(env.DB, {
+    replyId,
+    ownerId: user.id,
+    targetNpcSlug,
+    delta,
+    followupTrigger
+  });
+  return json(res);
  }
  m=path.match(/^\/api\/posts\/([\w-]+)\/comments$/);
  if(m&&method==='POST'){
@@ -1311,7 +1330,7 @@ async function player(req,env,user,path,now,ctx) {
    const [threadRes, npcDefRes, relRes, unlockRes] = await env.DB.batch([
      env.DB.prepare('SELECT last_message_at, current_visit_id, summary, summarized_through FROM dm_threads WHERE user_id=? AND creator_id=?').bind(user.id, creator),
      env.DB.prepare('SELECT definition_json FROM npc_definitions WHERE creator_id=?').bind(creator),
-     env.DB.prepare('SELECT score, closeness, trust, romance, turns, events_json, rule_uses_json, current_episode, emotional_milestones, stress_level, affection_level, clout_level, is_close_friend FROM relationships WHERE user_id=? AND creator_id=?').bind(user.id, creator),
+     env.DB.prepare('SELECT score, closeness, trust, romance, turns, events_json, rule_uses_json, current_episode, emotional_milestones, stress_level, affection_level, clout_level, is_close_friend, academic_year, term_season, bastion_house, censorship_level, focus_points, stat_arcane, stat_charisma, stat_alchemy, endgame_route_flag FROM relationships WHERE user_id=? AND creator_id=?').bind(user.id, creator),
      env.DB.prepare('SELECT reward_key FROM reward_unlocks WHERE user_id=? AND creator_id=?').bind(user.id, creator)
    ]);
    const thread = threadRes.results[0] ?? null;
@@ -2037,7 +2056,7 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
    // Create-then-increment-then-read-back rides one round trip, in this order.
    const relationshipStatements = [
      env.DB.prepare('INSERT OR IGNORE INTO relationships(user_id, creator_id) VALUES(?,?)').bind(user.id, creator),
-     env.DB.prepare('UPDATE relationships SET closeness=MIN(100, MAX(0, COALESCE(closeness,0)+?)), trust=MIN(100, MAX(0, COALESCE(trust,0)+?)), romance=MIN(100, MAX(0, COALESCE(romance,0)+?)), turns=COALESCE(turns,0)+1, events_json=?, rule_uses_json=?, score=CASE WHEN ? THEN ? ELSE MIN(100, MAX(0, score+?)) END, current_episode=?, emotional_milestones=?, stress_level=?, affection_level=?, clout_level=?, is_close_friend=? WHERE user_id=? AND creator_id=?').bind(delta.closeness, delta.trust, delta.romance, JSON.stringify(events), JSON.stringify(ruleUses), scoreFromDimensions ? 1 : 0, rel, scoreDelta, realityUpdate.currentEpisode, JSON.stringify(realityUpdate.emotionalMilestones), realityUpdate.stressLevel, realityUpdate.affectionLevel, realityUpdate.cloutLevel, realityUpdate.isCloseFriend, user.id, creator),
+     env.DB.prepare('UPDATE relationships SET closeness=MIN(100, MAX(0, COALESCE(closeness,0)+?)), trust=MIN(100, MAX(0, COALESCE(trust,0)+?)), romance=MIN(100, MAX(0, COALESCE(romance,0)+?)), turns=COALESCE(turns,0)+1, events_json=?, rule_uses_json=?, score=CASE WHEN ? THEN ? ELSE MIN(100, MAX(0, score+?)) END, current_episode=?, emotional_milestones=?, stress_level=?, affection_level=?, clout_level=?, is_close_friend=?, academic_year=?, term_season=?, bastion_house=?, censorship_level=?, focus_points=?, stat_arcane=?, stat_charisma=?, stat_alchemy=?, endgame_route_flag=? WHERE user_id=? AND creator_id=?').bind(delta.closeness, delta.trust, delta.romance, JSON.stringify(events), JSON.stringify(ruleUses), scoreFromDimensions ? 1 : 0, rel, scoreDelta, realityUpdate.currentEpisode, JSON.stringify(realityUpdate.emotionalMilestones), realityUpdate.stressLevel, realityUpdate.affectionLevel, realityUpdate.cloutLevel, realityUpdate.isCloseFriend, realityUpdate.academicYear, realityUpdate.termSeason, realityUpdate.bastionHouse, realityUpdate.censorshipLevel, realityUpdate.focusPoints, realityUpdate.statArcane, realityUpdate.statCharisma, realityUpdate.statAlchemy, realityUpdate.endgameRouteFlag, user.id, creator),
      env.DB.prepare('SELECT score FROM relationships WHERE user_id=? AND creator_id=?').bind(user.id, creator)
    ];
    if (!narrativeResult && !creditBased) {
@@ -2073,6 +2092,15 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
      cloutLevel: realityUpdate.cloutLevel,
      isCloseFriend: realityUpdate.isCloseFriend === 1,
      milestones: realityUpdate.emotionalMilestones,
+     academicYear: realityUpdate.academicYear,
+     termSeason: realityUpdate.termSeason,
+     bastionHouse: realityUpdate.bastionHouse,
+     censorshipLevel: realityUpdate.censorshipLevel,
+     focusPoints: realityUpdate.focusPoints,
+     statArcane: realityUpdate.statArcane,
+     statCharisma: realityUpdate.statCharisma,
+     statAlchemy: realityUpdate.statAlchemy,
+     endgameRouteFlag: realityUpdate.endgameRouteFlag,
      jealousy: jealousy?.active ? jealousy : null,
      catalyst: realityUpdate.catalyst,
      rippleTriggered: Boolean(realityUpdate.rippleEvent)
@@ -2135,7 +2163,7 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
   const [messagesRes, memRes, relRes, npcRes, unlocksRes] = await env.DB.batch([
     env.DB.prepare('SELECT id, role, content, media_key mediaKey, affection_delta affectionDelta, created_at createdAt FROM ai_chat_messages WHERE user_id=? AND creator_id=? ORDER BY created_at ASC LIMIT 100').bind(user.id, creator),
     env.DB.prepare('SELECT key, value, created_at createdAt FROM player_memories WHERE user_id=? AND creator_id=? ORDER BY created_at DESC').bind(user.id, creator),
-    env.DB.prepare('SELECT score, closeness, trust, romance, turns, current_episode, emotional_milestones, stress_level, affection_level, clout_level, is_close_friend FROM relationships WHERE user_id=? AND creator_id=?').bind(user.id, creator),
+    env.DB.prepare('SELECT score, closeness, trust, romance, turns, current_episode, emotional_milestones, stress_level, affection_level, clout_level, is_close_friend, academic_year, term_season, bastion_house, censorship_level, focus_points, stat_arcane, stat_charisma, stat_alchemy, endgame_route_flag FROM relationships WHERE user_id=? AND creator_id=?').bind(user.id, creator),
     env.DB.prepare('SELECT definition_json FROM npc_definitions WHERE creator_id=?').bind(creator),
     env.DB.prepare('SELECT reward_key FROM reward_unlocks WHERE user_id=? AND creator_id=?').bind(user.id, creator)
   ]);
@@ -2170,6 +2198,15 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
     cloutLevel: getReality.cloutLevel,
     isCloseFriend: getReality.isCloseFriend === 1,
     milestones: getReality.emotionalMilestones,
+    academicYear: getReality.academicYear,
+    termSeason: getReality.termSeason,
+    bastionHouse: getReality.bastionHouse,
+    censorshipLevel: getReality.censorshipLevel,
+    focusPoints: getReality.focusPoints,
+    statArcane: getReality.statArcane,
+    statCharisma: getReality.statCharisma,
+    statAlchemy: getReality.statAlchemy,
+    endgameRouteFlag: getReality.endgameRouteFlag,
     jealousy: chatJealousy?.active ? chatJealousy : null,
     catalyst: null,
     worldEventsCount: chatWorldEvents.length

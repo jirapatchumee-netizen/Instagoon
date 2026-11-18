@@ -1,0 +1,478 @@
+{
+  "schema_version": "1.0.0",
+  "project_codename": "Aethelgard — The Bystander Chronicles",
+  "universe_id": "magic-universe",
+  "censorship_engine_config": {
+    "active_from_year": 5,
+    "replacement_banner": "[REDACTED BY EDICT 42]",
+    "levels": {
+      "0": {
+        "name": "None",
+        "blocked_keywords": []
+      },
+      "1": {
+        "name": "Ministry Oversight",
+        "blocked_keywords": [
+          "Sovereign of Ash",
+          "Dark Lord Returned",
+          "Northern Death",
+          "Ministry Lie"
+        ]
+      },
+      "2": {
+        "name": "Inquisitorial Lockdown",
+        "blocked_keywords": [
+          "Sovereign of Ash",
+          "Resistance",
+          "Underground",
+          "Secret Club",
+          "Inquisitor Abuse",
+          "Boycott"
+        ]
+      },
+      "3": {
+        "name": "Martial Siege",
+        "blocked_keywords": [
+          "Sovereign of Ash",
+          "Resistance",
+          "Underground",
+          "Escape Route",
+          "Safe House",
+          "Smuggle",
+          "Rebel",
+          "Defend Aethelgard"
+        ]
+      }
+    }
+  },
+  "academic_years": [
+    {
+      "academic_year": 1,
+      "title": "The Induction",
+      "arc_phase": "whimsical_romcom",
+      "system_modifiers": {
+        "censorship_level": 0,
+        "curfew_hour": "22:00",
+        "base_stress_delta": 0,
+        "flavor_tags": [
+          "sorting_panic",
+          "potion_blunders",
+          "wholesome_memes",
+          "first_crush"
+        ]
+      },
+      "macro_parody_event": {
+        "headline_summary": "The Rune-Marked Boy enters the Northern Academy and reportedly stops an alchemical stone theft.",
+        "world_ripple": "Heightened curiosity about alchemy; minor inter-school banter about Northern Academy favoritism."
+      },
+      "campus_decrees": [
+        {
+          "decree_id": "Y1_D01",
+          "term_season": "autumn",
+          "issuer": "Headmistress Morven",
+          "title": "First-Year Cauldron Safety Protocol",
+          "content": "Following three consecutive eyebrow-singing incidents in Dungeon Lab B, first-years are prohibited from adding powdered fire-newt without prefect supervision."
+        },
+        {
+          "decree_id": "Y1_D02",
+          "term_season": "spring",
+          "issuer": "Caretaker Argos",
+          "title": " Trick Staircase Advisory",
+          "content": "The third-floor West Staircase is currently phasing into dimension-half on Tuesdays. Late arrival to Runes will not be excused."
+        }
+      ],
+      "media_feeds": {
+        "the_silver_quill": [
+          {
+            "post_id": "Y1_SQ_01",
+            "term_season": "autumn",
+            "headline": "Aethelgard Welcomes New Initiate Class Across Four Great Bastions!",
+            "tone": "official_celebratory",
+            "engagement_prompt": "Comment your Bastion pride below!"
+          },
+          {
+            "post_id": "Y1_SQ_02",
+            "term_season": "summer",
+            "headline": "Northern Academy Awards 160 Last-Minute House Points to Celebrity Freshman; Aethelgard Board Raises Eyebrows",
+            "tone": "mild_satire",
+            "engagement_prompt": "Is our House Point system fairer? Vote now."
+          }
+        ],
+        "the_underground_parchment": [
+          {
+            "post_id": "Y1_UP_01",
+            "term_season": "winter",
+            "author_alias": "@ cauldron_rat",
+            "leak_text": "PSA: Someone accidentally brewed a mild infatuation draught into the Zephyr-Crown common room tea kettle. Looking at you, @alchememe_evelyn 👀🍵",
+            "linked_npc": "evelyn",
+            "priority": 2
+          },
+          {
+            "post_id": "Y1_UP_02",
+            "term_season": "spring",
+            "author_alias": "@ greenhouse_ghost",
+            "leak_text": "New stash of Mundane 'fizzy sour worms' and 90s cassette tapes just dropped behind Greenhouse 3. DM @rowan_roots with password 'BADGER'.",
+            "linked_npc": "rowan",
+            "priority": 1
+          }
+        ]
+      },
+      "romance_milestone": {
+        "id": "Y1_ROM_STUDY_PARTNER",
+        "title": "First Crush / Study Partner",
+        "trigger_season": "spring",
+        "description": "Bonding over late-night homework, surviving strict professors, and innocent stuttering Ghost Drafts."
+      }
+    },
+    {
+      "academic_year": 2,
+      "title": "Whispers in the Walls",
+      "arc_phase": "whimsical_romcom",
+      "system_modifiers": {
+        "censorship_level": 0,
+        "curfew_hour": "20:00",
+        "base_stress_delta": 10,
+        "flavor_tags": [
+          "rumor_panic",
+          "curfew_8pm",
+          "conspiracy_polls",
+          "locked_wings"
+        ]
+      },
+      "macro_parody_event": {
+        "headline_summary": "Rumors of an ancient monster in Northern Academy plumbing; several students reportedly petrified.",
+        "world_ripple": "Copycat pranks at Aethelgard, paranoid bag inspections, and early 8:00 PM curfew."
+      },
+      "campus_decrees": [
+        {
+          "decree_id": "Y2_D01",
+          "term_season": "autumn",
+          "issuer": "Administration Office",
+          "title": "Precautionary Curfew Adjustment (20:00)",
+          "content": "Due to unsettling arcane plumbing incidents up north, all students must remain inside Bastion dormitories after 8:00 PM. Mandatory bag inspections are in effect."
+        }
+      ],
+      "media_feeds": {
+        "the_silver_quill": [
+          {
+            "post_id": "Y2_SQ_01",
+            "term_season": "winter",
+            "headline": "Aethelgard Aqueducts Certified 100% Giant-Serpent Free by Ministry Plumbers",
+            "tone": "reassuring",
+            "engagement_prompt": "Report any strange hissing noises to your Bastion Prefect."
+          }
+        ],
+        "the_underground_parchment": [
+          {
+            "post_id": "Y2_UP_01",
+            "term_season": "winter",
+            "author_alias": "@ midnight_owl",
+            "leak_text": "POLL: What's actually locked in the Old East Wing? 42% say Ancient Beast, 51% say Professors' contraband firewhisky stash.",
+            "linked_npc": null,
+            "priority": 2
+          }
+        ]
+      },
+      "romance_milestone": {
+        "id": "Y2_ROM_CURFEW_ACCOMPLICE",
+        "title": "Curfew Accomplice",
+        "trigger_season": "winter",
+        "description": "Sneaking out past the 8:00 PM curfew to investigate locked wings; hiding in potion closets and holding hands in the dark."
+      }
+    },
+    {
+      "academic_year": 3,
+      "title": "The Escapee & The Wardens",
+      "arc_phase": "whimsical_romcom",
+      "system_modifiers": {
+        "censorship_level": 0,
+        "curfew_hour": "21:00",
+        "base_stress_delta": 20,
+        "flavor_tags": [
+          "melancholy_aesthetic",
+          "phantom_wardens",
+          "chills_and_nightmares",
+          "hearth_comfort"
+        ]
+      },
+      "macro_parody_event": {
+        "headline_summary": "A notorious fugitive escapes the island fortress prison; ghostly sentinels deployed across all wizarding schools.",
+        "world_ripple": "Phantom Wardens patrol Loch Aethel's perimeter, draining ambient warmth and ruining outdoor Hogsmeade-style weekend outings."
+      },
+      "campus_decrees": [
+        {
+          "decree_id": "Y3_D01",
+          "term_season": "autumn",
+          "issuer": "Ministry Department of Security",
+          "title": "Deployment of Spectral Wardens at Loch Aethel",
+          "content": "Do not approach the shoreline after dusk. Spectral Wardens cannot distinguish between fugitive signatures and unauthorized romantic boat rides."
+        }
+      ],
+      "media_feeds": {
+        "the_silver_quill": [
+          {
+            "post_id": "Y3_SQ_01",
+            "term_season": "autumn",
+            "headline": "Infirmary Distributes Free Hot Spiced Cocoa to Combat 'Warden Chill'",
+            "tone": "supportive",
+            "engagement_prompt": "Remember to practice cheering charms with a partner!"
+          }
+        ],
+        "the_underground_parchment": [
+          {
+            "post_id": "Y3_UP_01",
+            "term_season": "winter",
+            "author_alias": "@ broom_stick_heartbreak",
+            "leak_text": "The Spectral Wardens literally froze the lake mid-Aero-Jousting practice. @faye_skystorm almost threw her broom at one of them 💀❄️",
+            "linked_npc": "faye",
+            "priority": 2
+          }
+        ]
+      },
+      "romance_milestone": {
+        "id": "Y3_ROM_COMFORTING_BOND",
+        "title": "The Comforting Bond",
+        "trigger_season": "winter",
+        "description": "Sharing warmth by the common room hearth after a Warden chill; unlocking Close Friends (Emerald Rune Ring) and revealing deepest fears."
+      }
+    },
+    {
+      "academic_year": 4,
+      "title": "The Tri-Academy Tournament",
+      "arc_phase": "the_turning_point",
+      "system_modifiers": {
+        "censorship_level": 0,
+        "curfew_hour": "23:00",
+        "base_stress_delta": 35,
+        "flavor_tags": [
+          "winter_solstice_gala",
+          "jealousy_mechanics_peak",
+          "inter_school_rivalry",
+          "sudden_tragedy"
+        ]
+      },
+      "macro_parody_event": {
+        "headline_summary": "Interschool Arcane Championship ends in shocking tragedy; rumors swirl that the Sovereign of Ash has returned.",
+        "world_ripple": "Festive excitement and romantic jealousy during the Winter Solstice Gala abruptly shatter at year's end with the death of a student champion (Faye's best friend)."
+      },
+      "campus_decrees": [
+        {
+          "decree_id": "Y4_D01",
+          "term_season": "winter",
+          "issuer": "Event Committee",
+          "title": "Winter Solstice Gala Dress Code & Dance Registration",
+          "content": "Formal ceremonial robes required. Public invitation stunts involving enchanted singing frogs in the Great Hall are strictly limited to two per lunch hour."
+        },
+        {
+          "decree_id": "Y4_D02",
+          "term_season": "summer",
+          "issuer": "Headmistress Morven",
+          "title": "Emergency Mourning Assembly",
+          "content": "All classes and Aero-Jousting finals are suspended until further notice. Grief counselors are stationed in every Bastion tower."
+        }
+      ],
+      "media_feeds": {
+        "the_silver_quill": [
+          {
+            "post_id": "Y4_SQ_01",
+            "term_season": "winter",
+            "headline": "Solstice Gala Fever! Who Is Taking Whom Under the Enchanted Aurora?",
+            "tone": "gossip_festive",
+            "engagement_prompt": "Tag your dream Gala date!"
+          },
+          {
+            "post_id": "Y4_SQ_02",
+            "term_season": "summer",
+            "headline": "Tragic 'Training Accident' Claims Champion's Life; Ministry Urges Calm Over Dark Rumors",
+            "tone": "somber_official",
+            "engagement_prompt": "Comments disabled by Administration."
+          }
+        ],
+        "the_underground_parchment": [
+          {
+            "post_id": "Y4_UP_01",
+            "term_season": "summer",
+            "author_alias": "@ witness_north",
+            "leak_text": "IT WAS NOT AN ACCIDENT. Delegates saw dark marks in the sky. Why is The Silver Quill calling it an equipment failure?!",
+            "linked_npc": "faye",
+            "priority": 5
+          }
+        ]
+      },
+      "romance_milestone": {
+        "id": "Y4_ROM_GALA_TURNING_POINT",
+        "title": "The Gala & The Shattered Innocence",
+        "trigger_season": "winter_to_summer",
+        "description": "High-school jealousy and a magical first kiss at the Winter Solstice Gala, followed by holding your partner together when tragedy strikes in summer."
+      }
+    },
+    {
+      "academic_year": 5,
+      "title": "The Inquisitor & Censorship",
+      "arc_phase": "survival_and_war_drama",
+      "system_modifiers": {
+        "censorship_level": 2,
+        "curfew_hour": "19:30",
+        "base_stress_delta": 55,
+        "flavor_tags": [
+          "edict_42_active",
+          "redacted_chats",
+          "coded_double_entendres",
+          "secret_society"
+        ]
+      },
+      "macro_parody_event": {
+        "headline_summary": "Ministry officially denies the Sovereign of Ash's return and installs High Inquisitors across all magical academies.",
+        "world_ripple": "Edict 42 activates automated keyword censorship on MirrorNet; student clubs dissolved; Ministry seizes student research."
+      },
+      "campus_decrees": [
+        {
+          "decree_id": "Y5_D01",
+          "term_season": "autumn",
+          "issuer": "High Inquisitor Vespera",
+          "title": "Educational Edict 42: MirrorNet Communications Monitoring",
+          "content": "All unauthorized student societies are dissolved. MirrorNet DMs and public feeds are now protected by Automated Harmony Filters. Spreading panic will result in expulsion."
+        }
+      ],
+      "media_feeds": {
+        "the_silver_quill": [
+          {
+            "post_id": "Y5_SQ_01",
+            "term_season": "autumn",
+            "headline": "Ministry Appoints High Inquisitor Vespera to Modernize Aethelgard Standards!",
+            "tone": "state_propaganda",
+            "engagement_prompt": "Express your gratitude to the Ministry below."
+          }
+        ],
+        "the_underground_parchment": [
+          {
+            "post_id": "Y5_UP_01",
+            "term_season": "winter",
+            "author_alias": "@ [REDACTED]",
+            "leak_text": "They just seized @alchememe_evelyn's potion notes from Zephyr-Crown lab. Anyone interested in 'knitting socks for winter' meet in the Old Cistern at 9. Bring wands.",
+            "linked_npc": "evelyn",
+            "priority": 5
+          }
+        ]
+      },
+      "romance_milestone": {
+        "id": "Y5_ROM_SECRET_SOCIETY",
+        "title": "The Secret Society & Coded Love",
+        "trigger_season": "winter",
+        "description": "Forming an underground defense group; communicating affection and rebellion via poetic codewords to bypass [REDACTED BY EDICT 42]."
+      }
+    },
+    {
+      "academic_year": 6,
+      "title": "The Divided Bloodlines",
+      "arc_phase": "survival_and_war_drama",
+      "system_modifiers": {
+        "censorship_level": 2,
+        "curfew_hour": "19:00",
+        "base_stress_delta": 75,
+        "flavor_tags": [
+          "divided_loyalties",
+          "anti_mundane_persecution",
+          "family_ultimatums",
+          "high_stakes_ghost_drafts"
+        ]
+      },
+      "macro_parody_event": {
+        "headline_summary": "Open wizarding conflict erupts; noble houses swear fealty to the Sovereign of Ash; the grand Northern Headmaster falls.",
+        "world_ripple": "Students pulled out of school by terrified parents; Nocturn-Coil aristocrats pressured to take the Ash Mark; Mundane-born students face wand confiscation."
+      },
+      "campus_decrees": [
+        {
+          "decree_id": "Y6_D01",
+          "term_season": "winter",
+          "issuer": "Ministry Lineage Commission",
+          "title": "Mandatory Arcane Heritage Registration",
+          "content": "All students must submit three generations of magical lineage documentation. Contraband Mundane artifacts (electronics, vinyls, print media) will be incinerated on sight."
+        }
+      ],
+      "media_feeds": {
+        "the_silver_quill": [
+          {
+            "post_id": "Y6_SQ_01",
+            "term_season": "spring",
+            "headline": "Heritage Verification Ensures Pure Academic Excellence at Aethelgard",
+            "tone": "authoritarian",
+            "engagement_prompt": "Report unregistered Mundane contraband immediately."
+          }
+        ],
+        "the_underground_parchment": [
+          {
+            "post_id": "Y6_UP_01",
+            "term_season": "spring",
+            "author_alias": "@ railroad_spark",
+            "leak_text": "Three Terra-Root second-years vanished from class after failing lineage checks. @rowan_roots is running 'botanical field trips' out the south tunnel tonight. Keep watch.",
+            "linked_npc": "rowan",
+            "priority": 5
+          }
+        ]
+      },
+      "romance_milestone": {
+        "id": "Y6_ROM_FORBIDDEN_DEVOTION",
+        "title": "Forbidden Devotion",
+        "trigger_season": "spring",
+        "description": "Critical branching point: intervening before Cassian yields to family blackmail, protecting Evelyn's notebook, grounding Faye's rage, or guarding Rowan's escape route."
+      }
+    },
+    {
+      "academic_year": 7,
+      "title": "The Siege & The New Dawn",
+      "arc_phase": "survival_and_war_drama",
+      "system_modifiers": {
+        "censorship_level": 3,
+        "curfew_hour": "18:00",
+        "base_stress_delta": 90,
+        "flavor_tags": [
+          "castle_siege",
+          "sos_pings",
+          "guerrilla_resistance",
+          "golden_or_tragic_endgame"
+        ]
+      },
+      "macro_parody_event": {
+        "headline_summary": "All-out wizarding war culminates in a massive final battle up north while rogue Ash Marauders lay siege to Aethelgard.",
+        "world_ripple": "MirrorNet switches to emergency mana-reserve mode; live SOS distress pings during the Siege of Loch Aethel; permanent Golden or Tragic character endings resolved."
+      },
+      "campus_decrees": [
+        {
+          "decree_id": "Y7_D01",
+          "term_season": "summer",
+          "issuer": "Headmistress Morven (Emergency Broadcast)",
+          "title": "PROTOCOL PHOENIX: DEFEND THE BASTIONS",
+          "content": "The perimeter wards over Loch Aethel are failing! Evacuate Years 1–4 through the subterranean boat crypts. Senior students willing to hold the courtyard—wands at the ready!"
+        }
+      ],
+      "media_feeds": {
+        "the_silver_quill": [
+          {
+            "post_id": "Y7_SQ_01",
+            "term_season": "summer",
+            "headline": "[SIGNAL LOST — BROADCAST TOWER COMPROMISED]",
+            "tone": "emergency_static",
+            "engagement_prompt": "Emergency Mana Reserve: 12%"
+          }
+        ],
+        "the_underground_parchment": [
+          {
+            "post_id": "Y7_UP_01",
+            "term_season": "summer",
+            "author_alias": "@ aethelgard_united",
+            "leak_text": "SOS! North viaduct breached! Pyre aviators holding the roof, Coil defectors shielding the Great Hall, Crown alchemists deploying mist on the bridge! HOLD THE LINE!",
+            "linked_npc": "all",
+            "priority": 10
+          }
+        ]
+      },
+      "romance_milestone": {
+        "id": "Y7_ROM_SOUL_BOUND_FATE",
+        "title": "Soul-Bound / Endgame Fate",
+        "trigger_season": "summer",
+        "description": "Fighting side-by-side amidst falling embers; resolving Golden Ending (survival & new dawn) or Tragic Ending based on accumulated bond, stress management, and Year 5–6 choices."
+      }
+    }
+  ]
+}

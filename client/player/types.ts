@@ -46,6 +46,23 @@ export type WorldSeasonEvent = {
   promptDirective?: string;
   sourceCreatorId?: string | null;
 };
+export type ProceduralMeme = {
+  templateId: string;
+  authorHandle: string;
+  channel: string;
+  content: string;
+  npcComments?: { handle: string; text: string }[];
+  quickReplies?: {
+    reply_id?: string;
+    replyId?: string;
+    label: string;
+    affection_target?: string;
+    affectionTarget?: string;
+    delta?: number;
+    followup_dm_trigger?: string;
+    followupTrigger?: string;
+  }[];
+};
 export type RealityState = {
   currentEpisode: number;
   episodeTitle: string;
@@ -56,6 +73,14 @@ export type RealityState = {
   cloutLevel: number;
   isCloseFriend: boolean;
   milestones: string[];
+  academicYear?: number;
+  termSeason?: string;
+  bastionHouse?: string;
+  censorshipLevel?: number;
+  focusPoints?: number;
+  statArcane?: number;
+  statCharisma?: number;
+  statAlchemy?: number;
   jealousy?: {
     active: boolean;
     rivalId?: string;

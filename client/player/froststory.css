@@ -8355,3 +8355,91 @@ dialog.fs-overlay[open]::backdrop {
 .fs-cross-comment-author {
   color: #f9a8d4;
 }
+
+.fs-reality-academic-pill {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  background: rgba(168, 85, 247, 0.2);
+  border: 1px solid rgba(168, 85, 247, 0.5);
+  color: #e9d5ff;
+}
+
+.fs-campus-meme-card {
+  margin: 8px 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.fs-campus-meme-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.fs-campus-meme-badge {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #c084fc;
+}
+
+.fs-campus-meme-author {
+  font-size: 0.68rem;
+  color: #94a3b8;
+}
+
+.fs-campus-meme-content {
+  margin: 0 0 8px;
+  font-size: 0.78rem;
+  color: #f8fafc;
+  line-height: 1.4;
+}
+
+.fs-campus-meme-comments {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(30, 41, 59, 0.5);
+  margin-bottom: 8px;
+}
+
+.fs-campus-meme-comment-item {
+  font-size: 0.72rem;
+  color: #cbd5e1;
+  line-height: 1.35;
+}
+
+.fs-campus-meme-comment-handle {
+  font-weight: 700;
+  color: #38bdf8;
+}
+
+.fs-campus-meme-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.fs-campus-meme-action-btn {
+  padding: 4px 9px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border-radius: 9999px;
+  background: rgba(139, 92, 246, 0.2);
+  border: 1px solid rgba(139, 92, 246, 0.5);
+  color: #ddd6fe;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.fs-campus-meme-action-btn:hover {
+  background: rgba(139, 92, 246, 0.35);
+  color: #ffffff;
+}
