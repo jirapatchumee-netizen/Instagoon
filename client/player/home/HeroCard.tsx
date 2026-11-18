@@ -73,7 +73,7 @@ export function HeroCard({ creators, t, onChat, onOpenProfile }: Props) {
         <div className="hero-seamless-fade absolute inset-0 pointer-events-none" />
         <div
           className="holo-foil-layer absolute inset-0 z-[5] pointer-events-none"
-          style={{ opacity: 0 }}
+          style={{ opacity: 0.18 }}
         />
         <div className="holo-sparkle-grain absolute inset-0 z-[5] opacity-0 pointer-events-none" />
         <div className="absolute inset-x-3 top-3 z-10 flex items-center justify-between pointer-events-none">
@@ -191,7 +191,7 @@ export function HeroCard({ creators, t, onChat, onOpenProfile }: Props) {
       foil.style.setProperty('--pointer-x', `${px}%`);
       foil.style.setProperty('--pointer-y', `${py}%`);
       foil.style.setProperty('--holo-angle', `${105 + px * 0.65}deg`);
-      foil.style.opacity = '0.30';
+      foil.style.opacity = '0.36';
     }
   };
 
@@ -203,7 +203,7 @@ export function HeroCard({ creators, t, onChat, onOpenProfile }: Props) {
       foil.style.setProperty('--pointer-x', '50%');
       foil.style.setProperty('--pointer-y', '50%');
       foil.style.setProperty('--holo-angle', '125deg');
-      foil.style.opacity = '0';
+      foil.style.opacity = '0.18';
     }
   };
 
@@ -314,7 +314,7 @@ export function HeroCard({ creators, t, onChat, onOpenProfile }: Props) {
                 <div
                   className="holo-foil-layer absolute inset-0 z-[5] pointer-events-none"
                   style={{
-                    opacity: 0,
+                    opacity: 0.18,
                     ['--holo-angle' as any]: `${angleShift}deg`,
                     ['--pointer-x' as any]: `${Math.max(10, Math.min(90, posX))}%`,
                     ['--pointer-y' as any]: '50%',

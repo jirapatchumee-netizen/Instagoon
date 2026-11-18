@@ -16,7 +16,7 @@ export function ArtTile({ name, color, artKey, artState = 'real', className = ''
   if (artKey && artState !== 'pending') {
     return (
       <div className={'fs-h-art overflow-hidden ' + className}>
-        <img src={media(artKey)} alt="" loading="lazy" className="h-full w-full object-cover" />
+        <img src={media(artKey)} alt="" loading="lazy" className="relative z-[1] h-full w-full object-cover" />
       </div>
     );
   }
@@ -26,7 +26,7 @@ export function ArtTile({ name, color, artKey, artState = 'real', className = ''
       className={'fs-h-art relative flex items-center justify-center ' + className}
       style={{ ['--art-color' as string]: color }}
     >
-      <span className="text-5xl font-bold text-white/85">{initialCluster(name)}</span>
+      <span className="relative z-[1] text-5xl font-bold text-white/85">{initialCluster(name)}</span>
       {label ? (
         <span className="absolute left-2 top-2 rounded-full border border-white/15 bg-black/65 px-2 py-0.5 text-[10px] text-slate-200">
           {label}
