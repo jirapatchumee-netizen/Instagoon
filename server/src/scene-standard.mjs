@@ -212,12 +212,29 @@ export function serializeSceneHeader(header) {
   return `[scene:${JSON.stringify({ at: header.at, time: escape(header.time), location: escape(header.location) })}]`;
 }
 
-export function serializeSceneBubble({ at, time, location, mood, thought, beats, fallbackLocation }) {
+const sanitizeJsonStrings = obj => {
+  if (!obj || typeof obj !== 'object') return obj;
+  const escape = value => String(value).replaceAll('[', '［').replaceAll(']', '］');
+  const out = Array.isArray(obj) ? [] : {};
+  for (const [k, v] of Object.entries(obj)) {
+    out[k] = typeof v === 'string' ? escape(v) : (v && typeof v === 'object' ? sanitizeJsonStrings(v) : v);
+  }
+  return out;
+};
+
+export function serializeSceneBubble({
+  at, time, location, mood, thought, beats, fallbackLocation,
+  episodeBanner = null, draft = null, catalyst = null, lockedMedia = null
+}) {
   const escape = value => value.replaceAll('[', '［').replaceAll(']', '］');
   const parts = [serializeSceneHeader(resolveSceneHeader({ at, time, location, fallbackLocation }))];
+  if (episodeBanner) parts.push(`[episode:${JSON.stringify(sanitizeJsonStrings(episodeBanner))}]`);
   if (mood) parts.push(`[mood:${escape(mood)}]`);
   if (thought) parts.push(`[thought:${escape(thought)}]`);
+  if (typeof draft === 'string' && draft.trim()) parts.push(`[draft:${escape(draft.trim())}]`);
   for (const beat of beats) parts.push(beat.kind === 'action' ? `[action:${escape(beat.text)}]` : escape(beat.text));
+  if (catalyst) parts.push(`[catalyst:${JSON.stringify(sanitizeJsonStrings(catalyst))}]`);
+  if (lockedMedia) parts.push(`[locked-media:${JSON.stringify(sanitizeJsonStrings(lockedMedia))}]`);
   return parts.join('\n');
 }
 

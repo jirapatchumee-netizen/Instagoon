@@ -1,8 +1,8 @@
 import { Fragment, useEffect, useLayoutEffect, useState, useRef, type ReactNode } from 'react';
-import { readSceneHeader, sceneHeaderLabels, hasNarrativeActions, splitNarrativeBody, quoteDialogue } from './message-format';
+import { readSceneHeader, sceneHeaderLabels, hasNarrativeActions, splitNarrativeBody, quoteDialogue, parseRealityBubbleTags } from './message-format';
 import { Send, Sparkles } from 'lucide-react';
 import { type Lang, TRANSLATIONS } from './i18n';
-import { type Story } from './types';
+import { type Story, type RealityState, type WorldSeasonEvent, type CrossComment } from './types';
 
 export function ChatComposer({
   placeholder,
@@ -109,6 +109,7 @@ export function hasSpokenDialogue(text: string): boolean {
   if (!text) return false;
   const stripped = text
     .replace(/\[scene:[^\]]*\]\n?/gi, '')
+    .replace(/\[(?:episode|draft|catalyst|locked-media):[^\]]*\]\n?/gi, '')
     .replace(/^\[(?:mood|reaction|toast):\s*[\s\S]*?\]\n?/gi, '')
     .replace(/^\[thought:\s*[\s\S]*?\]\n?/gi, '')
     .replace(/\[thought:\s*[\s\S]*?\]/gi, '')
@@ -134,7 +135,8 @@ export function renderBubbleContent(
   let visual: string | null = null;
   const { scene, body } = readSceneHeader(text);
   const sceneLabels = scene ? sceneHeaderLabels(scene) : null;
-  let bodyText = body;
+  const { episodeBanner, draft, catalyst, lockedMedia, cleanBody } = parseRealityBubbleTags(body);
+  let bodyText = cleanBody;
 
   const moodMatch = bodyText.match(/^\[(?:mood|reaction|toast):\s*([\s\S]*?)\]\n?/);
   if (moodMatch) {
@@ -238,9 +240,14 @@ export function renderBubbleContent(
     );
   }
 
-  if (sceneLabels || mood || thought || visual) {
+  if (sceneLabels || mood || thought || visual || episodeBanner || draft || catalyst || lockedMedia) {
     return (
       <div className="fs-bubble-with-meta">
+        {episodeBanner && (
+          <div className="fs-episode-milestone-banner" role="status">
+            🎬 EPISODE {episodeBanner.number}: {episodeBanner.title}{episodeBanner.subtitle ? ` · ${episodeBanner.subtitle}` : ''}
+          </div>
+        )}
         {sceneLabels && (
           <div className="fs-scene-header" aria-label="เวลาและสถานที่ของฉาก">
             <div title={sceneLabels.date}>⏰ เวลา : {sceneLabels.time} น.</div>
@@ -259,12 +266,33 @@ export function renderBubbleContent(
             <span className="fs-thought-text">ความคิดในใจ : {thought}</span>
           </div>
         )}
+        {draft && (
+          <div className="fs-ghost-draft-box" title="ข้อความที่พิมพ์แล้วลบ">
+            <span className="fs-ghost-draft-badge">📝 ข้อความที่ถูกลบ</span>
+            <span className="fs-ghost-draft-text">{draft}</span>
+          </div>
+        )}
         {visual && (
           <div className="fs-visual-box" title="ภาพเหตุการณ์ / กิริยาท่าทาง">
             <span className="fs-visual-text">{visual}</span>
           </div>
         )}
         {bodyNodes}
+        {catalyst && (
+          <div className="fs-reality-catalyst-card">
+            <div className="fs-reality-catalyst-title">🎲 {catalyst.title}</div>
+            <div className="fs-reality-catalyst-prompt">{catalyst.prompt}</div>
+          </div>
+        )}
+        {lockedMedia && (
+          <div className="fs-locked-media-card">
+            <span className="fs-locked-media-icon">🔒</span>
+            <div>
+              <strong>{lockedMedia.title}</strong>
+              <p>{lockedMedia.hint}</p>
+            </div>
+          </div>
+        )}
         {scene?.fastForward && onFastForward && (
           <div className="fs-inbubble-fastforward">
             <button
@@ -387,4 +415,103 @@ export const PRESET_AVATARS = [
 export function getAvatarSrc(avatarId?: string | null) {
   const found = PRESET_AVATARS.find((a) => a.id === avatarId);
   return found ? found.src : null;
+}
+
+export function LivingRealityStatusBar({
+  realityState,
+  lang,
+}: {
+  realityState?: RealityState | null;
+  lang: Lang;
+}) {
+  if (!realityState) return null;
+  const epLabel =
+    lang === 'en'
+      ? `Ep ${realityState.currentEpisode}/5 · ${realityState.episodeTitle}`
+      : lang === 'ja'
+        ? `Ep ${realityState.currentEpisode}/5 · ${realityState.episodeTitle}`
+        : `Ep ${realityState.currentEpisode}/5 · ${realityState.episodeSubtitle || realityState.episodeTitle}`;
+
+  return (
+    <div className="fs-reality-status-bar" role="status" aria-label="Reality Episode Status">
+      <div className="fs-reality-status-top">
+        <span className="fs-reality-ep-pill">🎬 {epLabel}</span>
+        {realityState.isCloseFriend && (
+          <span className="fs-reality-cf-badge" title="Close Friends Unlocked">
+            🟢 CF
+          </span>
+        )}
+        {realityState.jealousy?.active && (
+          <span className="fs-reality-jealousy-badge">
+            {realityState.jealousy.groupAmbush
+              ? `💥 Ambush: ${realityState.jealousy.rivalName}`
+              : lang === 'en'
+                ? `👀 Watching ${realityState.jealousy.rivalName}`
+                : `😤 แอบหึง ${realityState.jealousy.rivalName}`}
+          </span>
+        )}
+      </div>
+      <div className="fs-reality-meters">
+        <span title="Affection">💖 {realityState.affectionLevel}%</span>
+        <span title="Stress">⚡ {realityState.stressLevel}%</span>
+        <span title="Clout">📈 {realityState.cloutLevel}%</span>
+      </div>
+    </div>
+  );
+}
+
+export function QuickPillsBar({
+  pills,
+  disabled,
+  onSelect,
+}: {
+  pills?: string[];
+  disabled?: boolean;
+  onSelect: (text: string) => void;
+}) {
+  if (!Array.isArray(pills) || pills.length === 0) return null;
+  return (
+    <div className="fs-quick-pills-bar" aria-label="Quick Action Replies">
+      {pills.slice(0, 3).map((pill, idx) => (
+        <button
+          key={`${idx}-${pill}`}
+          type="button"
+          className="fs-quick-pill-btn"
+          disabled={disabled}
+          onClick={() => onSelect(pill)}
+        >
+          {pill}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function WorldEventsBanner({ events }: { events?: WorldSeasonEvent[] }) {
+  if (!Array.isArray(events) || events.length === 0) return null;
+  return (
+    <section className="fs-world-events-banner" aria-label="World Season Events">
+      {events.slice(0, 2).map((ev) => (
+        <div key={ev.id} className={`fs-world-event-card is-${ev.eventKind || 'moderator'}`}>
+          <div className="fs-world-event-headline">{ev.headline}</div>
+          <p className="fs-world-event-content">{ev.content}</p>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+export function CrossCommentsList({ comments }: { comments?: CrossComment[] }) {
+  if (!Array.isArray(comments) || comments.length === 0) return null;
+  return (
+    <div className="fs-cross-comments-list">
+      {comments.map((cc) => (
+        <div key={cc.id} className="fs-cross-comment-item">
+          <strong className="fs-cross-comment-author">{cc.creatorName}</strong>{' '}
+          <span className="fs-cross-comment-badge">✨</span>{' '}
+          <span className="fs-cross-comment-text">{cc.content}</span>
+        </div>
+      ))}
+    </div>
+  );
 }

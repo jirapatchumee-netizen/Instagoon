@@ -92,6 +92,74 @@ export function quoteDialogue(text: string) {
   return /^["“「«]/.test(value) ? value : `“${value}”`;
 }
 
+export type EpisodeBannerMeta = { number: number; title: string; subtitle: string };
+export type CatalystMeta = { kind: string; title: string; prompt: string };
+export type LockedMediaMeta = { title: string; hint: string; unlocked?: boolean };
+
+export function parseRealityBubbleTags(text: string): {
+  episodeBanner: EpisodeBannerMeta | null;
+  draft: string | null;
+  catalyst: CatalystMeta | null;
+  lockedMedia: LockedMediaMeta | null;
+  cleanBody: string;
+} {
+  let cleanBody = text || '';
+  let episodeBanner: EpisodeBannerMeta | null = null;
+  let draft: string | null = null;
+  let catalyst: CatalystMeta | null = null;
+  let lockedMedia: LockedMediaMeta | null = null;
+
+  cleanBody = cleanBody.replace(/^\[episode:([^\]]*)\]\n?/gim, (_, raw) => {
+    try {
+      const val = JSON.parse(raw);
+      if (val && typeof val.title === 'string') {
+        episodeBanner = {
+          number: Number(val.number) || 1,
+          title: val.title,
+          subtitle: typeof val.subtitle === 'string' ? val.subtitle : ''
+        };
+      }
+    } catch {}
+    return '';
+  });
+
+  cleanBody = cleanBody.replace(/^\[draft:([^\]]*)\]\n?/gim, (_, raw) => {
+    const val = String(raw || '').trim();
+    if (val) draft = val;
+    return '';
+  });
+
+  cleanBody = cleanBody.replace(/^\[catalyst:([^\]]*)\]\n?/gim, (_, raw) => {
+    try {
+      const val = JSON.parse(raw);
+      if (val && typeof val.title === 'string') {
+        catalyst = {
+          kind: typeof val.kind === 'string' ? val.kind : 'event',
+          title: val.title,
+          prompt: typeof val.prompt === 'string' ? val.prompt : ''
+        };
+      }
+    } catch {}
+    return '';
+  });
+
+  cleanBody = cleanBody.replace(/^\[locked-media:([^\]]*)\]\n?/gim, (_, raw) => {
+    try {
+      const val = JSON.parse(raw);
+      if (val && typeof val.title === 'string') {
+        lockedMedia = {
+          title: val.title,
+          hint: typeof val.hint === 'string' ? val.hint : '',
+          unlocked: Boolean(val.unlocked)
+        };
+      }
+    } catch {}
+    return '';
+  });
+
+  return { episodeBanner, draft, catalyst, lockedMedia, cleanBody: cleanBody.trim() };
+}
+
 export function splitNarrativeBody(text: string): NarrativeSegment[] {
   // Older model replies sometimes include a bare Action: label in the text itself.
   const normalized = text.replace(/^\s*(?:action|visual)\s*:\s*(.+)$/gim, '[action:$1]');

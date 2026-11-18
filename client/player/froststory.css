@@ -8114,3 +8114,244 @@ dialog.fs-overlay[open]::backdrop {
   text-align: left;
 }
 
+
+/* Living Reality World & Narrative Roleplay Engine */
+.fs-reality-status-bar {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 12px;
+  background: rgba(15, 23, 42, 0.86);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+  backdrop-filter: blur(8px);
+}
+
+.fs-reality-status-top {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.fs-reality-ep-pill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #f8fafc;
+  background: rgba(236, 72, 153, 0.22);
+  border: 1px solid rgba(236, 72, 153, 0.45);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.fs-reality-cf-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #4ade80;
+  background: rgba(34, 197, 94, 0.16);
+  border: 1px solid rgba(34, 197, 94, 0.45);
+  border-radius: 999px;
+  padding: 2px 7px;
+}
+
+.fs-reality-jealousy-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.16);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: 999px;
+  padding: 2px 7px;
+}
+
+.fs-reality-meters {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.7rem;
+  color: #cbd5e1;
+}
+
+.fs-quick-pills-bar {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 6px;
+  padding: 6px 10px 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.fs-quick-pills-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.fs-quick-pill-btn {
+  flex: 0 0 auto;
+  max-width: 240px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #f8fafc;
+  background: rgba(30, 41, 59, 0.9);
+  border: 1px solid rgba(236, 72, 153, 0.35);
+  border-radius: 999px;
+  padding: 5px 11px;
+  cursor: pointer;
+  transition: transform 0.12s ease, border-color 0.15s ease;
+}
+
+.fs-quick-pill-btn:hover:not(:disabled) {
+  border-color: rgba(236, 72, 153, 0.8);
+  transform: translateY(-1px);
+}
+
+.fs-quick-pill-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.fs-episode-milestone-banner {
+  margin-bottom: 6px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, rgba(236, 72, 153, 0.25), rgba(168, 85, 247, 0.25));
+  border: 1px solid rgba(244, 114, 182, 0.5);
+  color: #fdf2f8;
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.fs-ghost-draft-box {
+  margin: 4px 0 6px;
+  padding: 5px 8px;
+  border-left: 2px solid #94a3b8;
+  background: rgba(148, 163, 184, 0.1);
+  border-radius: 0 6px 6px 0;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fs-ghost-draft-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #cbd5e1;
+}
+
+.fs-ghost-draft-text {
+  text-decoration: line-through;
+  font-style: italic;
+}
+
+.fs-reality-catalyst-card {
+  margin-top: 6px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  background: rgba(124, 58, 237, 0.18);
+  border: 1px solid rgba(167, 139, 250, 0.45);
+}
+
+.fs-reality-catalyst-title {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #ddd6fe;
+}
+
+.fs-reality-catalyst-prompt {
+  font-size: 0.74rem;
+  color: #f5f3ff;
+  margin-top: 2px;
+}
+
+.fs-locked-media-card {
+  margin-top: 6px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px dashed rgba(251, 191, 36, 0.55);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: #fde68a;
+}
+
+.fs-locked-media-card p {
+  margin: 2px 0 0;
+  font-size: 0.7rem;
+  color: #cbd5e1;
+}
+
+.fs-world-events-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 12px;
+}
+
+.fs-world-event-card {
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: rgba(30, 41, 59, 0.75);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.fs-world-event-card.is-moderator {
+  border-color: rgba(56, 189, 248, 0.45);
+  background: rgba(14, 116, 144, 0.2);
+}
+
+.fs-world-event-card.is-spotted {
+  border-color: rgba(244, 114, 182, 0.45);
+  background: rgba(157, 23, 77, 0.2);
+}
+
+.fs-world-event-card.is-ripple {
+  border-color: rgba(250, 204, 21, 0.5);
+  background: rgba(161, 98, 7, 0.22);
+}
+
+.fs-world-event-headline {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #f8fafc;
+}
+
+.fs-world-event-content {
+  margin: 3px 0 0;
+  font-size: 0.74rem;
+  color: #cbd5e1;
+  line-height: 1.35;
+}
+
+.fs-story-ring.fs-story-close-friends {
+  background: linear-gradient(135deg, #22c55e, #4ade80);
+}
+
+.fs-cross-comments-list {
+  margin: 4px 0 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.fs-cross-comment-item {
+  font-size: 0.8rem;
+  line-height: 1.35;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: rgba(236, 72, 153, 0.1);
+  border-left: 2px solid rgba(236, 72, 153, 0.6);
+  color: #e2e8f0;
+}
+
+.fs-cross-comment-author {
+  color: #f9a8d4;
+}

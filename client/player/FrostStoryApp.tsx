@@ -6,9 +6,9 @@ import { IgHome, IgSearch, IgReels, IgVerified } from './InstagramIcons';
 import { EnergyShop } from './EnergyShop';
 import { type Lang, LANGS, TRANSLATIONS } from './i18n';
 import { LangSelect } from './LangSelect';
-import { type Energy, type User, type Creator, type Post, type Story, type AiChatMessage, type Chat, type Screen, type ProfileData, type EpisodeInfo } from './types';
+import { type Energy, type User, type Creator, type Post, type Story, type AiChatMessage, type Chat, type Screen, type ProfileData, type EpisodeInfo, type WorldSeasonEvent, type RealityState } from './types';
 import { ApiError, api, createFollowSync } from './api';
-import { ChatComposer, media, AvatarImg, hasSpokenDialogue, renderBubbleContent, json, StoryContent, Modal, getAvatarSrc } from './ui';
+import { ChatComposer, media, AvatarImg, hasSpokenDialogue, renderBubbleContent, json, StoryContent, Modal, getAvatarSrc, LivingRealityStatusBar, QuickPillsBar } from './ui';
 import { ProfileSetupModal } from './overlays/ProfileSetupModal';
 import { ClosedBetaGateModal } from './overlays/ClosedBetaGateModal';
 import { BugReportModal } from './overlays/BugReportModal';
@@ -94,6 +94,7 @@ export function FrostStoryApp() {
   }
   const [creators, setCreators] = useState<Creator[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [worldEvents, setWorldEvents] = useState<WorldSeasonEvent[]>([]);
   const [stories, setStories] = useState<Story[]>([]);
   const [selectedStory, setSelectedStory] = useState<Story | null>(null);
   const [selectedCreator, setSelectedCreator] = useState<Creator | null>(null);
@@ -364,6 +365,7 @@ export function FrostStoryApp() {
         reply: string;
         suggestedReplies?: string[];
         moodToast?: string | null;
+        realityState?: RealityState | null;
         mediaKey: string | null;
         messages: AiChatMessage[];
         unlockedRewards?: string[];
@@ -374,7 +376,15 @@ export function FrostStoryApp() {
       }>(`/api/chats/${encodeURIComponent(selectedCreator.id)}/message`, json({ message: text, requestId: id, adultMode: requestedAdultMode, lang }));
 
       setPending((prev) => prev.filter((item) => item.id !== id));
-      if (res.messages) setChat((prev) => (prev ? { ...prev, aiMessages: res.messages, score: res.relationship, level: res.level, creditProgress: res.creditProgress } : prev));
+      if (res.messages) setChat((prev) => (prev ? {
+        ...prev,
+        aiMessages: res.messages,
+        score: res.relationship,
+        level: res.level,
+        creditProgress: res.creditProgress,
+        realityState: res.realityState ?? prev.realityState,
+        suggestedReplies: res.suggestedReplies ?? prev.suggestedReplies,
+      } : prev));
       if (res.energy) setEnergy(res.energy);
       if (typeof res.relationship === 'number') {
         const prevRel = selectedCreator.relationship || 0;
@@ -558,12 +568,13 @@ export function FrostStoryApp() {
   const loadFeed = useCallback(async () => {
     const version = followSyncRef.current.beginFeedLoad();
     const [feed, people, highlights] = await Promise.all([
-      api<{ posts: Post[] }>('/api/feed'),
+      api<{ posts: Post[]; worldEvents?: WorldSeasonEvent[] }>('/api/feed'),
       api<{ creators: Creator[] }>('/api/creators'),
       api<{ stories: Story[] }>('/api/stories'),
     ]);
     if (!followSyncRef.current.isCurrentFeedLoad(version)) return;
     setPosts(feed.posts);
+    if (Array.isArray(feed.worldEvents)) setWorldEvents(feed.worldEvents);
     // Likes and saves come from the server so they survive a reload.
     setLikedPostIds(Object.fromEntries(feed.posts.filter((p) => p.liked).map((p) => [p.id, true])));
     setSavedPostIds(Object.fromEntries(feed.posts.filter((p) => p.saved).map((p) => [p.id, true])));
@@ -1039,6 +1050,7 @@ export function FrostStoryApp() {
         {(screen === "feed" && !hubOn) || (screen === "reels" && hubOn) ? (
           <FeedTab
             posts={posts}
+            worldEvents={worldEvents}
             stories={stories}
             creators={creators}
             user={user}
@@ -1860,6 +1872,10 @@ export function FrostStoryApp() {
               </button>
             </div>
 
+            {aiDmTab === 'ai' && chat && !chat.experiment && (
+              <LivingRealityStatusBar realityState={chat.realityState} lang={lang} />
+            )}
+
             {aiDmTab === 'story' && chat && chat.episodes?.length > 0 && (
               <div
                 className="fs-episodes"
@@ -2249,11 +2265,20 @@ export function FrostStoryApp() {
             )}
 
             {aiDmTab === 'ai' ? (
-              <ChatComposer
-                placeholder={t.messageTo(selectedCreator.name)}
-                disabled={!chat || aiSending}
-                onSend={(text) => void sendAiMessage(text)}
-              />
+              <>
+                {chat && !chat.experiment && (
+                  <QuickPillsBar
+                    pills={chat.suggestedReplies}
+                    disabled={!chat || aiSending}
+                    onSelect={(pill) => void sendAiMessage(pill)}
+                  />
+                )}
+                <ChatComposer
+                  placeholder={t.messageTo(selectedCreator.name)}
+                  disabled={!chat || aiSending}
+                  onSend={(text) => void sendAiMessage(text)}
+                />
+              </>
             ) : (
               <footer className="fs-dm-footer">
                 {node ? (
