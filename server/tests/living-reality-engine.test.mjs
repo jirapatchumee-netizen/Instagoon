@@ -53,7 +53,7 @@ test('Micro-state transitions track stress, affection, clout and advance through
   assert.ok(advice.rippleEvent, 'bold advice triggers a ripple world event');
 });
 
-test('DM turns persist Ghost Draft, Episode Banner, Catalyst, Quick Pills, and Ripple World Events', async () => {
+test('DM turns persist Episode Banner, Catalyst, Quick Pills, and Ripple World Events', async () => {
   const f = await narrativeFixture();
   const inline = { ...f.npc, id: 'milin-sim', name: 'มิลิน', world: 'ห้องพักครีเอเตอร์' };
   delete inline.narrative;
@@ -73,7 +73,6 @@ test('DM turns persist Ghost Draft, Episode Banner, Catalyst, Quick Pills, and R
           reply: 'งั้นเรามาเล่นเกมความจริงกันคืนนี้เลยนะ!',
           innerThought: 'กลัวหลุดปากจัง แต่ก็อยากเล่าให้ฟัง',
           action: 'ขยับมานั่งใกล้ๆ บนโซฟา',
-          ghostDraft: 'จริงๆ วันนี้ฉันเกือบร้องไห้กลางไลฟ์เลย...',
           beats: [
             { kind: 'action', text: 'ขยับมานั่งใกล้ๆ บนโซฟา' },
             { kind: 'dialogue', text: 'งั้นเรามาเล่นเกมความจริงกันคืนนี้เลยนะ!' }
@@ -94,7 +93,7 @@ test('DM turns persist Ghost Draft, Episode Banner, Catalyst, Quick Pills, and R
 
   assert.equal(res.status, 200);
   assert.match(capturedSystem, /\[Living Reality State: Episode 3\/5/);
-  assert.match(capturedSystem, /Ghost Draft Cue/);
+  assert.doesNotMatch(capturedSystem, /Ghost Draft Cue/);
   assert.equal(res.payload.realityState.currentEpisode, 3);
   assert.equal(res.payload.realityState.episodeChanged, true);
   assert.equal(res.payload.realityState.isCloseFriend, true);
@@ -104,7 +103,7 @@ test('DM turns persist Ghost Draft, Episode Banner, Catalyst, Quick Pills, and R
 
   const stored = f.sql.prepare("SELECT content FROM ai_chat_messages WHERE role='assistant' AND creator_id=? ORDER BY created_at DESC LIMIT 1").get(inline.id);
   assert.match(stored.content, /\[episode:\{"number":3/);
-  assert.match(stored.content, /\[draft:จริงๆ วันนี้ฉันเกือบร้องไห้กลางไลฟ์เลย…\]|\[draft:จริงๆ วันนี้ฉันเกือบร้องไห้กลางไลฟ์เลย\.\.\.\]/);
+  assert.doesNotMatch(stored.content, /\[draft:/);
   assert.match(stored.content, /\[catalyst:\{"kind":"truth_game"/);
 
   const row = f.sql.prepare('SELECT current_episode, is_close_friend FROM relationships WHERE user_id=? AND creator_id=?').get('one', inline.id);

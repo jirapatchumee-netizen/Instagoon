@@ -224,14 +224,13 @@ const sanitizeJsonStrings = obj => {
 
 export function serializeSceneBubble({
   at, time, location, mood, thought, beats, fallbackLocation,
-  episodeBanner = null, draft = null, catalyst = null, lockedMedia = null
+  episodeBanner = null, catalyst = null, lockedMedia = null
 }) {
   const escape = value => value.replaceAll('[', '［').replaceAll(']', '］');
   const parts = [serializeSceneHeader(resolveSceneHeader({ at, time, location, fallbackLocation }))];
   if (episodeBanner) parts.push(`[episode:${JSON.stringify(sanitizeJsonStrings(episodeBanner))}]`);
   if (mood) parts.push(`[mood:${escape(mood)}]`);
   if (thought) parts.push(`[thought:${escape(thought)}]`);
-  if (typeof draft === 'string' && draft.trim()) parts.push(`[draft:${escape(draft.trim())}]`);
   for (const beat of beats) parts.push(beat.kind === 'action' ? `[action:${escape(beat.text)}]` : escape(beat.text));
   if (catalyst) parts.push(`[catalyst:${JSON.stringify(sanitizeJsonStrings(catalyst))}]`);
   if (lockedMedia) parts.push(`[locked-media:${JSON.stringify(sanitizeJsonStrings(lockedMedia))}]`);

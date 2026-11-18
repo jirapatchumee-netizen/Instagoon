@@ -1535,7 +1535,6 @@ async function player(req,env,user,path,now,ctx) {
    let replyText = '';
    let innerThought = null;
    let actionText = null;
-   let ghostDraft = null;
    let scoreDelta = 0;
    let newMem = null;
    let detectedRuleIds = [...matchedRuleIds];
@@ -1714,8 +1713,7 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
        affectionDelta: { type: 'INTEGER', description: 'Affection delta (-3 to +3). Positive for charm/empathy/intimacy, 0 for neutral or shock, negative for offense/harassment.' },
        learnedMemory: { type: 'OBJECT', nullable: true, properties: { key: { type: 'STRING' }, value: { type: 'STRING' } } },
        suggestedReplies: { type: 'ARRAY', items: { type: 'STRING' } },
-       moodToast: { type: 'STRING', nullable: true },
-       ghostDraft: { type: 'STRING', nullable: true, description: isEn ? 'Optional short unsent draft sentence (<= 80 chars) that the character typed and deleted before sending her reply, or null.' : 'ประโยคสั้นๆ (<= 70 ตัวอักษร) ที่ตัวละครพิมพ์ค้างไว้แล้วลบทิ้งก่อนส่งข้อความจริงเมื่อต้องการซ่อนความรู้สึก หรือ null' }
+       moodToast: { type: 'STRING', nullable: true }
      },
      required: ['reply', 'sceneTime', 'sceneLocation']
    };
@@ -1765,7 +1763,7 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
        }
      }
      if (typeof parsed?.reply === 'string' && parsed.reply.trim()) {
-       const visible = [parsed.reply, parsed.innerThought, parsed.action, parsed.ghostDraft, parsed.sceneTime, parsed.sceneLocation, ...(Array.isArray(parsed.beats) ? parsed.beats.map(b => b?.text) : []), parsed.moodToast, ...(decodedScene ? [...decodedScene.beats.map(b => b.text), JSON.stringify(decodedScene.sceneUpdate)] : []), ...(Array.isArray(parsed.suggestedReplies) ? parsed.suggestedReplies : [])].filter(s => typeof s === 'string').join('\n');
+       const visible = [parsed.reply, parsed.innerThought, parsed.action, parsed.sceneTime, parsed.sceneLocation, ...(Array.isArray(parsed.beats) ? parsed.beats.map(b => b?.text) : []), parsed.moodToast, ...(decodedScene ? [...decodedScene.beats.map(b => b.text), JSON.stringify(decodedScene.sceneUpdate)] : []), ...(Array.isArray(parsed.suggestedReplies) ? parsed.suggestedReplies : [])].filter(s => typeof s === 'string').join('\n');
        if (!leaksInternals(visible, canary)) {
          replyText = cleanTrailingSlang(parsed.reply.trim());
          narrativeResult = decodedScene;
@@ -1774,9 +1772,6 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
          }
          if (typeof parsed?.action === 'string' && parsed.action.trim()) {
            actionText = cleanTrailingSlang(parsed.action.trim());
-         }
-         if (typeof parsed?.ghostDraft === 'string' && parsed.ghostDraft.trim()) {
-           ghostDraft = cleanTrailingSlang(parsed.ghostDraft.trim()).slice(0, 120);
          }
          applySceneStandard(parsed);
          if (Array.isArray(parsed.matchedRuleIds)) detectedRuleIds.push(...parsed.matchedRuleIds.filter(rid => semanticRules.some(r => r.id === rid)));
@@ -1942,7 +1937,7 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
              if(data.promptFeedback?.blockReason || SAFETY_FINISH.has(blockReason)) break;
              continue;
            }
-           const visible = [parsed.reply, parsed.innerThought, parsed.action, parsed.ghostDraft, parsed.sceneTime, parsed.sceneLocation, ...(Array.isArray(parsed.beats) ? parsed.beats.map(b => b?.text) : []), parsed.moodToast, ...(decodedScene ? [...decodedScene.beats.map(b => b.text), JSON.stringify(decodedScene.sceneUpdate)] : []), ...(Array.isArray(parsed.suggestedReplies) ? parsed.suggestedReplies : [])].filter(s => typeof s === 'string').join('\n');
+           const visible = [parsed.reply, parsed.innerThought, parsed.action, parsed.sceneTime, parsed.sceneLocation, ...(Array.isArray(parsed.beats) ? parsed.beats.map(b => b?.text) : []), parsed.moodToast, ...(decodedScene ? [...decodedScene.beats.map(b => b.text), JSON.stringify(decodedScene.sceneUpdate)] : []), ...(Array.isArray(parsed.suggestedReplies) ? parsed.suggestedReplies : [])].filter(s => typeof s === 'string').join('\n');
            if(leaksInternals(visible, canary)) {
              console.error('Gemini reply leaked internals on', geminiModel);
              fallbackCount++;
@@ -1955,9 +1950,6 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
            }
            if(typeof parsed?.action === 'string' && parsed.action.trim()) {
              actionText = cleanTrailingSlang(parsed.action.trim());
-           }
-           if(typeof parsed?.ghostDraft === 'string' && parsed.ghostDraft.trim()) {
-             ghostDraft = cleanTrailingSlang(parsed.ghostDraft.trim()).slice(0, 120);
            }
            applySceneStandard(parsed);
            // The model may only report semantic rules; keyword rules are matched in code above.
@@ -2100,7 +2092,7 @@ Reply in Thai naturally as "${npcName}" according to the character's designated 
      : serializeSceneBubble({ at: sceneMetadata.at, time: sceneMetadata.time, location: sceneMetadata.location, mood: moodToast,
         thought: innerThought, beats: inlineBeats.length ? inlineBeats : [{ kind: 'dialogue', text: replyText }],
         episodeBanner: realityUpdate.episodeChanged ? realityUpdate.episodeBanner : null,
-        draft: ghostDraft, catalyst: realityUpdate.catalyst });
+        catalyst: realityUpdate.catalyst });
    const realityStatePayload = {
      currentEpisode: realityUpdate.currentEpisode,
      episodeTitle: realityUpdate.episodeMeta.title,

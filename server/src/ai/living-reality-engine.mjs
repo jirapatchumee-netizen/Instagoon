@@ -372,7 +372,7 @@ export async function recordRippleWorldEvent(env, creatorId, rippleEvent, now = 
 }
 
 /**
- * Assemble a compact (<90 tokens) Micro-Prompt block injecting Reality Episode, Mood, Ghost Draft, Jealousy, and World Events.
+ * Assemble a compact (<90 tokens) Micro-Prompt block injecting Reality Episode, Mood, Jealousy, and World Events.
  */
 export function buildLivingRealityPromptBlock({
   npcName = 'Creator',
@@ -387,14 +387,6 @@ export function buildLivingRealityPromptBlock({
     `[Living Reality State: Episode ${ep.number}/5 (${ep.title}) | Affection:${st.affectionLevel}/100 | Stress:${st.stressLevel}/100 | Clout:${st.cloutLevel}/100${st.isCloseFriend ? ' | Close Friends: UNLOCKED' : ''}]`,
     `Episode Pacing: ${ep.toneDirective}`
   ];
-
-  if (ep.number >= 2 || st.stressLevel >= 50 || jealousy?.active) {
-    lines.push(
-      isEn
-        ? `Ghost Draft Cue: You may optionally populate "ghostDraft" with 1 short unsent sentence (<= 70 chars) that ${npcName} typed and deleted before sending her real message.`
-        : `Ghost Draft Cue: หากต้องการซ่อนความรู้สึกหรือเขินอาย สามารถใส่ประโยคสั้นๆ 1 ประโยค (<= 70 ตัวอักษร) ที่ ${npcName} พิมพ์ค้างไว้แล้วลบทิ้งก่อนส่งข้อความจริง ลงในฟิลด์ "ghostDraft" ได้`
-    );
-  }
 
   if (jealousy?.active) {
     lines.push(

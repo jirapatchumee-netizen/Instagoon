@@ -137,7 +137,6 @@ export function parseMagicAcademyMessage(rawText: string): ParsedMessageSegment[
 
 export function parseRealityBubbleTags(text: string): {
   episodeBanner: EpisodeBannerMeta | null;
-  draft: string | null;
   howler: string | null;
   catalyst: CatalystMeta | null;
   lockedMedia: LockedMediaMeta | null;
@@ -145,7 +144,6 @@ export function parseRealityBubbleTags(text: string): {
 } {
   let cleanBody = text || '';
   let episodeBanner: EpisodeBannerMeta | null = null;
-  let draft: string | null = null;
   let howler: string | null = null;
   let catalyst: CatalystMeta | null = null;
   let lockedMedia: LockedMediaMeta | null = null;
@@ -164,11 +162,8 @@ export function parseRealityBubbleTags(text: string): {
     return '';
   });
 
-  cleanBody = cleanBody.replace(/^\[draft:([^\]]*)\]\n?/gim, (_, raw) => {
-    const val = String(raw || '').trim();
-    if (val) draft = val;
-    return '';
-  });
+  // Stored replies still carry the tag, so it is stripped before the bubble renders.
+  cleanBody = cleanBody.replace(/^\[draft:[^\]]*\]\n?/gim, '');
 
   cleanBody = cleanBody.replace(/^\[howler:([^\]]*)\]\n?/gim, (_, raw) => {
     const val = String(raw || '').trim();
@@ -204,7 +199,7 @@ export function parseRealityBubbleTags(text: string): {
     return '';
   });
 
-  return { episodeBanner, draft, howler, catalyst, lockedMedia, cleanBody: cleanBody.trim() };
+  return { episodeBanner, howler, catalyst, lockedMedia, cleanBody: cleanBody.trim() };
 }
 
 export function splitNarrativeBody(text: string): NarrativeSegment[] {
