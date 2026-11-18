@@ -1,0 +1,10 @@
+[
+  {
+    "id": "story_rosalind_01",
+    "type": "broadcast",
+    "media": "stories/rosalind_solstice_y1.png",
+    "publishedAt": "2026-11-18T13:00:00+07:00",
+    "relationshipRequired": 0,
+    "status": "published"
+  }
+]

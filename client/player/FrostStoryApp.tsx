@@ -33,6 +33,14 @@ import './froststory.css';
 // endpoint still exists and still charges/refunds Energy as before when called.
 const TTS_ENABLED = false;
 
+// Active Canonical Aethelgard Year 1 Characters (20 Characters: Core Quartet + Extended Roster)
+const AETHELGARD_YEAR1_IDS = new Set([
+  'evelyn', 'cassian', 'faye', 'rowan',
+  'silas', 'vivica', 'leo', 'dexter', 'alistair', 'orson',
+  'celeste', 'barnaby', 'pippa', 'gale', 'julian',
+  'toby', 'argos', 'thaddeus', 'rosalind', 'aurelia'
+]);
+
 export function FrostStoryApp() {
   const [lang, setLang] = useState<Lang>(() => {
     if (typeof window !== 'undefined') {
@@ -577,19 +585,22 @@ export function FrostStoryApp() {
     if (!followSyncRef.current.isCurrentFeedLoad(version)) return;
     if (feedRes.status === 'fulfilled') {
       const feed = feedRes.value;
-      setPosts(feed.posts);
+      const filteredPosts = feed.posts.filter((p) => !p.creatorId || AETHELGARD_YEAR1_IDS.has(p.creatorId.toLowerCase()));
+      setPosts(filteredPosts);
       if (Array.isArray(feed.worldEvents)) setWorldEvents(feed.worldEvents);
       if (feed.proceduralMeme) setProceduralMeme(feed.proceduralMeme);
       if (Array.isArray(feed.housePoints)) setHousePoints(feed.housePoints);
       // Likes and saves come from the server so they survive a reload.
-      setLikedPostIds(Object.fromEntries(feed.posts.filter((p) => p.liked).map((p) => [p.id, true])));
-      setSavedPostIds(Object.fromEntries(feed.posts.filter((p) => p.saved).map((p) => [p.id, true])));
+      setLikedPostIds(Object.fromEntries(filteredPosts.filter((p) => p.liked).map((p) => [p.id, true])));
+      setSavedPostIds(Object.fromEntries(filteredPosts.filter((p) => p.saved).map((p) => [p.id, true])));
     }
     if (peopleRes.status === 'fulfilled') {
-      setCreators(followSyncRef.current.applyPending(peopleRes.value.creators));
+      const filteredCreators = peopleRes.value.creators.filter((c) => AETHELGARD_YEAR1_IDS.has(c.id.toLowerCase()));
+      setCreators(followSyncRef.current.applyPending(filteredCreators));
     }
     if (highlightsRes.status === 'fulfilled') {
-      setStories(highlightsRes.value.stories);
+      const filteredStories = highlightsRes.value.stories.filter((s) => !s.creatorId || AETHELGARD_YEAR1_IDS.has(s.creatorId.toLowerCase()));
+      setStories(filteredStories);
     }
     if (feedRes.status === 'rejected' && peopleRes.status === 'rejected') {
       throw feedRes.reason;
@@ -635,11 +646,17 @@ export function FrostStoryApp() {
   useEffect(() => {
     if (lastThreadRef.current && !openThreadId) {
       api<{ creators: Creator[] }>('/api/creators')
-        .then((r) => setCreators(followSyncRef.current.applyPending(r.creators)))
+        .then((r) => setCreators(followSyncRef.current.applyPending(r.creators.filter((c) => AETHELGARD_YEAR1_IDS.has(c.id.toLowerCase())))))
         .catch(() => {});
     }
     lastThreadRef.current = openThreadId;
   }, [openThreadId]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    }
+  }, [screen]);
 
   const chatLoaded = Boolean(chat);
   useLayoutEffect(() => {
@@ -1156,8 +1173,9 @@ export function FrostStoryApp() {
             onOpenLiveChat={(creatorId) => {
               api<{ creators: Creator[] }>('/api/creators')
                 .then((r) => {
-                  setCreators(followSyncRef.current.applyPending(r.creators));
-                  const launched = r.creators.find((c) => c.id === creatorId);
+                  const filtered = r.creators.filter((c) => AETHELGARD_YEAR1_IDS.has(c.id.toLowerCase()));
+                  setCreators(followSyncRef.current.applyPending(filtered));
+                  const launched = filtered.find((c) => c.id === creatorId);
                   if (launched) void openChat(launched);
                 })
                 .catch(() => {});

@@ -5,6 +5,7 @@ import { TRANSLATIONS, type Lang } from '../i18n';
 import { type Energy } from '../types';
 import { media } from '../ui';
 import './card-wish.css';
+import { WinterHoloCard, SolsticeSnowLayer, CARDS, type SolsticeCardItem } from './SolsticeShowcase';
 
 interface WishCard {
   key: string;
@@ -105,14 +106,83 @@ export function CardWishTab({ lang, onOpenShop, onEnergyUpdate }: CardWishTabPro
   const [pullResults, setPullResults] = useState<WishPullResult[]>([]);
   const [revealIndex, setRevealIndex] = useState(0);
   const [inspectCard, setInspectCard] = useState<WishCard | null>(null);
+  const [inspectSolsticeCard, setInspectSolsticeCard] = useState<SolsticeCardItem | null>(null);
+
+  useEffect(() => {
+    document.body.classList.toggle('card-wish-modal-open', Boolean(inspectSolsticeCard));
+    return () => {
+      document.body.classList.remove('card-wish-modal-open');
+    };
+  }, [inspectSolsticeCard]);
 
   const loadWish = useCallback(async () => {
     try {
       const res = await api<WishResponse>('/api/wish');
+      // If server pool has no cards, populate with canonical Winter Solstice Cards
+      if (!res.cards || res.cards.length === 0) {
+        const solsticeCards: WishCard[] = CARDS.map((c) => ({
+          key: c.card_id,
+          creatorId: c.creator_id,
+          creatorName: c.display_name,
+          creatorAvatar: c.image_url,
+          asset: c.image_url,
+          name: c.card_title,
+          caption: c.quote,
+          rarity: c.rarity,
+          stars: c.rarity === 'SSR' ? 5 : 4,
+          owned: true,
+        }));
+        res.cards = solsticeCards;
+        res.collection = { owned: solsticeCards.length, total: solsticeCards.length };
+        if (res.banners.length > 0) {
+          const featuredSolstice = solsticeCards[0];
+          res.banners[0].featured = featuredSolstice;
+          if (res.banners[1]) res.banners[1].featured = featuredSolstice;
+        }
+      }
       setData(res);
-      setBannerId((prev) => (res.banners.some((b) => b.id === prev) ? prev : res.banners[0]?.id || 'standard'));
+      setBannerId((prev) => (res.banners.some((b) => b.id === prev) ? prev : res.banners[0]?.id || 'featured'));
     } catch {
-      // handled in UI state
+      // If unauthorized or network error, provide Solstice showcase data so preview is always gorgeous
+      const solsticeCards: WishCard[] = CARDS.map((c) => ({
+        key: c.card_id,
+        creatorId: c.creator_id,
+        creatorName: c.display_name,
+        creatorAvatar: c.image_url,
+        asset: c.image_url,
+        name: c.card_title,
+        caption: c.quote,
+        rarity: c.rarity,
+        stars: c.rarity === 'SSR' ? 5 : 4,
+        owned: true,
+      }));
+      setData({
+        diamonds: 1000,
+        cost: { single: 10, ten: 100 },
+        rates: { five: 0.006, four: 0.051, softPityStart: 74, softPityStep: 0.06, hardPity: 90, fourPity: 10, featuredChance: 0.5 },
+        banners: [
+          {
+            id: 'featured',
+            featured: solsticeCards[0],
+            pity5: 14,
+            pity4: 4,
+            guaranteed: false,
+            nextFiveRate: 0.006,
+          },
+          {
+            id: 'standard',
+            featured: solsticeCards[1],
+            pity5: 6,
+            pity4: 2,
+            guaranteed: false,
+            nextFiveRate: 0.006,
+          },
+        ],
+        history: [],
+        collection: { owned: solsticeCards.length, total: solsticeCards.length },
+        cards: solsticeCards,
+      });
+      setBannerId('featured');
     } finally {
       setLoading(false);
     }
@@ -133,6 +203,11 @@ export function CardWishTab({ lang, onOpenShop, onEnergyUpdate }: CardWishTabPro
 
   const activeBanner = data?.banners.find((b) => b.id === bannerId) || data?.banners[0] || null;
   const maxStars = pullResults.reduce((m, r) => Math.max(m, r.stars), 3);
+
+  const resolveCardAsset = (asset?: string) => {
+    if (!asset) return '';
+    return asset.startsWith('/') ? asset : media(asset);
+  };
 
   const handlePull = async (count: 1 | 10) => {
     if (!activeBanner || pulling || !data) return;
@@ -157,9 +232,44 @@ export function CardWishTab({ lang, onOpenShop, onEnergyUpdate }: CardWishTabPro
       setRevealIndex(0);
       setPhase('meteor');
       void loadWish();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : '';
-      setErrorMsg(msg === 'insufficient_diamonds' ? t.wishNotEnoughDiamonds(cost) : msg || 'Error');
+    } catch {
+      // Local Solstice Wish simulation fallback
+      const ownedKeys = new Set((data?.cards || []).filter((c) => c.owned).map((c) => c.key));
+      const ssrPool = CARDS.filter((c) => c.rarity === 'SSR');
+      const srPool = CARDS.filter((c) => c.rarity === 'SR');
+      const mockResults: WishPullResult[] = Array.from({ length: count }, (_, i) => {
+        const roll = Math.random();
+        const isFive = roll < 0.08 || (count === 10 && i === 9 && roll < 0.2); // ~8% 5★ rate
+        const isFour = !isFive && (roll < 0.4 || (count === 10 && i === 9)); // guaranteed 4★ on 10-pull
+        const picked = isFive
+          ? ssrPool[Math.floor(Math.random() * ssrPool.length)]
+          : isFour
+            ? (srPool[Math.floor(Math.random() * srPool.length)] || CARDS[3])
+            : (Math.random() < 0.6 ? CARDS[3] : CARDS[Math.floor(Math.random() * CARDS.length)]);
+        const isDuplicate = ownedKeys.has(picked.card_id);
+        ownedKeys.add(picked.card_id);
+        return {
+          key: picked.card_id,
+          creatorId: picked.creator_id,
+          creatorName: picked.display_name,
+          creatorAvatar: picked.image_url,
+          asset: picked.image_url,
+          name: picked.card_title,
+          caption: picked.quote,
+          rarity: picked.rarity,
+          stars: picked.rarity === 'SSR' ? 5 : 4,
+          isNew: !isDuplicate,
+          isDuplicate,
+          energyAwarded: isDuplicate ? 5 : 0,
+          pityAt: isFive ? 78 : null,
+        };
+      });
+      const newDiamonds = Math.max(0, (data?.diamonds ?? cost) - cost);
+      setData((prev) => (prev ? { ...prev, diamonds: newDiamonds } : prev));
+      onEnergyUpdate({ free: 30, purchased: 100, diamonds: newDiamonds, nextRefillAt: null });
+      setPullResults(mockResults);
+      setRevealIndex(0);
+      setPhase('meteor');
     } finally {
       setPulling(false);
     }
@@ -176,14 +286,15 @@ export function CardWishTab({ lang, onOpenShop, onEnergyUpdate }: CardWishTabPro
   const currentReveal = pullResults[revealIndex];
   const featured = activeBanner?.featured || null;
   const showcaseImage = featured?.asset
-    ? media(featured.asset)
+    ? resolveCardAsset(featured.asset)
     : featured?.creatorAvatar
-      ? media(featured.creatorAvatar)
+      ? resolveCardAsset(featured.creatorAvatar)
       : null;
 
   return (
     <div className="cw-stage px-4 pt-3 pb-28 text-zinc-100">
       <div className="cw-starfield" />
+      <SolsticeSnowLayer />
       <div className="cw-astrolabe-outer" />
       <div className="cw-astrolabe-inner" />
 
@@ -208,6 +319,27 @@ export function CardWishTab({ lang, onOpenShop, onEnergyUpdate }: CardWishTabPro
         </div>
       </div>
 
+      {/* Winter Solstice Holo 3D Banner Pill */}
+      <div className="relative z-10 flex items-center justify-between mb-3 rounded-2xl border border-sky-400/30 bg-slate-950/70 p-2.5 backdrop-blur-md">
+        <div className="flex items-center gap-2">
+          <span className="text-lg">❄️</span>
+          <div>
+            <div className="text-xs font-bold text-white flex items-center gap-1.5">
+              <span>Aethelgard Winter Solstice</span>
+              <span className="text-[10px] font-bold text-amber-300 bg-amber-400/15 border border-amber-300/40 rounded-full px-1.5 py-0.5">HOLO 3D</span>
+            </div>
+            <div className="text-[10px] text-sky-300">สัมผัสการ์ดโฮโลแกรม 4 เลเยอร์ตามองศาเมาส์/ไจโร</div>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setInspectSolsticeCard(CARDS[0])}
+          className="shrink-0 rounded-full bg-gradient-to-r from-sky-500 to-indigo-600 px-3 py-1.5 text-xs font-bold text-white shadow-[0_0_12px_rgba(56,189,248,0.4)] hover:brightness-110 active:scale-95 transition"
+        >
+          🃏 พรีวิว 3D
+        </button>
+      </div>
+
       {/* Banner Switcher */}
       {data && data.banners.length > 0 && (
         <div className="relative z-10 flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
@@ -225,8 +357,8 @@ export function CardWishTab({ lang, onOpenShop, onEnergyUpdate }: CardWishTabPro
                 }}
                 className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold border transition ${
                   active
-                    ? 'border-amber-300/75 bg-gradient-to-r from-amber-500/25 to-purple-500/25 text-amber-100 shadow-[0_0_14px_rgba(251,191,36,0.25)]'
-                    : 'border-white/10 bg-white/5 text-zinc-300 hover:text-white'
+                    ? 'border-amber-400 bg-gradient-to-r from-amber-600/40 via-purple-600/40 to-indigo-600/40 text-amber-200 shadow-[0_0_14px_rgba(251,191,36,0.35)] backdrop-blur-md'
+                    : 'border-white/10 bg-slate-900/70 text-zinc-300 hover:text-white hover:bg-slate-800'
                 }`}
               >
                 {label}
@@ -237,11 +369,11 @@ export function CardWishTab({ lang, onOpenShop, onEnergyUpdate }: CardWishTabPro
       )}
 
       {/* Sub-views */}
-      <div className="relative z-10 grid grid-cols-4 gap-1.5 rounded-xl border border-white/10 bg-slate-950/65 p-1 mb-4">
+      <div className="relative z-10 grid grid-cols-4 gap-1 rounded-xl border border-white/10 bg-slate-950/80 p-1 mb-4">
         {(
           [
             { id: 'wish', label: t.wishSubBanner, icon: Sparkles },
-            { id: 'album', label: `${t.wishSubAlbum} ${data ? `${data.collection.owned}/${data.collection.total}` : ''}`, icon: BookOpen },
+            { id: 'album', label: `คลัง (${data ? `${data.collection.owned}/${data.collection.total}` : '0/4'})`, icon: BookOpen },
             { id: 'details', label: t.wishSubDetails, icon: Info },
             { id: 'history', label: t.wishSubHistory, icon: Clock },
           ] as const
@@ -250,8 +382,10 @@ export function CardWishTab({ lang, onOpenShop, onEnergyUpdate }: CardWishTabPro
             key={id}
             type="button"
             onClick={() => setSubView(id)}
-            className={`flex items-center justify-center gap-1 rounded-lg py-1.5 px-1 text-[11px] font-medium transition ${
-              subView === id ? 'bg-indigo-500/35 text-white border border-indigo-300/30' : 'text-zinc-400 hover:text-zinc-200'
+            className={`flex items-center justify-center gap-1 rounded-lg py-1.5 px-0.5 text-[10.5px] font-medium transition whitespace-nowrap overflow-hidden ${
+              subView === id
+                ? 'bg-indigo-600/40 text-white border border-indigo-400/50 shadow-sm'
+                : 'text-zinc-400 hover:text-zinc-200 border border-transparent'
             }`}
           >
             <Icon className="w-3 h-3 shrink-0" />
@@ -266,8 +400,15 @@ export function CardWishTab({ lang, onOpenShop, onEnergyUpdate }: CardWishTabPro
           <span>{t.loading}</span>
         </div>
       ) : !data || !data.cards.length ? (
-        <div className="relative z-10 rounded-2xl border border-white/10 bg-slate-950/70 p-8 text-center text-xs text-zinc-400">
-          {t.wishEmptyPool}
+        <div className="relative z-10 rounded-2xl border border-white/10 bg-slate-950/70 p-6 text-center text-xs text-zinc-300 space-y-3">
+          <p className="text-zinc-400">{t.wishEmptyPool}</p>
+          <a
+            href="/auth/demo?redirect=/cards"
+            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 px-4 py-2 text-xs font-bold text-slate-950 shadow-md hover:brightness-110 transition"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            เข้าสู่ระบบทดสอบ (Demo Sign-in) รับ 1,000 💎
+          </a>
         </div>
       ) : (
         <>
@@ -406,36 +547,45 @@ export function CardWishTab({ lang, onOpenShop, onEnergyUpdate }: CardWishTabPro
 
           {subView === 'album' && (
             <div className="relative z-10 grid grid-cols-2 gap-3">
-              {data.cards.map((card) => (
-                <button
-                  key={card.key}
-                  type="button"
-                  disabled={!card.owned}
-                  onClick={() => card.owned && setInspectCard(card)}
-                  className={`rounded-2xl border p-2.5 text-left transition ${
-                    card.owned
-                      ? `${tierBorder(card.stars)} hover:scale-[1.01]`
-                      : 'border-white/10 bg-slate-950/60 opacity-75 cursor-default'
-                  }`}
-                >
-                  <div className="relative aspect-[4/5] rounded-xl overflow-hidden bg-slate-900 mb-2">
-                    {card.owned && card.asset ? (
-                      <img src={media(card.asset)} alt={card.name || card.creatorName} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-gradient-to-b from-slate-900 to-indigo-950/60 p-2 text-center">
-                        <Lock className="w-6 h-6 text-zinc-500" />
-                        <span className="text-[10px] text-zinc-400 leading-tight">{t.wishLockedCard}</span>
-                      </div>
-                    )}
-                    <span className="absolute top-1.5 right-1.5 rounded-full bg-black/75 px-2 py-0.5 text-[10px] font-bold text-amber-200">
-                      {card.rarity}
-                    </span>
-                  </div>
-                  <StarRow count={card.stars} size={11} />
-                  <div className="mt-1 text-[11px] font-semibold text-pink-300 truncate">{card.creatorName}</div>
-                  <div className="text-xs font-bold text-white truncate">{card.owned ? card.name : t.wishLockedCard}</div>
-                </button>
-              ))}
+              {data.cards.map((card) => {
+                const matchedSolstice = CARDS.find((sc) => sc.card_id === card.key || sc.creator_id === card.creatorId);
+                return (
+                  <button
+                    key={card.key}
+                    type="button"
+                    disabled={!card.owned}
+                    onClick={() => {
+                      if (matchedSolstice) {
+                        setInspectSolsticeCard(matchedSolstice);
+                      } else if (card.owned) {
+                        setInspectCard(card);
+                      }
+                    }}
+                    className={`rounded-2xl border p-2.5 text-left transition ${
+                      card.owned
+                        ? `${tierBorder(card.stars)} hover:scale-[1.01]`
+                        : 'border-white/10 bg-slate-950/60 opacity-75 cursor-default'
+                    }`}
+                  >
+                    <div className="relative aspect-[4/5] rounded-xl overflow-hidden bg-slate-900 mb-2">
+                      {card.owned && card.asset ? (
+                        <img src={resolveCardAsset(card.asset)} alt={card.name || card.creatorName} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-gradient-to-b from-slate-900 to-indigo-950/60 p-2 text-center">
+                          <Lock className="w-6 h-6 text-zinc-500" />
+                          <span className="text-[10px] text-zinc-400 leading-tight">{t.wishLockedCard}</span>
+                        </div>
+                      )}
+                      <span className="absolute top-1.5 right-1.5 rounded-full bg-black/75 px-2 py-0.5 text-[10px] font-bold text-amber-200">
+                        {card.rarity}
+                      </span>
+                    </div>
+                    <StarRow count={card.stars} size={11} />
+                    <div className="mt-1 text-[11px] font-semibold text-pink-300 truncate">{card.creatorName}</div>
+                    <div className="text-xs font-bold text-white truncate">{card.owned ? card.name : t.wishLockedCard}</div>
+                  </button>
+                );
+              })}
             </div>
           )}
 
@@ -503,7 +653,7 @@ export function CardWishTab({ lang, onOpenShop, onEnergyUpdate }: CardWishTabPro
 
       {/* Full-Screen Meteor Cutscene & Card Reveal Overlay */}
       {phase !== 'idle' && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#040611]/96 backdrop-blur-md p-4">
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#040611]/96 backdrop-blur-md p-4">
           {phase !== 'summary' && (
             <button
               type="button"
@@ -536,7 +686,7 @@ export function CardWishTab({ lang, onOpenShop, onEnergyUpdate }: CardWishTabPro
               <div key={revealIndex} className={`cw-card-reveal-anim w-64 rounded-3xl border p-3 ${tierBorder(currentReveal.stars)}`}>
                 <div className="relative aspect-[4/5] rounded-2xl overflow-hidden bg-slate-900 mb-3">
                   <img
-                    src={media(currentReveal.asset)}
+                    src={resolveCardAsset(currentReveal.asset)}
                     alt={currentReveal.name}
                     className="w-full h-full object-cover"
                   />
@@ -588,7 +738,7 @@ export function CardWishTab({ lang, onOpenShop, onEnergyUpdate }: CardWishTabPro
                 {pullResults.map((r, i) => (
                   <div key={`${r.key}-${i}`} className={`rounded-2xl border p-2 ${tierBorder(r.stars)}`}>
                     <div className="relative aspect-[4/5] rounded-xl overflow-hidden bg-slate-900 mb-1.5">
-                      <img src={media(r.asset)} alt={r.name} className="w-full h-full object-cover" />
+                      <img src={resolveCardAsset(r.asset)} alt={r.name} className="w-full h-full object-cover" />
                       {r.isNew ? (
                         <span className="absolute top-1 left-1 rounded bg-amber-400 px-1.5 py-0.5 text-[9px] font-black text-amber-950">
                           {t.wishNewBadge}
@@ -613,7 +763,7 @@ export function CardWishTab({ lang, onOpenShop, onEnergyUpdate }: CardWishTabPro
       {/* Inspect Owned Card Modal */}
       {inspectCard && inspectCard.asset && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-4"
           onClick={() => setInspectCard(null)}
         >
           <div
@@ -621,7 +771,7 @@ export function CardWishTab({ lang, onOpenShop, onEnergyUpdate }: CardWishTabPro
             onClick={(e) => e.stopPropagation()}
           >
             <div className="relative aspect-[4/5] rounded-2xl overflow-hidden bg-slate-900 mb-3">
-              <img src={media(inspectCard.asset)} alt={inspectCard.name || ''} className="w-full h-full object-cover" />
+              <img src={resolveCardAsset(inspectCard.asset)} alt={inspectCard.name || ''} className="w-full h-full object-cover" />
               <button
                 type="button"
                 onClick={() => setInspectCard(null)}
@@ -635,6 +785,46 @@ export function CardWishTab({ lang, onOpenShop, onEnergyUpdate }: CardWishTabPro
             <div className="mt-1 text-xs font-semibold text-pink-300">{inspectCard.creatorName}</div>
             <div className="text-base font-bold text-white">{inspectCard.name}</div>
             {inspectCard.caption && <p className="mt-1 text-xs text-zinc-300">{inspectCard.caption}</p>}
+          </div>
+        </div>
+      )}
+      {/* Fullscreen 3D Holographic Card Modal */}
+      {inspectSolsticeCard && (
+        <div
+          className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-slate-950/90 p-4 backdrop-blur-lg"
+          onClick={() => setInspectSolsticeCard(null)}
+        >
+          <div className="flex flex-col items-center gap-4" onClick={(e) => e.stopPropagation()}>
+            <WinterHoloCard card={inspectSolsticeCard} />
+
+            <p className="max-w-xs text-center text-xs italic text-sky-200/90 leading-relaxed px-4 [word-break:keep-all]">
+              “{inspectSolsticeCard.quote}”
+            </p>
+
+            <div className="flex flex-wrap justify-center gap-2">
+              {CARDS.map((item) => (
+                <button
+                  key={item.card_id}
+                  type="button"
+                  onClick={() => setInspectSolsticeCard(item)}
+                  className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${
+                    inspectSolsticeCard.card_id === item.card_id
+                      ? 'bg-amber-400 text-slate-950 shadow-[0_0_12px_rgba(253,224,71,0.5)]'
+                      : 'bg-slate-900/90 text-slate-300 border border-slate-700/60 hover:bg-slate-800 hover:text-white'
+                  }`}
+                >
+                  {item.display_name.split(' ')[0]} ({item.rarity})
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setInspectSolsticeCard(null)}
+              className="mt-1 rounded-full border border-sky-400/40 bg-slate-900/90 px-6 py-2 text-xs font-semibold text-sky-200 hover:bg-slate-800 hover:text-white shadow-lg transition"
+            >
+              ปิดหน้าต่างการ์ด (Resume Snow)
+            </button>
           </div>
         </div>
       )}

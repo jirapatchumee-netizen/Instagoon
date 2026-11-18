@@ -1,0 +1,54 @@
+{
+  "schema_version": "1.0.0",
+  "event_id": "aethelgard_winter_solstice",
+  "master_style_anchors": {
+    "female_douyin_glamour": "Polished Korean 2.5D semi-realistic glamour digital illustration, smooth porcelain skin with dewy glossy specular highlights on nose tip, collarbones, and shoulders, Douyin beauty makeup with soft rosy cheek blush, expressive alluring eyes with delicate lashes and subtle aegyo-sal, plump glossy gradient lips, silky fine-strand hair with realistic specular sheen and wispy bangs and flyaways, soft diffused beauty lighting with subtle 3D rim highlights, lineless smooth shading, vertical 9:14 trading card framing with 15% top headroom.",
+    "male_webtoon_lead": "Polished Korean 2.5D semi-realistic handsome digital illustration, clean porcelain skin with subtle 3D jawline and collarbone rim highlights, handsome Korean manhwa male lead aesthetic, sculpted jawline, intense captivating gaze with sharp expressive eyes, natural hydrated softly tinted lips, silky fine-strand textured dark hair with realistic specular sheen, soft diffused cinematic lighting, lineless smooth shading, vertical 9:14 trading card framing with 15% top headroom."
+  },
+  "cards": [
+    {
+      "card_id": "CARD_SSR_EVELYN_ALCHEMIST",
+      "creator_id": "evelyn",
+      "display_name": "Evelyn Vane (เอเวลิน)",
+      "card_title": "The Solstice Alchemist",
+      "rarity": "SSR",
+      "is_close_friend": true,
+      "image_url": "/assets/cards/evelyn-solstice-ssr.webp",
+      "quote": "น้ำยาขวดนี้ผสมละอองดาวคืนเหมายันไว้... ระวังหกใส่เสื้อคลุมนะคะ! 🧪✨",
+      "locked_generation_prompt": "Polished Korean 2.5D semi-realistic glamour digital illustration, smooth porcelain skin with dewy glossy specular highlights on nose tip, collarbones, and shoulders, Douyin beauty makeup with soft rosy cheek blush, expressive alluring eyes with delicate lashes and subtle aegyo-sal, plump glossy gradient lips, silky fine-strand hair with realistic specular sheen and wispy bangs and flyaways, soft diffused beauty lighting with subtle 3D rim highlights, lineless smooth shading, vertical 9:14 trading card framing with 15% top headroom, Evelyn Vane holding an enchanted glowing glass flask with swirling warm golden starlight holiday elixir in a snowy potion laboratory."
+    },
+    {
+      "card_id": "CARD_SSR_CASSIAN_BLACKTHORN",
+      "creator_id": "cassian",
+      "display_name": "Cassian Blackthorn (คาสเซียน)",
+      "card_title": "Heir of Midnight Frost",
+      "rarity": "SSR",
+      "is_close_friend": true,
+      "image_url": "/assets/cards/cassian-solstice-ssr.webp",
+      "quote": "คืนเหมายันมีไว้ให้คนเงียบๆ ดื่มด่ำ... รับชาถ้วยนี้ไปซะ ถือว่าฉันสงสาร ❄️🖤",
+      "locked_generation_prompt": "Polished Korean 2.5D semi-realistic handsome digital illustration, clean porcelain skin with subtle 3D jawline and collarbone rim highlights, handsome Korean manhwa male lead aesthetic, sculpted jawline, intense captivating gaze with sharp expressive eyes, natural hydrated softly tinted lips, silky fine-strand textured dark hair with realistic specular sheen, soft diffused cinematic lighting, lineless smooth shading, vertical 9:14 trading card framing with 15% top headroom, Cassian Blackthorn holding an ebony wand with crystalline frost snowflakes in an aristocratic nocturnal winter hall."
+    },
+    {
+      "card_id": "CARD_SSR_FAYE_AVIATOR",
+      "creator_id": "faye",
+      "display_name": "Faye Sterling (เฟย์)",
+      "card_title": "Star Aviator of Aethel-Pyre",
+      "rarity": "SSR",
+      "is_close_friend": true,
+      "image_url": "/assets/cards/faye-solstice-ssr.webp",
+      "quote": "ขี่ไม้กวาดฝ่าลมหนาวดูแสงออโรร่าด้วยกันไหม? เกาะเอวฉันไว้แน่นๆ นะ! 🧹❄️",
+      "locked_generation_prompt": "Polished Korean 2.5D semi-realistic glamour digital illustration, smooth porcelain skin with dewy glossy specular highlights on nose tip, collarbones, and shoulders, Douyin beauty makeup with soft rosy cheek blush, expressive alluring eyes with delicate lashes and subtle aegyo-sal, plump glossy gradient lips, silky fine-strand hair with realistic specular sheen and wispy bangs and flyaways, soft diffused beauty lighting with subtle 3D rim highlights, lineless smooth shading, vertical 9:14 trading card framing with 15% top headroom, Faye Sterling holding a broomstick wrapped in glowing fairy lights on a snowy tower rooftop under an aurora sky."
+    },
+    {
+      "card_id": "CARD_SR_ROWAN_HERBALIST",
+      "creator_id": "rowan",
+      "display_name": "Rowan Thorne (โรวัน)",
+      "card_title": "Terra-Root Solstice Brewer",
+      "rarity": "SR",
+      "is_close_friend": false,
+      "image_url": "/assets/cards/rowan-solstice-ssr.webp",
+      "quote": "ไซเดอร์แอปเปิ้ลโรยอบเชยกับสโคนคาโมไมล์ร้อนๆ... อุ่นพอที่จะละลายหิมะในใจได้หรือยังครับ? ☕🍎",
+      "locked_generation_prompt": "Polished Korean 2.5D semi-realistic handsome digital illustration, clean porcelain skin with subtle 3D jawline and collarbone rim highlights, handsome Korean manhwa male lead aesthetic, sculpted jawline, warm captivating gaze with sharp expressive eyes, natural hydrated softly tinted lips, silky fine-strand textured hair with realistic specular sheen, soft diffused cinematic lighting, lineless smooth shading, vertical 9:14 trading card framing with 15% top headroom, Rowan Thorne holding a steaming holiday spiced cider mug in a cozy snow-covered greenhouse."
+    }
+  ]
+}

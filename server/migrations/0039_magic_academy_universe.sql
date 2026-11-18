@@ -104,4 +104,10 @@ INSERT OR IGNORE INTO academy_secondary_npcs (npc_handle, display_name, bastion_
     ('@gale_skycaptain', 'Garrick "Gale" Vance', 'Aethel-Pyre', 'Aero-Jousting Captain', 1, 'student_ally'),
     ('@analog_toby', 'Toby Miller', 'Terra-Root', 'Mundane-Born Junior & Cassette Enthusiast', 1, 'student_ally'),
     ('@inquisitor_vespera', 'High Inquisitor Vespera', 'Ministry of Arcane Affairs', 'Authoritarian Censor & Civic Harmony Instructor', 5, 'ministry_authority'),
-    ('@argos_keys', 'Caretaker Argos', 'Aethelgard Staff', 'Grumpy Castle Warden & Secret Evacuation Ally', 1, 'neutral');
+    ('@argos_keys', 'Caretaker Argos', 'Aethelgard Staff', 'Grumpy Castle Warden & Secret Evacuation Ally', 1, 'neutral'),
+    ('@vivica_velvet', 'Vivica Sinclair', 'Nocturn-Coil', 'High Society Gossip Admin of @Spotted_Aethelgard', 1, 'rival_snitch'),
+    ('@silas_sprouts', 'Silas Bramble', 'Terra-Root', 'Companion of Sprout the Lumina-Ferret', 1, 'student_ally'),
+    ('@finch_fireworks', 'Leo Finch', 'Zephyr-Crown', 'Pyrotechnic Alchemical Apprentice', 1, 'student_ally'),
+    ('@dexter_on_air', 'Dexter Cross', 'Aethel-Pyre', 'Aero-Jousting Live Commentator', 1, 'student_ally'),
+    ('@prefect_alistair', 'Alistair Vance', 'Zephyr-Crown', 'Year 5 Curfew Prefect & Ministry Hopeful', 1, 'neutral'),
+    ('@warden_oakheart', 'Master Warden Orson Oakheart', 'Aethelgard Staff', 'Master Warden of the Loch Wilds & Beast Haven', 1, 'student_ally');

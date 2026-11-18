@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { type Post, type Creator, type Story, type User, type WorldSeasonEvent, type ProceduralMeme, type HousePointStanding } from '../types';
 import { TRANSLATIONS, type Lang } from '../i18n';
-import { media, AvatarImg, Media, PRESET_AVATARS, getAvatarSrc, CrossCommentsList } from '../ui';
+import { media, AvatarImg, Media, PRESET_AVATARS, getAvatarSrc, CrossCommentsList, ProceduralMemeCard } from '../ui';
 import { IgHeart, IgComment, IgShare, IgBookmark, IgMore, IgVerified, IgAudio } from '../InstagramIcons';
 
 interface FeedTabProps {
@@ -53,7 +53,7 @@ function getFanCrowdUsername(seed: string): string {
 export function FeedTab({
   posts,
   worldEvents: _worldEvents,
-  proceduralMeme: _proceduralMeme,
+  proceduralMeme,
   housePoints: _housePoints,
   stories,
   creators,
@@ -74,7 +74,7 @@ export function FeedTab({
   onCommentSubmit,
   onOpenPostMenu,
   onGoToExplore,
-  onMemeQuickReply: _onMemeQuickReply,
+  onMemeQuickReply,
 }: FeedTabProps) {
   const t = TRANSLATIONS[lang];
 
@@ -236,8 +236,10 @@ export function FeedTab({
 
       {/* Instagram Authentic Post Feed */}
       {!showSuggested && (
-        <>
-          <div className="fs-posts">
+        <div className="fs-posts">
+          {proceduralMeme && (
+            <ProceduralMemeCard meme={proceduralMeme} onQuickReply={onMemeQuickReply} user={user} />
+          )}
           {posts.length === 0 ? (
             <div className="fs-empty-feed" style={{ padding: '48px 24px', textAlign: 'center' }}>
               <h3 style={{ fontSize: '1.1rem', marginBottom: 8, color: '#f8fafc' }}>{t.emptyFeedTitle}</h3>
@@ -518,7 +520,6 @@ export function FeedTab({
           </div>
         )}
       </div>
-        </>
       )}
   </div>
 );
