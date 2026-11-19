@@ -292,9 +292,9 @@ body:has(.cw-modal-open) .cw-astrolabe-inner {
   overflow: hidden;
   background: #070a18;
   box-shadow:
-    0 22px 48px -12px rgba(0, 0, 0, 0.82),
-    0 0 28px -6px rgba(56, 189, 248, 0.32),
-    0 0 18px -8px rgba(253, 224, 71, 0.25);
+    0 0 30px -2px rgba(56, 189, 248, 0.38),
+    0 0 20px -2px rgba(236, 72, 153, 0.32),
+    0 0 14px 0px rgba(253, 224, 71, 0.25);
 }
 
 /* ============================================================================
@@ -353,24 +353,32 @@ body:has(.cw-modal-open) .cw-astrolabe-inner {
   pointer-events: none;
 }
 
-.solstice-card-art-vignette {
+.solstice-card-art-vignette,
+.hero-seamless-fade {
   position: absolute;
-  inset: 55% 0 0 0;
-  z-index: 2;
+  inset: 66.7% 0 0 0; /* Exactly 1/3 from the bottom */
+  z-index: 4;
   background: linear-gradient(
-    180deg,
-    transparent 0%,
-    rgba(7, 10, 24, 0.72) 60%,
-    rgba(7, 10, 24, 0.94) 100%
+    to top,
+    #02040a 0%,
+    rgba(2, 4, 10, 0.98) 35%,
+    rgba(2, 4, 10, 0.85) 65%,
+    rgba(2, 4, 10, 0.42) 88%,
+    transparent 100%
   );
   pointer-events: none;
 }
 
 /* ============================================================================
  * LAYER 3 (Z-Index: 3) — Preserved Prism Holographic Foil Shader (-50% Soft Balance)
+ * + Dual-Mask Specular Relief (Bump Map Emulation)
  * ============================================================================ */
 .gacha-foil-box::before {
   content: none;
+}
+
+:root {
+  --foil-emboss-mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2232%22%20height%3D%2232%22%20viewBox%3D%220%200%2032%2032%22%3E%20%3Cpath%20d%3D%22M16%200%20L32%2016%20L16%2032%20L0%2016%20Z%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%220.8%22%20stroke-opacity%3D%220.85%22%2F%3E%20%3Cpath%20d%3D%22M0%200%20L32%2032%20M32%200%20L0%2032%22%20stroke%3D%22white%22%20stroke-width%3D%220.5%22%20stroke-opacity%3D%220.4%22%2F%3E%20%3Ccircle%20cx%3D%2216%22%20cy%3D%2216%22%20r%3D%226%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%220.65%22%20stroke-opacity%3D%220.75%22%2F%3E%20%3Ccircle%20cx%3D%2216%22%20cy%3D%2216%22%20r%3D%221.8%22%20fill%3D%22white%22%20fill-opacity%3D%220.95%22%2F%3E%20%3Ccircle%20cx%3D%220%22%20cy%3D%220%22%20r%3D%223%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%220.5%22%20stroke-opacity%3D%220.5%22%2F%3E%20%3Ccircle%20cx%3D%2232%22%20cy%3D%220%22%20r%3D%223%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%220.5%22%20stroke-opacity%3D%220.5%22%2F%3E%20%3Ccircle%20cx%3D%220%22%20cy%3D%2232%22%20r%3D%223%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%220.5%22%20stroke-opacity%3D%220.5%22%2F%3E%20%3Ccircle%20cx%3D%2232%22%20cy%3D%2232%22%20r%3D%223%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%220.5%22%20stroke-opacity%3D%220.5%22%2F%3E%20%3C%2Fsvg%3E");
 }
 
 .holo-foil-sheen {
@@ -403,9 +411,75 @@ body:has(.cw-modal-open) .cw-astrolabe-inner {
   transition: opacity 0.2s ease;
 }
 
+/* 1. Specular Highlight Ridge (Light-facing facet reflection) */
+.holo-foil-sheen::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  pointer-events: none;
+  z-index: 2;
+  background-image:
+    radial-gradient(
+      circle 180px at var(--px, 50%) var(--py, 50%),
+      rgba(255, 255, 255, 0.95) 0%,
+      rgba(254, 240, 138, 0.65) 20%,
+      rgba(147, 197, 253, 0.4) 42%,
+      rgba(236, 72, 153, 0.2) 65%,
+      transparent 85%
+    );
+  mask-image: var(--foil-emboss-mask);
+  -webkit-mask-image: var(--foil-emboss-mask);
+  mask-size: 14px 14px;
+  -webkit-mask-size: 14px 14px;
+  mask-repeat: repeat;
+  -webkit-mask-repeat: repeat;
+  mix-blend-mode: color-dodge;
+  opacity: 0.32; /* Blended 50% for delicate micro-texture */
+  transform: translate3d(
+    calc((var(--px, 50%) - 50%) * 0.03),
+    calc((var(--py, 50%) - 50%) * 0.03),
+    0
+  );
+  transition: opacity 0.25s ease;
+}
+
+/* 2. Micro Shadow Ridge (Opposing occlusion facet for 3D tactile depth) */
+.holo-foil-sheen::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  pointer-events: none;
+  z-index: 1;
+  background-image:
+    radial-gradient(
+      circle 220px at calc(100% - var(--px, 50%)) calc(100% - var(--py, 50%)),
+      rgba(3, 7, 18, 0.8) 0%,
+      rgba(15, 23, 42, 0.4) 40%,
+      transparent 75%
+    );
+  mask-image: var(--foil-emboss-mask);
+  -webkit-mask-image: var(--foil-emboss-mask);
+  mask-size: 14px 14px;
+  -webkit-mask-size: 14px 14px;
+  mask-repeat: repeat;
+  -webkit-mask-repeat: repeat;
+  mix-blend-mode: multiply;
+  opacity: 0.25; /* Blended 50% for subtle tactile depth */
+  transform: translate3d(
+    calc((50% - var(--px, 50%)) * 0.03),
+    calc((50% - var(--py, 50%)) * 0.03),
+    0
+  );
+  transition: opacity 0.25s ease;
+}
+
 .solstice-card-3d-stage:hover .holo-foil-sheen,
 .solstice-card-3d-stage:active .holo-foil-sheen {
-  opacity: 0.41; /* Reduced by 50% (from 0.82) */
+  opacity: 0.35;
+}
+
+.solstice-card-3d-stage:hover .holo-foil-sheen::before {
+  opacity: 0.42;
 }
 
 .holo-text-shimmer {
@@ -460,24 +534,16 @@ body:has(.cw-modal-open) .cw-astrolabe-inner {
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
-  filter: drop-shadow(0 0 8px rgba(253, 224, 71, 0.45));
+  filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.75)) drop-shadow(0 0 14px rgba(253, 224, 71, 0.65));
 }
 
 .solstice-holiday-frame::after {
-  content: "❄";
+  content: "";
   position: absolute;
   inset: 8px;
   border-radius: calc(var(--card-radius) - 6px);
   border: 1px solid rgba(253, 224, 71, 0.34);
   box-shadow: inset 0 0 16px rgba(56, 189, 248, 0.18);
-  color: rgba(253, 224, 71, 0.88);
-  font-size: 13px;
-  line-height: 1;
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;
-  padding: 8px 10px;
-  text-shadow: 0 0 8px rgba(56, 189, 248, 0.85);
 }
 
 .solstice-corner-crest {
@@ -546,6 +612,97 @@ body:has(.cw-modal-open) .cw-astrolabe-inner {
   filter: drop-shadow(0 0 6px #38bdf8);
 }
 
+.solstice-rarity-badge.is-ur {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.92) 0%, rgba(217, 70, 239, 0.85) 50%, rgba(13, 19, 41, 0.95) 100%);
+  border-color: #f472b6;
+  color: #fdf2f8;
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.6),
+    0 0 14px rgba(236, 72, 153, 0.65);
+}
+
+.solstice-rarity-badge.is-ur .solstice-8pt-star {
+  background: #fdf2f8;
+  filter: drop-shadow(0 0 6px #f472b6);
+}
+
+/* ============================================================================
+ * Mini TCG Card Adaptations for Responsive 2-Column Grids
+ * ============================================================================ */
+.solstice-card-3d-stage.is-mini {
+  width: 100%;
+  aspect-ratio: 9 / 13.8;
+  border-radius: 20px;
+}
+
+.solstice-card-3d-stage.is-mini .gacha-foil-box {
+  border-radius: 20px;
+  box-shadow:
+    0 0 20px -2px rgba(56, 189, 248, 0.35),
+    0 0 15px -2px rgba(236, 72, 153, 0.3),
+    0 0 10px 0px rgba(253, 224, 71, 0.25);
+}
+
+.solstice-card-3d-stage.is-mini .solstice-holiday-frame {
+  border-radius: 20px;
+}
+
+.solstice-card-3d-stage.is-mini .solstice-holiday-frame::before {
+  border-radius: 20px;
+  padding: 1.5px;
+  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.72)) drop-shadow(0 0 12px rgba(253, 224, 71, 0.58));
+}
+
+.solstice-card-3d-stage.is-mini .solstice-holiday-frame::after {
+  border-radius: 14px;
+  inset: 6px;
+}
+
+.solstice-card-3d-stage.is-mini .solstice-corner-crest {
+  top: 12px;
+  left: 14px;
+  height: 20px;
+  font-size: 12px;
+}
+
+.solstice-card-3d-stage.is-mini .solstice-rarity-badge {
+  top: 12px;
+  right: 14px;
+  height: 20px;
+  padding: 0 8px;
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  gap: 3.5px;
+}
+
+.solstice-card-3d-stage.is-mini .solstice-8pt-star {
+  width: 9px;
+  height: 9px;
+}
+
+.solstice-card-3d-stage.is-mini .solstice-card-caption {
+  left: 14px;
+  right: 14px;
+  bottom: 14px;
+  transform: translateZ(14px);
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.95));
+}
+
+.solstice-card-3d-stage.is-mini .solstice-card-subtitle {
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  margin-bottom: 2px;
+  color: #bae6fd;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95);
+}
+
+.solstice-card-3d-stage.is-mini .solstice-card-title {
+  font-size: clamp(0.98rem, 1.5vw, 1.12rem);
+  line-height: 1.28;
+  letter-spacing: -0.01em;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.95);
+}
+
 @keyframes solstice-star-pulse {
   0%, 100% {
     transform: scale(1) rotate(0deg);
@@ -570,13 +727,19 @@ body:has(.cw-modal-open) .cw-astrolabe-inner {
   text-transform: uppercase;
   letter-spacing: 0.14em;
   color: #93c5fd;
-  margin-bottom: 2px;
+  margin: 0 0 2px 0;
 }
 
 .solstice-card-title {
   font-size: 1.15rem;
   font-weight: 800;
-  line-height: 1.2;
+  line-height: 1.28;
+  margin: 0;
+}
+
+.solstice-card-caption p,
+.solstice-card-caption h3 {
+  margin: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -588,4 +751,83 @@ body:has(.cw-modal-open) .cw-astrolabe-inner {
   .solstice-8pt-star {
     animation: none !important;
   }
+}
+
+/* ============================================================================
+ * Unified Single-Source Holo Portrait Surface (Used by AvatarImg & Media)
+ * ============================================================================ */
+@keyframes holoPortraitBgShimmer {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 100% 100%; }
+}
+
+.holo-portrait-surface {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  display: block;
+  background:
+    radial-gradient(90% 75% at 80% 20%, rgba(34, 211, 238, 0.25) 0%, transparent 60%),
+    radial-gradient(circle at 20% 25%, rgba(56, 189, 248, 0.26) 0%, transparent 45%),
+    radial-gradient(circle at 80% 18%, rgba(253, 224, 71, 0.18) 0%, transparent 40%),
+    radial-gradient(circle at 50% 85%, rgba(190, 18, 60, 0.22) 0%, transparent 50%),
+    linear-gradient(160deg, #123066 0%, #0a1a3f 55%, #060d24 100%);
+}
+
+.holo-portrait-surface.is-avatar {
+  border-radius: 50%;
+}
+
+.holo-portrait-surface::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(
+      115deg,
+      rgba(255, 255, 255, 0.06) 0%,
+      rgba(56, 189, 248, 0.10) 8%,
+      rgba(232, 121, 249, 0.12) 16%,
+      rgba(253, 224, 71, 0.08) 24%,
+      rgba(56, 189, 248, 0.10) 32%,
+      rgba(255, 255, 255, 0.06) 40%
+    );
+  background-size: 250% 250%;
+  mix-blend-mode: color-dodge;
+  opacity: 0.35;
+  animation: holoPortraitBgShimmer 8s ease-in-out infinite alternate;
+}
+
+.holo-portrait-surface > .holo-portrait-img {
+  position: relative;
+  z-index: 2;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
+  object-position: center top;
+  display: block;
+  border: 0 !important;
+  border-radius: 0 !important;
+}
+
+.holo-portrait-surface > .holo-portrait-img.is-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.holo-portrait-surface > .holo-foil-sheen {
+  z-index: 3;
+  opacity: 0.32;
+}
+
+.holo-portrait-surface.is-avatar > .holo-foil-sheen::before,
+.holo-portrait-surface.is-avatar > .holo-foil-sheen::after {
+  mask-size: 10px 10px;
+  -webkit-mask-size: 10px 10px;
 }

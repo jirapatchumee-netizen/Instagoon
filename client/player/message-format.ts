@@ -123,8 +123,8 @@ export function parseRealityBubbleTags(text: string): {
     return '';
   });
 
-  // Stored replies still carry the tag, so it is stripped before the bubble renders.
-  cleanBody = cleanBody.replace(/^\[draft:[^\]]*\]\n?/gim, '');
+  // Stored legacy replies or italicized drafts are completely stripped so they never reach the bubble.
+  cleanBody = cleanBody.replace(/\*?\[draft:[^\]]*\]\*?\s*\n?/gi, '');
 
   cleanBody = cleanBody.replace(/^\[howler:([^\]]*)\]\n?/gim, (_, raw) => {
     const val = String(raw || '').trim();

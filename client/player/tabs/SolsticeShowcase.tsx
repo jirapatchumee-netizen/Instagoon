@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import '../froststory.css';
 import './card-wish.css';
+import { HoloCardShell } from '../components/HoloCardShell';
 import solsticeManifest from './solstice-cards-manifest.json';
 
 export interface SolsticeCardItem {
@@ -110,34 +111,21 @@ export const WinterHoloCard: React.FC<{ card: SolsticeCardItem }> = ({ card }) =
       onPointerLeave={handlePointerReset}
     >
       <div className="solstice-card-rotator">
-        {/* Inner Clipped Foil Container: Layer 1 (Z:1) -> Layer 2 (Z:2) -> Layer 3 (Z:3) */}
-        <div className="gacha-foil-box">
-          <div className="solstice-card-starry-bg" />
-          <img
-            src={card.image_url}
-            alt={`${card.display_name} — ${card.card_title}`}
-            className="solstice-card-art"
-            onError={(ev) => {
-              // Fallback to Milin if image fails
-              (ev.currentTarget as HTMLImageElement).src = '/assets/cards/milin-solstice-ssr.webp';
-            }}
-          />
-          <div className="solstice-card-art-vignette" />
-          <div className="holo-foil-sheen" />
-        </div>
-
-        {/* Layer 4 (Z:4): Holiday Frame, Snowflake Crest & 8-Point Star Badge */}
-        <div className="solstice-holiday-frame" />
-        <div className="solstice-corner-crest">❄ ✦</div>
-        <div className={`solstice-rarity-badge ${card.rarity === 'SR' ? 'is-sr' : ''}`}>
-          <span className="solstice-8pt-star" />
-          {card.rarity}
-        </div>
-        <div className="solstice-card-caption">
-          <div className="solstice-card-subtitle">Aethelgard Winter Solstice</div>
-          <div className="solstice-card-title holo-text-shimmer">{card.display_name}</div>
-          <div className="mt-0.5 text-xs font-medium text-slate-200/90">{card.card_title}</div>
-        </div>
+        <HoloCardShell
+          rarity={card.rarity}
+          cornerIcon="❄ ✦"
+          name={card.display_name}
+          imageUrl={card.image_url}
+          imageAlt={`${card.display_name} — ${card.card_title}`}
+          isActive={true}
+          foilOpacity={0.35}
+          className="gacha-foil-box w-full h-full"
+        >
+          <div className="solstice-card-caption flex flex-col gap-1">
+            <div className="solstice-card-title holo-text-shimmer">{card.display_name}</div>
+            <div className="text-xs font-medium leading-relaxed text-slate-200/90">{card.card_title}</div>
+          </div>
+        </HoloCardShell>
       </div>
     </div>
   );
