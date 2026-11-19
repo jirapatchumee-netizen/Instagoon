@@ -8,7 +8,7 @@ import { type Lang, LANGS, TRANSLATIONS } from './i18n';
 import { LangSelect } from './LangSelect';
 import { type Energy, type User, type Creator, type Post, type Story, type AiChatMessage, type Chat, type Screen, type ProfileData, type EpisodeInfo, type WorldSeasonEvent, type RealityState, type ProceduralMeme, type HousePointStanding } from './types';
 import { ApiError, api, createFollowSync } from './api';
-import { ChatComposer, media, AvatarImg, hasSpokenDialogue, renderBubbleContent, json, StoryContent, Modal, getAvatarSrc, LivingRealityStatusBar } from './ui';
+import { ChatComposer, media, AvatarImg, Media, hasSpokenDialogue, renderBubbleContent, json, StoryContent, Modal, getAvatarSrc, LivingRealityStatusBar } from './ui';
 import { ProfileSetupModal } from './overlays/ProfileSetupModal';
 import { ClosedBetaGateModal } from './overlays/ClosedBetaGateModal';
 import { BugReportModal } from './overlays/BugReportModal';
@@ -21,7 +21,6 @@ import { createRouter } from './routes';
 import { ExploreTab } from './tabs/ExploreTab';
 import { ReelsTab } from './tabs/ReelsTab';
 import { InboxTab } from './tabs/InboxTab';
-import { CardWishTab } from './tabs/CardWishTab';
 import { CosplayCreatorTab } from './tabs/CosplayCreatorTab';
 import { CreditProgressCard } from './components/CreditProgressCard';
 import { PlayerProfileTab } from './tabs/PlayerProfileTab';
@@ -1086,7 +1085,7 @@ export function FrostStoryApp() {
 
       {/* Centered Instagram iOS Column */}
       <main className="fs-main">
-        {hubOn && screen === 'home' && (
+        {hubOn && (screen === 'home' || screen === 'cards') && (
           <HomeHub
             lang={lang}
             creators={creators}
@@ -1191,14 +1190,6 @@ export function FrostStoryApp() {
           />
         )}
 
-        {screen === "cards" && (
-          <CardWishTab
-            lang={lang}
-            onOpenShop={() => setShopOpen(true)}
-            onEnergyUpdate={(next) => setEnergy(next)}
-          />
-        )}
-
         {screen === "account" && (
           <PlayerProfileTab
             user={user}
@@ -1276,16 +1267,6 @@ export function FrostStoryApp() {
 
           <button
             type="button"
-            className={`fs-nav-tab ${screen === 'cards' ? 'is-active' : ''}`}
-            onClick={() => handleSelectTab('cards')}
-            title={t.cardWishTab}
-            aria-label={t.cardWishTab}
-          >
-            <Sparkles size={25} className={screen === 'cards' ? 'text-amber-300' : ''} />
-          </button>
-
-          <button
-            type="button"
             className={`fs-nav-tab fs-profile-tab ${screen === 'account' || screen === 'studio' ? 'is-active' : ''}`}
             onClick={() => handleSelectTab('account')}
             title={t.account}
@@ -1335,9 +1316,9 @@ export function FrostStoryApp() {
                 <div className="fs-story-author">
                   <div className="fs-avatar">
                     {getCreator(selectedStory.creatorId)?.avatarKey ? (
-                      <img
+                      <AvatarImg
                         src={media(getCreator(selectedStory.creatorId)!.avatarKey!)}
-                        alt=""
+                        name={creatorName(selectedStory.creatorId)}
                       />
                     ) : (
                       creatorName(selectedStory.creatorId).slice(0, 1)
@@ -1669,7 +1650,7 @@ export function FrostStoryApp() {
                             }}
                           >
                             {p.mediaKey ? (
-                              <img src={media(p.mediaKey)} alt="" loading="lazy" />
+                              <Media mediaKey={p.mediaKey} label={p.caption || ''} className="fs-post-image" />
                             ) : (
                               <div className="fs-profile-post-quote">{p.caption.slice(0, 40)}…</div>
                             )}
@@ -1714,12 +1695,12 @@ export function FrostStoryApp() {
                                   }
                                 }}
                               >
-                                <img src={media(item.asset)} alt={item.name} className="fs-vault-img" />
+                                <Media mediaKey={item.asset} label={item.name} className="fs-vault-img" />
                                 <div className="fs-vault-badge-unlocked">{t.vaultUnlockedBadge(item.name)}</div>
                               </div>
                             ) : (
                               <>
-                                <img src={media(item.asset)} alt={item.name} className="fs-vault-img is-blurred" />
+                                <Media mediaKey={item.asset} label={item.name} className="fs-vault-img is-blurred" />
                                 <div className="fs-vault-overlay">
                                   <div className="fs-vault-lock-icon">🔒</div>
                                   <p className="fs-vault-title">{item.name}</p>
@@ -2021,7 +2002,7 @@ export function FrostStoryApp() {
                       </div>
                       <div className="fs-bubble">
                         {selectedCreator.greeting
-                          ? selectedCreator.greeting
+                          ? selectedCreator.greeting.replace(/\*?\[draft:[^\]]*\]\*?\s*/gi, '')
                           : selectedCreator.id === 'milin'
                           ? 'จัดห้องเสร็จแล้ว มัวแต่นั่งมองเพดาน... ดีใจจังที่แวะเข้ามาหา 🥺✨ วันนี้ทำงานเหนื่อยไหมน้า?'
                           : `สวัสดีค่ะ แวะมาคุยกับ ${selectedCreator.name.replace(/\s*\([^)]*\)/, '')} ได้ตลอดเลยน้า ✨`}
@@ -2492,12 +2473,13 @@ export function FrostStoryApp() {
               )}
             </header>
             <div className="fs-lightbox-body" onClick={() => setExpandedMedia(null)}>
-              <img
-                src={media(expandedMedia.mediaKey)}
-                alt={expandedMedia.title || 'Expanded Photo'}
-                className="fs-lightbox-img"
-                onClick={(e) => e.stopPropagation()}
-              />
+              <div onClick={(e) => e.stopPropagation()}>
+                <Media
+                  mediaKey={expandedMedia.mediaKey}
+                  label={expandedMedia.title || 'Expanded Photo'}
+                  className="fs-lightbox-img"
+                />
+              </div>
             </div>
             <footer className="fs-lightbox-footer">
               {expandedMedia.caption && <p>{expandedMedia.caption}</p>}

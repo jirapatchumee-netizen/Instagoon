@@ -127,7 +127,7 @@
       ],
       "affection_delta": 8,
       "stress_delta": -5,
-      "mechanic_effect": "Temporarily dyes the recipient's hair tips based on hidden emotion (Peach-Pink = Flustered, Crimson = Jealous, Indigo = Melancholy). Forces an honest [draft:...] leak in next DM."
+      "mechanic_effect": "Temporarily dyes the recipient's hair tips based on hidden emotion (Peach-Pink = Flustered, Crimson = Jealous, Indigo = Melancholy)."
     },
     {
       "item_id": "ITEM_POTION_SOMNO_TRUFFLES",
@@ -159,7 +159,7 @@
       ],
       "affection_delta": 12,
       "stress_delta": -8,
-      "mechanic_effect": "Enchanted quill that subconsciously appends unspoken crushes before erasing them. Increases [draft:...] vulnerability depth."
+      "mechanic_effect": "Enchanted quill that writes smooth, lyrical prose with enchanting elegance."
     },
     {
       "item_id": "ITEM_CHARM_ORIGAMI_CRANE",
@@ -271,7 +271,7 @@
       "academic_year": 4,
       "title": "Solstice First Kiss & Summer Grief",
       "trigger_condition": "term_season == 'summer' && world_event == 'Y4_SQ_02'",
-      "summary": "Contrast between romantic Winter Gala euphoria and the devastating summer tournament death; player must read [draft:...] cries for help instead of believing stoic surface replies."
+      "summary": "Contrast between romantic Winter Gala euphoria and the devastating summer tournament death; player must comfort them through unspoken grief instead of believing stoic surface replies."
     },
     {
       "scenario_id": "SEED_Y6_CARRIAGE_ULTIMATUM",
