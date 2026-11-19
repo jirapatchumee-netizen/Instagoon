@@ -3,7 +3,7 @@ import { Crown } from 'lucide-react';
 import type { Creator } from '../types';
 import type { HomeCopy } from '../i18n';
 import { compactCount } from './format';
-import { media } from '../ui';
+import { media, AvatarImg } from '../ui';
 
 type Props = {
   creators: Creator[];
@@ -73,7 +73,7 @@ export function PodiumRanking({ creators, t, onOpen }: Props) {
               <div className="relative mb-1.5 flex items-center justify-center">
                 <div className="h-16 w-16 overflow-hidden rounded-full border-2 border-slate-300 shadow-lg ring-2 ring-slate-400/30 transition-transform group-hover:scale-105">
                   {second.avatarKey ? (
-                    <img src={media(second.avatarKey)} alt="" className="h-full w-full object-cover" />
+                    <AvatarImg src={media(second.avatarKey)} name={second.name} />
                   ) : (
                     <div className="h-full w-full bg-slate-700" />
                   )}
@@ -108,7 +108,7 @@ export function PodiumRanking({ creators, t, onOpen }: Props) {
               <div className="relative mb-1.5 flex items-center justify-center">
                 <div className="h-20 w-20 overflow-hidden rounded-full border-2 border-amber-300 shadow-xl ring-4 ring-amber-400/30 transition-transform group-hover:scale-105">
                   {first.avatarKey ? (
-                    <img src={media(first.avatarKey)} alt="" className="h-full w-full object-cover" />
+                    <AvatarImg src={media(first.avatarKey)} name={first.name} />
                   ) : (
                     <div className="h-full w-full bg-amber-900" />
                   )}
@@ -142,7 +142,7 @@ export function PodiumRanking({ creators, t, onOpen }: Props) {
               <div className="relative mb-1.5 flex items-center justify-center">
                 <div className="h-16 w-16 overflow-hidden rounded-full border-2 border-amber-700 shadow-lg ring-2 ring-amber-700/30 transition-transform group-hover:scale-105">
                   {third.avatarKey ? (
-                    <img src={media(third.avatarKey)} alt="" className="h-full w-full object-cover" />
+                    <AvatarImg src={media(third.avatarKey)} name={third.name} />
                   ) : (
                     <div className="h-full w-full bg-stone-800" />
                   )}
@@ -185,7 +185,7 @@ export function PodiumRanking({ creators, t, onOpen }: Props) {
                 </span>
                 <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border border-zinc-700">
                   {creator.avatarKey ? (
-                    <img src={media(creator.avatarKey)} alt="" className="h-full w-full object-cover" />
+                    <AvatarImg src={media(creator.avatarKey)} name={creator.name} />
                   ) : (
                     <div className="h-full w-full bg-zinc-800" />
                   )}

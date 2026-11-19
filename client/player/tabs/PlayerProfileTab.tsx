@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { type User, type Creator, type Post } from '../types';
 import { TRANSLATIONS, type Lang } from '../i18n';
-import { getAvatarSrc, media, AvatarImg, truncate } from '../ui';
+import { getAvatarSrc, media, AvatarImg, Media, truncate } from '../ui';
 import { LangSelect } from '../LangSelect';
 import {
   Bookmark,
@@ -305,8 +305,8 @@ export function PlayerProfileTab({
           </div>
         </div>
 
-        {/* 3-Column Stats Bar */}
-        <div className="relative z-10 grid grid-cols-3 pt-3 border-t border-white/[0.08] text-center">
+        {/* 2-Column Stats Bar (Collection gacha hidden) */}
+        <div className="relative z-10 grid grid-cols-2 pt-3 border-t border-white/[0.08] text-center">
           <button
             type="button"
             onClick={() => setActiveSubTab('following')}
@@ -320,28 +320,18 @@ export function PlayerProfileTab({
           <button
             type="button"
             onClick={() => setActiveSubTab('saved')}
-            className="group py-1 rounded-xl hover:bg-white/[0.03] transition border-x border-white/[0.07]"
+            className="group py-1 rounded-xl hover:bg-white/[0.03] transition border-l border-white/[0.07]"
           >
             <div className="text-sm font-bold text-white group-hover:text-pink-300 transition">
               {savedPosts.length}
             </div>
             <div className="text-[10.5px] text-zinc-400 mt-0.5">{t.saved}</div>
           </button>
-          <button
-            type="button"
-            onClick={() => setActiveSubTab('collection')}
-            className="group py-1 rounded-xl hover:bg-white/[0.03] transition"
-          >
-            <div className="text-sm font-bold holo-text-shimmer">
-              {collectionCards.length}
-            </div>
-            <div className="text-[10.5px] text-zinc-400 mt-0.5">{t.collection}</div>
-          </button>
         </div>
       </section>
 
-      {/* 2. MAIN 3 TABS BAR (Saved | Collection | Following) */}
-      <nav aria-label="Profile Tabs" className="grid grid-cols-3 border-b border-white/[0.08] relative z-10">
+      {/* 2. MAIN TABS BAR (Saved | Following) */}
+      <nav aria-label="Profile Tabs" className="grid grid-cols-2 border-b border-white/[0.08] relative z-10">
         <button
           type="button"
           onClick={() => setActiveSubTab('saved')}
@@ -353,18 +343,6 @@ export function PlayerProfileTab({
         >
           <Bookmark className={`w-3.5 h-3.5 ${activeSubTab === 'saved' ? 'text-pink-400' : ''}`} />
           <span>{t.saved}</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab('collection')}
-          className={`py-2.5 px-2 text-xs font-semibold flex items-center justify-center gap-1.5 border-b-2 rounded-t-xl transition ${
-            activeSubTab === 'collection'
-              ? 'border-pink-500 bg-pink-500/10 text-white'
-              : 'border-transparent text-zinc-400 hover:text-zinc-200'
-          }`}
-        >
-          <Sparkles className={`w-3.5 h-3.5 ${activeSubTab === 'collection' ? 'text-pink-400' : ''}`} />
-          <span>{t.collection}</span>
         </button>
         <button
           type="button"
@@ -408,10 +386,10 @@ export function PlayerProfileTab({
                     <div className="holo-foil-sheen absolute inset-0" />
                     <div className="relative aspect-[3/4] rounded-xl overflow-hidden border border-white/15 bg-zinc-950">
                       {post.mediaKey ? (
-                        <img
-                          src={media(post.mediaKey)}
-                          alt={post.caption}
-                          className="w-full h-full object-cover"
+                        <Media
+                          mediaKey={post.mediaKey}
+                          label={post.caption || ''}
+                          className="w-full h-full object-cover transition duration-300 group-hover:scale-105"
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center p-3 text-center text-xs text-zinc-300 italic bg-zinc-900">

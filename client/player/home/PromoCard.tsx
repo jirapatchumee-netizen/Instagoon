@@ -10,7 +10,7 @@ export function PromoCard({ t, onOpenShop }: Props) {
   return (
     <div
       onClick={onOpenShop}
-      className="group relative flex w-full aspect-[4/5] flex-col justify-between overflow-hidden rounded-2xl border border-purple-500/40 bg-gradient-to-b from-purple-950/70 via-zinc-950 to-pink-950/70 p-3.5 text-center shadow-lg transition-all duration-200 hover:-translate-y-1 hover:border-pink-500/60 hover:shadow-purple-500/20 cursor-pointer"
+      className="group relative flex w-full aspect-[9/13.8] flex-col justify-between overflow-hidden rounded-2xl border border-purple-500/40 bg-gradient-to-b from-purple-950/70 via-zinc-950 to-pink-950/70 p-3.5 text-center shadow-lg transition-all duration-200 hover:-translate-y-1 hover:border-pink-500/60 hover:shadow-purple-500/20 cursor-pointer"
     >
       {/* Background glow effects */}
       <div className="absolute -top-10 -left-10 h-32 w-32 rounded-full bg-purple-600/20 blur-2xl pointer-events-none" />

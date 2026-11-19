@@ -555,34 +555,63 @@ export function CardWishTab({ lang, onOpenShop, onEnergyUpdate }: CardWishTabPro
                     type="button"
                     disabled={!card.owned}
                     onClick={() => {
-                      if (matchedSolstice) {
-                        setInspectSolsticeCard(matchedSolstice);
-                      } else if (card.owned) {
-                        setInspectCard(card);
-                      }
+                      if (!card.owned) return;
+                      const targetCard: SolsticeCardItem = matchedSolstice || {
+                        card_id: card.key,
+                        creator_id: card.creatorId || '',
+                        display_name: card.name || card.creatorName || '',
+                        card_title: card.creatorName,
+                        rarity: (card.rarity === 'SSR' || card.rarity === 'SR' ? card.rarity : card.stars >= 5 ? 'SSR' : 'SR'),
+                        is_close_friend: false,
+                        image_url: resolveCardAsset(card.asset),
+                        quote: card.caption || 'Aethelgard Winter Solstice Series',
+                      };
+                      setInspectSolsticeCard(targetCard);
                     }}
-                    className={`rounded-2xl border p-2.5 text-left transition ${
+                    className={`solstice-card-3d-stage is-mini relative flex flex-col text-left transition ${
                       card.owned
-                        ? `${tierBorder(card.stars)} hover:scale-[1.01]`
-                        : 'border-white/10 bg-slate-950/60 opacity-75 cursor-default'
+                        ? 'cursor-pointer hover:scale-[1.02]'
+                        : 'opacity-70 grayscale-[35%] cursor-default'
                     }`}
                   >
-                    <div className="relative aspect-[4/5] rounded-xl overflow-hidden bg-slate-900 mb-2">
-                      {card.owned && card.asset ? (
-                        <img src={resolveCardAsset(card.asset)} alt={card.name || card.creatorName} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-gradient-to-b from-slate-900 to-indigo-950/60 p-2 text-center">
-                          <Lock className="w-6 h-6 text-zinc-500" />
-                          <span className="text-[10px] text-zinc-400 leading-tight">{t.wishLockedCard}</span>
-                        </div>
-                      )}
-                      <span className="absolute top-1.5 right-1.5 rounded-full bg-black/75 px-2 py-0.5 text-[10px] font-bold text-amber-200">
+                    <div className="solstice-card-rotator">
+                      <div className="gacha-foil-box">
+                        <div className="solstice-card-starry-bg" />
+                        {card.owned && card.asset ? (
+                          <img
+                            src={resolveCardAsset(card.asset)}
+                            alt={card.name || card.creatorName}
+                            className="solstice-card-art"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-gradient-to-b from-slate-900 to-indigo-950/80 p-2 text-center">
+                            <Lock className="w-6 h-6 text-zinc-500" />
+                            <span className="text-[10px] text-zinc-400 leading-tight">{t.wishLockedCard}</span>
+                          </div>
+                        )}
+                        <div className="solstice-card-art-vignette" />
+                        {card.owned && <div className="holo-foil-sheen" />}
+                      </div>
+
+                      <div className="solstice-holiday-frame" />
+                      <div className="solstice-corner-crest">❄ ✦</div>
+                      <div className={`solstice-rarity-badge ${card.rarity === 'SR' ? 'is-sr' : ''}`}>
+                        <span className="solstice-8pt-star" />
                         {card.rarity}
-                      </span>
+                      </div>
+
+                      <div className="solstice-card-caption">
+                        <div className="solstice-card-subtitle truncate">{card.creatorName}</div>
+                        <div className="solstice-card-title holo-text-shimmer truncate">
+                          {card.owned ? card.name : t.wishLockedCard}
+                        </div>
+                        {card.owned && card.caption && (
+                          <p className="mt-0.5 text-[10px] text-slate-200/90 line-clamp-2 leading-tight">
+                            {card.caption}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    <StarRow count={card.stars} size={11} />
-                    <div className="mt-1 text-[11px] font-semibold text-pink-300 truncate">{card.creatorName}</div>
-                    <div className="text-xs font-bold text-white truncate">{card.owned ? card.name : t.wishLockedCard}</div>
                   </button>
                 );
               })}
@@ -683,32 +712,54 @@ export function CardWishTab({ lang, onOpenShop, onEnergyUpdate }: CardWishTabPro
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') advanceReveal(); }}
               className="w-full max-w-sm flex flex-col items-center text-center space-y-4 cursor-pointer select-none"
             >
-              <div key={revealIndex} className={`cw-card-reveal-anim w-64 rounded-3xl border p-3 ${tierBorder(currentReveal.stars)}`}>
-                <div className="relative aspect-[4/5] rounded-2xl overflow-hidden bg-slate-900 mb-3">
-                  <img
-                    src={resolveCardAsset(currentReveal.asset)}
-                    alt={currentReveal.name}
-                    className="w-full h-full object-cover"
-                  />
+              <div
+                key={revealIndex}
+                className="cw-card-reveal-anim solstice-card-3d-stage w-64 max-w-[85vw]"
+                style={{ aspectRatio: '9 / 14' }}
+              >
+                <div className="solstice-card-rotator">
+                  <div className="gacha-foil-box">
+                    <div className="solstice-card-starry-bg" />
+                    <img
+                      src={resolveCardAsset(currentReveal.asset)}
+                      alt={currentReveal.name}
+                      className="solstice-card-art"
+                    />
+                    <div className="solstice-card-art-vignette" />
+                    <div className="holo-foil-sheen" style={{ opacity: 0.42 }} />
+                  </div>
+
+                  <div className="solstice-holiday-frame" />
+                  <div className="solstice-corner-crest">❄ ✦</div>
+                  <div
+                    className={`solstice-rarity-badge ${
+                      currentReveal.rarity === 'SR' ? 'is-sr' : currentReveal.rarity === 'UR' ? 'is-ur' : ''
+                    }`}
+                  >
+                    <span className="solstice-8pt-star" />
+                    {currentReveal.rarity}
+                  </div>
+
                   {currentReveal.isNew ? (
-                    <span className="absolute top-2 left-2 rounded-full bg-amber-400 px-2.5 py-0.5 text-[10px] font-black text-amber-950 shadow">
+                    <span className="absolute top-3 left-12 z-10 rounded-full bg-amber-400 px-2.5 py-0.5 text-[10px] font-black text-amber-950 shadow">
                       {t.wishNewBadge}
                     </span>
                   ) : (
-                    <span className="absolute top-2 left-2 rounded-full bg-black/75 border border-sky-400/50 px-2.5 py-0.5 text-[10px] font-bold text-sky-200">
+                    <span className="absolute top-3 left-12 z-10 rounded-full bg-black/75 border border-sky-400/50 px-2 py-0.5 text-[9px] font-bold text-sky-200">
                       {t.wishDupeEnergy(currentReveal.energyAwarded)}
                     </span>
                   )}
-                  <span className="absolute top-2 right-2 rounded-full bg-black/75 px-2 py-0.5 text-[10px] font-bold text-amber-200">
-                    {currentReveal.rarity}
-                  </span>
+
+                  <div className="solstice-card-caption">
+                    <div className="solstice-card-subtitle">{currentReveal.creatorName}</div>
+                    <div className="solstice-card-title holo-text-shimmer">{currentReveal.name}</div>
+                    {currentReveal.caption && (
+                      <p className="mt-0.5 text-xs font-medium text-slate-200/90 line-clamp-2">
+                        {currentReveal.caption}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <StarRow count={currentReveal.stars} size={16} />
-                <div className="mt-1 text-xs font-semibold text-pink-300">{currentReveal.creatorName}</div>
-                <div className="text-base font-bold text-white">{currentReveal.name}</div>
-                {currentReveal.caption && (
-                  <p className="mt-1 text-[11px] text-zinc-300 line-clamp-2">{currentReveal.caption}</p>
-                )}
               </div>
 
               <div className="text-xs text-zinc-400">

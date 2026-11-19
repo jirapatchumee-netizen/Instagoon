@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, type CSSProperties } from 'react';
 import { Sparkles, Hand, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Creator } from '../types';
 import type { HomeCopy } from '../i18n';
-import { ArtTile } from './ArtTile';
+import { HoloCardShell } from '../components/HoloCardShell';
 import { compactCount } from './format';
 
 type Props = {
@@ -12,11 +12,113 @@ type Props = {
   onOpenProfile: (creator: Creator) => void;
 };
 
+const WIDE_DECK_MIN = 900;
+const FAN_X = [0, 175, 320, 350];
+const FOLD_X = [0, 140, 150, 150];
+
+function lerpAt(table: number[], t: number) {
+  const i = Math.min(table.length - 2, Math.floor(t));
+  return table[i] + (table[i + 1] - table[i]) * Math.min(1, t - i);
+}
+
+type OverlayProps = {
+  creator: Creator;
+  t: HomeCopy;
+  onChat: () => void;
+  onProfile: () => void;
+};
+
+function getHeroRarity(creator: Creator): 'UR' | 'SSR' | 'SR' {
+  if (
+    creator.id === 'yuki' ||
+    creator.id === 'pim' ||
+    creator.id === 'mook' ||
+    (creator.vaultCount || 0) > 0
+  ) {
+    return 'UR';
+  }
+  if (
+    creator.id === 'june' ||
+    creator.id === 'milin' ||
+    creator.id === 'noey' ||
+    (creator.chatCount || 0) > 3000
+  ) {
+    return 'SSR';
+  }
+  return 'SR';
+}
+
+function HeroCardOverlay({ creator, t, onChat, onProfile }: OverlayProps) {
+  const isCosplay =
+    creator.creatorType === 'cosplay' ||
+    (creator.tags || []).some((tag) => /cosplay|คอสเพลย์/i.test(tag));
+  const isVerified = creator.isVerified ?? isCosplay;
+  const isOnline =
+    creator.isOnline ?? ((creator.chatCount || 0) > 500 || creator.relationship > 0);
+
+  return (
+    <div className="absolute bottom-0 inset-x-0 px-4 pb-4 pt-6 flex flex-col justify-end z-10">
+      {/* Primary Hierarchy: Character Name + Badges + Chat Count Pill */}
+      <div className="flex items-center justify-between gap-2 !m-0">
+        <div className="flex items-center gap-1.5 min-w-0 !m-0">
+          <h3 className="solstice-card-title holo-text-shimmer text-[18px] font-extrabold leading-[1.28] tracking-tight truncate drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] !m-0">
+            {creator.name}
+          </h3>
+          {isVerified ? (
+            <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" aria-label={t.verifiedCosplayBadge}>
+              <circle cx="12" cy="12" r="10" fill="#38bdf8" />
+              <path d="m9 12 2 2 4-4" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          ) : null}
+          {isOnline ? (
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 ring-2 ring-emerald-400/30 shadow shrink-0" />
+          ) : null}
+        </div>
+        <span className="shrink-0 inline-flex items-center rounded-full bg-black/45 border border-white/10 px-2 py-0.5 text-[10px] font-semibold text-pink-200 backdrop-blur-sm">
+          {t.chatCount(compactCount(creator.chatCount || 0))}
+        </span>
+      </div>
+
+      {/* Secondary Hierarchy: Tagline / Description with comfortable Thai line-height */}
+      <p className="text-[11.5px] text-slate-200/95 leading-[1.55] line-clamp-2 drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)] font-normal !m-0 mt-1.5 mb-3">
+        {creator.tagline ? `“${creator.tagline}”` : creator.bio}
+      </p>
+
+      {/* Tertiary Hierarchy: Balanced Action CTA Buttons */}
+      <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onChat();
+          }}
+          className="btn-holo-cta h-8 sm:h-9 px-2 sm:px-3 rounded-full text-[10.5px] sm:text-[11.5px] font-bold text-white shadow-lg flex items-center justify-center whitespace-nowrap leading-none cursor-pointer active:scale-95 transition"
+        >
+          {t.heroCtaChat}
+        </button>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onProfile();
+          }}
+          className="h-8 sm:h-9 px-2 sm:px-3 rounded-full text-[10.5px] sm:text-[11.5px] font-semibold text-white bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/20 flex items-center justify-center whitespace-nowrap leading-none transition cursor-pointer active:scale-95"
+        >
+          {t.heroCtaProfile}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function HeroCard({ creators, t, onChat, onOpenProfile }: Props) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
 
+  const stageRef = useRef<HTMLDivElement | null>(null);
+  const [heroScale, setHeroScale] = useState(1);
+  const [wideDeck, setWideDeck] = useState(false);
   const startX = useRef(0);
   const startY = useRef(0);
   const isLockedHorizontal = useRef(false);
@@ -44,83 +146,51 @@ export function HeroCard({ creators, t, onChat, onOpenProfile }: Props) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentIndex, goToCard]);
 
+  // Smooth continuous stage scaling (no jump at WIDE_DECK_MIN)
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const update = () => {
+      const w = el.clientWidth;
+      const wide = w >= WIDE_DECK_MIN;
+      setWideDeck(wide);
+      const nextScale = Math.max(0.9, Math.min(1.16, 0.85 + (w - 320) * 0.00035));
+      setHeroScale(Number(nextScale.toFixed(3)));
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [total]);
+
   if (!total) return null;
 
   // Single card layout fallback
   if (total === 1) {
     const current = creators[0];
-    const isCosplay =
-      current.creatorType === 'cosplay' ||
-      (current.tags || []).some((tag) => /cosplay|คอสเพลย์/i.test(tag));
-    const isVerified = current.isVerified ?? isCosplay;
-    const isOnline =
-      current.isOnline ?? ((current.chatCount || 0) > 500 || current.relationship > 0);
+    const rarity = getHeroRarity(current);
 
     return (
-      <section
-        onPointerMove={(e) => handleCardPointerMove(e as any, true)}
-        onPointerLeave={(e) => handleCardPointerLeave(e as any, true)}
-        className="relative overflow-hidden rounded-2xl border border-white/10 shadow-xl bg-[#121218] min-h-[350px]"
-      >
-        <ArtTile
+      <section className="relative w-full max-w-[270px] mx-auto my-3 flex justify-center">
+        <HoloCardShell
+          rarity={rarity}
+          cornerIcon="❄ ✦"
           name={current.name}
           color={current.color || '#ec4899'}
           artKey={current.avatarKey}
           artState={current.artState}
-          label={current.artState === 'pending' ? t.artPending : undefined}
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-        <div className="hero-seamless-fade absolute inset-0 pointer-events-none" />
-        <div
-          className="holo-foil-layer absolute inset-0 z-[5] pointer-events-none"
-          style={{ opacity: 0.18 }}
-        />
-        <div className="holo-sparkle-grain absolute inset-0 z-[5] opacity-0 pointer-events-none" />
-        <div className="absolute inset-x-3 top-3 z-10 flex items-center justify-between pointer-events-none">
-          <span className="rounded-full border border-pink-400/30 bg-pink-600/80 px-2.5 py-0.5 text-[10.5px] font-bold text-white shadow-sm backdrop-blur-md flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-            {isCosplay ? `🎭 ${t.filterCosplay} · ${current.name}` : t.heroHeading(current.name)}
-          </span>
-          <span className="rounded-full border border-white/15 bg-black/60 px-2 py-0.5 text-[10px] text-white/90 backdrop-blur-md">
-            {isCosplay ? 'Cosplay AI' : t.aiImageBadge}
-          </span>
-        </div>
-        <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col justify-end p-4">
-          <div className="flex items-center gap-1.5 mb-1">
-            <h2 className="text-xl font-bold text-white tracking-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)]">
-              {current.name}
-            </h2>
-            {isVerified ? (
-              <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" aria-label={t.verifiedCosplayBadge}>
-                <circle cx="12" cy="12" r="10" fill="#38bdf8" />
-                <path d="m9 12 2 2 4-4" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            ) : null}
-            {isOnline ? <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-emerald-400/30 shadow ml-1" /> : null}
-            <span className="ml-auto text-[11px] font-medium text-pink-300 drop-shadow">
-              {t.chatCount(compactCount(current.chatCount || 0))}
-            </span>
-          </div>
-          <p className="text-[11.5px] text-zinc-200/95 leading-snug line-clamp-2 mb-3 drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)]">
-            {current.tagline ? `“${current.tagline}”` : current.bio}
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              className="btn-neon-gradient py-2.5 px-2 rounded-full text-xs font-bold text-white shadow-lg shadow-pink-600/35 text-center cursor-pointer"
-              onClick={() => onChat(current)}
-            >
-              {t.heroCtaChat}
-            </button>
-            <button
-              type="button"
-              className="py-2.5 px-2 rounded-full text-xs font-medium text-white bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/20 text-center transition cursor-pointer"
-              onClick={() => onOpenProfile(current)}
-            >
-              {t.heroCtaProfile}
-            </button>
-          </div>
-        </div>
+          pendingLabel={current.artState === 'pending' ? t.artPending : undefined}
+          isActive={true}
+          foilOpacity={0.38}
+          className="hero-card !relative !left-0 !top-0 !m-0 !w-[254px] !h-[364px] border border-white/15 shadow-xl is-active"
+        >
+          <HeroCardOverlay
+            creator={current}
+            t={t}
+            onChat={() => onChat(current)}
+            onProfile={() => onOpenProfile(current)}
+          />
+        </HoloCardShell>
       </section>
     );
   }
@@ -159,7 +229,7 @@ export function HeroCard({ creators, t, onChat, onOpenProfile }: Props) {
     }
 
     // Drag offset normalized by card width / 2
-    const offset = Math.max(-1.25, Math.min(1.25, dx / 155));
+    const offset = Math.max(-1.25, Math.min(1.25, dx / (155 * heroScale)));
     setDragOffset(offset);
   };
 
@@ -186,24 +256,20 @@ export function HeroCard({ creators, t, onChat, onOpenProfile }: Props) {
     const rect = card.getBoundingClientRect();
     const px = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
     const py = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
-    const foil = card.querySelector('.holo-foil-layer') as HTMLElement | null;
+    const foil = (card.querySelector('.holo-foil-sheen') || card.querySelector('.holo-foil-layer')) as HTMLElement | null;
     if (foil) {
-      foil.style.setProperty('--pointer-x', `${px}%`);
-      foil.style.setProperty('--pointer-y', `${py}%`);
-      foil.style.setProperty('--holo-angle', `${105 + px * 0.65}deg`);
-      foil.style.opacity = '0.36';
+      foil.style.setProperty('--px', `${px.toFixed(1)}%`);
+      foil.style.setProperty('--py', `${py.toFixed(1)}%`);
     }
   };
 
   const handleCardPointerLeave = (e: React.PointerEvent<HTMLDivElement>, isActiveCard: boolean) => {
     if (!isActiveCard || isDragging) return;
     const card = e.currentTarget;
-    const foil = card.querySelector('.holo-foil-layer') as HTMLElement | null;
+    const foil = (card.querySelector('.holo-foil-sheen') || card.querySelector('.holo-foil-layer')) as HTMLElement | null;
     if (foil) {
-      foil.style.setProperty('--pointer-x', '50%');
-      foil.style.setProperty('--pointer-y', '50%');
-      foil.style.setProperty('--holo-angle', '125deg');
-      foil.style.opacity = '0.18';
+      foil.style.setProperty('--px', '50%');
+      foil.style.setProperty('--py', '50%');
     }
   };
 
@@ -222,13 +288,17 @@ export function HeroCard({ creators, t, onChat, onOpenProfile }: Props) {
       </div>
 
       {/* 3D Carousel Stage */}
-      <div className="relative w-full h-[395px] flex items-center justify-center overflow-hidden">
+      <div
+        ref={stageRef}
+        className="relative w-full flex items-center justify-center overflow-hidden pb-1"
+        style={{ height: Math.round(404 * heroScale), ['--hero-s' as string]: heroScale } as CSSProperties}
+      >
         {/* Left Navigation Chevron */}
         <button
           type="button"
           onClick={() => goToCard(currentIndex - 1)}
           aria-label="Previous card"
-          className="absolute left-1.5 z-30 w-8 h-8 rounded-full bg-black/60 hover:bg-pink-600/80 backdrop-blur-md border border-white/15 flex items-center justify-center text-white/90 transition active:scale-90"
+          className="absolute left-2 sm:left-4 z-30 w-8 h-8 rounded-full bg-black/60 hover:bg-pink-600/80 backdrop-blur-md border border-white/15 flex items-center justify-center text-white/90 transition active:scale-90"
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
@@ -249,29 +319,36 @@ export function HeroCard({ creators, t, onChat, onOpenProfile }: Props) {
             }
 
             const absDiff = Math.abs(diff);
-            const translateX = diff * 140;
-            const translateZ = -absDiff * 135;
+            const translateX = Math.sign(diff) * lerpAt(wideDeck ? FAN_X : FOLD_X, Math.min(absDiff, 3)) * heroScale;
+            const translateZ = -absDiff * 135 * heroScale;
             const rotateY = diff * -25;
             const rotateZ = diff * 3;
             const scale = Math.max(0.72, 1 - absDiff * 0.14);
-            const opacity = absDiff > 1.75 ? 0 : Math.max(0.4, 1 - absDiff * 0.35);
+            const opacity = wideDeck
+              ? absDiff <= 2
+                ? 1 - absDiff * 0.2
+                : Math.max(0, 0.6 * (3 - absDiff))
+              : absDiff <= 1
+                ? 1 - absDiff * 0.35
+                : Math.max(0, 0.65 * (2 - absDiff));
             const dimOpacity = Math.min(0.55, absDiff * 0.32);
             const zIndex = Math.round(20 - absDiff * 5);
             const isActive = absDiff < 0.35;
-
-            const isCosplay =
-              creator.creatorType === 'cosplay' ||
-              (creator.tags || []).some((tag) => /cosplay|คอสเพลย์/i.test(tag));
-            const isVerified = creator.isVerified ?? isCosplay;
-            const isOnline =
-              creator.isOnline ?? ((creator.chatCount || 0) > 500 || creator.relationship > 0);
-
-            const angleShift = 125 + diff * 45;
+            const rarity = getHeroRarity(creator);
             const posX = 50 - diff * 35;
 
             return (
-              <div
+              <HoloCardShell
                 key={creator.id}
+                rarity={rarity}
+                cornerIcon="❄ ✦"
+                name={creator.name}
+                color={creator.color || '#ec4899'}
+                artKey={creator.avatarKey}
+                artState={creator.artState}
+                pendingLabel={creator.artState === 'pending' ? t.artPending : undefined}
+                isActive={isActive}
+                foilOpacity={isActive ? 0.38 : 0.22}
                 onPointerMove={(e) => handleCardPointerMove(e, isActive)}
                 onPointerLeave={(e) => handleCardPointerLeave(e, isActive)}
                 onClick={() => {
@@ -279,48 +356,26 @@ export function HeroCard({ creators, t, onChat, onOpenProfile }: Props) {
                     goToCard(idx);
                   }
                 }}
-                className={`hero-card overflow-hidden border border-white/15 bg-[#121218] transition-shadow duration-300 ${
+                className={`hero-card overflow-hidden border border-white/15 bg-[#0a1430] transition-shadow duration-300 ${
                   isActive ? 'is-active' : ''
                 }`}
                 style={{
                   transform: `translate3d(${translateX}px, 0px, ${translateZ}px) rotateY(${rotateY}deg) rotateZ(${rotateZ}deg) scale(${scale})`,
                   opacity,
                   zIndex,
+                  pointerEvents: opacity < 0.05 ? 'none' : undefined,
                   transition: isDragging
                     ? 'none'
                     : 'transform 0.48s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease',
-                }}
+                  ['--px' as string]: `${Math.max(10, Math.min(90, posX))}%`,
+                  ['--py' as string]: '50%',
+                } as CSSProperties}
               >
-                {/* Full-bleed Character Artwork */}
-                <ArtTile
-                  name={creator.name}
-                  color={creator.color || '#ec4899'}
-                  artKey={creator.avatarKey}
-                  artState={creator.artState}
-                  label={creator.artState === 'pending' ? t.artPending : undefined}
-                  className="absolute inset-0 h-full w-full object-cover"
-                />
-
                 {/* Darkening Overlay for Depth Cards */}
                 <div
                   className="absolute inset-0 bg-black pointer-events-none transition-opacity"
                   style={{ opacity: dimOpacity }}
                 />
-
-                {/* Seamless Bottom Vignette Fade */}
-                <div className="hero-seamless-fade absolute inset-0 pointer-events-none" />
-
-                {/* Dynamic Holographic Rainbow Foil & Sparkle Grain (Visible only on hover like bottom cards) */}
-                <div
-                  className="holo-foil-layer absolute inset-0 z-[5] pointer-events-none"
-                  style={{
-                    opacity: 0.18,
-                    ['--holo-angle' as any]: `${angleShift}deg`,
-                    ['--pointer-x' as any]: `${Math.max(10, Math.min(90, posX))}%`,
-                    ['--pointer-y' as any]: '50%',
-                  }}
-                />
-                <div className="holo-sparkle-grain absolute inset-0 z-[5] opacity-0 pointer-events-none" />
 
                 {/* Dynamic Drag Glare Layer */}
                 <div
@@ -330,72 +385,18 @@ export function HeroCard({ creators, t, onChat, onOpenProfile }: Props) {
                   }}
                 />
 
-                {/* Top Floating Badges */}
-                <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2 z-10 pointer-events-none">
-                  <span
-                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold text-white shadow-sm backdrop-blur-md border flex items-center gap-1 truncate max-w-[140px] ${
-                      isCosplay
-                        ? 'bg-violet-600/85 border-violet-400/40'
-                        : 'bg-pink-600/85 border-pink-400/40'
-                    }`}
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shrink-0" />
-                    <span className="truncate">{isCosplay ? `🎭 ${t.filterCosplay}` : t.heroHeading(creator.name)}</span>
-                  </span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-black/60 backdrop-blur-md border border-white/20 text-zinc-100 shrink-0">
-                    {isCosplay ? 'Cosplay AI' : t.aiImageBadge}
-                  </span>
-                </div>
-
                 {/* Seamless Typography & Actions Floating Over Vignette */}
-                <div className="absolute bottom-0 inset-x-0 p-4 pt-12 flex flex-col justify-end z-10">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <h3 className="text-[19px] font-bold text-white tracking-tight truncate drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)]">
-                      {creator.name}
-                    </h3>
-                    {isVerified ? (
-                      <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" aria-label={t.verifiedCosplayBadge}>
-                        <circle cx="12" cy="12" r="10" fill="#38bdf8" />
-                        <path d="m9 12 2 2 4-4" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    ) : null}
-                    {isOnline ? (
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-emerald-400/30 shadow shrink-0" />
-                    ) : null}
-                    <span className="ml-auto text-[11px] font-medium text-pink-300 drop-shadow shrink-0">
-                      {t.chatCount(compactCount(creator.chatCount || 0))}
-                    </span>
-                  </div>
-
-                  <p className="text-[11.5px] text-zinc-200/95 leading-relaxed line-clamp-2 mb-3 drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)] font-light">
-                    {creator.tagline ? `“${creator.tagline}”` : creator.bio}
-                  </p>
-
-                  {/* Action CTA Buttons */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (!hasMoved.current) onChat(creator);
-                      }}
-                      className="btn-holo-cta py-2.5 px-2 rounded-full text-[11px] font-semibold text-white shadow-lg text-center cursor-pointer active:scale-95 transition"
-                    >
-                      {t.heroCtaChat}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (!hasMoved.current) onOpenProfile(creator);
-                      }}
-                      className="py-2.5 px-2 rounded-full text-[11px] font-medium text-white bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/20 text-center transition cursor-pointer active:scale-95"
-                    >
-                      {t.heroCtaProfile}
-                    </button>
-                  </div>
-                </div>
-              </div>
+                <HeroCardOverlay
+                  creator={creator}
+                  t={t}
+                  onChat={() => {
+                    if (!hasMoved.current) onChat(creator);
+                  }}
+                  onProfile={() => {
+                    if (!hasMoved.current) onOpenProfile(creator);
+                  }}
+                />
+              </HoloCardShell>
             );
           })}
         </div>
@@ -405,14 +406,14 @@ export function HeroCard({ creators, t, onChat, onOpenProfile }: Props) {
           type="button"
           onClick={() => goToCard(currentIndex + 1)}
           aria-label="Next card"
-          className="absolute right-1.5 z-30 w-8 h-8 rounded-full bg-black/60 hover:bg-pink-600/80 backdrop-blur-md border border-white/15 flex items-center justify-center text-white/90 transition active:scale-90"
+          className="absolute right-2 sm:right-4 z-30 w-8 h-8 rounded-full bg-black/60 hover:bg-pink-600/80 backdrop-blur-md border border-white/15 flex items-center justify-center text-white/90 transition active:scale-90"
         >
           <ChevronRight className="w-4 h-4" />
         </button>
       </div>
 
       {/* Pagination Dots */}
-      <div className="flex items-center justify-center gap-1.5 mt-2">
+      <div className="flex items-center justify-center gap-1.5 mt-3 mb-1">
         {creators.map((c, i) => (
           <button
             key={c.id}

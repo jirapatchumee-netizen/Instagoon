@@ -1,3 +1,5 @@
+@import './tabs/card-wish.css';
+
 /* =========================================================================
    AETHELGARD WINTER SOLSTICE & CHRISTMAS MAGIC DESIGN SYSTEM (THEME TOKENS)
    ========================================================================= */
@@ -3709,6 +3711,16 @@ dialog.fs-overlay[open]::backdrop {
   cursor: default;
 }
 
+.fs-lightbox-img.holo-portrait-surface {
+  aspect-ratio: 4 / 5;
+  width: auto;
+  height: min(72vh, 520px);
+  max-width: 90vw;
+  margin: 0 auto;
+  border-radius: 18px;
+  box-shadow: 0 0 30px rgba(56, 189, 248, 0.3);
+}
+
 .fs-lightbox-footer {
   position: absolute;
   bottom: 0;
@@ -4735,6 +4747,7 @@ dialog.fs-overlay[open]::backdrop {
   margin-bottom: 12px;
 }
 
+.fs-profile-avatar-wrap > .holo-portrait-surface,
 .fs-profile-avatar-wrap img,
 .fs-profile-avatar-wrap .fs-avatar-letter {
   width: 100%;
@@ -4742,6 +4755,7 @@ dialog.fs-overlay[open]::backdrop {
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid #0f0a17;
+  overflow: hidden;
 }
 
 .fs-profile-avatar-wrap .fs-avatar-letter {

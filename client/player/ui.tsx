@@ -70,15 +70,53 @@ export function ChatComposer({
   );
 }
 
-export const media = (key: string) => `/api/media/${key.split('/').map(encodeURIComponent).join('/')}`;
+export const media = (key: string) => `/api/media/${key.split('/').map(encodeURIComponent).join('/')}?v=rgba`;
+
+/** Single-source Holo portrait wrapper shared by AvatarImg and Media across the app. */
+export function HoloPortrait({
+  src,
+  alt = '',
+  className = '',
+  variant = 'media',
+  onError,
+}: {
+  src: string;
+  alt?: string;
+  className?: string;
+  variant?: 'avatar' | 'media';
+  onError?: () => void;
+}) {
+  return (
+    <div className={`holo-portrait-surface w-full h-full ${variant === 'avatar' ? 'is-avatar' : 'is-media'} ${className}`.trim()}>
+      <div className="solstice-card-starry-bg" />
+      <img
+        src={src}
+        alt={alt}
+        loading="lazy"
+        decoding="async"
+        className="holo-portrait-img"
+        onError={onError}
+      />
+      <div className="holo-foil-sheen pointer-events-none" />
+      <img
+        src={src}
+        alt=""
+        aria-hidden="true"
+        loading="lazy"
+        decoding="async"
+        className="holo-portrait-img is-overlay pointer-events-none"
+      />
+    </div>
+  );
+}
 
 // A creator avatar that falls back to the name's first letter when the picture is missing, instead of
 // the browser's broken-image icon and alt text spilling out of the circle.
-export function AvatarImg({ src, name, alt = name, className = 'w-full h-full object-cover object-top' }: { src: string; name: string; alt?: string; className?: string }) {
+export function AvatarImg({ src, name, alt = name, className = '' }: { src: string; name: string; alt?: string; className?: string }) {
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [src]);
   if (failed) return <span aria-label={alt || undefined}>{Array.from(name)[0] ?? ''}</span>;
-  return <img src={src} alt={alt} className={className} onError={() => setFailed(true)} />;
+  return <HoloPortrait src={src} alt={alt} className={className} variant="avatar" onError={() => setFailed(true)} />;
 }
 
 // Thai writes vowels and tone marks as combining code points stacked on the consonant, so slicing by code unit
@@ -102,7 +140,7 @@ export function Media({
   return /\.(mp4|webm)$/i.test(mediaKey) ? (
     <video className={className} src={media(mediaKey)} controls playsInline aria-label={label} />
   ) : (
-    <img className={className} src={media(mediaKey)} alt={label} loading="lazy" decoding="async" />
+    <HoloPortrait src={media(mediaKey)} alt={label} className={className} variant="media" />
   );
 }
 
